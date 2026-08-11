@@ -1,0 +1,67 @@
+
+> shreebanarsisarees@0.1.0 build
+> next build
+
+▲ Next.js 16.3.0 (Turbopack)
+✓ Running next.config.ts took 211ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 7.2s
+  Running TypeScript ...
+  Finished TypeScript in 4.3s ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/8) ...
+⨯ useSearchParams() should be wrapped in a suspense boundary at page "/account". Read more: https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout
+    at Object.X (/home/rajeev/pixelbuilders/shreebanarsisarees/.next/server/chunks/ssr/_1owfl02._.js:2:3038)
+    at q (/home/rajeev/pixelbuilders/shreebanarsisarees/.next/server/chunks/ssr/_1owfl02._.js:1:10342)
+    at /home/rajeev/pixelbuilders/shreebanarsisarees/.next/server/chunks/ssr/_1owfl02._.js:129:10060
+    at al (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:85944)
+    at ac (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:87760)
+    at ah (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:109623)
+    at af (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:106940)
+    at aS (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:114685)
+    at ap (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:111684)
+    at ah (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:109897)
+    at af (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:106940)
+    at ac (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:100962)
+    at ah (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:109623)
+    at af (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:106940)
+    at au (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:86296)
+    at ac (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:87805)
+    at ah (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:109623)
+    at af (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:106940)
+    at au (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:86296)
+    at ac (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:87805)
+    at ac (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:106280)
+    at ah (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:109623)
+    at af (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:106940)
+    at aS (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:114685)
+    at ap (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:111684)
+    at ah (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:109897)
+    at af (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:106940)
+    at ac (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:100962)
+    at ah (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:109623)
+    at af (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:106940)
+    at ac (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:105898)
+    at ah (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:109623)
+    at af (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:106940)
+    at au (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:86296)
+    at ac (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:87805)
+    at ah (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:109623)
+    at af (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:106940)
+    at aS (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:114685)
+    at ap (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:111684)
+    at ah (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:109897)
+    at af (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:106940)
+    at ac (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:87724)
+    at ah (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:109623)
+    at af (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:106940)
+    at au (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:86296)
+    at ac (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:87805)
+    at ah (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:109623)
+    at af (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:106940)
+    at ac (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:100962)
+    at ah (/home/rajeev/pixelbuilders/shreebanarsisarees/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:109623)
+Error occurred prerendering page "/account". Read more: https://nextjs.org/docs/messages/prerender-error
+Export encountered an error on /account/page: /account, exiting the build.
+⨯ Next.js build worker exited with code: 1 and signal: null
