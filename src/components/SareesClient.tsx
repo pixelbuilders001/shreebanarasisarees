@@ -1,23 +1,36 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { Header } from '../../components/Header';
-import { Footer } from '../../components/Footer';
-import { ProductCard } from '../../components/ProductCard';
-import { PRODUCTS, Product } from '../../data/products';
-import { Filter, SlidersHorizontal, X, Search, ChevronDown } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Header } from './Header';
+import { Footer } from './Footer';
+import { ProductCard } from './ProductCard';
+import { PRODUCTS } from '../data/products';
+import { Filter, SlidersHorizontal, X, Search, ChevronDown, BookOpen } from 'lucide-react';
 
-function SareesContent() {
-  const searchParams = useSearchParams();
+interface SareesClientProps {
+  initialCategory: string;
+  initialOccasion: string;
+  h1Title: string;
+  introductoryContent: string;
+}
+
+export const SareesClient: React.FC<SareesClientProps> = ({
+  initialCategory,
+  initialOccasion,
+  h1Title,
+  introductoryContent,
+}) => {
   const router = useRouter();
 
   // Filter States
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
   const [selectedPriceRange, setSelectedPriceRange] = useState<string>('All');
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
-  const [selectedOccasions, setSelectedOccasions] = useState<string[]>([]);
+  const [selectedOccasions, setSelectedOccasions] = useState<string[]>(
+    initialOccasion !== 'All' ? [initialOccasion] : []
+  );
   const [selectedFabrics, setSelectedFabrics] = useState<string[]>([]);
   
   // Sort State
@@ -26,26 +39,13 @@ function SareesContent() {
   // Mobile filter drawer state
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
-  // Sync with URL query parameters on mount or change
+  // Sync state if server props change (navigation)
   useEffect(() => {
-    const categoryQuery = searchParams.get('category');
-    const priceQuery = searchParams.get('priceRange');
-    const occasionQuery = searchParams.get('occasion');
-    const filterQuery = searchParams.get('filter');
+    setSelectedCategory(initialCategory);
+    setSelectedOccasions(initialOccasion !== 'All' ? [initialOccasion] : []);
+  }, [initialCategory, initialOccasion]);
 
-    if (categoryQuery) setSelectedCategory(categoryQuery);
-    else setSelectedCategory('All');
-
-    if (priceQuery) setSelectedPriceRange(priceQuery);
-    else setSelectedPriceRange('All');
-
-    if (occasionQuery) setSelectedOccasions([occasionQuery]);
-    else setSelectedOccasions([]);
-
-    if (filterQuery === 'new') setSortBy('Newest');
-  }, [searchParams]);
-
-  // Categories
+  // Categories & attributes list
   const categoriesList = ['All', 'Banarasi', 'Chikankari', 'Bandhani', 'Organza', 'Chanderi', 'Bridal', 'Offers'];
   const colorsList = ['Red', 'Pink', 'Green', 'Blue', 'Yellow', 'Black', 'White', 'Maroon', 'Purple'];
   const occasionsList = ['Wedding', 'Festive', 'Party', 'Daily Wear', 'Office', 'Gift'];
@@ -74,31 +74,14 @@ function SareesContent() {
     router.push('/sarees');
   };
 
-  // Get search parameter
-  const searchInputQuery = searchParams.get('search') || '';
-
   // Filter Logic
   let filteredProducts = PRODUCTS.filter(product => {
-    // 1. Search Query Filter
-    if (searchInputQuery) {
-      const q = searchInputQuery.toLowerCase().trim();
-      const matchQuery = 
-        product.name.toLowerCase().includes(q) ||
-        product.fabric.toLowerCase().includes(q) ||
-        product.color.toLowerCase().includes(q) ||
-        product.category.toLowerCase().includes(q) ||
-        product.occasion.toLowerCase().includes(q) ||
-        product.sku.toLowerCase().includes(q);
-      
-      if (!matchQuery) return false;
-    }
-
-    // 2. Category Filter
+    // 1. Category Filter
     if (selectedCategory !== 'All' && product.category !== selectedCategory) {
       return false;
     }
 
-    // 3. Price Filter
+    // 2. Price Filter
     const finalPrice = product.salePrice ?? product.price;
     if (selectedPriceRange !== 'All') {
       if (selectedPriceRange === 'under_1000' && finalPrice > 1000) return false;
@@ -107,17 +90,17 @@ function SareesContent() {
       if (selectedPriceRange === '5000_plus' && finalPrice < 5000) return false;
     }
 
-    // 4. Color Filter
+    // 3. Color Filter
     if (selectedColors.length > 0 && !selectedColors.includes(product.color)) {
       return false;
     }
 
-    // 5. Occasion Filter
+    // 4. Occasion Filter
     if (selectedOccasions.length > 0 && !selectedOccasions.includes(product.occasion)) {
       return false;
     }
 
-    // 6. Fabric Filter
+    // 5. Fabric Filter
     if (selectedFabrics.length > 0 && !selectedFabrics.includes(product.fabric)) {
       return false;
     }
@@ -142,27 +125,44 @@ function SareesContent() {
       <Header />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Breadcrumbs & Header */}
+        
+        {/* Breadcrumbs */}
+        <nav className="text-xs text-dark-brown/50 font-medium mb-3 flex items-center gap-1 select-none">
+          <Link href="/" className="hover:text-maroon">Home</Link>
+          <span>/</span>
+          {selectedCategory !== 'All' ? (
+            <>
+              <Link href="/sarees" className="hover:text-maroon">Sarees</Link>
+              <span>/</span>
+              <span className="text-dark-brown font-semibold">{selectedCategory}</span>
+            </>
+          ) : selectedOccasions.length === 1 ? (
+            <>
+              <Link href="/sarees" className="hover:text-maroon">Sarees</Link>
+              <span>/</span>
+              <span className="text-dark-brown font-semibold">{selectedOccasions[0]}</span>
+            </>
+          ) : (
+            <span className="text-dark-brown font-semibold">Sarees</span>
+          )}
+        </nav>
+
+        {/* Category Header Title */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-cream pb-6 mb-6">
           <div>
-            <nav className="text-xs text-dark-brown/50 font-medium mb-2 flex items-center gap-1">
-              <Link href="/" className="hover:text-maroon">Home</Link>
-              <span>/</span>
-              <span className="text-dark-brown">Sarees</span>
-            </nav>
-            <h1 className="font-serif text-2xl sm:text-3xl font-extrabold text-dark-brown flex items-baseline gap-2">
-              {selectedCategory === 'All' ? 'Our Sarees' : `${selectedCategory} Collection`}
+            <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-extrabold text-dark-brown flex items-baseline gap-2">
+              {h1Title}
               <span className="text-xs font-semibold text-dark-brown/40 font-sans">
                 ({filteredProducts.length} {filteredProducts.length === 1 ? 'Product' : 'Products'})
               </span>
             </h1>
           </div>
 
-          {/* Sorting Dropdown */}
+          {/* Sorting Dropdown & Mobile Filter Trigger */}
           <div className="flex items-center gap-3 justify-between md:justify-end">
             <button
               onClick={() => setIsMobileFilterOpen(true)}
-              className="lg:hidden py-2 px-4 border border-cream text-dark-brown text-xs font-bold rounded flex items-center gap-2 bg-white"
+              className="lg:hidden py-2 px-4 border border-cream text-dark-brown text-xs font-bold rounded flex items-center gap-2 bg-white hover:bg-cream/10 active:scale-95 transition-all"
             >
               <SlidersHorizontal size={14} />
               Filters
@@ -188,6 +188,18 @@ function SareesContent() {
           </div>
         </div>
 
+        {/* SEO Informative Introductory Content - Visible to users and search bots */}
+        {introductoryContent && (
+          <div className="mb-8 p-5 bg-cream/15 rounded-lg border border-cream/50 max-w-4xl">
+            <div className="flex items-start gap-3">
+              <BookOpen size={18} className="text-gold mt-0.5 flex-shrink-0" />
+              <p className="text-xs sm:text-sm text-dark-brown/80 leading-relaxed font-light">
+                {introductoryContent}
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-8 items-start">
           {/* Desktop Filters Sidebar */}
           <aside className="hidden lg:block w-64 flex-shrink-0 bg-white border border-cream p-5 rounded-lg shadow-sm space-y-6">
@@ -211,7 +223,14 @@ function SareesContent() {
                 {categoriesList.map((cat) => (
                   <button
                     key={cat}
-                    onClick={() => setSelectedCategory(cat)}
+                    onClick={() => {
+                      setSelectedCategory(cat);
+                      if (cat !== 'All') {
+                        router.push(`/sarees/${cat.toLowerCase()}`);
+                      } else {
+                        router.push('/sarees');
+                      }
+                    }}
                     className={`w-full text-left px-2 py-1 rounded text-xs font-medium transition-colors ${
                       selectedCategory === cat 
                         ? 'bg-maroon text-ivory font-bold' 
@@ -227,7 +246,7 @@ function SareesContent() {
             {/* Filter Group: Price */}
             <div className="space-y-2 border-t border-cream/50 pt-4">
               <h3 className="text-xs font-bold text-dark-brown/70 uppercase tracking-wide">Price</h3>
-              <div className="space-y-1.5 text-xs text-dark-brown/85">
+              <div className="space-y-1.5 text-xs text-dark-brown/85 font-medium">
                 {[
                   { label: 'All Prices', value: 'All' },
                   { label: 'Under ₹1,000', value: 'under_1000' },
@@ -235,7 +254,7 @@ function SareesContent() {
                   { label: '₹2,000 – ₹5,000', value: '2000_5000' },
                   { label: '₹5,000+', value: '5000_plus' }
                 ].map((range) => (
-                  <label key={range.value} className="flex items-center gap-2 cursor-pointer font-medium">
+                  <label key={range.value} className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
                       name="priceRange"
@@ -309,7 +328,7 @@ function SareesContent() {
           <div className="flex-1">
             {filteredProducts.length === 0 ? (
               <div className="py-20 text-center flex flex-col items-center justify-center bg-white border border-cream rounded-lg shadow-sm px-4">
-                <Search size={48} className="text-dark-brown/25 mb-4" />
+                <Search size={48} className="text-dark-brown/25 mb-4 animate-pulse" />
                 <h3 className="font-serif text-lg sm:text-xl font-bold text-dark-brown mb-2">
                   No matching sarees found
                 </h3>
@@ -359,7 +378,15 @@ function SareesContent() {
                   {categoriesList.map((cat) => (
                     <button
                       key={cat}
-                      onClick={() => setSelectedCategory(cat)}
+                      onClick={() => {
+                        setSelectedCategory(cat);
+                        setIsMobileFilterOpen(false);
+                        if (cat !== 'All') {
+                          router.push(`/sarees/${cat.toLowerCase()}`);
+                        } else {
+                          router.push('/sarees');
+                        }
+                      }}
                       className={`text-center py-2 px-1 border rounded text-xs font-medium transition-colors ${
                         selectedCategory === cat 
                           ? 'bg-maroon border-maroon text-ivory font-bold' 
@@ -400,7 +427,7 @@ function SareesContent() {
               {/* Color */}
               <div className="space-y-2 border-t border-cream/50 pt-4">
                 <h3 className="text-xs font-bold text-dark-brown/70 uppercase tracking-wide">Color</h3>
-                <div className="grid grid-cols-2 gap-2 text-xs text-dark-brown/80">
+                <div className="grid grid-cols-2 gap-2 text-xs text-dark-brown/80 font-medium">
                   {colorsList.map((color) => (
                     <label key={color} className="flex items-center gap-1.5 cursor-pointer">
                       <input
@@ -418,9 +445,9 @@ function SareesContent() {
               {/* Occasion */}
               <div className="space-y-2 border-t border-cream/50 pt-4">
                 <h3 className="text-xs font-bold text-dark-brown/70 uppercase tracking-wide">Occasion</h3>
-                <div className="space-y-2 text-xs text-dark-brown/85">
+                <div className="space-y-2 text-xs text-dark-brown/85 font-medium">
                   {occasionsList.map((occ) => (
-                    <label key={occ} className="flex items-center gap-2 cursor-pointer font-medium">
+                    <label key={occ} className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={selectedOccasions.includes(occ)}
@@ -436,9 +463,9 @@ function SareesContent() {
               {/* Fabric */}
               <div className="space-y-2 border-t border-cream/50 pt-4">
                 <h3 className="text-xs font-bold text-dark-brown/70 uppercase tracking-wide">Fabric</h3>
-                <div className="space-y-2 text-xs text-dark-brown/85">
+                <div className="space-y-2 text-xs text-dark-brown/85 font-medium">
                   {fabricsList.map((fab) => (
-                    <label key={fab} className="flex items-center gap-2 cursor-pointer font-medium">
+                    <label key={fab} className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={selectedFabrics.includes(fab)}
@@ -468,12 +495,4 @@ function SareesContent() {
       <Footer />
     </>
   );
-}
-
-export default function SareesPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-[#FFF9F0] flex items-center justify-center font-serif text-maroon text-xl animate-pulse">Loading Collection...</div>}>
-      <SareesContent />
-    </Suspense>
-  );
-}
+};

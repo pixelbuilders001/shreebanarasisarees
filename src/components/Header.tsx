@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, Heart, ShoppingBag, User, Menu, X, ChevronRight, LogOut, FileText } from 'lucide-react';
@@ -8,7 +8,7 @@ import { useStore } from '../context/StoreContext';
 import { AnnouncementBar } from './AnnouncementBar';
 import { PRODUCTS } from '../data/products';
 
-export const Header: React.FC = () => {
+const HeaderInner: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { 
@@ -364,7 +364,7 @@ export const Header: React.FC = () => {
 
             <div className="p-5 border-t border-cream bg-white">
               <div className="text-xs text-dark-brown/50 text-center font-medium">
-                Samastipur, Bihar &bull; Call: +91 90000 00000
+                Samastipur, Bihar &bull; Call: +91 62039 09946
               </div>
             </div>
           </div>
@@ -529,5 +529,13 @@ export const Header: React.FC = () => {
         }
       `}</style>
     </>
+  );
+};
+
+export const Header: React.FC = () => {
+  return (
+    <Suspense fallback={<div className="h-20 bg-[#FFF9F0] border-b border-cream animate-pulse" />}>
+      <HeaderInner />
+    </Suspense>
   );
 };

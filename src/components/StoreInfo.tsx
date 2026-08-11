@@ -65,7 +65,7 @@ export const StoreInfo: React.FC = () => {
                 <div className="flex gap-3 items-start">
                   <Phone size={20} className="text-maroon flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-dark-brown/80 leading-relaxed font-medium">
-                    +91 90000 00000
+                    +91 62039 09946
                   </p>
                 </div>
               </div>
@@ -83,7 +83,7 @@ export const StoreInfo: React.FC = () => {
                 GET DIRECTIONS
               </a>
               <a
-                href="https://wa.me/+919000000000"
+                href="https://wa.me/+916203909946"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="py-2.5 px-4 bg-white border border-[#25D366] text-[#25D366] text-center rounded font-serif font-bold text-xs tracking-wider uppercase hover:bg-[#25D366] hover:text-white transition-all flex items-center justify-center gap-1.5"

@@ -18,18 +18,18 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "SHREE Banarasi Sarees | श्री बनारसी साड़ियाँ - Premium Indian Sarees",
-  description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at SHREE Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
+  title: "Shree Banarasi Sarees | श्री बनारसी साड़ियाँ - Premium Indian Sarees",
+  description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
   keywords: "sarees, banarasi silk, chikankari, bandhani, organza, wedding saree, bridal wear, samastipur, bihar",
   openGraph: {
-    title: "SHREE Banarasi Sarees | श्री बनारसी साड़ियाँ",
-    description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at SHREE Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
+    title: "Shree Banarasi Sarees | श्री बनारसी साड़ियाँ",
+    description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
     locale: "en_IN",
     type: "website",
   },
   icons: {
-    icon: "/brand_logo.png",
-    apple: "/brand_logo.png",
+    icon: "/favicon.ico",
+    apple: "/favicon.ico",
   }
 };
 

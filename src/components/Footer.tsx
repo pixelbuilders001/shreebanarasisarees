@@ -52,7 +52,7 @@ export const Footer: React.FC = () => {
                 <svg className="w-4 h-4 fill-none stroke-current" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
               </a>
               <a 
-                href="https://wa.me/+919000000000" 
+                href="https://wa.me/+916203909946" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="p-2 rounded-full bg-ivory/10 hover:bg-gold hover:text-dark-brown transition-colors"
@@ -118,11 +118,11 @@ export const Footer: React.FC = () => {
               </li>
               <li className="flex gap-2 items-center">
                 <Phone size={16} className="text-gold flex-shrink-0" />
-                <span>+91 90000 00000</span>
+                <span>+91 62039 09946</span>
               </li>
               <li className="pt-2">
                 <a 
-                  href="https://wa.me/+919000000000" 
+                  href="https://wa.me/+916203909946" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="w-full py-2.5 px-4 bg-[#25D366] text-white rounded font-serif font-bold flex items-center justify-center gap-2 hover:bg-[#20ba5a] transition-all shadow-md"
