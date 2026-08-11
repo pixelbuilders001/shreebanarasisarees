@@ -141,16 +141,20 @@ export const Header: React.FC = () => {
                 <Menu size={24} />
               </button>
               
-              <Link href="/" className="flex flex-col select-none">
-                <span className="font-serif text-xl sm:text-2xl font-extrabold text-maroon tracking-wider">
-                  SHREE
-                </span>
-                <span className="text-[9px] sm:text-[10px] text-gold font-bold tracking-[0.25em] uppercase -mt-1 font-serif">
-                  Banarasi Sarees
-                </span>
-                <span className="text-[8px] text-dark-brown/60 -mt-0.5 tracking-wider font-semibold font-serif hidden xs:block">
-                  श्री बनारसी साड़ियाँ
-                </span>
+              <Link href="/" className="flex items-center gap-2 sm:gap-3 select-none">
+                <img 
+                  src="/brand_logo.png" 
+                  alt="SHREE Banarasi Sarees Logo" 
+                  className="h-14 w-auto object-contain rounded-full border border-gold/25"
+                />
+                <div className="flex flex-col">
+                  <span className="font-serif text-lg sm:text-xl font-extrabold text-maroon tracking-wider">
+                    SHREE
+                  </span>
+                  <span className="text-[9px] sm:text-[10px] text-gold font-bold tracking-[0.2em] uppercase -mt-1 font-serif">
+                    Banarasi Sarees
+                  </span>
+                </div>
               </Link>
             </div>
 
@@ -331,7 +335,14 @@ export const Header: React.FC = () => {
           
           <div className="absolute inset-y-0 left-0 max-w-xs w-full bg-[#FFF9F0] shadow-2xl flex flex-col z-50 animate-slide-in-left">
             <div className="px-5 py-6 bg-white border-b border-cream flex items-center justify-between">
-              <span className="font-serif text-lg font-bold text-maroon tracking-wide">Explore SHREE</span>
+              <div className="flex items-center gap-2">
+                <img 
+                  src="/brand_logo.png" 
+                  alt="SHREE Banarasi Sarees Logo" 
+                  className="h-9 w-auto object-contain rounded-full"
+                />
+                <span className="font-serif text-base font-bold text-maroon tracking-wide">SHREE Banarasi</span>
+              </div>
               <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 rounded-full text-dark-brown/60 hover:text-maroon hover:bg-cream/40">
                 <X size={22} />
               </button>

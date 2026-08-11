@@ -14,13 +14,20 @@ export const Footer: React.FC = () => {
           
           {/* Brand Info & Socials */}
           <div className="space-y-4">
-            <Link href="/" className="flex flex-col">
-              <span className="font-serif text-2xl font-extrabold text-ivory tracking-widest uppercase">
-                SHREE
-              </span>
-              <span className="text-[10px] text-gold font-bold tracking-[0.25em] uppercase -mt-1 font-serif">
-                Banarasi Sarees
-              </span>
+            <Link href="/" className="flex items-center gap-3">
+              <img 
+                src="/brand_logo.png" 
+                alt="SHREE Banarasi Sarees Logo" 
+                className="h-14 w-auto object-contain bg-white rounded-full p-0.5 border border-gold/40"
+              />
+              <div className="flex flex-col">
+                <span className="font-serif text-xl font-bold text-ivory tracking-wider">
+                  SHREE
+                </span>
+                <span className="text-[9px] text-gold font-bold tracking-[0.2em] uppercase -mt-1 font-serif">
+                  Banarasi Sarees
+                </span>
+              </div>
             </Link>
             <p className="text-xs text-ivory/70 leading-relaxed font-light">
               Premium Indian ethnic fashion at accessible prices — handwoven traditions delivered right to your doorstep.

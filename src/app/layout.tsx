@@ -26,6 +26,10 @@ export const metadata: Metadata = {
     description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at SHREE Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
     locale: "en_IN",
     type: "website",
+  },
+  icons: {
+    icon: "/brand_logo.png",
+    apple: "/brand_logo.png",
   }
 };
 
