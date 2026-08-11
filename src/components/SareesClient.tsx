@@ -32,10 +32,10 @@ export const SareesClient: React.FC<SareesClientProps> = ({
     initialOccasion !== 'All' ? [initialOccasion] : []
   );
   const [selectedFabrics, setSelectedFabrics] = useState<string[]>([]);
-  
+
   // Sort State
   const [sortBy, setSortBy] = useState<string>('Recommended');
-  
+
   // Mobile filter drawer state
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
@@ -123,9 +123,9 @@ export const SareesClient: React.FC<SareesClientProps> = ({
   return (
     <>
       <Header />
-      
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
+
         {/* Breadcrumbs */}
         <nav className="text-xs text-dark-brown/50 font-medium mb-3 flex items-center gap-1 select-none">
           <Link href="/" className="hover:text-maroon">Home</Link>
@@ -189,7 +189,7 @@ export const SareesClient: React.FC<SareesClientProps> = ({
         </div>
 
         {/* SEO Informative Introductory Content - Visible to users and search bots */}
-        {introductoryContent && (
+        {/* {introductoryContent && (
           <div className="mb-8 p-5 bg-cream/15 rounded-lg border border-cream/50 max-w-4xl">
             <div className="flex items-start gap-3">
               <BookOpen size={18} className="text-gold mt-0.5 flex-shrink-0" />
@@ -198,7 +198,7 @@ export const SareesClient: React.FC<SareesClientProps> = ({
               </p>
             </div>
           </div>
-        )}
+        )} */}
 
         <div className="flex gap-8 items-start">
           {/* Desktop Filters Sidebar */}
@@ -208,7 +208,7 @@ export const SareesClient: React.FC<SareesClientProps> = ({
                 <Filter size={16} className="text-maroon" />
                 Filters
               </h2>
-              <button 
+              <button
                 onClick={resetAllFilters}
                 className="text-xs text-maroon hover:underline font-bold"
               >
@@ -231,11 +231,10 @@ export const SareesClient: React.FC<SareesClientProps> = ({
                         router.push('/sarees');
                       }
                     }}
-                    className={`w-full text-left px-2 py-1 rounded text-xs font-medium transition-colors ${
-                      selectedCategory === cat 
-                        ? 'bg-maroon text-ivory font-bold' 
+                    className={`w-full text-left px-2 py-1 rounded text-xs font-medium transition-colors ${selectedCategory === cat
+                        ? 'bg-maroon text-ivory font-bold'
                         : 'text-dark-brown/85 hover:bg-cream/30'
-                    }`}
+                      }`}
                   >
                     {cat === 'All' ? 'All Sarees' : cat}
                   </button>
@@ -357,7 +356,7 @@ export const SareesClient: React.FC<SareesClientProps> = ({
       {isMobileFilterOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden lg:hidden">
           <div className="absolute inset-0 bg-[#2D211D]/60 backdrop-blur-sm" onClick={() => setIsMobileFilterOpen(false)} />
-          
+
           <div className="absolute inset-y-0 left-0 max-w-xs w-full bg-[#FFF9F0] shadow-2xl flex flex-col z-50 animate-slide-in-left">
             <div className="px-5 py-6 bg-white border-b border-cream flex items-center justify-between">
               <span className="font-serif text-lg font-bold text-maroon">Filters</span>
@@ -368,9 +367,9 @@ export const SareesClient: React.FC<SareesClientProps> = ({
                 </button>
               </div>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto p-5 space-y-6">
-              
+
               {/* Category */}
               <div className="space-y-2">
                 <h3 className="text-xs font-bold text-dark-brown/70 uppercase tracking-wide">Category</h3>
@@ -387,11 +386,10 @@ export const SareesClient: React.FC<SareesClientProps> = ({
                           router.push('/sarees');
                         }
                       }}
-                      className={`text-center py-2 px-1 border rounded text-xs font-medium transition-colors ${
-                        selectedCategory === cat 
-                          ? 'bg-maroon border-maroon text-ivory font-bold' 
+                      className={`text-center py-2 px-1 border rounded text-xs font-medium transition-colors ${selectedCategory === cat
+                          ? 'bg-maroon border-maroon text-ivory font-bold'
                           : 'bg-white border-cream text-dark-brown/80'
-                      }`}
+                        }`}
                     >
                       {cat === 'All' ? 'All' : cat}
                     </button>
@@ -481,7 +479,7 @@ export const SareesClient: React.FC<SareesClientProps> = ({
             </div>
 
             <div className="p-4 bg-white border-t border-cream flex gap-3">
-              <button 
+              <button
                 onClick={() => setIsMobileFilterOpen(false)}
                 className="w-full py-2.5 bg-maroon text-ivory text-center rounded font-serif font-bold text-xs uppercase tracking-wider"
               >
