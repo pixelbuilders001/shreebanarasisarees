@@ -4,7 +4,7 @@ import React from 'react';
 import { MapPin, Clock, Phone, MessageCircle, Navigation } from 'lucide-react';
 
 export const StoreInfo: React.FC = () => {
-  const mapQuery = "SHREE Banarasi Sarees, Rudauli Chowk, Harpur Aloth, Samastipur, Bihar 848103";
+  const mapQuery = "Shree Banarasi Sarees, Rudauli Chowk, Harpur Aloth, Samastipur, Bihar 848103";
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
 
   return (
@@ -28,14 +28,14 @@ export const StoreInfo: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-          
+
           {/* Card Info Column */}
           <div className="lg:col-span-5 bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-cream flex flex-col justify-between space-y-6">
-            
+
             <div className="space-y-6">
               <div>
                 <h3 className="font-serif text-lg sm:text-xl font-bold text-maroon mb-1">
-                  SHREE Banarasi Sarees
+                  Shree Banarasi Sarees
                 </h3>
                 <p className="text-[11px] text-gold font-bold tracking-widest uppercase">
                   श्री बनारसी साड़ियाँ

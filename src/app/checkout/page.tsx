@@ -115,7 +115,7 @@ function CheckoutContent() {
         <main className="max-w-xl mx-auto px-4 py-16 text-center">
           <div className="bg-white border border-cream p-8 rounded-lg shadow-md space-y-6 flex flex-col items-center">
             <CheckCircle size={64} className="text-green-600 animate-bounce" />
-            
+
             <div className="space-y-2">
               <h2 className="font-serif text-2xl sm:text-3xl font-extrabold text-dark-brown">
                 Order Placed Successfully!
@@ -178,9 +178,9 @@ function CheckoutContent() {
   return (
     <>
       <Header />
-      
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
-        
+
         {/* Header */}
         <div className="border-b border-cream pb-6 mb-6">
           <nav className="text-xs text-dark-brown/50 font-medium mb-2 flex items-center gap-1">
@@ -211,7 +211,7 @@ function CheckoutContent() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
+
             {/* Left Side: Shipping & Payment Form */}
             <form onSubmit={handlePlaceOrder} className="lg:col-span-8 space-y-6">
               {errorMsg && (
@@ -225,7 +225,7 @@ function CheckoutContent() {
                 <h2 className="font-serif text-lg font-bold text-dark-brown border-b border-cream pb-2.5">
                   1. Customer Details
                 </h2>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-dark-brown/70 uppercase tracking-wide mb-1.5">
@@ -279,11 +279,10 @@ function CheckoutContent() {
                   {/* Home Delivery Card */}
                   <div
                     onClick={() => setDeliveryMethod('Home Delivery')}
-                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                      deliveryMethod === 'Home Delivery'
+                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${deliveryMethod === 'Home Delivery'
                         ? 'border-maroon bg-maroon/[0.02]'
                         : 'border-cream bg-white hover:border-gold/50'
-                    }`}
+                      }`}
                   >
                     <div className="flex gap-3 items-center">
                       <Truck className={`flex-shrink-0 ${deliveryMethod === 'Home Delivery' ? 'text-maroon' : 'text-dark-brown/40'}`} />
@@ -297,11 +296,10 @@ function CheckoutContent() {
                   {/* Store Pickup Card */}
                   <div
                     onClick={() => setDeliveryMethod('Store Pickup')}
-                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                      deliveryMethod === 'Store Pickup'
+                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${deliveryMethod === 'Store Pickup'
                         ? 'border-maroon bg-maroon/[0.02]'
                         : 'border-cream bg-white hover:border-gold/50'
-                    }`}
+                      }`}
                   >
                     <div className="flex gap-3 items-center">
                       <MapPin className={`flex-shrink-0 ${deliveryMethod === 'Store Pickup' ? 'text-maroon' : 'text-dark-brown/40'}`} />
@@ -377,14 +375,14 @@ function CheckoutContent() {
                   <div className="p-4 bg-cream/20 rounded border border-cream text-xs text-dark-brown/85 space-y-2 leading-relaxed">
                     <p className="font-bold text-maroon text-sm">🏪 Store Pickup Address:</p>
                     <p className="font-medium">
-                      <strong>SHREE Banarasi Sarees</strong><br />
+                      <strong>Shree Banarasi Sarees</strong><br />
                       Rudauli Chowk, Harpur Aloth, Samastipur, Bihar – 848103
                     </p>
                     <p className="text-[10px] text-dark-brown/60">
                       Showroom timings: 10:00 AM – 9:00 PM (Daily). Please show your order confirmation ID at checkout.
                     </p>
                     <a
-                      href="https://www.google.com/maps/search/?api=1&query=SHREE+Banarasi+Sarees+Samastipur"
+                      href="https://www.google.com/maps/search/?api=1&query=Shree+Banarasi+Sarees+Samastipur"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-maroon font-bold underline inline-block mt-1"
@@ -403,9 +401,8 @@ function CheckoutContent() {
 
                 <div className="space-y-3">
                   {/* UPI Option */}
-                  <label className={`p-4 rounded-lg border flex gap-3 items-center cursor-pointer transition-all ${
-                    paymentMethod === 'UPI' ? 'border-maroon bg-maroon/[0.01]' : 'border-cream bg-white'
-                  }`}>
+                  <label className={`p-4 rounded-lg border flex gap-3 items-center cursor-pointer transition-all ${paymentMethod === 'UPI' ? 'border-maroon bg-maroon/[0.01]' : 'border-cream bg-white'
+                    }`}>
                     <input
                       type="radio"
                       name="payment"
@@ -425,9 +422,8 @@ function CheckoutContent() {
                   </label>
 
                   {/* Cash on Delivery Option */}
-                  <label className={`p-4 rounded-lg border flex gap-3 items-center cursor-pointer transition-all ${
-                    paymentMethod === 'Cash on Delivery' ? 'border-maroon bg-maroon/[0.01]' : 'border-cream bg-white'
-                  }`}>
+                  <label className={`p-4 rounded-lg border flex gap-3 items-center cursor-pointer transition-all ${paymentMethod === 'Cash on Delivery' ? 'border-maroon bg-maroon/[0.01]' : 'border-cream bg-white'
+                    }`}>
                     <input
                       type="radio"
                       name="payment"
@@ -442,9 +438,8 @@ function CheckoutContent() {
                   </label>
 
                   {/* Online Payment */}
-                  <label className={`p-4 rounded-lg border flex gap-3 items-center cursor-pointer transition-all ${
-                    paymentMethod === 'Online Payment' ? 'border-maroon bg-maroon/[0.01]' : 'border-cream bg-white'
-                  }`}>
+                  <label className={`p-4 rounded-lg border flex gap-3 items-center cursor-pointer transition-all ${paymentMethod === 'Online Payment' ? 'border-maroon bg-maroon/[0.01]' : 'border-cream bg-white'
+                    }`}>
                     <input
                       type="radio"
                       name="payment"
@@ -463,7 +458,7 @@ function CheckoutContent() {
 
             {/* Right Side: Order Summary */}
             <div className="lg:col-span-4 space-y-6">
-              
+
               <div className="bg-white p-5 rounded-lg border border-cream shadow-sm space-y-4">
                 <h3 className="font-serif text-base font-bold text-dark-brown border-b border-cream pb-2.5">
                   Order Summary
@@ -513,7 +508,7 @@ function CheckoutContent() {
                 >
                   PLACE ORDER
                 </button>
-                
+
                 <Link
                   href="/sarees"
                   className="block text-center text-xs text-dark-brown/65 hover:text-maroon font-semibold underline"

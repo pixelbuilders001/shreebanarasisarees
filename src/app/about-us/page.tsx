@@ -7,14 +7,14 @@ import { StoreInfo } from '../../components/StoreInfo';
 import { MapPin, Clock, Phone, ShieldCheck, Heart, Sparkles, Scissors, Landmark } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: "SHREE Banarasi Sarees | Saree Shop in Samastipur, Bihar",
-  description: "Visit SHREE Banarasi Sarees, the leading traditional saree showroom in Samastipur, Bihar. Explore our premium collection of authentic Banarasi silk, Lucknowi Chikankari, Gujarati Bandhani, and designer bridal wedding sarees.",
+  title: "Shree Banarasi Sarees | Saree Shop in Samastipur, Bihar",
+  description: "Visit Shree Banarasi Sarees, the leading traditional saree showroom in Samastipur, Bihar. Explore our premium collection of authentic Banarasi silk, Lucknowi Chikankari, Gujarati Bandhani, and designer bridal wedding sarees.",
   alternates: {
     canonical: "https://shreebanarasisarees.com/about-us",
   },
   openGraph: {
-    title: "SHREE Banarasi Sarees | Saree Shop in Samastipur, Bihar",
-    description: "Visit SHREE Banarasi Sarees, the leading traditional saree showroom in Samastipur, Bihar. Explore our premium collection of authentic Banarasi silk, Lucknowi Chikankari, Gujarati Bandhani, and designer bridal wedding sarees.",
+    title: "Shree Banarasi Sarees | Saree Shop in Samastipur, Bihar",
+    description: "Visit Shree Banarasi Sarees, the leading traditional saree showroom in Samastipur, Bihar. Explore our premium collection of authentic Banarasi silk, Lucknowi Chikankari, Gujarati Bandhani, and designer bridal wedding sarees.",
     url: "https://shreebanarasisarees.com/about-us",
     type: "website",
   }
@@ -24,15 +24,15 @@ export default function AboutUs() {
   return (
     <>
       <Header />
-      
+
       <main className="bg-[#FFF9F0] pb-12">
-        
+
         {/* Hero Banner Area */}
         <section className="relative bg-maroon-dark py-20 px-4 text-center border-b border-gold/30">
           <div className="absolute inset-0 bg-black/45 z-10" />
-          <img 
-            src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=1200" 
-            alt="Inside SHREE Banarasi Sarees Showroom" 
+          <img
+            src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=1200"
+            alt="Inside Shree Banarasi Sarees Showroom"
             className="absolute inset-0 w-full h-full object-cover object-center opacity-65"
           />
           <div className="relative z-20 max-w-4xl mx-auto space-y-4">
@@ -44,7 +44,7 @@ export default function AboutUs() {
             </h1>
             <div className="w-20 h-0.5 bg-gold mx-auto my-3"></div>
             <p className="text-sm sm:text-base text-ivory/90 max-w-2xl mx-auto leading-relaxed font-light">
-              Experience the luxury of handloom heritage. SHREE Banarasi Sarees brings the finest handwoven silks, Lucknowi block prints, and custom bridal designs directly to Samastipur.
+              Experience the luxury of handloom heritage. Shree Banarasi Sarees brings the finest handwoven silks, Lucknowi block prints, and custom bridal designs directly to Samastipur.
             </p>
           </div>
         </section>
@@ -52,7 +52,7 @@ export default function AboutUs() {
         {/* Brand Story and Location info */}
         <section className="py-16 px-4 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            
+
             {/* Story Content */}
             <div className="lg:col-span-7 space-y-6">
               <div className="space-y-2">
@@ -65,7 +65,7 @@ export default function AboutUs() {
 
               <div className="text-xs sm:text-sm text-dark-brown/80 space-y-4 leading-relaxed font-light">
                 <p>
-                  SHREE Banarasi Sarees (श्री बनारसी साड़ियाँ) was founded with a singular mission: to make premium, authentic Indian ethnic wear accessible to families in Bihar. Strategically located at Rudauli Chowk, Harpur Aloth, Samastipur, our physical showroom has served thousands of local brides, mothers, and fashion enthusiasts seeking genuine craftsmanship.
+                  Shree Banarasi Sarees (श्री बनारसी साड़ियाँ) was founded with a singular mission: to make premium, authentic Indian ethnic wear accessible to families in Bihar. Strategically located at Rudauli Chowk, Harpur Aloth, Samastipur, our physical showroom has served thousands of local brides, mothers, and fashion enthusiasts seeking genuine craftsmanship.
                 </p>
                 <p>
                   Unlike generic storefronts, we source our garments directly from traditional artisan clusters. From the handloom hubs of Varanasi to the intricate Chikankari artisans of Lucknow and the tie-dye specialists of Kutch, each saree in our collection is handpicked, quality-checked, and priced transparently.
@@ -120,9 +120,9 @@ export default function AboutUs() {
             {/* Visual Column / Showcase */}
             <div className="lg:col-span-5 relative">
               <div className="aspect-[4/5] rounded-2xl overflow-hidden border border-cream shadow-md bg-white p-2">
-                <img 
-                  src="https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600" 
-                  alt="Traditional Saree Collections in Samastipur Store" 
+                <img
+                  src="https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600"
+                  alt="Traditional Saree Collections in Samastipur Store"
                   className="w-full h-full object-cover object-center rounded-xl"
                 />
               </div>
@@ -148,7 +148,7 @@ export default function AboutUs() {
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-xs sm:text-sm text-dark-brown/85 font-light leading-relaxed">
-              
+
               <div className="space-y-2.5 p-5 bg-[#FFF9F0]/60 rounded-xl border border-cream">
                 <h4 className="font-serif font-bold text-maroon text-sm flex items-center gap-1.5">
                   <MapPin size={16} /> Location & Landmark

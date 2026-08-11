@@ -24,8 +24,24 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Shree Banarasi Sarees | श्री बनारसी साड़ियाँ",
     description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
+    url: "https://shreebanarasisarees.vercel.app",
+    siteName: "Shree Banarasi Sarees",
     locale: "en_IN",
     type: "website",
+    images: [
+      {
+        url: "https://shreebanarasisarees.vercel.app/brand_logo.png",
+        width: 500,
+        height: 500,
+        alt: "Shree Banarasi Sarees Logo",
+      }
+    ]
+  },
+  twitter: {
+    card: "summary",
+    title: "Shree Banarasi Sarees | श्री बनारसी साड़ियाँ",
+    description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
+    images: ["https://shreebanarasisarees.vercel.app/brand_logo.png"],
   },
   icons: {
     icon: "/favicon.ico",

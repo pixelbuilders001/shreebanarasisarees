@@ -11,14 +11,14 @@ import { PRODUCTS } from '../data/products';
 const HeaderInner: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { 
-    cart, 
-    wishlist, 
-    setIsCartOpen, 
-    searchQuery, 
-    setSearchQuery, 
-    recentSearches, 
-    addRecentSearch, 
+  const {
+    cart,
+    wishlist,
+    setIsCartOpen,
+    searchQuery,
+    setSearchQuery,
+    recentSearches,
+    addRecentSearch,
     clearRecentSearches,
     userPhone,
     loginUser,
@@ -28,7 +28,7 @@ const HeaderInner: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  
+
   // Auth Form State
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otpCode, setOtpCode] = useState('');
@@ -103,12 +103,12 @@ const HeaderInner: React.FC = () => {
   };
 
   // Filter products for suggestions (up to 5 matches)
-  const searchSuggestions = searchQuery.trim() 
-    ? PRODUCTS.filter(p => 
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.fabric.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, 5)
+  const searchSuggestions = searchQuery.trim()
+    ? PRODUCTS.filter(p =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.fabric.toLowerCase().includes(searchQuery.toLowerCase())
+    ).slice(0, 5)
     : [];
 
   const navLinks = [
@@ -130,26 +130,26 @@ const HeaderInner: React.FC = () => {
       <header className="sticky top-0 z-40 bg-[#FFF9F0]/95 backdrop-blur-md shadow-sm border-b border-cream">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20 gap-4">
-            
+
             {/* Left: Mobile Hamburger & Logo */}
             <div className="flex items-center gap-2">
-              <button 
+              <button
                 onClick={() => setIsMobileMenuOpen(true)}
                 className="p-2 text-dark-brown hover:text-maroon lg:hidden transition-colors"
                 aria-label="Open menu"
               >
                 <Menu size={24} />
               </button>
-              
+
               <Link href="/" className="flex items-center gap-2 sm:gap-3 select-none">
-                <img 
-                  src="/brand_logo.png" 
-                  alt="SHREE Banarasi Sarees Logo" 
+                <img
+                  src="/brand_logo.png"
+                  alt="Shree Banarasi Sarees Logo"
                   className="h-14 w-auto object-contain rounded-full border border-gold/25"
                 />
                 <div className="flex flex-col">
                   <span className="font-serif text-lg sm:text-xl font-extrabold text-maroon tracking-wider">
-                    SHREE
+                    Shree
                   </span>
                   <span className="text-[9px] sm:text-[10px] text-gold font-bold tracking-[0.2em] uppercase -mt-1 font-serif">
                     Banarasi Sarees
@@ -169,7 +169,7 @@ const HeaderInner: React.FC = () => {
                   placeholder="Search sarees, fabrics, colors..."
                   className="w-full bg-[#FFFFFF] border border-[#C9A45C]/40 focus:border-[#C9A45C] focus:ring-1 focus:ring-[#C9A45C] text-sm text-dark-brown placeholder-dark-brown/40 rounded-full py-2.5 pl-5 pr-11 outline-none transition-all"
                 />
-                <button 
+                <button
                   type="submit"
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-dark-brown/50 hover:text-maroon transition-colors"
                   aria-label="Search"
@@ -236,7 +236,7 @@ const HeaderInner: React.FC = () => {
             {/* Right: Icons */}
             <div className="flex items-center gap-1.5 sm:gap-3">
               {/* Desktop Search Toggle for MD screens */}
-              <button 
+              <button
                 onClick={() => {
                   router.push('/sarees?focusSearch=true');
                 }}
@@ -249,7 +249,7 @@ const HeaderInner: React.FC = () => {
               {/* User Account */}
               {userPhone ? (
                 <div className="relative group">
-                  <button 
+                  <button
                     className="p-2 text-dark-brown hover:text-maroon transition-colors flex items-center gap-1"
                     aria-label="User account"
                   >
@@ -263,7 +263,7 @@ const HeaderInner: React.FC = () => {
                       <FileText size={14} className="text-gold" />
                       My Dashboard
                     </Link>
-                    <button 
+                    <button
                       onClick={() => logoutUser()}
                       className="w-full flex items-center gap-2 px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors text-left"
                     >
@@ -273,7 +273,7 @@ const HeaderInner: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <button 
+                <button
                   onClick={() => setIsAuthModalOpen(true)}
                   className="p-2 text-dark-brown hover:text-maroon transition-colors"
                   aria-label="Login"
@@ -283,8 +283,8 @@ const HeaderInner: React.FC = () => {
               )}
 
               {/* Wishlist */}
-              <Link 
-                href="/wishlist" 
+              <Link
+                href="/wishlist"
                 className="p-2 text-dark-brown hover:text-maroon transition-colors relative"
                 aria-label="Wishlist"
               >
@@ -297,7 +297,7 @@ const HeaderInner: React.FC = () => {
               </Link>
 
               {/* Shopping Cart */}
-              <button 
+              <button
                 onClick={() => setIsCartOpen(true)}
                 className="p-2 text-dark-brown hover:text-maroon transition-colors relative"
                 aria-label="Cart"
@@ -316,7 +316,7 @@ const HeaderInner: React.FC = () => {
           {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center justify-center border-t border-cream/60 py-3 gap-8">
             {navLinks.map((link, index) => (
-              <Link 
+              <Link
                 key={index}
                 href={link.href}
                 className="text-[13px] font-serif font-bold text-dark-brown hover:text-maroon tracking-wider uppercase transition-colors"
@@ -332,22 +332,22 @@ const HeaderInner: React.FC = () => {
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden lg:hidden">
           <div className="absolute inset-0 bg-[#2D211D]/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
-          
+
           <div className="absolute inset-y-0 left-0 max-w-xs w-full bg-[#FFF9F0] shadow-2xl flex flex-col z-50 animate-slide-in-left">
             <div className="px-5 py-6 bg-white border-b border-cream flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <img 
-                  src="/brand_logo.png" 
-                  alt="SHREE Banarasi Sarees Logo" 
+                <img
+                  src="/brand_logo.png"
+                  alt="Shree Banarasi Sarees Logo"
                   className="h-9 w-auto object-contain rounded-full"
                 />
-                <span className="font-serif text-base font-bold text-maroon tracking-wide">SHREE Banarasi</span>
+                <span className="font-serif text-base font-bold text-maroon tracking-wide">Shree Banarasi</span>
               </div>
               <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 rounded-full text-dark-brown/60 hover:text-maroon hover:bg-cream/40">
                 <X size={22} />
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
               {navLinks.map((link, idx) => (
                 <Link
@@ -375,9 +375,9 @@ const HeaderInner: React.FC = () => {
       {isAuthModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-[#2D211D]/60 backdrop-blur-sm" onClick={() => setIsAuthModalOpen(false)} />
-          
+
           <div className="bg-white border border-gold/20 shadow-2xl rounded-lg max-w-sm w-full p-6 z-10 relative overflow-hidden animate-scale-up">
-            <button 
+            <button
               onClick={() => setIsAuthModalOpen(false)}
               className="absolute top-4 right-4 p-1 text-dark-brown/65 hover:text-maroon rounded-full"
             >
@@ -471,11 +471,11 @@ const HeaderInner: React.FC = () => {
       {/* Sticky Bottom Nav for Mobile UX */}
       <nav className="fixed bottom-0 inset-x-0 bg-[#FFF9F0]/95 backdrop-blur-md border-t border-cream flex items-center justify-around py-2.5 z-40 lg:hidden shadow-lg">
         <Link href="/" className="flex flex-col items-center text-dark-brown hover:text-maroon transition-colors">
-          <svg className="w-5 h-5 fill-none stroke-current" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          <svg className="w-5 h-5 fill-none stroke-current" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
           <span className="text-[10px] font-semibold mt-1">Home</span>
         </Link>
         <Link href="/sarees" className="flex flex-col items-center text-dark-brown hover:text-maroon transition-colors">
-          <svg className="w-5 h-5 fill-none stroke-current" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          <svg className="w-5 h-5 fill-none stroke-current" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
           <span className="text-[10px] font-semibold mt-1">Categories</span>
         </Link>
         <Link href="/sarees?focusSearch=true" className="flex flex-col items-center text-dark-brown hover:text-maroon transition-colors">

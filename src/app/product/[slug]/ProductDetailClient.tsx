@@ -25,14 +25,14 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   // WhatsApp Message Generator
   const handleWhatsAppInquiry = () => {
     const whatsappNumber = "+9191620390946"; // Verified store phone number
-    const textMessage = `Hello SHREE Banarasi Sarees, I am interested in:
+    const textMessage = `Hello Shree Banarasi Sarees, I am interested in:
 
 Product: ${product.name}
 Price: ₹${finalPrice.toLocaleString('en-IN')}
 Product ID: ${product.sku}
 
 Please share more details.`;
-    
+
     const encodedMessage = encodeURIComponent(textMessage);
     window.open(`https://wa.me/${whatsappNumber}?text=${encodedMessage}`, '_blank');
   };
@@ -53,9 +53,9 @@ Please share more details.`;
   return (
     <>
       <Header />
-      
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
+
         {/* Breadcrumbs & Back */}
         <div className="mb-6 flex items-center justify-between">
           <nav className="text-xs text-dark-brown/50 font-medium flex items-center gap-1">
@@ -69,7 +69,7 @@ Please share more details.`;
             <span>/</span>
             <span className="text-dark-brown truncate max-w-[150px] sm:max-w-xs">{product.name}</span>
           </nav>
-          
+
           <Link href="/sarees" className="text-xs font-bold text-maroon flex items-center gap-1 hover:underline">
             <ArrowLeft size={14} />
             Back to Collection
@@ -78,10 +78,10 @@ Please share more details.`;
 
         {/* Product Layout Grid */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 items-start">
-          
+
           {/* Left Side: Product Image Gallery */}
           <div className="md:col-span-6 space-y-4">
-            
+
             {/* Main Stage Image */}
             <div className="aspect-[3/4] w-full rounded-lg overflow-hidden bg-cream/15 border border-cream shadow-sm relative group">
               <img
@@ -98,9 +98,8 @@ Please share more details.`;
                   <button
                     key={idx}
                     onClick={() => setActiveImage(img)}
-                    className={`w-20 aspect-[3/4] rounded overflow-hidden border-2 bg-cream/25 flex-shrink-0 transition-all ${
-                      activeImage === img ? 'border-maroon scale-95 shadow-sm' : 'border-cream hover:border-maroon/40'
-                    }`}
+                    className={`w-20 aspect-[3/4] rounded overflow-hidden border-2 bg-cream/25 flex-shrink-0 transition-all ${activeImage === img ? 'border-maroon scale-95 shadow-sm' : 'border-cream hover:border-maroon/40'
+                      }`}
                   >
                     <img src={img} alt={`${product.name} Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
                   </button>
@@ -112,7 +111,7 @@ Please share more details.`;
 
           {/* Right Side: Product Details info */}
           <div className="md:col-span-6 space-y-6">
-            
+
             <div>
               {/* Category tag */}
               <span className="text-[10px] sm:text-xs font-bold text-gold tracking-widest uppercase border-b border-gold/40 pb-0.5 inline-block font-serif mb-2">
@@ -123,7 +122,7 @@ Please share more details.`;
               <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-extrabold text-dark-brown tracking-wide leading-tight">
                 {product.name}
               </h1>
-              
+
               {/* Product SKU */}
               <p className="text-[10px] text-dark-brown/40 font-semibold tracking-wide uppercase mt-1">
                 SKU: {product.sku}
@@ -221,7 +220,7 @@ Please share more details.`;
               <div className="flex items-center gap-3">
                 <span className="text-xs font-bold text-dark-brown/60 uppercase tracking-wider">Quantity:</span>
                 <div className="flex items-center border border-cream rounded bg-white">
-                  <button 
+                  <button
                     onClick={() => setQuantity(q => Math.max(1, q - 1))}
                     className="p-2 text-dark-brown/60 hover:text-maroon hover:bg-cream/20"
                     aria-label="Decrease quantity"
@@ -231,7 +230,7 @@ Please share more details.`;
                   <span className="px-4 text-sm font-semibold text-dark-brown min-w-[30px] text-center">
                     {quantity}
                   </span>
-                  <button 
+                  <button
                     onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}
                     className="p-2 text-dark-brown/60 hover:text-maroon hover:bg-cream/20"
                     aria-label="Increase quantity"
@@ -247,11 +246,10 @@ Please share more details.`;
               <button
                 onClick={handleAddToCart}
                 disabled={product.stock === 0}
-                className={`flex-1 py-3 px-6 rounded font-serif font-bold text-xs sm:text-sm tracking-widest uppercase flex items-center justify-center gap-2 transition-all ${
-                  product.stock === 0
+                className={`flex-1 py-3 px-6 rounded font-serif font-bold text-xs sm:text-sm tracking-widest uppercase flex items-center justify-center gap-2 transition-all ${product.stock === 0
                     ? 'bg-dark-brown/10 text-dark-brown/30 cursor-not-allowed border border-dark-brown/10'
                     : 'bg-white border border-maroon text-maroon hover:bg-cream/20 hover:scale-[1.01] active:scale-[0.99] shadow-sm'
-                }`}
+                  }`}
               >
                 <ShoppingBag size={16} />
                 ADD TO CART
@@ -259,11 +257,10 @@ Please share more details.`;
               <button
                 onClick={handleBuyNow}
                 disabled={product.stock === 0}
-                className={`flex-1 py-3 px-6 rounded font-serif font-bold text-xs sm:text-sm tracking-widest uppercase flex items-center justify-center gap-2 transition-all ${
-                  product.stock === 0
+                className={`flex-1 py-3 px-6 rounded font-serif font-bold text-xs sm:text-sm tracking-widest uppercase flex items-center justify-center gap-2 transition-all ${product.stock === 0
                     ? 'bg-dark-brown/20 text-dark-brown/40 cursor-not-allowed'
                     : 'bg-maroon text-ivory hover:bg-maroon-dark hover:scale-[1.01] active:scale-[0.99] shadow-md border border-maroon'
-                }`}
+                  }`}
               >
                 BUY NOW
               </button>
@@ -272,11 +269,10 @@ Please share more details.`;
             {/* Wishlist Toggle Button */}
             <button
               onClick={() => toggleWishlist(product)}
-              className={`w-full py-2.5 rounded font-serif font-bold text-xs tracking-wider uppercase border flex items-center justify-center gap-2 transition-colors ${
-                isWishlisted
+              className={`w-full py-2.5 rounded font-serif font-bold text-xs tracking-wider uppercase border flex items-center justify-center gap-2 transition-colors ${isWishlisted
                   ? 'bg-maroon/5 border-maroon text-maroon hover:bg-maroon/10'
                   : 'bg-white border-cream text-dark-brown/85 hover:border-maroon/40 hover:text-maroon'
-              }`}
+                }`}
             >
               <Heart size={14} className={isWishlisted ? 'fill-maroon text-maroon' : ''} />
               {isWishlisted ? 'WISHLISTED' : 'ADD TO WISHLIST'}

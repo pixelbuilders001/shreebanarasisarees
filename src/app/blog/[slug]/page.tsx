@@ -16,19 +16,19 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!post) {
     return {
-      title: "Article Not Found | SHREE Banarasi Sarees Blog",
+      title: "Article Not Found | Shree Banarasi Sarees Blog",
       description: "The article you are looking for does not exist or has been moved.",
     };
   }
 
   return {
-    title: `${post.title} | SHREE Banarasi Sarees Blog`,
+    title: `${post.title} | Shree Banarasi Sarees Blog`,
     description: post.excerpt,
     alternates: {
       canonical: `https://shreebanarasisarees.com/blog/${post.slug}`,
     },
     openGraph: {
-      title: `${post.title} | SHREE Banarasi Sarees Blog`,
+      title: `${post.title} | Shree Banarasi Sarees Blog`,
       description: post.excerpt,
       url: `https://shreebanarasisarees.com/blog/${post.slug}`,
       type: "article",
@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
     twitter: {
       card: "summary_large_image",
-      title: `${post.title} | SHREE Banarasi Sarees Blog`,
+      title: `${post.title} | Shree Banarasi Sarees Blog`,
       description: post.excerpt,
       images: [post.image],
     }
@@ -91,7 +91,7 @@ export default async function BlogPostPage({ params }: PageProps) {
     },
     "publisher": {
       "@type": "Organization",
-      "name": "SHREE Banarasi Sarees",
+      "name": "Shree Banarasi Sarees",
       "logo": {
         "@type": "ImageObject",
         "url": "https://shreebanarasisarees.com/brand_logo.png"
@@ -138,10 +138,10 @@ export default async function BlogPostPage({ params }: PageProps) {
       />
 
       <Header />
-      
+
       <main className="bg-[#FFF9F0] py-8 sm:py-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          
+
           {/* Breadcrumbs & Back Button */}
           <div className="mb-6 flex items-center justify-between">
             <nav className="text-xs text-dark-brown/50 font-medium flex items-center gap-1">
@@ -159,19 +159,19 @@ export default async function BlogPostPage({ params }: PageProps) {
 
           {/* Article Card */}
           <article className="bg-white rounded-3xl border border-cream overflow-hidden shadow-sm">
-            
+
             {/* Header Image */}
             <div className="aspect-[21/9] w-full relative bg-cream/25">
-              <img 
-                src={post.image} 
-                alt={`${post.title} Banner Image`} 
+              <img
+                src={post.image}
+                alt={`${post.title} Banner Image`}
                 className="w-full h-full object-cover object-center"
               />
             </div>
 
             {/* Content Container */}
             <div className="p-6 sm:p-10 space-y-6">
-              
+
               {/* Category & Metadata */}
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-cream pb-5">
                 <span className="bg-maroon text-ivory text-[10px] sm:text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
@@ -204,7 +204,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               </h1>
 
               {/* Rich HTML Content Body */}
-              <div 
+              <div
                 className="prose prose-stone max-w-none text-xs sm:text-sm text-dark-brown/85 font-light leading-relaxed space-y-4 pt-2"
                 dangerouslySetInnerHTML={{ __html: post.content }}
               />
@@ -223,7 +223,7 @@ export default async function BlogPostPage({ params }: PageProps) {
                     REQUEST A SAREE
                   </Link>
                   <a
-                    href={`https://wa.me/+916203909946?text=${encodeURIComponent(`Hello SHREE Banarasi Sarees, I just read your article "${post.title}" and would like to ask a question.`)}`}
+                    href={`https://wa.me/+916203909946?text=${encodeURIComponent(`Hello Shree Banarasi Sarees, I just read your article "${post.title}" and would like to ask a question.`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="py-2 px-3 bg-white border border-[#25D366] text-[#25D366] rounded hover:bg-[#25D366] hover:text-white transition-all flex items-center justify-center"

@@ -27,8 +27,8 @@ export const BLOG_POSTS: BlogPost[] = [
 
       <p>Whether you are a bride-to-be looking for a regal red Katan silk Banarasi, a bridesmaid searching for a chic pastel organza, or a family member looking for elegant gifting sarees, this curated guide details the top 5 saree shops in Samastipur to complete your trousseau shopping.</p>
 
-      <h3>1. SHREE Banarasi Sarees (Rudauli Chowk)</h3>
-      <p>Topping our list is <strong>SHREE Banarasi Sarees</strong>, located at Rudauli Chowk, Harpur Aloth, Samastipur. Understood as a premium boutique showroom brought online, SHREE Banarasi Sarees has set a new benchmark for ethnic wear in the region. They specialize in authentic handloom creations sourced directly from weaver clusters in Varanasi, Lucknow, and Rajasthan.</p>
+      <h3>1. Shree Banarasi Sarees (Rudauli Chowk)</h3>
+      <p>Topping our list is <strong>Shree Banarasi Sarees</strong>, located at Rudauli Chowk, Harpur Aloth, Samastipur. Understood as a premium boutique showroom brought online, Shree Banarasi Sarees has set a new benchmark for ethnic wear in the region. They specialize in authentic handloom creations sourced directly from weaver clusters in Varanasi, Lucknow, and Rajasthan.</p>
       <ul>
         <li><strong>Specialties:</strong> Real gold and silver zari Katan silk Banarasis, hand-embroidered Lucknowi Chikankari georgettes, and heavy velvet-blend bridal lehenga sarees.</li>
         <li><strong>Unique Value:</strong> They offer an interactive digital customization platform where buyers can chat directly with master weavers to tailor custom blouses and request specific color dyes.</li>
@@ -71,7 +71,7 @@ export const BLOG_POSTS: BlogPost[] = [
       <p>When buying your wedding sarees, keep these tips in mind to get the best value:</p>
       <ol>
         <li><strong>Verify the Fabric:</strong> Always inspect the reverse side of woven sarees to differentiate between handloom weaves and powerloom prints (handloom weaves will have slight irregularities and loose thread loops on the back).</li>
-        <li><strong>Plan Blouse Stitching in Advance:</strong> Custom blouse tailoring takes time. Establishments like SHREE Banarasi Sarees provide in-house tailoring services to save you the hassle of finding a local tailor.</li>
+        <li><strong>Plan Blouse Stitching in Advance:</strong> Custom blouse tailoring takes time. Establishments like Shree Banarasi Sarees provide in-house tailoring services to save you the hassle of finding a local tailor.</li>
         <li><strong>Shop Off-Season:</strong> If possible, buy your bridal trousseau a few months before the peak Vivah (wedding) dates to receive better discounts and personalized customer care.</li>
       </ol>
     `
@@ -89,7 +89,7 @@ export const BLOG_POSTS: BlogPost[] = [
     content: `
       <p>A pure, handwoven Banarasi silk saree is more than just six yards of fabric—it is an heirloom piece, a work of art, and a family treasure passed down through generations. Unfortunately, the rise of industrial powerlooms has flooded markets with cheap synthetic replicas sold under the name of 'Pure Banarasi Silk'. These copycats use polyester yarns and cheap chemical metallic wires, copying the look but completely lacking the durability, soft touch, and value of real silk.</p>
 
-      <p>At <strong>SHREE Banarasi Sarees</strong>, we believe in empowering our customers with authentic information. Here is our master weaver's guide containing 5 simple verification tests to identify a genuine handwoven Banarasi silk saree.</p>
+      <p>At <strong>Shree Banarasi Sarees</strong>, we believe in empowering our customers with authentic information. Here is our master weaver's guide containing 5 simple verification tests to identify a genuine handwoven Banarasi silk saree.</p>
 
       <h3>1. The Reverse Side Check (The Weaver's Signature)</h3>
       <p>The absolute easiest way to tell a handwoven saree from a powerloom machine copy is to look at its underside. Turn the saree over and inspect the back of the pallu and borders:</p>
@@ -122,7 +122,7 @@ export const BLOG_POSTS: BlogPost[] = [
         <li><strong>Weight & Texture:</strong> Pure silk is light, breathable, and feels warm to the touch. Synthetic sarees feel stiff, heavy, and trap heat.</li>
       </ul>
 
-      <h3>Our Commitment at SHREE Banarasi Sarees</h3>
+      <h3>Our Commitment at Shree Banarasi Sarees</h3>
       <p>Every piece in our catalog is accompanied by a quality guarantee. We work directly with weavers to verify yarn counts, gold percentages in zari work, and GI compliance. Visit our outlet at Rudauli Chowk, Samastipur to feel the differences yourself, or browse our certified online catalog.</p>
     `
   },
@@ -176,8 +176,8 @@ export const BLOG_POSTS: BlogPost[] = [
         <li><strong>Occasion:</strong> Formal dinners, temple visits, or corporate festivals.</li>
       </ul>
 
-      <h3>Customizing Your Trousseau with SHREE Banarasi Sarees</h3>
-      <p>At SHREE Banarasi Sarees, Samastipur, we offer a dedicated Custom Saree Request service. Our team of stylists and master tailors will help you design custom blouses, match borders, and even weave customized initial motifs into your bridal pallu. Visit our outlet at Rudauli Chowk, Samastipur or contact us on WhatsApp to begin curating your dream trousseau.</p>
+      <h3>Customizing Your Trousseau with Shree Banarasi Sarees</h3>
+      <p>At Shree Banarasi Sarees, Samastipur, we offer a dedicated Custom Saree Request service. Our team of stylists and master tailors will help you design custom blouses, match borders, and even weave customized initial motifs into your bridal pallu. Visit our outlet at Rudauli Chowk, Samastipur or contact us on WhatsApp to begin curating your dream trousseau.</p>
     `
   }
 ];

@@ -12,6 +12,11 @@ interface Slide {
 
 const SLIDES: Slide[] = [
   {
+    desktopImage: "/hero_desktop_soon.png",
+    mobileImage: "/hero_mobile_soon.png",
+    ctaLink: "/about-us"
+  },
+  {
     desktopImage: "/hero_desktop_1.png",
     mobileImage: "/hero_mobile_1.png",
     ctaLink: "/sarees?category=Banarasi"

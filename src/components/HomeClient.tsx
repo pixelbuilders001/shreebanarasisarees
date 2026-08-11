@@ -40,7 +40,7 @@ export default function HomeClient() {
       <Header />
       <main className="pb-12">
         {/* Hidden H1 for SEO compliance - ensuring a single clean H1 exists above the fold */}
-        <h1 className="sr-only">SHREE Banarasi Sarees | श्री बनारसी साड़ियाँ - Premium Indian Saree Showroom in Samastipur, Bihar</h1>
+        <h1 className="sr-only">Shree Banarasi Sarees | श्री बनारसी साड़ियाँ - Premium Indian Saree Showroom in Samastipur, Bihar</h1>
 
         {/* Hero Section */}
         <HeroSection />
@@ -100,17 +100,17 @@ export default function HomeClient() {
                 New Arrivals
               </h2>
             </div>
-            
+
             {/* Scroll Navigation Buttons */}
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={scrollLeft}
                 className="p-2.5 rounded-full border border-cream hover:bg-cream/40 text-dark-brown hover:scale-105 active:scale-95 transition-all shadow-sm"
                 aria-label="Scroll left"
               >
                 <ArrowLeft size={16} />
               </button>
-              <button 
+              <button
                 onClick={scrollRight}
                 className="p-2.5 rounded-full border border-cream hover:bg-cream/40 text-dark-brown hover:scale-105 active:scale-95 transition-all shadow-sm"
                 aria-label="Scroll right"
@@ -121,12 +121,12 @@ export default function HomeClient() {
           </div>
 
           {/* Horizontally scrollable row */}
-          <div 
+          <div
             ref={scrollRef}
             className="flex gap-4 sm:gap-6 overflow-x-auto no-scrollbar pb-6 scroll-smooth snap-x snap-mandatory"
           >
             {newArrivals.map((prod) => (
-              <div 
+              <div
                 key={prod.id}
                 className="w-[240px] sm:w-[280px] flex-shrink-0 snap-start relative"
               >
@@ -144,12 +144,12 @@ export default function HomeClient() {
           <div className="relative rounded-2xl overflow-hidden h-[320px] bg-maroon-dark flex items-center shadow-lg border border-gold/30">
             {/* Background Image */}
             <div className="absolute inset-0 bg-black/50 z-10" />
-            <img 
-              src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=1200" 
-              alt="Elegance Within Your Budget" 
+            <img
+              src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=1200"
+              alt="Elegance Within Your Budget"
               className="absolute inset-0 w-full h-full object-cover"
             />
-            
+
             <div className="relative z-20 px-6 sm:px-16 text-ivory max-w-xl space-y-4">
               <span className="text-[10px] sm:text-xs font-bold tracking-widest text-gold uppercase font-serif block">
                 —— FESTIVE SPECIALS ——
@@ -190,7 +190,7 @@ export default function HomeClient() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-              
+
               {/* Card 1 */}
               <div className="bg-cream/10 p-6 rounded-2xl border border-cream hover:border-gold/30 hover:shadow-sm transition-all text-center space-y-3">
                 <div className="mx-auto w-12 h-12 bg-cream flex items-center justify-center rounded-full text-maroon shadow-inner">

@@ -7,14 +7,14 @@ import { BLOG_POSTS } from '../../data/blog';
 import { Calendar, User, Clock, ArrowRight, BookOpen } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: "Saree Care, Styling & Shopping Blog | SHREE Banarasi Sarees",
-  description: "Read the latest articles on Indian saree styling, bridal trousseau guides, handloom identification tips, and local shopping guides from SHREE Banarasi Sarees in Samastipur, Bihar.",
+  title: "Saree Care, Styling & Shopping Blog | Shree Banarasi Sarees",
+  description: "Read the latest articles on Indian saree styling, bridal trousseau guides, handloom identification tips, and local shopping guides from Shree Banarasi Sarees in Samastipur, Bihar.",
   alternates: {
     canonical: "https://shreebanarasisarees.com/blog",
   },
   openGraph: {
-    title: "Saree Care, Styling & Shopping Blog | SHREE Banarasi Sarees",
-    description: "Read the latest articles on Indian saree styling, bridal trousseau guides, handloom identification tips, and local shopping guides from SHREE Banarasi Sarees in Samastipur, Bihar.",
+    title: "Saree Care, Styling & Shopping Blog | Shree Banarasi Sarees",
+    description: "Read the latest articles on Indian saree styling, bridal trousseau guides, handloom identification tips, and local shopping guides from Shree Banarasi Sarees in Samastipur, Bihar.",
     url: "https://shreebanarasisarees.com/blog",
     type: "website",
   }
@@ -48,10 +48,10 @@ export default function BlogHome() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       <Header />
-      
+
       <main className="bg-[#FFF9F0] py-8 sm:py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
+
           {/* Breadcrumbs */}
           <nav className="text-xs text-dark-brown/50 font-medium mb-6 flex items-center gap-1 select-none">
             <Link href="/" className="hover:text-maroon">Home</Link>
@@ -73,23 +73,23 @@ export default function BlogHome() {
             </h1>
             <div className="w-16 h-0.5 bg-maroon mx-auto my-4"></div>
             <p className="text-sm text-dark-brown/70 leading-relaxed font-light">
-              Explore professional styling advice, fabric care tips, bridal fashion guides, and standard tests to verify handloom authenticity, curated by the showroom weavers at SHREE Banarasi Sarees.
+              Explore professional styling advice, fabric care tips, bridal fashion guides, and standard tests to verify handloom authenticity, curated by the showroom weavers at Shree Banarasi Sarees.
             </p>
           </div>
 
           {/* Blog Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {BLOG_POSTS.map((post) => (
-              <article 
-                key={post.id} 
+              <article
+                key={post.id}
                 className="bg-white rounded-2xl border border-cream overflow-hidden shadow-sm flex flex-col justify-between hover:shadow-md hover:border-gold/30 hover:scale-[1.01] transition-all"
               >
                 <div>
                   {/* Blog Image */}
                   <div className="aspect-[16/10] w-full relative overflow-hidden bg-cream/20">
-                    <img 
-                      src={post.image} 
-                      alt={post.title} 
+                    <img
+                      src={post.image}
+                      alt={post.title}
                       className="w-full h-full object-cover object-center"
                     />
                     <span className="absolute top-4 left-4 bg-maroon text-ivory text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
@@ -127,11 +127,11 @@ export default function BlogHome() {
                 </div>
 
                 <div className="px-6 pb-6 pt-2">
-                  <Link 
+                  <Link
                     href={`/blog/${post.slug}`}
                     className="inline-flex items-center gap-1.5 text-xs font-bold text-maroon hover:underline group"
                   >
-                    READ ARTICLE 
+                    READ ARTICLE
                     <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </div>

@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!product) {
     return {
-      title: "Product Not Found | SHREE Banarasi Sarees",
+      title: "Product Not Found | Shree Banarasi Sarees",
       description: "The saree you are looking for is not found or has been moved.",
     };
   }
@@ -24,13 +24,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const finalPrice = product.salePrice ?? product.price;
 
   return {
-    title: `${product.name} | SHREE Banarasi Sarees`,
-    description: `Shop the ${product.name} from SHREE Banarasi Sarees. Made of premium ${product.fabric} with ${product.work} work. Perfect for ${product.occasion} and festivals. Price: ₹${finalPrice.toLocaleString('en-IN')}.`,
+    title: `${product.name} | Shree Banarasi Sarees`,
+    description: `Shop the ${product.name} from Shree Banarasi Sarees. Made of premium ${product.fabric} with ${product.work} work. Perfect for ${product.occasion} and festivals. Price: ₹${finalPrice.toLocaleString('en-IN')}.`,
     alternates: {
       canonical: `https://shreebanarasisarees.com/product/${product.slug}`,
     },
     openGraph: {
-      title: `${product.name} | SHREE Banarasi Sarees`,
+      title: `${product.name} | Shree Banarasi Sarees`,
       description: product.description,
       url: `https://shreebanarasisarees.com/product/${product.slug}`,
       type: "article",
@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
     twitter: {
       card: "summary_large_image",
-      title: `${product.name} | SHREE Banarasi Sarees`,
+      title: `${product.name} | Shree Banarasi Sarees`,
       description: product.description,
       images: [product.images[0]],
     }
@@ -85,7 +85,7 @@ export default async function Page({ params }: PageProps) {
     "mpn": product.sku,
     "brand": {
       "@type": "Brand",
-      "name": "SHREE Banarasi Sarees"
+      "name": "Shree Banarasi Sarees"
     },
     "offers": {
       "@type": "Offer",
@@ -94,8 +94,8 @@ export default async function Page({ params }: PageProps) {
       "price": finalPrice,
       "priceValidUntil": "2027-12-31",
       "itemCondition": "https://schema.org/NewCondition",
-      "availability": product.stock > 0 
-        ? "https://schema.org/InStock" 
+      "availability": product.stock > 0
+        ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock",
       "shippingDetails": {
         "@type": "OfferShippingDetails",
