@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, Heart, ShoppingBag, User, Menu, X, ChevronRight, LogOut, FileText } from 'lucide-react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { Search, Heart, ShoppingBag, User, Menu, X, ChevronRight, LogOut, FileText, Home, Grid, Mic, ArrowLeft, Trash2 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { AnnouncementBar } from './AnnouncementBar';
 
@@ -11,6 +11,7 @@ import { AnnouncementBar } from './AnnouncementBar';
 const HeaderInner: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const {
     products,
     cart,
@@ -29,6 +30,72 @@ const HeaderInner: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+
+  // Voice Search states
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState('');
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-IN';
+
+        recognition.onstart = () => {
+          setIsListening(true);
+          setSpeechError('');
+        };
+
+        recognition.onresult = (event: any) => {
+          const resultText = event.results[0][0].transcript;
+          setSearchQuery(resultText);
+          setIsListening(false);
+          addRecentSearch(resultText.trim());
+          setIsMobileSearchOpen(false);
+          router.push(`/sarees?search=${encodeURIComponent(resultText.trim())}`);
+        };
+
+        recognition.onerror = (event: any) => {
+          console.error('Speech recognition error', event.error);
+          setSpeechError('Could not recognize voice. Please try again.');
+          setIsListening(false);
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+
+        recognitionRef.current = recognition;
+      }
+    }
+  }, [router, setSearchQuery, addRecentSearch]);
+
+  const startVoiceSearch = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.start();
+      } catch (err) {
+        console.error(err);
+      }
+    } else {
+      alert("Voice search is not supported in this browser. Please use Chrome or Safari.");
+    }
+  };
+
+  const stopVoiceSearch = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
 
   // Auth Form State
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -146,9 +213,9 @@ const HeaderInner: React.FC = () => {
                 <img
                   src="/brand_logo.png"
                   alt="Shree Banarasi Sarees Logo"
-                  className="h-14 w-auto object-contain rounded-full border border-gold/25"
+                  className="h-10 md:h-14 w-auto object-contain rounded-full border border-gold/25"
                 />
-                <div className="flex flex-col">
+                <div className="hidden md:flex flex-col">
                   <span className="font-serif text-lg sm:text-xl font-extrabold text-maroon tracking-wider">
                     Shree
                   </span>
@@ -168,8 +235,17 @@ const HeaderInner: React.FC = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setIsSearchFocused(true)}
                   placeholder="Search sarees, fabrics, colors..."
-                  className="w-full bg-[#FFFFFF] border border-[#C9A45C]/40 focus:border-[#C9A45C] focus:ring-1 focus:ring-[#C9A45C] text-sm text-dark-brown placeholder-dark-brown/40 rounded-full py-2.5 pl-5 pr-11 outline-none transition-all"
+                  className="w-full bg-[#FFFFFF] border border-[#C9A45C]/40 focus:border-[#C9A45C] focus:ring-1 focus:ring-[#C9A45C] text-sm text-dark-brown placeholder-dark-brown/40 rounded-full py-2.5 pl-5 pr-16 outline-none transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={startVoiceSearch}
+                  className="absolute right-10 top-1/2 -translate-y-1/2 p-1 text-dark-brown/50 hover:text-maroon transition-colors"
+                  title="Voice search"
+                  aria-label="Voice search"
+                >
+                  <Mic size={18} />
+                </button>
                 <button
                   type="submit"
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-dark-brown/50 hover:text-maroon transition-colors"
@@ -236,11 +312,9 @@ const HeaderInner: React.FC = () => {
 
             {/* Right: Icons */}
             <div className="flex items-center gap-1.5 sm:gap-3">
-              {/* Desktop Search Toggle for MD screens */}
+              {/* Mobile Search Toggle */}
               <button
-                onClick={() => {
-                  router.push('/sarees?focusSearch=true');
-                }}
+                onClick={() => setIsMobileSearchOpen(true)}
                 className="p-2 text-dark-brown hover:text-maroon md:hidden transition-colors"
                 aria-label="Search"
               >
@@ -469,39 +543,361 @@ const HeaderInner: React.FC = () => {
         </div>
       )}
 
-      {/* Sticky Bottom Nav for Mobile UX */}
-      <nav className="fixed bottom-0 inset-x-0 bg-[#FFF9F0]/95 backdrop-blur-md border-t border-cream flex items-center justify-around py-2.5 z-40 lg:hidden shadow-lg">
-        <Link href="/" className="flex flex-col items-center text-dark-brown hover:text-maroon transition-colors">
-          <svg className="w-5 h-5 fill-none stroke-current" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
-          <span className="text-[10px] font-semibold mt-1">Home</span>
-        </Link>
-        <Link href="/sarees" className="flex flex-col items-center text-dark-brown hover:text-maroon transition-colors">
-          <svg className="w-5 h-5 fill-none stroke-current" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
-          <span className="text-[10px] font-semibold mt-1">Categories</span>
-        </Link>
-        <Link href="/sarees?focusSearch=true" className="flex flex-col items-center text-dark-brown hover:text-maroon transition-colors">
-          <Search size={20} strokeWidth={2.5} />
-          <span className="text-[10px] font-semibold mt-1">Search</span>
-        </Link>
-        <Link href="/wishlist" className="flex flex-col items-center text-dark-brown hover:text-maroon transition-colors relative">
-          <Heart size={20} strokeWidth={2.5} />
-          {wishlist.length > 0 && (
-            <span className="absolute -top-1 right-2 bg-maroon text-ivory text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
-              {wishlist.length}
+      {/* Premium Floating Bottom Nav for Mobile */}
+      <div className="fixed bottom-4 inset-x-4 z-40 lg:hidden flex justify-center pointer-events-none">
+        <nav className="pointer-events-auto bg-[#FFF9F0]/95 backdrop-blur-md border border-[#C9A45C]/40 shadow-[0_10px_25px_rgba(45,33,29,0.1)] flex items-center justify-around py-2.5 px-3 rounded-2xl w-full max-w-md mx-auto transition-all duration-300">
+          {/* Home */}
+          <Link 
+            href="/" 
+            className="flex flex-col items-center justify-center flex-1 py-1 relative"
+          >
+            <Home 
+              size={20} 
+              className={`transition-all duration-300 ${
+                pathname === '/' ? 'text-maroon scale-110' : 'text-dark-brown/65 hover:text-maroon'
+              }`} 
+            />
+            <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${
+              pathname === '/' ? 'text-maroon font-bold' : 'text-dark-brown/60'
+            }`}>
+              Home
             </span>
-          )}
-          <span className="text-[10px] font-semibold mt-1">Wishlist</span>
-        </Link>
-        <button onClick={() => setIsCartOpen(true)} className="flex flex-col items-center text-dark-brown hover:text-maroon transition-colors relative">
-          <ShoppingBag size={20} strokeWidth={2.5} />
-          {cart.length > 0 && (
-            <span className="absolute -top-1 right-1 bg-maroon text-ivory text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
-              {cart.reduce((sum, item) => sum + item.quantity, 0)}
+            <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${
+              pathname === '/' ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
+            }`} />
+          </Link>
+
+          {/* Categories */}
+          <Link 
+            href="/sarees" 
+            className="flex flex-col items-center justify-center flex-1 py-1 relative"
+          >
+            <Grid 
+              size={20} 
+              className={`transition-all duration-300 ${
+                (pathname.startsWith('/sarees') && !searchParams.get('search') && !searchParams.get('focusSearch')) 
+                  ? 'text-maroon scale-110' 
+                  : 'text-dark-brown/65 hover:text-maroon'
+              }`} 
+            />
+            <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${
+              (pathname.startsWith('/sarees') && !searchParams.get('search') && !searchParams.get('focusSearch')) 
+                ? 'text-maroon font-bold' 
+                : 'text-dark-brown/60'
+            }`}>
+              Shop
             </span>
-          )}
-          <span className="text-[10px] font-semibold mt-1">Cart</span>
-        </button>
-      </nav>
+            <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${
+              (pathname.startsWith('/sarees') && !searchParams.get('search') && !searchParams.get('focusSearch')) 
+                ? 'opacity-100 scale-100' 
+                : 'opacity-0 scale-0'
+            }`} />
+          </Link>
+
+          {/* Search */}
+          <button 
+            onClick={(e) => {
+              e.preventDefault();
+              setIsMobileSearchOpen(true);
+            }}
+            className="flex flex-col items-center justify-center flex-1 py-1 relative cursor-pointer"
+          >
+            <Search 
+              size={20} 
+              className={`transition-all duration-300 ${
+                isMobileSearchOpen ? 'text-maroon scale-110' : 'text-dark-brown/65 hover:text-maroon'
+              }`} 
+            />
+            <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${
+              isMobileSearchOpen ? 'text-maroon font-bold' : 'text-dark-brown/60'
+            }`}>
+              Search
+            </span>
+            <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${
+              isMobileSearchOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
+            }`} />
+          </button>
+
+          {/* Wishlist */}
+          <Link 
+            href="/wishlist" 
+            className="flex flex-col items-center justify-center flex-1 py-1 relative"
+          >
+            <div className="relative">
+              <Heart 
+                size={20} 
+                className={`transition-all duration-300 ${
+                  pathname === '/wishlist' ? 'text-maroon scale-110' : 'text-dark-brown/65 hover:text-maroon'
+                }`} 
+              />
+              {wishlist.length > 0 && (
+                <span className="absolute -top-1.5 -right-2 bg-gradient-to-r from-red-600 to-rose-500 text-white text-[8px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center border border-[#FFF9F0] shadow-md animate-pulse">
+                  {wishlist.length}
+                </span>
+              )}
+            </div>
+            <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${
+              pathname === '/wishlist' ? 'text-maroon font-bold' : 'text-dark-brown/60'
+            }`}>
+              Wishlist
+            </span>
+            <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${
+              pathname === '/wishlist' ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
+            }`} />
+          </Link>
+
+          {/* Cart */}
+          <button 
+            onClick={() => setIsCartOpen(true)}
+            className="flex flex-col items-center justify-center flex-1 py-1 relative group"
+          >
+            <div className="relative">
+              <ShoppingBag 
+                size={20} 
+                className="text-dark-brown/65 group-hover:text-maroon group-hover:scale-110 transition-all duration-300" 
+              />
+              {cart.length > 0 && (
+                <span className="absolute -top-1.5 -right-2 bg-maroon text-[#FFF9F0] text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-[#FFF9F0] shadow-md">
+                  {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                </span>
+              )}
+            </div>
+            <span className="text-[9px] font-serif uppercase tracking-wider mt-1 text-dark-brown/60 group-hover:text-maroon transition-all duration-300">
+              Cart
+            </span>
+          </button>
+        </nav>
+      </div>
+
+      {/* Mobile Full Screen Search Sheet */}
+      {isMobileSearchOpen && (
+        <div className="fixed inset-0 z-50 bg-[#FFF9F0] flex flex-col animate-slide-in-up">
+          {/* Header of Search Sheet */}
+          <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-cream">
+            <button 
+              onClick={() => setIsMobileSearchOpen(false)}
+              className="p-1 text-dark-brown/70 hover:text-maroon"
+              aria-label="Go back"
+            >
+              <ArrowLeft size={24} />
+            </button>
+            <form onSubmit={handleSearchSubmit} className="flex-1 relative">
+              <input
+                type="text"
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search sarees, fabrics, colors..."
+                className="w-full bg-[#FFF9F0] border border-[#C9A45C]/40 focus:border-[#C9A45C] text-sm text-dark-brown placeholder-dark-brown/40 rounded-full py-2.5 pl-4 pr-16 outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-10 top-1/2 -translate-y-1/2 p-1 text-dark-brown/40 hover:text-maroon"
+                  aria-label="Clear text"
+                >
+                  <X size={16} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={startVoiceSearch}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-dark-brown/50 hover:text-maroon"
+                title="Voice search"
+                aria-label="Voice search"
+              >
+                <Mic size={18} />
+              </button>
+            </form>
+          </div>
+
+          {/* Results/Suggestions Area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            {speechError && (
+              <div className="p-3 bg-red-50 text-red-700 text-xs font-semibold rounded border border-red-100 flex items-center gap-2">
+                <span>{speechError}</span>
+              </div>
+            )}
+
+            {!searchQuery.trim() ? (
+              <>
+                {/* Recent Searches */}
+                {recentSearches.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-xs font-bold text-dark-brown/50 tracking-wider">
+                      <span>RECENT SEARCHES</span>
+                      <button 
+                        onClick={clearRecentSearches}
+                        className="text-maroon hover:underline flex items-center gap-1"
+                      >
+                        <Trash2 size={12} /> Clear
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {recentSearches.map((s, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setSearchQuery(s);
+                            addRecentSearch(s);
+                            setIsMobileSearchOpen(false);
+                            router.push(`/sarees?search=${encodeURIComponent(s)}`);
+                          }}
+                          className="bg-white border border-cream text-dark-brown/80 hover:bg-cream/30 text-xs px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5"
+                        >
+                          <svg className="w-3.5 h-3.5 text-dark-brown/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Popular Categories */}
+                <div className="space-y-3">
+                  <div className="text-xs font-bold text-dark-brown/50 tracking-wider">
+                    POPULAR CATEGORIES
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { name: 'Banarasi Silk', query: 'Banarasi' },
+                      { name: 'Bridal Collection', query: 'Bridal' },
+                      { name: 'Organza Sarees', query: 'Organza' },
+                      { name: 'Chikankari Craft', query: 'Chikankari' },
+                      { name: 'New Arrivals', filter: 'new' },
+                      { name: 'Offers & Discounts', category: 'Offers' }
+                    ].map((tag, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setIsMobileSearchOpen(false);
+                          if (tag.filter) {
+                            router.push('/sarees?filter=new');
+                          } else if (tag.category) {
+                            router.push(`/sarees?category=${tag.category}`);
+                          } else {
+                            router.push(`/sarees?category=${tag.query}`);
+                          }
+                        }}
+                        className="bg-white border border-cream hover:border-gold/50 text-dark-brown text-xs font-semibold py-3 px-4 rounded-xl text-left transition-all flex items-center justify-between"
+                      >
+                        {tag.name}
+                        <ChevronRight size={14} className="text-gold" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Promotional banner or tip */}
+                <div className="bg-gradient-to-r from-cream/35 to-gold/10 rounded-2xl p-4 border border-gold/15 flex items-center gap-3">
+                  <div className="bg-gold/20 p-2 rounded-full text-gold">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-dark-brown">Try Voice Search!</h4>
+                    <p className="text-[10px] text-dark-brown/60 mt-0.5">Tap the microphone icon and say "Red Banarasi Saree" or "Organza" to search hands-free.</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Realtime search suggestions list */
+              <div className="space-y-4">
+                <div className="text-xs font-bold text-dark-brown/40 uppercase tracking-wider">
+                  Suggested Products
+                </div>
+                {searchSuggestions.length > 0 ? (
+                  <div className="space-y-2">
+                    {searchSuggestions.map((prod) => (
+                      <button
+                        key={prod.id}
+                        onClick={() => {
+                          setIsMobileSearchOpen(false);
+                          router.push(`/product/${prod.slug}`);
+                        }}
+                        className="w-full text-left bg-white border border-cream rounded-xl p-3 flex items-center gap-3 transition-colors hover:border-gold/30"
+                      >
+                        <img 
+                          src={prod.images[0]} 
+                          alt={prod.name} 
+                          className="w-12 aspect-[3/4] object-cover rounded bg-cream border border-cream" 
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-serif font-bold text-dark-brown truncate">{prod.name}</div>
+                          <div className="text-[10px] text-dark-brown/50 mt-0.5">{prod.fabric} &bull; {prod.category}</div>
+                          <div className="text-xs font-bold text-maroon mt-1">₹{prod.price}</div>
+                        </div>
+                        <ChevronRight size={16} className="text-gold" />
+                      </button>
+                    ))}
+                    
+                    <button
+                      onClick={() => {
+                        addRecentSearch(searchQuery.trim());
+                        setIsMobileSearchOpen(false);
+                        router.push(`/sarees?search=${encodeURIComponent(searchQuery.trim())}`);
+                      }}
+                      className="w-full py-3 bg-maroon text-[#FFF9F0] text-xs font-semibold rounded-xl text-center shadow-md hover:bg-maroon-dark transition-all mt-4"
+                    >
+                      View All Results for "{searchQuery}"
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-white border border-cream rounded-xl p-8 text-center">
+                    <svg className="w-10 h-10 text-dark-brown/20 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div className="text-xs font-bold text-dark-brown">No direct matches found</div>
+                    <p className="text-[10px] text-dark-brown/50 mt-1">Try spelling differently or click search below to search our catalog.</p>
+                    <button
+                      onClick={() => {
+                        addRecentSearch(searchQuery.trim());
+                        setIsMobileSearchOpen(false);
+                        router.push(`/sarees?search=${encodeURIComponent(searchQuery.trim())}`);
+                      }}
+                      className="mt-4 px-4 py-2 bg-cream text-maroon border border-gold/30 text-xs font-semibold rounded-full"
+                    >
+                      Search catalog for "{searchQuery}"
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Voice Search Listening Full-screen overlay */}
+      {isListening && (
+        <div className="fixed inset-0 z-50 bg-[#2D211D]/90 backdrop-blur-md flex flex-col items-center justify-center pointer-events-auto animate-fade-in">
+          <div className="absolute top-4 right-4">
+            <button 
+              onClick={stopVoiceSearch}
+              className="p-2 bg-white/10 text-white hover:bg-white/20 rounded-full transition-all"
+              aria-label="Cancel voice search"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          
+          <div className="relative flex items-center justify-center">
+            <div className="absolute w-24 h-24 rounded-full bg-[#C9A45C]/30 animate-ping" />
+            <div className="absolute w-32 h-32 rounded-full bg-[#C9A45C]/15 animate-pulse" />
+            
+            <button 
+              onClick={stopVoiceSearch}
+              className="relative w-20 h-20 rounded-full bg-gradient-to-tr from-maroon to-red-700 text-white flex items-center justify-center shadow-2xl border-2 border-gold"
+            >
+              <Mic size={36} className="animate-bounce" />
+            </button>
+          </div>
+          
+          <h3 className="text-white font-serif text-lg font-bold mt-8 tracking-wider">
+            Listening...
+          </h3>
+          <p className="text-white/60 text-xs mt-2 max-w-xs text-center px-4">
+            Speak now. Try saying "Banarasi Silk Saree" or "Bridal collection".
+          </p>
+        </div>
+      )}
 
       <style jsx global>{`
         @keyframes slideInLeft {
@@ -510,6 +906,14 @@ const HeaderInner: React.FC = () => {
           }
           to {
             transform: translateX(0);
+          }
+        }
+        @keyframes slideInUp {
+          from {
+            transform: translateY(100%);
+          }
+          to {
+            transform: translateY(0);
           }
         }
         @keyframes scaleUp {
@@ -524,6 +928,9 @@ const HeaderInner: React.FC = () => {
         }
         .animate-slide-in-left {
           animation: slideInLeft 0.3s ease-out forwards;
+        }
+        .animate-slide-in-up {
+          animation: slideInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         .animate-scale-up {
           animation: scaleUp 0.2s ease-out forwards;

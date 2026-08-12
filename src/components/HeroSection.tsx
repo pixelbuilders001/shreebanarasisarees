@@ -6,29 +6,24 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Slide {
   desktopImage: string;
-  mobileImage: string;
   ctaLink: string;
 }
 
 const SLIDES: Slide[] = [
   {
     desktopImage: "/hero_desktop_soon.png",
-    mobileImage: "/hero_mobile_soon.png",
     ctaLink: "/about-us"
   },
   {
     desktopImage: "/hero_desktop_1.png",
-    mobileImage: "/hero_mobile_1.png",
     ctaLink: "/sarees?category=Banarasi"
   },
   {
     desktopImage: "/hero_desktop_2.png",
-    mobileImage: "/hero_mobile_2.png",
     ctaLink: "/sarees?category=Bridal"
   },
   {
     desktopImage: "/hero_desktop_3.png",
-    mobileImage: "/hero_mobile_3.png",
     ctaLink: "/sarees?category=Organza"
   }
 ];
@@ -52,7 +47,7 @@ export const HeroSection: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full aspect-[4/5] md:aspect-[8/3] bg-dark-brown overflow-hidden">
+    <div className="relative w-full aspect-[7/3] bg-dark-brown overflow-hidden">
       {/* Slides */}
       {SLIDES.map((slide, index) => (
         <div
@@ -62,14 +57,11 @@ export const HeroSection: React.FC = () => {
           }`}
         >
           <Link href={slide.ctaLink} className="block w-full h-full animate-fade-in">
-            <picture className="w-full h-full block">
-              <source media="(min-width: 768px)" srcSet={slide.desktopImage} />
-              <img
-                src={slide.mobileImage}
-                alt={`Hero banner ${index + 1}`}
-                className="w-full h-full object-cover"
-              />
-            </picture>
+            <img
+              src={slide.desktopImage}
+              alt={`Hero banner ${index + 1}`}
+              className="w-full h-full object-cover"
+            />
           </Link>
         </div>
       ))}
