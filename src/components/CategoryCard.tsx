@@ -53,24 +53,13 @@ const CATEGORIES: CategoryItem[] = [
   }
 ];
 
-const HARDCODED_IMAGES: Record<string, string> = {
-  banarasi: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600",
-  chikankari: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=600",
-  bandhani: "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=600",
-  organza: "https://images.unsplash.com/photo-1610030469668-93535c17b6b3?auto=format&fit=crop&q=80&w=600",
-  chanderi: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=600",
-  georgette: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600",
-  silk: "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=600",
-  bridal: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600",
-};
-
 export const CategoryCard: React.FC = () => {
   const { categories } = useStore();
 
   const displayCategories = categories && categories.length > 0
     ? categories.map(c => ({
         name: c.name,
-        image: HARDCODED_IMAGES[c.slug.toLowerCase()] || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600",
+        image: c.image_url || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600",
         link: `/sarees/${c.slug.toLowerCase()}`
       }))
     : CATEGORIES;
