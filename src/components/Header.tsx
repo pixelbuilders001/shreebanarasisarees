@@ -56,8 +56,6 @@ const HeaderInner: React.FC = () => {
           setSearchQuery(resultText);
           setIsListening(false);
           addRecentSearch(resultText.trim());
-          setIsMobileSearchOpen(false);
-          router.push(`/sarees?search=${encodeURIComponent(resultText.trim())}`);
         };
 
         recognition.onerror = (event: any) => {
