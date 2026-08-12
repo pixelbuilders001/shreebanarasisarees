@@ -65,20 +65,20 @@ export const CategoryCard: React.FC = () => {
     : CATEGORIES;
 
   return (
-    <section className="py-16 px-4 max-w-7xl mx-auto">
-      <div className="text-center mb-12">
-        <div className="flex items-center justify-center gap-3 mb-2">
+    <section className="pt-6 pb-12 md:py-16 px-4 max-w-7xl mx-auto">
+      <div className="text-center mb-6 md:mb-12">
+        <div className="flex items-center justify-center gap-3 mb-1.5">
           <div className="w-8 h-px bg-gold/50"></div>
-          <span className="text-xs text-gold uppercase tracking-[0.2em] font-bold block">
+          <span className="text-[10px] sm:text-xs text-gold uppercase tracking-[0.2em] font-bold block">
             Trending on Shree
           </span>
           <div className="w-8 h-px bg-gold/50"></div>
         </div>
-        <h2 className="font-serif text-2xl sm:text-4xl font-bold tracking-wide text-dark-brown">
+        <h2 className="font-serif text-xl sm:text-4xl font-bold tracking-wide text-dark-brown">
           Shop By Category
         </h2>
-        <div className="w-16 h-0.5 bg-maroon mx-auto my-4"></div>
-        <p className="text-sm text-dark-brown/65 max-w-lg mx-auto leading-relaxed">
+        <div className="w-12 md:w-16 h-0.5 bg-maroon mx-auto my-2.5 md:my-4"></div>
+        <p className="text-xs sm:text-sm text-dark-brown/65 max-w-lg mx-auto leading-relaxed hidden sm:block">
           Choose from our wide range of traditional and modern handwoven sarees.
         </p>
       </div>
