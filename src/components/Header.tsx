@@ -6,12 +6,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, Heart, ShoppingBag, User, Menu, X, ChevronRight, LogOut, FileText } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { AnnouncementBar } from './AnnouncementBar';
-import { PRODUCTS } from '../data/products';
+
 
 const HeaderInner: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const {
+    products,
     cart,
     wishlist,
     setIsCartOpen,
@@ -104,7 +105,7 @@ const HeaderInner: React.FC = () => {
 
   // Filter products for suggestions (up to 5 matches)
   const searchSuggestions = searchQuery.trim()
-    ? PRODUCTS.filter(p =>
+    ? products.filter(p =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.fabric.toLowerCase().includes(searchQuery.toLowerCase())

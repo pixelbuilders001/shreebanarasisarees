@@ -1,6 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import HomeClient from '../components/HomeClient';
+import { fetchProducts } from '../data/supabase';
 
 export const metadata: Metadata = {
   title: "Shree Banarasi Sarees | Banarasi & Traditional Sarees in Samastipur",
@@ -32,7 +33,8 @@ export const metadata: Metadata = {
   }
 };
 
-export default function Home() {
+export default async function Home() {
+  const dbProducts = await fetchProducts();
   // 1. Organization Schema
   const organizationJsonLd = {
     "@context": "https://schema.org",
@@ -100,7 +102,7 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
       />
-      <HomeClient />
+      <HomeClient allProducts={dbProducts} />
     </>
   );
 }

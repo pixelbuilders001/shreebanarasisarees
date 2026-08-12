@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { ProductCard } from './ProductCard';
-import { PRODUCTS } from '../data/products';
+import { Product, PRODUCTS } from '../data/products';
 import { Filter, SlidersHorizontal, X, Search, ChevronDown, BookOpen } from 'lucide-react';
 
 interface SareesClientProps {
@@ -14,6 +14,8 @@ interface SareesClientProps {
   initialOccasion: string;
   h1Title: string;
   introductoryContent: string;
+  allProducts?: Product[];
+  categoriesList?: string[];
 }
 
 export const SareesClient: React.FC<SareesClientProps> = ({
@@ -21,6 +23,8 @@ export const SareesClient: React.FC<SareesClientProps> = ({
   initialOccasion,
   h1Title,
   introductoryContent,
+  allProducts = PRODUCTS,
+  categoriesList = ['All', 'Banarasi', 'Chikankari', 'Bandhani', 'Organza', 'Chanderi', 'Bridal', 'Offers'],
 }) => {
   const router = useRouter();
 
@@ -46,7 +50,6 @@ export const SareesClient: React.FC<SareesClientProps> = ({
   }, [initialCategory, initialOccasion]);
 
   // Categories & attributes list
-  const categoriesList = ['All', 'Banarasi', 'Chikankari', 'Bandhani', 'Organza', 'Chanderi', 'Bridal', 'Offers'];
   const colorsList = ['Red', 'Pink', 'Green', 'Blue', 'Yellow', 'Black', 'White', 'Maroon', 'Purple'];
   const occasionsList = ['Wedding', 'Festive', 'Party', 'Daily Wear', 'Office', 'Gift'];
   const fabricsList = ['Silk', 'Cotton', 'Organza', 'Chanderi Silk', 'Georgette', 'Banarasi Silk'];
@@ -75,7 +78,7 @@ export const SareesClient: React.FC<SareesClientProps> = ({
   };
 
   // Filter Logic
-  let filteredProducts = PRODUCTS.filter(product => {
+  let filteredProducts = allProducts.filter(product => {
     // 1. Category Filter
     if (selectedCategory !== 'All' && product.category !== selectedCategory) {
       return false;

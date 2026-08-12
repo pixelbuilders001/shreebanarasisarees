@@ -1,7 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { PRODUCTS } from '../../../data/products';
+import { fetchProductBySlug } from '../../../data/supabase';
 import ProductDetailClient from './ProductDetailClient';
 import { Header } from '../../../components/Header';
 import { Footer } from '../../../components/Footer';
@@ -12,7 +12,7 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const resolvedParams = await params;
-  const product = PRODUCTS.find(p => p.slug === resolvedParams.slug);
+  const product = await fetchProductBySlug(resolvedParams.slug);
 
   if (!product) {
     return {
@@ -54,7 +54,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function Page({ params }: PageProps) {
   const resolvedParams = await params;
-  const product = PRODUCTS.find(p => p.slug === resolvedParams.slug);
+  const product = await fetchProductBySlug(resolvedParams.slug);
 
   if (!product) {
     return (

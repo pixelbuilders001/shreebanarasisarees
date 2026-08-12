@@ -4,7 +4,7 @@ export interface Product {
   name: string;
   slug: string;
   description: string;
-  category: 'Banarasi' | 'Chikankari' | 'Bandhani' | 'Organza' | 'Chanderi' | 'Bridal' | 'Offers';
+  category: string;
   fabric: string;
   color: string;
   occasion: string;

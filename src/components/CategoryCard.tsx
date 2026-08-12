@@ -2,6 +2,8 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
+import { useStore } from '../context/StoreContext';
+
 interface CategoryItem {
   name: string;
   image: string;
@@ -12,46 +14,67 @@ const CATEGORIES: CategoryItem[] = [
   {
     name: "Banarasi Sarees",
     image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600",
-    link: "/sarees?category=Banarasi"
+    link: "/sarees/banarasi"
   },
   {
     name: "Chikankari Sarees",
     image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=600",
-    link: "/sarees?category=Chikankari"
+    link: "/sarees/chikankari"
   },
   {
     name: "Bandhani Sarees",
     image: "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=600",
-    link: "/sarees?category=Bandhani"
+    link: "/sarees/bandhani"
   },
   {
     name: "Organza Sarees",
     image: "https://images.unsplash.com/photo-1610030469668-93535c17b6b3?auto=format&fit=crop&q=80&w=600",
-    link: "/sarees?category=Organza"
+    link: "/sarees/organza"
   },
   {
     name: "Chanderi Silk",
     image: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=600",
-    link: "/sarees?category=Chanderi"
+    link: "/sarees/chanderi"
   },
   {
     name: "Georgette Sarees",
     image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600",
-    link: "/sarees?category=Georgette"
+    link: "/sarees/georgette"
   },
   {
     name: "Silk Sarees",
     image: "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=600",
-    link: "/sarees?category=Silk"
+    link: "/sarees/silk"
   },
   {
     name: "Bridal Wear",
     image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600",
-    link: "/sarees?category=Bridal"
+    link: "/sarees/bridal"
   }
 ];
 
+const HARDCODED_IMAGES: Record<string, string> = {
+  banarasi: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600",
+  chikankari: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=600",
+  bandhani: "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=600",
+  organza: "https://images.unsplash.com/photo-1610030469668-93535c17b6b3?auto=format&fit=crop&q=80&w=600",
+  chanderi: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=600",
+  georgette: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600",
+  silk: "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=600",
+  bridal: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600",
+};
+
 export const CategoryCard: React.FC = () => {
+  const { categories } = useStore();
+
+  const displayCategories = categories && categories.length > 0
+    ? categories.map(c => ({
+        name: c.name,
+        image: HARDCODED_IMAGES[c.slug.toLowerCase()] || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600",
+        link: `/sarees/${c.slug.toLowerCase()}`
+      }))
+    : CATEGORIES;
+
   return (
     <section className="py-16 px-4 max-w-7xl mx-auto">
       <div className="text-center mb-12">
@@ -72,7 +95,7 @@ export const CategoryCard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-        {CATEGORIES.map((category, idx) => (
+        {displayCategories.map((category, idx) => (
           <Link
             key={idx}
             href={category.link}

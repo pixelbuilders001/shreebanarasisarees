@@ -1,6 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import { SareesClient } from '../../../components/SareesClient';
+import { fetchCategories, fetchProducts } from '../../../data/supabase';
 
 interface PageProps {
   params: Promise<{ category?: string[] }>;
@@ -108,7 +109,31 @@ function getSeoKey(categoryPath?: string[]): string {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const resolvedParams = await params;
   const key = getSeoKey(resolvedParams.category);
-  const data = SEO_MAP[key] || SEO_MAP.all;
+  
+  // Try to find the category in the database by slug
+  let dbCategory = null;
+  if (resolvedParams.category && resolvedParams.category.length > 0) {
+    const slug = resolvedParams.category[0].toLowerCase();
+    const categories = await fetchCategories();
+    dbCategory = categories.find(c => c.slug.toLowerCase() === slug);
+  }
+
+  let data;
+  if (SEO_MAP[key]) {
+    data = SEO_MAP[key];
+  } else if (dbCategory) {
+    data = {
+      title: `${dbCategory.name} Sarees | Traditional & Designer Collections`,
+      description: dbCategory.description || `Explore elegant ${dbCategory.name} sarees at Shree Banarasi Sarees. Discover beautiful wedding, festive and party styles.`,
+      h1: `${dbCategory.name} Sarees`,
+      intro: dbCategory.description || `Discover our exclusive collection of handpicked ${dbCategory.name} sarees. Each piece represents India's rich weaving heritage, crafted with premium fabrics and exquisite work.`,
+      category: dbCategory.name,
+      occasion: "All",
+    };
+  } else {
+    data = SEO_MAP.all;
+  }
+
   const canonicalPath = resolvedParams.category ? `/sarees/${resolvedParams.category.join('/')}` : '/sarees';
 
   return {
@@ -143,7 +168,38 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function Page({ params }: PageProps) {
   const resolvedParams = await params;
   const key = getSeoKey(resolvedParams.category);
-  const data = SEO_MAP[key] || SEO_MAP.all;
+  
+  const [categories, dbProducts] = await Promise.all([
+    fetchCategories(),
+    fetchProducts()
+  ]);
+
+  let dbCategory = null;
+  if (resolvedParams.category && resolvedParams.category.length > 0) {
+    const slug = resolvedParams.category[0].toLowerCase();
+    dbCategory = categories.find(c => c.slug.toLowerCase() === slug);
+  }
+
+  let data;
+  if (SEO_MAP[key]) {
+    data = SEO_MAP[key];
+  } else if (dbCategory) {
+    data = {
+      title: `${dbCategory.name} Sarees | Traditional & Designer Collections`,
+      description: dbCategory.description || `Explore elegant ${dbCategory.name} sarees at Shree Banarasi Sarees. Discover beautiful wedding, festive and party styles.`,
+      h1: `${dbCategory.name} Sarees`,
+      intro: dbCategory.description || `Discover our exclusive collection of handpicked ${dbCategory.name} sarees. Each piece represents India's rich weaving heritage, crafted with premium fabrics and exquisite work.`,
+      category: dbCategory.name,
+      occasion: "All",
+    };
+  } else {
+    data = SEO_MAP.all;
+  }
+
+  // Merge categories from DB with standard list
+  const dbCatNames = categories.map(c => c.name);
+  const categoriesList = ['All', ...dbCatNames, 'Offers'];
+  const uniqueCategoriesList = Array.from(new Set(categoriesList));
 
   // Build Breadcrumb structured data
   const breadcrumbList = [
@@ -189,6 +245,8 @@ export default async function Page({ params }: PageProps) {
         initialOccasion={data.occasion}
         h1Title={data.h1}
         introductoryContent={data.intro}
+        allProducts={dbProducts}
+        categoriesList={uniqueCategoriesList}
       />
     </>
   );

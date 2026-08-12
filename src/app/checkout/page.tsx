@@ -15,6 +15,7 @@ function CheckoutContent() {
   // Order placing states
   const [isOrdered, setIsOrdered] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form Fields
   const [fullName, setFullName] = useState('');
@@ -77,9 +78,10 @@ function CheckoutContent() {
     }
 
     setErrorMsg('');
+    setIsSubmitting(true);
 
     // Place the order
-    const orderDetails = placeOrder({
+    placeOrder({
       customer: {
         name: fullName,
         phone: mobileNumber,
@@ -96,16 +98,20 @@ function CheckoutContent() {
       shipping,
       total,
       paymentMethod
+    }).then((orderDetails) => {
+      // Auto-login customer using their mobile number if not already logged in
+      if (!userPhone) {
+        loginUser(mobileNumber);
+      }
+      setCreatedOrder(orderDetails);
+      setIsOrdered(true);
+      clearCart();
+    }).catch((err) => {
+      console.error(err);
+      setErrorMsg('Failed to place order. Please try again.');
+    }).finally(() => {
+      setIsSubmitting(false);
     });
-
-    // Auto-login customer using their mobile number if not already logged in
-    if (!userPhone) {
-      loginUser(mobileNumber);
-    }
-
-    setCreatedOrder(orderDetails);
-    setIsOrdered(true);
-    clearCart();
   };
 
   if (isOrdered && createdOrder) {
@@ -504,9 +510,17 @@ function CheckoutContent() {
                 {/* Submit Order Trigger */}
                 <button
                   onClick={handlePlaceOrder}
-                  className="w-full py-3 bg-maroon text-ivory rounded font-serif font-bold text-sm tracking-widest uppercase hover:bg-maroon-dark hover:scale-[1.01] active:scale-[0.99] transition-all shadow-md"
+                  disabled={isSubmitting}
+                  className="w-full py-3 bg-maroon text-ivory rounded font-serif font-bold text-sm tracking-widest uppercase hover:bg-maroon-dark disabled:bg-maroon/50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99] transition-all shadow-md flex items-center justify-center gap-2"
                 >
-                  PLACE ORDER
+                  {isSubmitting ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-ivory border-t-transparent rounded-full animate-spin" />
+                      PLACING ORDER...
+                    </>
+                  ) : (
+                    "PLACE ORDER"
+                  )}
                 </button>
 
                 <Link

@@ -11,15 +11,19 @@ import { TestimonialSection } from './TestimonialSection';
 import { InstagramGrid } from './InstagramGrid';
 import { StoreInfo } from './StoreInfo';
 import { Footer } from './Footer';
-import { PRODUCTS } from '../data/products';
+import { Product, PRODUCTS } from '../data/products';
 import { ArrowLeft, ArrowRight, ShieldCheck, Award, Wrench, Headphones } from 'lucide-react';
 
-export default function HomeClient() {
+interface HomeClientProps {
+  allProducts?: Product[];
+}
+
+export default function HomeClient({ allProducts = PRODUCTS }: HomeClientProps) {
   // Get featured products (up to 8)
-  const featuredProducts = PRODUCTS.filter(p => p.featured).slice(0, 8);
+  const featuredProducts = allProducts.filter(p => p.featured).slice(0, 8);
 
   // Get new arrivals (up to 6)
-  const newArrivals = PRODUCTS.filter(p => p.newArrival).slice(0, 6);
+  const newArrivals = allProducts.filter(p => p.newArrival).slice(0, 6);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 

@@ -1,9 +1,14 @@
 import { MetadataRoute } from 'next';
-import { PRODUCTS } from '../data/products';
+import { fetchCategories, fetchProducts } from '../data/supabase';
 import { BLOG_POSTS } from '../data/blog';
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://shreebanarasisarees.com';
+
+  const [products, categories] = await Promise.all([
+    fetchProducts(),
+    fetchCategories()
+  ]);
 
   // 1. Static Pages
   const staticPages = [
@@ -71,18 +76,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   // 2. Saree Categories & Occasions
   const subCategories = [
-    'banarasi',
-    'chikankari',
-    'bandhani',
-    'organza',
-    'chanderi',
-    'bridal',
     'wedding',
     'party-wear',
-    'offers'
+    'offers',
+    ...categories.map(c => c.slug.toLowerCase())
   ];
+  const uniqueSubCategories = Array.from(new Set(subCategories));
 
-  const categoryPages = subCategories.map((cat) => ({
+  const categoryPages = uniqueSubCategories.map((cat) => ({
     url: `${baseUrl}/sarees/${cat}`,
     lastModified: new Date(),
     changeFrequency: 'daily' as const,
@@ -90,7 +91,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }));
 
   // 3. Product Pages
-  const productPages = PRODUCTS.map((prod) => ({
+  const productPages = products.map((prod) => ({
     url: `${baseUrl}/product/${prod.slug}`,
     lastModified: new Date(),
     changeFrequency: 'weekly' as const,
