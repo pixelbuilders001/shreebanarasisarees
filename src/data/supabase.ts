@@ -296,6 +296,14 @@ export async function clearDbCart(phone: string): Promise<boolean> {
   }
 }
 
+export interface OrderStatusHistoryEntry {
+  id: string;
+  orderId: string;
+  status: string;
+  note?: string | null;
+  createdAt: string;
+}
+
 export interface Order {
   orderId: string;
   customer: {
@@ -317,6 +325,7 @@ export interface Order {
   paymentStatus: 'Pending' | 'Paid' | 'Failed';
   orderStatus: 'Order Placed' | 'Confirmed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered';
   createdAt: string;
+  statusHistory?: OrderStatusHistoryEntry[];
 }
 
 export async function createDbOrder(orderData: {
@@ -425,7 +434,16 @@ export async function createDbOrder(orderData: {
       paymentMethod: orderData.paymentMethod,
       paymentStatus: 'Pending',
       orderStatus: 'Order Placed',
-      createdAt: createdAtStr
+      createdAt: createdAtStr,
+      statusHistory: [
+        {
+          id: 'initial',
+          orderId: orderIdUuid,
+          status: 'placed',
+          note: 'Order placed successfully by customer on storefront',
+          createdAt: createdAtStr
+        }
+      ]
     };
 
     return finalOrder;
@@ -517,6 +535,36 @@ export async function fetchDbOrders(phoneOrUserId: string): Promise<Order[]> {
         paymentMethod = 'Cash on Delivery';
       }
 
+      // Fetch status history from supabase
+      const { data: historyData, error: historyError } = await supabase
+        .from('order_status_history')
+        .select('*')
+        .eq('order_id', orderRow.id)
+        .order('created_at', { ascending: true });
+
+      const statusHistory: OrderStatusHistoryEntry[] = [];
+      if (historyData && !historyError) {
+        historyData.forEach((h: any) => {
+          statusHistory.push({
+            id: h.id,
+            orderId: h.order_id,
+            status: h.status,
+            note: h.note,
+            createdAt: h.created_at
+          });
+        });
+      }
+
+      if (statusHistory.length === 0) {
+        statusHistory.push({
+          id: 'initial',
+          orderId: orderRow.id,
+          status: orderRow.order_status || 'placed',
+          note: 'Order placed successfully by customer on storefront',
+          createdAt: orderRow.created_at
+        });
+      }
+
       resolvedOrders.push({
         orderId: orderRow.order_number,
         customer: orderRow.shipping_address as any,
@@ -528,7 +576,8 @@ export async function fetchDbOrders(phoneOrUserId: string): Promise<Order[]> {
         paymentMethod,
         paymentStatus,
         orderStatus,
-        createdAt: orderRow.created_at
+        createdAt: orderRow.created_at,
+        statusHistory
       });
     }
 

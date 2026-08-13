@@ -22,19 +22,49 @@ const timelineSteps = [
 
 function getStatusStep(status: string): number {
   switch (status?.toLowerCase()) {
+    case 'order placed':
     case 'ordered':
     case 'pending':
+    case 'placed':
       return 1;
-    case 'designing':
+    case 'confirmed':
     case 'processing':
+    case 'packed':
       return 2;
     case 'shipped':
     case 'transit':
+    case 'out for delivery':
+    case 'out_for_delivery':
       return 3;
     case 'delivered':
       return 4;
     default:
       return 1;
+  }
+}
+
+function getStatusDisplay(status: string): string {
+  switch (status?.toLowerCase()) {
+    case 'pending':
+    case 'placed':
+    case 'ordered':
+      return 'Order Placed';
+    case 'confirmed':
+    case 'processing':
+      return 'Order Confirmed';
+    case 'packed':
+      return 'Packed & Ready';
+    case 'shipped':
+      return 'Dispatched / In Transit';
+    case 'out_for_delivery':
+    case 'out for delivery':
+      return 'Out for Delivery';
+    case 'delivered':
+      return 'Delivered';
+    case 'cancelled':
+      return 'Cancelled';
+    default:
+      return status || 'Status Update';
   }
 }
 
@@ -51,6 +81,7 @@ function AccountContent() {
   // Get active order details
   const activeOrder = orders.find(o => o.orderId === selectedOrderId) || (orders.length > 0 ? orders[0] : null);
   const currentStep = activeOrder ? getStatusStep(activeOrder.orderStatus) : 0;
+  const historyList = activeOrder?.statusHistory || [];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -172,6 +203,59 @@ function AccountContent() {
                       })}
                     </div>
                   </div>
+
+                  {/* Detailed Tracking History */}
+                  {historyList.length > 0 && (
+                    <div className="border-t border-cream pt-5 space-y-4">
+                      <h3 className="text-xs font-bold text-dark-brown/65 uppercase tracking-wider font-serif">
+                        Tracking Activity Log
+                      </h3>
+                      <div className="space-y-4 pl-2">
+                        {historyList.map((history, idx) => {
+                          const date = new Date(history.createdAt);
+                          const formattedDate = date.toLocaleDateString('en-IN', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          });
+                          const formattedTime = date.toLocaleTimeString('en-IN', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          });
+
+                          return (
+                            <div key={history.id || idx} className="relative flex gap-4">
+                              {/* Connector line between tracking list items */}
+                              {idx < historyList.length - 1 && (
+                                <div className="absolute left-[11px] top-6 bottom-0 w-0.5 bg-cream/70" />
+                              )}
+                              
+                              {/* Dot indicator */}
+                              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-maroon/10 border border-maroon/30 flex items-center justify-center text-maroon z-10 bg-[#FFF9F0]">
+                                <div className="w-1.5 h-1.5 rounded-full bg-maroon" />
+                              </div>
+
+                              <div className="flex-grow bg-[#FFF9F0]/20 border border-cream/40 p-3 rounded-xl text-xs">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1">
+                                  <span className="font-serif font-bold text-dark-brown text-xs">
+                                    {getStatusDisplay(history.status)}
+                                  </span>
+                                  <span className="text-[10px] text-dark-brown/40 font-semibold uppercase">
+                                    {formattedDate} &bull; {formattedTime}
+                                  </span>
+                                </div>
+                                {history.note && (
+                                  <p className="text-dark-brown/65 mt-1.5 italic text-[11px] leading-relaxed">
+                                    &ldquo;{history.note}&rdquo;
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Items Details */}
                   <div className="border-t border-cream pt-5 space-y-4">

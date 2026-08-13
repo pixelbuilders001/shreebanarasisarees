@@ -37,6 +37,14 @@ export interface CustomRequest {
   createdAt: string;
 }
 
+export interface OrderStatusHistoryEntry {
+  id: string;
+  orderId: string;
+  status: string;
+  note?: string | null;
+  createdAt: string;
+}
+
 export interface Order {
   orderId: string;
   customer: {
@@ -58,6 +66,7 @@ export interface Order {
   paymentStatus: 'Pending' | 'Paid' | 'Failed';
   orderStatus: 'Order Placed' | 'Confirmed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered';
   createdAt: string;
+  statusHistory?: OrderStatusHistoryEntry[];
 }
 
 interface StoreContextType {
