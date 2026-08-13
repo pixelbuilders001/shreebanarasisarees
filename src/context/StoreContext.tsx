@@ -139,9 +139,39 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [checkedPincode, setCheckedPincode] = useState<string>('');
 
   // Helper to sync user cart and orders
-  const syncUserData = async (identifier: string, loadedProducts: Product[]) => {
+  const syncUserData = async (identifier: string, loadedProducts: Product[], shouldMerge: boolean = false) => {
     try {
-      const dbCartItems = await fetchDbCart(identifier);
+      let dbCartItems = await fetchDbCart(identifier);
+
+      if (shouldMerge) {
+        let localCartItems: CartItem[] = [];
+        try {
+          const stored = localStorage.getItem('sbs_cart');
+          if (stored) {
+            localCartItems = JSON.parse(stored);
+          }
+        } catch (e) {
+          console.error('Failed to parse stored cart:', e);
+        }
+
+        if (localCartItems.length > 0) {
+          for (const localItem of localCartItems) {
+            const dbMatch = dbCartItems.find(dbItem => dbItem.product_id === localItem.product.id);
+            if (dbMatch) {
+              const mergedQty = dbMatch.quantity + localItem.quantity;
+              await upsertDbCartItem(identifier, localItem.product.id, mergedQty);
+              dbMatch.quantity = mergedQty;
+            } else {
+              await upsertDbCartItem(identifier, localItem.product.id, localItem.quantity);
+              dbCartItems.push({
+                product_id: localItem.product.id,
+                quantity: localItem.quantity
+              });
+            }
+          }
+        }
+      }
+
       if (dbCartItems && dbCartItems.length > 0) {
         const finalCartItems: CartItem[] = [];
         for (const dbItem of dbCartItems) {
@@ -264,7 +294,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
 
         // Fetch and merge cart & orders for this user
-        syncUserData(currentUser.id, activeProducts);
+        syncUserData(currentUser.id, activeProducts, !storedUser);
 
         // Clean up URL hash/search and force a reload if redirected from OAuth to sync state cleanly
         if (typeof window !== 'undefined' && (

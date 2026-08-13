@@ -218,19 +218,19 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
 
 export interface DbCartItem {
   id: string;
-  user_phone: string;
+  user_id: string;
   product_id: string;
   quantity: number;
   created_at: string;
   updated_at: string;
 }
 
-export async function fetchDbCart(phone: string): Promise<{ product_id: string; quantity: number }[]> {
+export async function fetchDbCart(userId: string): Promise<{ product_id: string; quantity: number }[]> {
   try {
     const { data, error } = await supabase
       .from('cart_items')
       .select('product_id, quantity')
-      .eq('user_phone', phone);
+      .eq('user_id', userId);
     if (error) {
       console.error('Error fetching DB cart:', error);
       return [];
@@ -242,13 +242,13 @@ export async function fetchDbCart(phone: string): Promise<{ product_id: string; 
   }
 }
 
-export async function upsertDbCartItem(phone: string, productId: string, quantity: number): Promise<boolean> {
+export async function upsertDbCartItem(userId: string, productId: string, quantity: number): Promise<boolean> {
   try {
     const { error } = await supabase
       .from('cart_items')
       .upsert(
-        { user_phone: phone, product_id: productId, quantity },
-        { onConflict: 'user_phone,product_id' }
+        { user_id: userId, product_id: productId, quantity },
+        { onConflict: 'user_id,product_id' }
       );
     if (error) {
       console.error('Error upserting DB cart item:', error);
@@ -261,12 +261,12 @@ export async function upsertDbCartItem(phone: string, productId: string, quantit
   }
 }
 
-export async function deleteDbCartItem(phone: string, productId: string): Promise<boolean> {
+export async function deleteDbCartItem(userId: string, productId: string): Promise<boolean> {
   try {
     const { error } = await supabase
       .from('cart_items')
       .delete()
-      .eq('user_phone', phone)
+      .eq('user_id', userId)
       .eq('product_id', productId);
     if (error) {
       console.error('Error deleting DB cart item:', error);
@@ -279,12 +279,12 @@ export async function deleteDbCartItem(phone: string, productId: string): Promis
   }
 }
 
-export async function clearDbCart(phone: string): Promise<boolean> {
+export async function clearDbCart(userId: string): Promise<boolean> {
   try {
     const { error } = await supabase
       .from('cart_items')
       .delete()
-      .eq('user_phone', phone);
+      .eq('user_id', userId);
     if (error) {
       console.error('Error clearing DB cart:', error);
       return false;
