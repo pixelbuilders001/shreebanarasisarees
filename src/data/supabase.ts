@@ -323,7 +323,7 @@ export interface Order {
   total: number;
   paymentMethod: 'UPI' | 'Cash on Delivery' | 'Online Payment';
   paymentStatus: 'Pending' | 'Paid' | 'Failed';
-  orderStatus: 'Order Placed' | 'Confirmed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered';
+  orderStatus: 'Order Placed' | 'Confirmed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
   createdAt: string;
   statusHistory?: OrderStatusHistoryEntry[];
 }
@@ -521,7 +521,7 @@ export async function fetchDbOrders(phoneOrUserId: string): Promise<Order[]> {
       else if (orderRow.order_status === 'shipped') orderStatus = 'Shipped';
       else if (orderRow.order_status === 'out_for_delivery') orderStatus = 'Out for Delivery';
       else if (orderRow.order_status === 'delivered') orderStatus = 'Delivered';
-      else if (orderRow.order_status === 'cancelled') orderStatus = 'Delivered';
+      else if (orderRow.order_status === 'cancelled') orderStatus = 'Cancelled';
 
       let paymentStatus: Order['paymentStatus'] = 'Pending';
       if (orderRow.payment_status === 'paid') paymentStatus = 'Paid';
@@ -627,5 +627,156 @@ export async function checkDeliveryServiceability(
   } catch (err: any) {
     console.error('Exception in checkDeliveryServiceability:', err);
     return { success: false, serviceable: false, message: err.message || 'Network error' };
+  }
+}
+
+export async function cancelDbOrder(orderNumber: string): Promise<boolean> {
+  try {
+    const { data: orderRow, error: fetchError } = await supabase
+      .from('orders')
+      .select('id, order_status')
+      .eq('order_number', orderNumber)
+      .single();
+
+    if (fetchError || !orderRow) {
+      console.error('Error fetching order for cancellation:', fetchError);
+      return false;
+    }
+
+    const currentStatus = orderRow.order_status?.toLowerCase();
+    if (
+      currentStatus === 'out_for_delivery' ||
+      currentStatus === 'delivered' ||
+      currentStatus === 'cancelled'
+    ) {
+      console.warn(`Cannot cancel order in status: ${currentStatus}`);
+      return false;
+    }
+
+    const { error: updateError } = await supabase
+      .from('orders')
+      .update({ order_status: 'cancelled', updated_at: new Date().toISOString() })
+      .eq('id', orderRow.id);
+
+    if (updateError) {
+      console.error('Error updating order status to cancelled:', updateError);
+      return false;
+    }
+
+    const { error: historyError } = await supabase
+      .from('order_status_history')
+      .insert({
+        order_id: orderRow.id,
+        status: 'cancelled',
+        note: 'Order cancelled by customer'
+      });
+
+    if (historyError) {
+      console.error('Error inserting cancellation status history:', historyError);
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Exception in cancelDbOrder:', err);
+    return false;
+  }
+}
+
+export async function cancelDbOrderItem(orderNumber: string, productId: string): Promise<{ success: boolean; cancelledEntireOrder: boolean; newSubtotal?: number; newTotal?: number }> {
+  try {
+    const { data: orderRow, error: orderFetchError } = await supabase
+      .from('orders')
+      .select('id, subtotal, total_amount, order_status')
+      .eq('order_number', orderNumber)
+      .single();
+
+    if (orderFetchError || !orderRow) {
+      console.error('Error fetching order for item cancellation:', orderFetchError);
+      return { success: false, cancelledEntireOrder: false };
+    }
+
+    const currentStatus = orderRow.order_status?.toLowerCase();
+    if (
+      currentStatus === 'out_for_delivery' ||
+      currentStatus === 'delivered' ||
+      currentStatus === 'cancelled'
+    ) {
+      console.warn(`Cannot cancel item in status: ${currentStatus}`);
+      return { success: false, cancelledEntireOrder: false };
+    }
+
+    const { data: items, error: itemsFetchError } = await supabase
+      .from('order_items')
+      .select('*')
+      .eq('order_id', orderRow.id);
+
+    if (itemsFetchError || !items) {
+      console.error('Error fetching order items for cancellation:', itemsFetchError);
+      return { success: false, cancelledEntireOrder: false };
+    }
+
+    if (items.length <= 1) {
+      const success = await cancelDbOrder(orderNumber);
+      return { success, cancelledEntireOrder: true };
+    }
+
+    const targetItem = items.find(item => item.inventory_id === productId);
+    if (!targetItem) {
+      console.error(`Item with product ID ${productId} not found in order ${orderNumber}`);
+      return { success: false, cancelledEntireOrder: false };
+    }
+
+    const itemTotalPrice = Number(targetItem.total_price);
+    const productName = targetItem.product_name;
+
+    const { error: deleteError } = await supabase
+      .from('order_items')
+      .delete()
+      .eq('order_id', orderRow.id)
+      .eq('inventory_id', productId);
+
+    if (deleteError) {
+      console.error('Error deleting order item:', deleteError);
+      return { success: false, cancelledEntireOrder: false };
+    }
+
+    const newSubtotal = Math.max(0, Number(orderRow.subtotal) - itemTotalPrice);
+    const newTotal = Math.max(0, Number(orderRow.total_amount) - itemTotalPrice);
+
+    const { error: updateError } = await supabase
+      .from('orders')
+      .update({
+        subtotal: newSubtotal,
+        total_amount: newTotal,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', orderRow.id);
+
+    if (updateError) {
+      console.error('Error updating order totals:', updateError);
+      return { success: false, cancelledEntireOrder: false };
+    }
+
+    const { error: historyError } = await supabase
+      .from('order_status_history')
+      .insert({
+        order_id: orderRow.id,
+        status: 'item_cancelled',
+        note: `Cancelled "${productName}" (Qty ${targetItem.quantity}) from order`
+      });
+
+    if (historyError) {
+      console.error('Error inserting item cancellation history:', historyError);
+    }
+
+    return {
+      success: true,
+      cancelledEntireOrder: false,
+      newSubtotal,
+      newTotal
+    };
+  } catch (err) {
+    console.error('Exception in cancelDbOrderItem:', err);
+    return { success: false, cancelledEntireOrder: false };
   }
 }

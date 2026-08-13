@@ -13,6 +13,8 @@ import {
   clearDbCart,
   createDbOrder,
   fetchDbOrders,
+  cancelDbOrder,
+  cancelDbOrderItem,
   DeliveryCheckResult
 } from '../data/supabase';
 
@@ -64,7 +66,7 @@ export interface Order {
   total: number;
   paymentMethod: 'UPI' | 'Cash on Delivery' | 'Online Payment';
   paymentStatus: 'Pending' | 'Paid' | 'Failed';
-  orderStatus: 'Order Placed' | 'Confirmed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered';
+  orderStatus: 'Order Placed' | 'Confirmed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
   createdAt: string;
   statusHistory?: OrderStatusHistoryEntry[];
 }
@@ -83,6 +85,8 @@ interface StoreContextType {
   toggleWishlist: (product: Product) => void;
   isInWishlist: (productId: string) => boolean;
   placeOrder: (orderData: Omit<Order, 'orderId' | 'orderStatus' | 'paymentStatus' | 'createdAt'>) => Promise<Order>;
+  cancelOrder: (orderId: string) => Promise<boolean>;
+  cancelOrderItem: (orderId: string, productId: string) => Promise<{ success: boolean; cancelledEntireOrder: boolean }>;
   addCustomRequest: (request: Omit<CustomRequest, 'id' | 'status' | 'createdAt'>) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -424,6 +428,95 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return fallbackOrder;
   };
 
+  // Cancel order
+  const cancelOrder = async (orderId: string): Promise<boolean> => {
+    const success = await cancelDbOrder(orderId);
+    if (success) {
+      setOrders(prevOrders => 
+        prevOrders.map(o => {
+          if (o.orderId === orderId) {
+            const nowStr = new Date().toISOString();
+            const newHistory: OrderStatusHistoryEntry = {
+              id: `cancelled-${Date.now()}`,
+              orderId,
+              status: 'cancelled',
+              note: 'Order cancelled by customer',
+              createdAt: nowStr
+            };
+            return {
+              ...o,
+              orderStatus: 'Cancelled',
+              statusHistory: o.statusHistory ? [...o.statusHistory, newHistory] : [newHistory]
+            };
+          }
+          return o;
+        })
+      );
+    }
+    return success;
+  };
+
+  // Cancel order item
+  const cancelOrderItem = async (orderId: string, productId: string): Promise<{ success: boolean; cancelledEntireOrder: boolean }> => {
+    const res = await cancelDbOrderItem(orderId, productId);
+    if (res.success) {
+      if (res.cancelledEntireOrder) {
+        setOrders(prevOrders => 
+          prevOrders.map(o => {
+            if (o.orderId === orderId) {
+              const nowStr = new Date().toISOString();
+              const newHistory: OrderStatusHistoryEntry = {
+                id: `cancelled-${Date.now()}`,
+                orderId,
+                status: 'cancelled',
+                note: 'Order cancelled by customer',
+                createdAt: nowStr
+              };
+              return {
+                ...o,
+                orderStatus: 'Cancelled',
+                statusHistory: o.statusHistory ? [...o.statusHistory, newHistory] : [newHistory]
+              };
+            }
+            return o;
+          })
+        );
+      } else {
+        setOrders(prevOrders => 
+          prevOrders.map(o => {
+            if (o.orderId === orderId) {
+              const nowStr = new Date().toISOString();
+              const targetItem = o.items.find(item => item.product.id === productId);
+              const productName = targetItem?.product.name || 'item';
+              const qty = targetItem?.quantity || 1;
+              
+              const newHistory: OrderStatusHistoryEntry = {
+                id: `item-cancelled-${Date.now()}`,
+                orderId,
+                status: 'item_cancelled',
+                note: `Cancelled "${productName}" (Qty ${qty}) from order`,
+                createdAt: nowStr
+              };
+              
+              return {
+                ...o,
+                subtotal: res.newSubtotal ?? o.subtotal,
+                total: res.newTotal ?? o.total,
+                items: o.items.filter(item => item.product.id !== productId),
+                statusHistory: o.statusHistory ? [...o.statusHistory, newHistory] : [newHistory]
+              };
+            }
+            return o;
+          })
+        );
+      }
+    }
+    return {
+      success: res.success,
+      cancelledEntireOrder: res.cancelledEntireOrder
+    };
+  };
+
   // Custom request
   const addCustomRequest = (request: Omit<CustomRequest, 'id' | 'status' | 'createdAt'>) => {
     const id = `SBS-CUST-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -686,6 +779,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       toggleWishlist,
       isInWishlist,
       placeOrder,
+      cancelOrder,
+      cancelOrderItem,
       addCustomRequest,
       searchQuery,
       setSearchQuery,

@@ -7,7 +7,9 @@ import {
   ShoppingBag, 
   FileText, 
   MessageCircle, 
-  ArrowRight 
+  ArrowRight,
+  AlertTriangle,
+  CheckCircle2
 } from 'lucide-react';
 
 function getStatusDisplay(status: string): string {
@@ -40,14 +42,77 @@ function AccountContent() {
     orders, 
     customRequests, 
     recentSearches,
-    clearRecentSearches
+    clearRecentSearches,
+    cancelOrder,
+    cancelOrderItem
   } = useStore();
 
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
+  const [itemToCancel, setItemToCancel] = useState<string | null>(null);
+  const [cancelType, setCancelType] = useState<'order' | 'item'>('order');
+  const [cancelStatus, setCancelStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   // Get active order details
   const activeOrder = orders.find(o => o.orderId === selectedOrderId) || (orders.length > 0 ? orders[0] : null);
   const historyList = activeOrder?.statusHistory || [];
+
+  const handleCancelOrder = async (productId?: string) => {
+    if (!activeOrder) return;
+    setOrderToCancel(activeOrder.orderId);
+    
+    if (productId && activeOrder.items.length > 1) {
+      setItemToCancel(productId);
+      setCancelType('item');
+    } else {
+      setItemToCancel(null);
+      setCancelType('order');
+    }
+    
+    setCancelStatus('idle');
+    setShowCancelModal(true);
+  };
+
+  const confirmCancelOrderAction = async () => {
+    if (!orderToCancel) return;
+
+    setIsCancelling(true);
+    try {
+      if (cancelType === 'item' && itemToCancel) {
+        const res = await cancelOrderItem(orderToCancel, itemToCancel);
+        if (res.success) {
+          if (res.cancelledEntireOrder) {
+            setCancelType('order');
+          }
+          setCancelStatus('success');
+        } else {
+          setCancelStatus('error');
+        }
+      } else {
+        const success = await cancelOrder(orderToCancel);
+        if (success) {
+          setCancelStatus('success');
+        } else {
+          setCancelStatus('error');
+        }
+      }
+    } catch (err) {
+      console.error("Cancellation error:", err);
+      setCancelStatus('error');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const targetItemObj = activeOrder?.items.find(item => item.product.id === itemToCancel);
+  const targetItemName = targetItemObj?.product.name || '';
+
+  const isCancellable = activeOrder && 
+    activeOrder.orderStatus !== 'Out for Delivery' && 
+    activeOrder.orderStatus !== 'Delivered' && 
+    activeOrder.orderStatus !== 'Cancelled';
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -110,8 +175,6 @@ function AccountContent() {
                     </div>
                   </div>
 
-
-
                   {/* Detailed Tracking History */}
                   {historyList.length > 0 && (
                     <div className="border-t border-cream pt-5 space-y-4">
@@ -172,16 +235,27 @@ function AccountContent() {
                     </h3>
                     <div className="space-y-3">
                       {activeOrder.items.map((item: any) => (
-                        <div key={item.product.id} className="flex gap-4 p-3 border border-cream/50 rounded-xl bg-white shadow-sm hover:shadow transition-shadow animate-fadeIn">
-                          <img src={item.product.images[0]} alt={item.product.name} className="w-14 aspect-[3/4] object-cover rounded-lg bg-cream flex-shrink-0" />
-                          <div className="flex-grow flex flex-col justify-center">
-                            <h4 className="font-serif text-sm font-bold text-dark-brown leading-snug">{item.product.name}</h4>
-                            <p className="text-xs text-dark-brown/60 mt-1">{item.product.fabric} &bull; Qty {item.quantity}</p>
+                        <div key={item.product.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 border border-cream/50 rounded-xl bg-white shadow-sm hover:shadow transition-shadow animate-fadeIn">
+                          <div className="flex gap-4 items-center flex-grow">
+                            <img src={item.product.images[0]} alt={item.product.name} className="w-14 aspect-[3/4] object-cover rounded-lg bg-cream flex-shrink-0" />
+                            <div className="flex-grow flex flex-col justify-center">
+                              <h4 className="font-serif text-sm font-bold text-dark-brown leading-snug">{item.product.name}</h4>
+                              <p className="text-xs text-dark-brown/60 mt-1">{item.product.fabric} &bull; Qty {item.quantity}</p>
+                            </div>
                           </div>
-                          <div className="text-right flex flex-col justify-center">
+                          <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
                             <span className="font-serif text-sm font-bold text-maroon">
                               ₹{((item.product.salePrice ?? item.product.price) * item.quantity).toLocaleString('en-IN')}
                             </span>
+                            {isCancellable && (
+                              <button
+                                onClick={() => handleCancelOrder(item.product.id)}
+                                disabled={isCancelling}
+                                className="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 hover:border-red-300 rounded-lg text-[10px] font-serif font-bold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer shadow-sm animate-fadeIn"
+                              >
+                                {isCancelling ? 'Cancelling...' : 'Cancel Saree'}
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -273,6 +347,123 @@ function AccountContent() {
           )}
         </div>
       </div>
+
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-[#0c0a09]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-[#FFF9F0] border border-[#C9A45C]/30 max-w-sm w-full rounded-2xl p-6 shadow-2xl relative animate-scaleIn space-y-5">
+            {cancelStatus === 'idle' && (
+              <>
+                <div className="flex items-center gap-3 border-b border-cream pb-3">
+                  <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-600 flex-shrink-0">
+                    <AlertTriangle size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-sm font-bold text-dark-brown">
+                      {cancelType === 'item' ? 'Cancel Item' : 'Cancel Order'}
+                    </h3>
+                    <p className="text-[9px] text-dark-brown/40 font-bold uppercase tracking-wider mt-0.5">Order ID: {orderToCancel}</p>
+                  </div>
+                </div>
+                
+                <p className="text-xs text-dark-brown/70 leading-relaxed font-medium">
+                  {cancelType === 'item' ? (
+                    <>Are you sure you want to cancel <strong className="text-maroon font-bold font-serif">{targetItemName}</strong> from this order? The order total will be updated automatically.</>
+                  ) : (
+                    <>Are you sure you want to cancel this entire order? This action cannot be undone, and your reserved premium items will be returned to store inventory.</>
+                  )}
+                </p>
+                
+                <div className="flex justify-end gap-2.5 pt-1">
+                  <button
+                    onClick={() => {
+                      setShowCancelModal(false);
+                      setOrderToCancel(null);
+                      setItemToCancel(null);
+                    }}
+                    disabled={isCancelling}
+                    className="px-3.5 py-2 border border-cream text-dark-brown/60 hover:bg-cream/15 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    Keep
+                  </button>
+                  <button
+                    onClick={confirmCancelOrderAction}
+                    disabled={isCancelling}
+                    className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[11px] font-serif font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
+                  >
+                    {isCancelling ? 'Cancelling...' : (cancelType === 'item' ? 'Cancel Item' : 'Cancel Order')}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {cancelStatus === 'success' && (
+              <>
+                <div className="flex flex-col items-center text-center py-3 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center text-green-600 shadow-inner">
+                    <CheckCircle2 size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-base font-bold text-dark-brown">
+                      {cancelType === 'item' ? 'Item Cancelled' : 'Order Cancelled'}
+                    </h3>
+                    <p className="text-[9px] text-dark-brown/40 font-bold uppercase tracking-wider mt-0.5">Order ID: {orderToCancel}</p>
+                  </div>
+                  <p className="text-xs text-dark-brown/70 leading-relaxed font-medium px-2">
+                    {cancelType === 'item' ? (
+                      <>The saree has been successfully cancelled from your order. The remaining items in your order are active and being processed.</>
+                    ) : (
+                      <>Your order has been successfully cancelled. If you made any payment, a refund request has been initiated automatically.</>
+                    )}
+                  </p>
+                </div>
+                <div className="flex justify-center border-t border-cream/50 pt-4">
+                  <button
+                    onClick={() => {
+                      setShowCancelModal(false);
+                      setOrderToCancel(null);
+                      setItemToCancel(null);
+                      setCancelStatus('idle');
+                    }}
+                    className="w-full max-w-[120px] py-2 bg-maroon text-ivory rounded-xl text-[11px] font-serif font-bold uppercase tracking-wider hover:bg-maroon-dark transition-colors cursor-pointer shadow-sm text-center"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            )}
+
+            {cancelStatus === 'error' && (
+              <>
+                <div className="flex flex-col items-center text-center py-3 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-600 shadow-inner">
+                    <AlertTriangle size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-base font-bold text-dark-brown">Cancellation Failed</h3>
+                    <p className="text-[9px] text-dark-brown/40 font-bold uppercase tracking-wider mt-0.5">Order ID: {orderToCancel}</p>
+                  </div>
+                  <p className="text-xs text-dark-brown/70 leading-relaxed font-medium px-2">
+                    We could not process your cancellation at this time. Please check your network connection or contact customer support.
+                  </p>
+                </div>
+                <div className="flex justify-center border-t border-cream/50 pt-4">
+                  <button
+                    onClick={() => {
+                      setShowCancelModal(false);
+                      setOrderToCancel(null);
+                      setItemToCancel(null);
+                      setCancelStatus('idle');
+                    }}
+                    className="w-full max-w-[120px] py-2 bg-dark-brown text-white rounded-xl text-[11px] font-serif font-bold uppercase tracking-wider hover:bg-dark-brown/90 transition-colors cursor-pointer shadow-sm text-center"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
