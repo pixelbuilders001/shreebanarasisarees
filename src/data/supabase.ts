@@ -215,6 +215,71 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
     return null;
   }
 }
+export async function fetchDbWishlist(userId: string): Promise<string[]> {
+  try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!isUuid) return [];
+
+    const { data, error } = await supabase
+      .from('wishlist')
+      .select('product_id')
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error fetching DB wishlist:', error);
+      return [];
+    }
+    return (data || []).map((item: any) => item.product_id);
+  } catch (err) {
+    console.error('Exception in fetchDbWishlist:', err);
+    return [];
+  }
+}
+
+export async function addToDbWishlist(userId: string, productId: string): Promise<boolean> {
+  try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!isUuid) return false;
+
+    const { error } = await supabase
+      .from('wishlist')
+      .insert({
+        user_id: userId,
+        product_id: productId
+      });
+
+    if (error) {
+      console.error('Error adding to DB wishlist:', error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Exception in addToDbWishlist:', err);
+    return false;
+  }
+}
+
+export async function removeFromDbWishlist(userId: string, productId: string): Promise<boolean> {
+  try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!isUuid) return false;
+
+    const { error } = await supabase
+      .from('wishlist')
+      .delete()
+      .eq('user_id', userId)
+      .eq('product_id', productId);
+
+    if (error) {
+      console.error('Error removing from DB wishlist:', error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Exception in removeFromDbWishlist:', err);
+    return false;
+  }
+}
 
 export interface DbCartItem {
   id: string;
@@ -227,6 +292,9 @@ export interface DbCartItem {
 
 export async function fetchDbCart(userId: string): Promise<{ product_id: string; quantity: number }[]> {
   try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!isUuid) return [];
+
     const { data, error } = await supabase
       .from('cart_items')
       .select('product_id, quantity')
@@ -244,6 +312,9 @@ export async function fetchDbCart(userId: string): Promise<{ product_id: string;
 
 export async function upsertDbCartItem(userId: string, productId: string, quantity: number): Promise<boolean> {
   try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!isUuid) return false;
+
     const { error } = await supabase
       .from('cart_items')
       .upsert(
@@ -263,6 +334,9 @@ export async function upsertDbCartItem(userId: string, productId: string, quanti
 
 export async function deleteDbCartItem(userId: string, productId: string): Promise<boolean> {
   try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!isUuid) return false;
+
     const { error } = await supabase
       .from('cart_items')
       .delete()
@@ -281,6 +355,9 @@ export async function deleteDbCartItem(userId: string, productId: string): Promi
 
 export async function clearDbCart(userId: string): Promise<boolean> {
   try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!isUuid) return false;
+
     const { error } = await supabase
       .from('cart_items')
       .delete()

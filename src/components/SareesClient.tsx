@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { ProductCard } from './ProductCard';
@@ -27,6 +27,7 @@ export const SareesClient: React.FC<SareesClientProps> = ({
   categoriesList = ['All', 'Banarasi', 'Chikankari', 'Bandhani', 'Organza', 'Chanderi', 'Bridal', 'Offers'],
 }) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Filter States
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
@@ -47,7 +48,10 @@ export const SareesClient: React.FC<SareesClientProps> = ({
   useEffect(() => {
     setSelectedCategory(initialCategory);
     setSelectedOccasions(initialOccasion !== 'All' ? [initialOccasion] : []);
-  }, [initialCategory, initialOccasion]);
+    
+    const priceParam = searchParams.get('priceRange');
+    setSelectedPriceRange(priceParam || 'All');
+  }, [initialCategory, initialOccasion, searchParams]);
 
   // Categories & attributes list
   const colorsList = ['Red', 'Pink', 'Green', 'Blue', 'Yellow', 'Black', 'White', 'Maroon', 'Purple'];
@@ -87,6 +91,9 @@ export const SareesClient: React.FC<SareesClientProps> = ({
     // 2. Price Filter
     const finalPrice = product.salePrice ?? product.price;
     if (selectedPriceRange !== 'All') {
+      if (selectedPriceRange === 'under_999' && finalPrice > 999) return false;
+      if (selectedPriceRange === 'under_1499' && finalPrice > 1499) return false;
+      if (selectedPriceRange === 'under_2000' && finalPrice > 2000) return false;
       if (selectedPriceRange === 'under_1000' && finalPrice > 1000) return false;
       if (selectedPriceRange === '1000_2000' && (finalPrice < 1000 || finalPrice > 2000)) return false;
       if (selectedPriceRange === '2000_5000' && (finalPrice < 2000 || finalPrice > 5000)) return false;
@@ -251,8 +258,9 @@ export const SareesClient: React.FC<SareesClientProps> = ({
               <div className="space-y-1.5 text-xs text-dark-brown/85 font-medium">
                 {[
                   { label: 'All Prices', value: 'All' },
-                  { label: 'Under ₹1,000', value: 'under_1000' },
-                  { label: '₹1,000 – ₹2,000', value: '1000_2000' },
+                  { label: 'Under ₹999', value: 'under_999' },
+                  { label: 'Under ₹1,499', value: 'under_1499' },
+                  { label: 'Under ₹2,000', value: 'under_2000' },
                   { label: '₹2,000 – ₹5,000', value: '2000_5000' },
                   { label: '₹5,000+', value: '5000_plus' }
                 ].map((range) => (
@@ -406,8 +414,9 @@ export const SareesClient: React.FC<SareesClientProps> = ({
                 <div className="space-y-2 text-xs text-dark-brown/80">
                   {[
                     { label: 'All Prices', value: 'All' },
-                    { label: 'Under ₹1,000', value: 'under_1000' },
-                    { label: '₹1,000 – ₹2,000', value: '1000_2000' },
+                    { label: 'Under ₹999', value: 'under_999' },
+                    { label: 'Under ₹1,499', value: 'under_1499' },
+                    { label: 'Under ₹2,000', value: 'under_2000' },
                     { label: '₹2,000 – ₹5,000', value: '2000_5000' },
                     { label: '₹5,000+', value: '5000_plus' }
                   ].map((range) => (

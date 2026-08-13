@@ -62,7 +62,7 @@ export default function RootLayout({
             {children}
           </div>
           <CartDrawer />
-          <WhatsAppButton />
+          {/* <WhatsAppButton /> */}
         </StoreProvider>
       </body>
     </html>

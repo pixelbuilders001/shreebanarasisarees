@@ -351,7 +351,19 @@ const HeaderInner: React.FC = () => {
                 </button>
               )}
 
-            
+              {/* Wishlist */}
+              <Link
+                href="/wishlist"
+                className="p-2 text-dark-brown hover:text-maroon transition-colors relative hidden md:block"
+                aria-label="Wishlist"
+              >
+                <Heart size={22} />
+                {wishlist.length > 0 && (
+                  <span className="absolute top-0 right-0 bg-maroon text-ivory text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[#FFF9F0] shadow-sm animate-pulse">
+                    {wishlist.length}
+                  </span>
+                )}
+              </Link>
 
               {/* Shopping Cart */}
               <button

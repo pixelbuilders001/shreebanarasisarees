@@ -67,6 +67,59 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             }`}
           />
         </button>
+
+        {/* Hover Gradient Overlay */}
+        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-dark-brown/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 hidden md:block" />
+
+        {/* Desktop Add to Cart Hover Overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-3 z-20 hidden md:block opacity-0 translate-y-4 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300">
+          {quantityInCart > 0 ? (
+            <div className="flex items-center justify-between border border-maroon rounded bg-white overflow-hidden shadow-md h-9">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  updateCartQuantity(product.id, quantityInCart - 1);
+                }}
+                className="px-3 h-full text-xs font-bold text-maroon hover:bg-cream/20 transition-colors flex items-center justify-center"
+                aria-label="Decrease quantity"
+              >
+                -
+              </button>
+              <span className="text-xs font-bold text-dark-brown min-w-[20px] text-center select-none font-sans">
+                {quantityInCart} in Cart
+              </span>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  updateCartQuantity(product.id, quantityInCart + 1);
+                }}
+                disabled={product.stock > 0 && quantityInCart >= product.stock}
+                className="px-3 h-full text-xs font-bold text-maroon hover:bg-cream/20 transition-colors disabled:opacity-40 disabled:hover:bg-transparent flex items-center justify-center"
+                aria-label="Increase quantity"
+              >
+                +
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (product.stock > 0) addToCart(product, 1);
+              }}
+              disabled={product.stock === 0}
+              className={`w-full py-2.5 rounded bg-maroon text-ivory font-bold text-xs uppercase tracking-widest hover:bg-maroon-dark transition-all flex items-center justify-center gap-2 shadow-lg border border-gold/20 ${
+                product.stock === 0 ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-[0.98]'
+              }`}
+              aria-label="Add to Cart"
+            >
+              <ShoppingBag size={13} className="text-gold-light" />
+              <span className="font-serif">Add to Cart</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Info Area */}
@@ -97,40 +150,42 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               )}
             </div>
 
-            {/* Quick Add To Cart / Quantity Selector */}
-            {quantityInCart > 0 ? (
-              <div className="flex items-center border border-maroon rounded-full bg-white overflow-hidden shadow-sm h-8">
+            {/* Quick Add To Cart / Quantity Selector (Mobile Only) */}
+            <div className="md:hidden">
+              {quantityInCart > 0 ? (
+                <div className="flex items-center border border-maroon rounded-full bg-white overflow-hidden shadow-sm h-8">
+                  <button
+                    onClick={() => updateCartQuantity(product.id, quantityInCart - 1)}
+                    className="px-2.5 h-full text-xs font-bold text-maroon hover:bg-cream/20 transition-colors flex items-center justify-center"
+                    aria-label="Decrease quantity"
+                  >
+                    -
+                  </button>
+                  <span className="px-1 text-xs font-bold text-dark-brown min-w-[16px] text-center select-none">
+                    {quantityInCart}
+                  </span>
+                  <button
+                    onClick={() => updateCartQuantity(product.id, quantityInCart + 1)}
+                    disabled={product.stock > 0 && quantityInCart >= product.stock}
+                    className="px-2.5 h-full text-xs font-bold text-maroon hover:bg-cream/20 transition-colors disabled:opacity-40 disabled:hover:bg-transparent flex items-center justify-center"
+                    aria-label="Increase quantity"
+                  >
+                    +
+                  </button>
+                </div>
+              ) : (
                 <button
-                  onClick={() => updateCartQuantity(product.id, quantityInCart - 1)}
-                  className="px-2.5 h-full text-xs font-bold text-maroon hover:bg-cream/20 transition-colors flex items-center justify-center"
-                  aria-label="Decrease quantity"
+                  onClick={() => product.stock > 0 && addToCart(product, 1)}
+                  disabled={product.stock === 0}
+                  className={`p-2 rounded-full bg-maroon text-ivory hover:bg-maroon-dark transition-all ${
+                    product.stock === 0 ? 'opacity-40 cursor-not-allowed' : 'hover:scale-105 active:scale-95'
+                  }`}
+                  aria-label="Add to Cart"
                 >
-                  -
+                  <ShoppingBag size={14} />
                 </button>
-                <span className="px-1 text-xs font-bold text-dark-brown min-w-[16px] text-center select-none">
-                  {quantityInCart}
-                </span>
-                <button
-                  onClick={() => updateCartQuantity(product.id, quantityInCart + 1)}
-                  disabled={product.stock > 0 && quantityInCart >= product.stock}
-                  className="px-2.5 h-full text-xs font-bold text-maroon hover:bg-cream/20 transition-colors disabled:opacity-40 disabled:hover:bg-transparent flex items-center justify-center"
-                  aria-label="Increase quantity"
-                >
-                  +
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => product.stock > 0 && addToCart(product, 1)}
-                disabled={product.stock === 0}
-                className={`p-2 rounded-full bg-maroon text-ivory hover:bg-maroon-dark transition-all ${
-                  product.stock === 0 ? 'opacity-40 cursor-not-allowed' : 'hover:scale-105 active:scale-95'
-                }`}
-                aria-label="Add to Cart"
-              >
-                <ShoppingBag size={14} />
-              </button>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Handwoven / In Stock Indicator */}

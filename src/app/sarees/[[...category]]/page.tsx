@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Metadata } from 'next';
 import { SareesClient } from '../../../components/SareesClient';
 import { fetchCategories, fetchProducts } from '../../../data/supabase';
@@ -240,14 +240,23 @@ export default async function Page({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <SareesClient
-        initialCategory={data.category}
-        initialOccasion={data.occasion}
-        h1Title={data.h1}
-        introductoryContent={data.intro}
-        allProducts={dbProducts}
-        categoriesList={uniqueCategoriesList}
-      />
+      <Suspense fallback={
+        <div className="min-h-screen bg-[#FFF9F0] flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-12 h-12 rounded-full border-4 border-maroon border-t-transparent animate-spin"></div>
+            <p className="font-serif font-bold text-dark-brown text-sm tracking-wide">Loading Collection...</p>
+          </div>
+        </div>
+      }>
+        <SareesClient
+          initialCategory={data.category}
+          initialOccasion={data.occasion}
+          h1Title={data.h1}
+          introductoryContent={data.intro}
+          allProducts={dbProducts}
+          categoriesList={uniqueCategoriesList}
+        />
+      </Suspense>
     </>
   );
 }

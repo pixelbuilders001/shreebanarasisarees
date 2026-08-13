@@ -65,8 +65,9 @@ export const CategoryCard: React.FC = () => {
     : CATEGORIES;
 
   return (
-    <section className="pt-6 pb-12 md:py-16 px-4 max-w-7xl mx-auto">
-      <div className="text-center mb-6 md:mb-12">
+    <section className="pt-4 pb-8 md:py-12 px-4 max-w-7xl mx-auto">
+      {/* Header Container */}
+      <div className="text-center mb-6 md:mb-10">
         <div className="flex items-center justify-center gap-3 mb-1.5">
           <div className="w-8 h-px bg-gold/50"></div>
           <span className="text-[10px] sm:text-xs text-gold uppercase tracking-[0.2em] font-bold block">
@@ -74,45 +75,45 @@ export const CategoryCard: React.FC = () => {
           </span>
           <div className="w-8 h-px bg-gold/50"></div>
         </div>
-        <h2 className="font-serif text-xl sm:text-4xl font-bold tracking-wide text-dark-brown">
+        <h2 className="font-serif text-xl sm:text-3xl font-extrabold tracking-wide text-dark-brown">
           Shop By Category
         </h2>
-        <div className="w-12 md:w-16 h-0.5 bg-maroon mx-auto my-2.5 md:my-4"></div>
+        <div className="w-12 md:w-16 h-0.5 bg-maroon mx-auto my-2 md:my-3"></div>
         <p className="text-xs sm:text-sm text-dark-brown/65 max-w-lg mx-auto leading-relaxed hidden sm:block">
           Choose from our wide range of traditional and modern handwoven sarees.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+      {/* Categories Grid (4 columns on mobile/tablet, 8 columns on desktop) */}
+      <div className="grid grid-cols-4 md:grid-cols-8 gap-x-2 gap-y-5 sm:gap-6 md:gap-4">
         {displayCategories.map((category, idx) => (
           <Link
             key={idx}
             href={category.link}
-            className="group relative aspect-[3/4] rounded-2xl overflow-hidden border border-cream shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-end p-4 sm:p-5 bg-dark-brown"
+            className="group flex flex-col items-center text-center transition-transform duration-300 hover:-translate-y-1 w-full"
           >
-            {/* Background Image */}
-            <div className="absolute inset-0 bg-gradient-to-t from-dark-brown via-dark-brown/30 to-transparent z-10 opacity-70 group-hover:opacity-80 transition-opacity duration-300" />
-            <img
-              src={category.image}
-              alt={category.name}
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-              loading="lazy"
-            />
-
-            {/* Content Overlays */}
-            <div className="relative z-20 text-white space-y-1">
-              <h3 className="font-serif text-sm sm:text-base font-extrabold tracking-wide drop-shadow">
-                {category.name}
-              </h3>
-              <span className="text-[10px] sm:text-xs font-sans font-bold text-gold-light flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-all">
-                Browse Collection
-                <ArrowRight size={10} className="group-hover:translate-x-1 transition-transform" />
-              </span>
+            {/* Image Container with Luxury Double Ring */}
+            <div className="relative w-14 h-14 min-[375px]:w-16 min-[375px]:h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full p-[3px] border border-gold/30 group-hover:border-maroon/80 transition-all duration-300 bg-white/50 shadow-sm group-hover:shadow-md flex items-center justify-center">
+              <div className="w-full h-full rounded-full overflow-hidden relative border border-cream/50">
+                <img
+                  src={category.image}
+                  alt={category.name}
+                  className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+                  loading="lazy"
+                />
+                {/* Subtle rich overlay on hover */}
+                <div className="absolute inset-0 bg-maroon/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </div>
             </div>
 
+            {/* Category Name */}
+            <span className="mt-2 font-serif text-[10px] min-[375px]:text-xs md:text-sm font-bold text-dark-brown group-hover:text-maroon transition-colors duration-300 tracking-wide line-clamp-2 max-w-[70px] min-[375px]:max-w-[85px] md:max-w-none leading-tight">
+              {category.name}
+            </span>
           </Link>
         ))}
       </div>
     </section>
   );
 };
+

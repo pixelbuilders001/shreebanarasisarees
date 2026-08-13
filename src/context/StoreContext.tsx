@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Product, PRODUCTS } from '../data/products';
 import { 
   supabase,
@@ -15,7 +15,10 @@ import {
   fetchDbOrders,
   cancelDbOrder,
   cancelDbOrderItem,
-  DeliveryCheckResult
+  DeliveryCheckResult,
+  fetchDbWishlist,
+  addToDbWishlist,
+  removeFromDbWishlist
 } from '../data/supabase';
 
 export interface CartItem {
@@ -137,42 +140,72 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryCheckResult | null>(null);
   const [customerCoords, setCustomerCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [checkedPincode, setCheckedPincode] = useState<string>('');
+  const currentUserRef = useRef<string | null>(null);
 
-  // Helper to sync user cart and orders
+  // Helper to sync user cart, wishlist and orders
   const syncUserData = async (identifier: string, loadedProducts: Product[], shouldMerge: boolean = false) => {
     try {
-      let dbCartItems = await fetchDbCart(identifier);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+      let dbCartItems: { product_id: string; quantity: number }[] = [];
+      let dbWishlistProductIds: string[] = [];
 
-      if (shouldMerge) {
-        let localCartItems: CartItem[] = [];
-        try {
-          const stored = localStorage.getItem('sbs_cart');
-          if (stored) {
-            localCartItems = JSON.parse(stored);
+      if (isUuid) {
+        dbCartItems = await fetchDbCart(identifier);
+        dbWishlistProductIds = await fetchDbWishlist(identifier);
+
+        if (shouldMerge) {
+          // Merge Cart
+          let localCartItems: CartItem[] = [];
+          try {
+            const stored = localStorage.getItem('sbs_cart');
+            if (stored) {
+              localCartItems = JSON.parse(stored);
+            }
+          } catch (e) {
+            console.error('Failed to parse stored cart:', e);
           }
-        } catch (e) {
-          console.error('Failed to parse stored cart:', e);
-        }
 
-        if (localCartItems.length > 0) {
-          for (const localItem of localCartItems) {
-            const dbMatch = dbCartItems.find(dbItem => dbItem.product_id === localItem.product.id);
-            if (dbMatch) {
-              const mergedQty = dbMatch.quantity + localItem.quantity;
-              await upsertDbCartItem(identifier, localItem.product.id, mergedQty);
-              dbMatch.quantity = mergedQty;
-            } else {
-              await upsertDbCartItem(identifier, localItem.product.id, localItem.quantity);
-              dbCartItems.push({
-                product_id: localItem.product.id,
-                quantity: localItem.quantity
-              });
+          if (localCartItems.length > 0) {
+            for (const localItem of localCartItems) {
+              const dbMatch = dbCartItems.find(dbItem => dbItem.product_id === localItem.product.id);
+              if (dbMatch) {
+                const mergedQty = dbMatch.quantity + localItem.quantity;
+                await upsertDbCartItem(identifier, localItem.product.id, mergedQty);
+                dbMatch.quantity = mergedQty;
+              } else {
+                await upsertDbCartItem(identifier, localItem.product.id, localItem.quantity);
+                dbCartItems.push({
+                  product_id: localItem.product.id,
+                  quantity: localItem.quantity
+                });
+              }
+            }
+          }
+
+          // Merge Wishlist
+          let localWishlistItems: Product[] = [];
+          try {
+            const stored = localStorage.getItem('sbs_wishlist');
+            if (stored) {
+              localWishlistItems = JSON.parse(stored);
+            }
+          } catch (e) {
+            console.error('Failed to parse stored wishlist:', e);
+          }
+
+          if (localWishlistItems.length > 0) {
+            for (const localItem of localWishlistItems) {
+              const dbMatch = dbWishlistProductIds.includes(localItem.id);
+              if (!dbMatch) {
+                await addToDbWishlist(identifier, localItem.id);
+                dbWishlistProductIds.push(localItem.id);
+              }
             }
           }
         }
       }
 
-      if (dbCartItems && dbCartItems.length > 0) {
+      if (isUuid && dbCartItems && dbCartItems.length > 0) {
         const finalCartItems: CartItem[] = [];
         for (const dbItem of dbCartItems) {
           const product = loadedProducts.find(p => p.id === dbItem.product_id);
@@ -184,8 +217,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         }
         setCart(finalCartItems);
-      } else {
+      } else if (isUuid) {
         setCart([]);
+      }
+
+      // Populate wishlist from DB
+      if (isUuid && dbWishlistProductIds && dbWishlistProductIds.length > 0) {
+        const finalWishlistItems: Product[] = [];
+        for (const pid of dbWishlistProductIds) {
+          const product = loadedProducts.find(p => p.id === pid);
+          if (product) {
+            finalWishlistItems.push(product);
+          }
+        }
+        setWishlist(finalWishlistItems);
+      } else if (isUuid) {
+        setWishlist([]);
       }
 
       const dbOrders = await fetchDbOrders(identifier);
@@ -215,6 +262,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch (e) {
       console.error("Failed to load local storage state:", e);
     }
+    currentUserRef.current = storedUser;
     setIsHydrated(true);
 
     let activeProducts = PRODUCTS;
@@ -241,6 +289,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Subscribe to Supabase authentication state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const prevUserId = currentUserRef.current;
+      const currentUserId = session?.user?.id || null;
+      currentUserRef.current = currentUserId;
+
       if (session?.user) {
         const currentUser = session.user;
         setUser(currentUser);
@@ -294,7 +346,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
 
         // Fetch and merge cart & orders for this user
-        syncUserData(currentUser.id, activeProducts, !storedUser);
+        // We only merge if the user just signed in (i.e. transitioned from anonymous to logged-in)
+        const shouldMerge = prevUserId === null;
+        syncUserData(currentUser.id, activeProducts, shouldMerge);
 
         // Clean up URL hash/search and force a reload if redirected from OAuth to sync state cleanly
         if (typeof window !== 'undefined' && (
@@ -311,6 +365,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setShippingAddresses([]);
         setOrders([]);
         setCart([]);
+        setWishlist([]);
       }
     });
 
@@ -363,13 +418,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const existingItemIndex = prevCart.findIndex(item => item.product.id === product.id);
       if (existingItemIndex > -1) {
         const newCart = [...prevCart];
-        newCart[existingItemIndex].quantity += quantity;
+        newCart[existingItemIndex] = {
+          ...newCart[existingItemIndex],
+          quantity: newCart[existingItemIndex].quantity + quantity
+        };
         return newCart;
       }
       return [...prevCart, { product, quantity }];
     });
 
-    if (userPhone) {
+    const isUuid = userPhone ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userPhone) : false;
+    if (userPhone && isUuid) {
       upsertDbCartItem(userPhone, product.id, newQty);
     }
     setIsCartOpen(true);
@@ -377,7 +436,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const removeFromCart = (productId: string) => {
     setCart((prevCart) => prevCart.filter(item => item.product.id !== productId));
-    if (userPhone) {
+    const isUuid = userPhone ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userPhone) : false;
+    if (userPhone && isUuid) {
       deleteDbCartItem(userPhone, productId);
     }
   };
@@ -392,27 +452,39 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         item.product.id === productId ? { ...item, quantity } : item
       )
     );
-    if (userPhone) {
+    const isUuid = userPhone ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userPhone) : false;
+    if (userPhone && isUuid) {
       upsertDbCartItem(userPhone, productId, quantity);
     }
   };
 
   const clearCart = () => {
     setCart([]);
-    if (userPhone) {
+    const isUuid = userPhone ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userPhone) : false;
+    if (userPhone && isUuid) {
       clearDbCart(userPhone);
     }
   };
 
   // Wishlist operations
   const toggleWishlist = (product: Product) => {
+    const exists = wishlist.some(item => item.id === product.id);
+    
     setWishlist((prev) => {
-      const exists = prev.some(item => item.id === product.id);
       if (exists) {
         return prev.filter(item => item.id !== product.id);
       }
       return [...prev, product];
     });
+
+    const isUuid = userPhone ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userPhone) : false;
+    if (userPhone && isUuid) {
+      if (exists) {
+        removeFromDbWishlist(userPhone, product.id);
+      } else {
+        addToDbWishlist(userPhone, product.id);
+      }
+    }
   };
 
   const isInWishlist = (productId: string) => {
@@ -437,7 +509,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setOrders((prev) => [dbOrder, ...prev]);
       
       // 3. Clear cart from database if user is logged in
-      if (userPhone) {
+      const isUuid = userPhone ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userPhone) : false;
+      if (userPhone && isUuid) {
         await clearDbCart(userPhone);
       }
       
@@ -587,28 +660,31 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const loginUser = async (phone: string) => {
     setUserPhone(phone);
 
-    // Sync local storage cart to DB
-    const currentCart = [...cart];
-    for (const item of currentCart) {
-      await upsertDbCartItem(phone, item.product.id, item.quantity);
-    }
-
-    // Fetch and merge final cart items from DB
-    const freshDbCart = await fetchDbCart(phone);
-    const finalCartItems: CartItem[] = [];
-    
-    for (const dbItem of freshDbCart) {
-      const product = products.find(p => p.id === dbItem.product_id);
-      if (product) {
-        finalCartItems.push({
-          product,
-          quantity: dbItem.quantity
-        });
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(phone);
+    if (isUuid) {
+      // Sync local storage cart to DB
+      const currentCart = [...cart];
+      for (const item of currentCart) {
+        await upsertDbCartItem(phone, item.product.id, item.quantity);
       }
-    }
 
-    if (finalCartItems.length > 0 || freshDbCart.length > 0) {
-      setCart(finalCartItems);
+      // Fetch and merge final cart items from DB
+      const freshDbCart = await fetchDbCart(phone);
+      const finalCartItems: CartItem[] = [];
+      
+      for (const dbItem of freshDbCart) {
+        const product = products.find(p => p.id === dbItem.product_id);
+        if (product) {
+          finalCartItems.push({
+            product,
+            quantity: dbItem.quantity
+          });
+        }
+      }
+
+      if (finalCartItems.length > 0 || freshDbCart.length > 0) {
+        setCart(finalCartItems);
+      }
     }
 
     // Fetch user orders from DB
@@ -786,8 +862,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setShippingAddresses([]);
     setCart([]);
     setOrders([]);
+    setWishlist([]);
     localStorage.removeItem('sbs_orders');
     localStorage.removeItem('sbs_user_phone');
+    localStorage.removeItem('sbs_wishlist');
     await supabase.auth.signOut();
     if (typeof window !== 'undefined') {
       window.location.href = '/';
