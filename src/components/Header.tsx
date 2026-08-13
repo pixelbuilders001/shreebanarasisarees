@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Search, Heart, ShoppingBag, User, Menu, X, ChevronRight, LogOut, FileText, Home, Grid, Mic, ArrowLeft, Trash2 } from 'lucide-react';
+import { Search, Heart, ShoppingBag, User, Menu, X, ChevronRight, LogOut, FileText, Home, Grid, Mic, ArrowLeft, Trash2, MapPin } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { AnnouncementBar } from './AnnouncementBar';
 
@@ -24,7 +24,12 @@ const HeaderInner: React.FC = () => {
     clearRecentSearches,
     userPhone,
     loginUser,
-    logoutUser
+    logoutUser,
+    categories,
+    user,
+    userProfile,
+    loginWithGoogle,
+    isHydrated
   } = useStore();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -96,11 +101,7 @@ const HeaderInner: React.FC = () => {
   };
 
   // Auth Form State
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [isOtpSent, setIsOtpSent] = useState(false);
   const [authError, setAuthError] = useState('');
-  const [authSuccess, setAuthSuccess] = useState('');
 
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -140,33 +141,7 @@ const HeaderInner: React.FC = () => {
   };
 
   // Auth Operations
-  const handleSendOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!/^\d{10}$/.test(phoneNumber)) {
-      setAuthError('Please enter a valid 10-digit mobile number.');
-      return;
-    }
-    setAuthError('');
-    setIsOtpSent(true);
-    setAuthSuccess('OTP sent successfully (Use 123456 to log in)');
-  };
-
-  const handleVerifyOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otpCode === '123456') {
-      loginUser(phoneNumber);
-      setAuthSuccess('Successfully logged in!');
-      setTimeout(() => {
-        setIsAuthModalOpen(false);
-        setIsOtpSent(false);
-        setPhoneNumber('');
-        setOtpCode('');
-        setAuthSuccess('');
-      }, 1000);
-    } else {
-      setAuthError('Invalid OTP. Please enter 123456.');
-    }
-  };
+  // OTP forms are removed since only Google OAuth is active
 
   // Filter products for suggestions (up to 5 matches)
   const searchSuggestions = searchQuery.trim()
@@ -181,13 +156,10 @@ const HeaderInner: React.FC = () => {
     { name: 'Home', href: '/' },
     { name: 'Sarees', href: '/sarees' },
     { name: 'New Arrivals', href: '/sarees?filter=new' },
-    { name: 'Banarasi', href: '/sarees?category=Banarasi' },
-    { name: 'Chikankari', href: '/sarees?category=Chikankari' },
-    { name: 'Bandhani', href: '/sarees?category=Bandhani' },
-    { name: 'Organza', href: '/sarees?category=Organza' },
-    { name: 'Chanderi', href: '/sarees?category=Chanderi' },
-    { name: 'Bridal', href: '/sarees?category=Bridal' },
-    { name: 'Offers', href: '/sarees?category=Offers' }
+    ...categories.map((c) => ({
+      name: c.name,
+      href: `/sarees?category=${encodeURIComponent(c.name)}`
+    }))
   ];
 
   return (
@@ -195,34 +167,38 @@ const HeaderInner: React.FC = () => {
       <AnnouncementBar />
       <header className="sticky top-0 z-40 bg-[#FFF9F0]/95 backdrop-blur-md shadow-sm border-b border-cream">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20 gap-4">
+          <div className="relative flex items-center justify-between h-20 gap-4">
 
-            {/* Left: Mobile Hamburger & Logo */}
-            <div className="flex items-center gap-2">
+            {/* Left: Mobile Hamburger */}
+            <div className="flex items-center lg:hidden">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="p-2 text-dark-brown hover:text-maroon lg:hidden transition-colors"
+                className="p-2 text-dark-brown hover:text-maroon transition-colors"
                 aria-label="Open menu"
               >
                 <Menu size={24} />
               </button>
-
-              <Link href="/" className="flex items-center gap-2 sm:gap-3 select-none">
-                <img
-                  src="/brand_logo.png"
-                  alt="Shree Banarasi Sarees Logo"
-                  className="h-10 md:h-14 w-auto object-contain rounded-full border border-gold/25"
-                />
-                <div className="hidden md:flex flex-col">
-                  <span className="font-serif text-lg sm:text-xl font-extrabold text-maroon tracking-wider">
-                    Shree
-                  </span>
-                  <span className="text-[9px] sm:text-[10px] text-gold font-bold tracking-[0.2em] uppercase -mt-1 font-serif">
-                    Banarasi Sarees
-                  </span>
-                </div>
-              </Link>
             </div>
+
+            {/* Center/Left Logo & Title */}
+            <Link 
+              href="/" 
+              className="flex items-center justify-center select-none lg:static absolute left-1/2 -translate-x-1/2 lg:left-0 lg:translate-x-0 z-10"
+            >
+              <img
+                src="/brand_logo.png"
+                alt="Shree Banarasi Sarees Logo"
+                className="h-10 sm:h-11 md:h-14 w-auto object-contain rounded-full border border-gold/25"
+              />
+              <div className="hidden sm:flex flex-col ml-2">
+                <span className="font-serif text-base md:text-xl font-extrabold text-maroon tracking-wider leading-none">
+                  Shree
+                </span>
+                <span className="text-[8px] md:text-[10px] text-gold font-bold tracking-[0.15em] uppercase mt-0.5 font-serif leading-none">
+                  Banarasi Sarees
+                </span>
+              </div>
+            </Link>
 
             {/* Center: Search Bar */}
             <div ref={searchRef} className="hidden md:block flex-1 max-w-lg relative">
@@ -319,26 +295,44 @@ const HeaderInner: React.FC = () => {
                 <Search size={22} />
               </button>
 
-              {/* User Account */}
-              {userPhone ? (
-                <div className="relative group">
-                  <button
-                    className="p-2 text-dark-brown hover:text-maroon transition-colors flex items-center gap-1"
+              {(isHydrated && (userPhone || user)) ? (
+                <div className="relative group hidden md:block">
+                  <Link
+                    href="/account"
+                    className="p-2 text-dark-brown hover:text-maroon transition-colors flex items-center gap-1 lg:pointer-events-none"
                     aria-label="User account"
                   >
-                    <User size={22} className="text-maroon" />
-                    <span className="hidden lg:inline text-xs font-semibold text-dark-brown max-w-[80px] truncate">
-                      {userPhone}
+                    {user?.user_metadata?.avatar_url ? (
+                      <img
+                        src={user.user_metadata.avatar_url}
+                        alt="Profile"
+                        className="w-6 h-6 rounded-full object-cover border border-[#C9A45C]/40"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <User size={22} className="text-maroon" />
+                    )}
+                    <span className="hidden lg:inline text-xs font-semibold text-dark-brown max-w-[120px] truncate">
+                      {userProfile?.full_name || user?.user_metadata?.full_name || user?.email || userPhone}
                     </span>
-                  </button>
-                  <div className="absolute right-0 mt-1 bg-white border border-cream shadow-lg rounded-md py-2 w-48 hidden group-hover:block z-50">
-                    <Link href="/account" className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-dark-brown hover:bg-cream/40 transition-colors">
-                      <FileText size={14} className="text-gold" />
-                      My Dashboard
+                  </Link>
+                  <div className="absolute right-0 mt-1 bg-white border border-cream shadow-lg rounded-md py-2 w-48 hidden group-hover:block z-50 animate-fadeIn">
+                    <Link href="/account" className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-dark-brown hover:bg-cream/40 transition-colors">
+                      <ShoppingBag size={14} className="text-maroon" />
+                      My Orders
                     </Link>
+                    <Link href="/account/profile" className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-dark-brown hover:bg-cream/40 transition-colors">
+                      <User size={14} className="text-maroon" />
+                      My Profile
+                    </Link>
+                    <Link href="/account/addresses" className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-dark-brown hover:bg-cream/40 transition-colors">
+                      <MapPin size={14} className="text-maroon" />
+                      My Addresses
+                    </Link>
+                    <div className="border-t border-cream my-1"></div>
                     <button
                       onClick={() => logoutUser()}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors text-left"
+                      className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors text-left"
                     >
                       <LogOut size={14} />
                       Log Out
@@ -348,26 +342,14 @@ const HeaderInner: React.FC = () => {
               ) : (
                 <button
                   onClick={() => setIsAuthModalOpen(true)}
-                  className="p-2 text-dark-brown hover:text-maroon transition-colors"
+                  className="p-2 text-dark-brown hover:text-maroon transition-colors hidden md:block"
                   aria-label="Login"
                 >
                   <User size={22} />
                 </button>
               )}
 
-              {/* Wishlist */}
-              <Link
-                href="/wishlist"
-                className="p-2 text-dark-brown hover:text-maroon transition-colors relative"
-                aria-label="Wishlist"
-              >
-                <Heart size={22} />
-                {wishlist.length > 0 && (
-                  <span className="absolute top-0 right-0 bg-maroon text-ivory text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-ivory shadow-sm animate-pulse">
-                    {wishlist.length}
-                  </span>
-                )}
-              </Link>
+            
 
               {/* Shopping Cart */}
               <button
@@ -387,12 +369,12 @@ const HeaderInner: React.FC = () => {
           </div>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center justify-center border-t border-cream/60 py-3 gap-8">
+          <nav className="hidden lg:flex items-center justify-center border-t border-cream/60 py-3 gap-4 xl:gap-6 flex-wrap">
             {navLinks.map((link, index) => (
               <Link
                 key={index}
                 href={link.href}
-                className="text-[13px] font-serif font-bold text-dark-brown hover:text-maroon tracking-wider uppercase transition-colors"
+                className="text-[11px] xl:text-[12px] font-serif font-bold text-dark-brown hover:text-maroon tracking-wider uppercase transition-colors whitespace-nowrap"
               >
                 {link.name}
               </Link>
@@ -470,202 +452,175 @@ const HeaderInner: React.FC = () => {
               </div>
             )}
 
-            {authSuccess && (
-              <div className="mb-4 p-2.5 bg-green-50 text-green-700 text-xs font-semibold rounded border border-green-100">
-                {authSuccess}
-              </div>
-            )}
-
-            {!isOtpSent ? (
-              <form onSubmit={handleSendOtp} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-dark-brown/70 uppercase tracking-wide mb-1.5">
-                    Enter Mobile Number
-                  </label>
-                  <div className="flex border border-cream rounded overflow-hidden">
-                    <span className="bg-cream/40 px-3 py-2 text-xs font-semibold text-dark-brown border-r border-cream flex items-center">
-                      +91
-                    </span>
-                    <input
-                      type="tel"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                      placeholder="98765 43210"
-                      required
-                      className="w-full px-3 py-2 text-sm text-dark-brown focus:outline-none placeholder-dark-brown/30"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-maroon text-ivory rounded font-semibold text-xs uppercase tracking-wider hover:bg-maroon-dark transition-colors shadow"
-                >
-                  GET OTP
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-dark-brown/70 uppercase tracking-wide mb-1.5">
-                    Enter OTP sent to +91 {phoneNumber}
-                  </label>
-                  <input
-                    type="password"
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="Enter 123456"
-                    required
-                    maxLength={6}
-                    className="w-full border border-cream px-3 py-2 text-center text-sm font-semibold tracking-[0.5em] text-dark-brown focus:outline-none focus:border-gold rounded placeholder:text-[10px] placeholder:tracking-normal"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-maroon text-ivory rounded font-semibold text-xs uppercase tracking-wider hover:bg-maroon-dark transition-colors shadow"
-                >
-                  VERIFY & LOGIN
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsOtpSent(false)}
-                  className="w-full text-center text-xs text-maroon hover:underline mt-1 font-semibold"
-                >
-                  Back to Mobile Number
-                </button>
-              </form>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                loginWithGoogle().catch(err => {
+                  setAuthError(err.message || 'Failed to initialize Google Login');
+                });
+              }}
+              className="w-full py-3 px-4 border border-[#C9A45C]/30 hover:border-gold/50 bg-white text-dark-brown rounded font-serif font-bold text-xs tracking-wider uppercase transition-all shadow-sm flex items-center justify-center gap-3"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" width="16" height="16">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                />
+              </svg>
+              Continue with Google
+            </button>
           </div>
         </div>
       )}
 
       {/* Premium Floating Bottom Nav for Mobile */}
-      <div className="fixed bottom-4 inset-x-4 z-40 lg:hidden flex justify-center pointer-events-none">
-        <nav className="pointer-events-auto bg-[#FFF9F0]/95 backdrop-blur-md border border-[#C9A45C]/40 shadow-[0_10px_25px_rgba(45,33,29,0.1)] flex items-center justify-around py-2.5 px-3 rounded-2xl w-full max-w-md mx-auto transition-all duration-300">
-          {/* Home */}
-          <Link 
-            href="/" 
-            className="flex flex-col items-center justify-center flex-1 py-1 relative"
-          >
-            <Home 
-              size={20} 
-              className={`transition-all duration-300 ${
-                pathname === '/' ? 'text-maroon scale-110' : 'text-dark-brown/65 hover:text-maroon'
-              }`} 
-            />
-            <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${
-              pathname === '/' ? 'text-maroon font-bold' : 'text-dark-brown/60'
-            }`}>
-              Home
-            </span>
-            <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${
-              pathname === '/' ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
-            }`} />
-          </Link>
-
-          {/* Categories */}
-          <Link 
-            href="/sarees" 
-            className="flex flex-col items-center justify-center flex-1 py-1 relative"
-          >
-            <Grid 
-              size={20} 
-              className={`transition-all duration-300 ${
-                (pathname.startsWith('/sarees') && !searchParams.get('search') && !searchParams.get('focusSearch')) 
-                  ? 'text-maroon scale-110' 
-                  : 'text-dark-brown/65 hover:text-maroon'
-              }`} 
-            />
-            <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${
-              (pathname.startsWith('/sarees') && !searchParams.get('search') && !searchParams.get('focusSearch')) 
-                ? 'text-maroon font-bold' 
-                : 'text-dark-brown/60'
-            }`}>
-              Shop
-            </span>
-            <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${
-              (pathname.startsWith('/sarees') && !searchParams.get('search') && !searchParams.get('focusSearch')) 
-                ? 'opacity-100 scale-100' 
-                : 'opacity-0 scale-0'
-            }`} />
-          </Link>
-
-          {/* Search */}
-          <button 
-            onClick={(e) => {
-              e.preventDefault();
-              setIsMobileSearchOpen(true);
-            }}
-            className="flex flex-col items-center justify-center flex-1 py-1 relative cursor-pointer"
-          >
-            <Search 
-              size={20} 
-              className={`transition-all duration-300 ${
-                isMobileSearchOpen ? 'text-maroon scale-110' : 'text-dark-brown/65 hover:text-maroon'
-              }`} 
-            />
-            <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${
-              isMobileSearchOpen ? 'text-maroon font-bold' : 'text-dark-brown/60'
-            }`}>
-              Search
-            </span>
-            <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${
-              isMobileSearchOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
-            }`} />
-          </button>
-
-          {/* Wishlist */}
-          <Link 
-            href="/wishlist" 
-            className="flex flex-col items-center justify-center flex-1 py-1 relative"
-          >
-            <div className="relative">
-              <Heart 
+      {!pathname.startsWith('/product/') && (
+        <div className="fixed bottom-4 inset-x-4 z-40 lg:hidden flex justify-center pointer-events-none">
+          <nav className="pointer-events-auto bg-[#FFF9F0]/95 backdrop-blur-md border border-[#C9A45C]/40 shadow-[0_10px_25px_rgba(45,33,29,0.1)] flex items-center justify-around py-2.5 px-3 rounded-2xl w-full max-w-md mx-auto transition-all duration-300">
+            {/* Home */}
+            <Link 
+              href="/" 
+              className="flex flex-col items-center justify-center flex-1 py-1 relative"
+            >
+              <Home 
                 size={20} 
                 className={`transition-all duration-300 ${
-                  pathname === '/wishlist' ? 'text-maroon scale-110' : 'text-dark-brown/65 hover:text-maroon'
+                  pathname === '/' ? 'text-maroon scale-110' : 'text-dark-brown/65 hover:text-maroon'
                 }`} 
               />
-              {wishlist.length > 0 && (
-                <span className="absolute -top-1.5 -right-2 bg-gradient-to-r from-red-600 to-rose-500 text-white text-[8px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center border border-[#FFF9F0] shadow-md animate-pulse">
-                  {wishlist.length}
-                </span>
-              )}
-            </div>
-            <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${
-              pathname === '/wishlist' ? 'text-maroon font-bold' : 'text-dark-brown/60'
-            }`}>
-              Wishlist
-            </span>
-            <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${
-              pathname === '/wishlist' ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
-            }`} />
-          </Link>
+              <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${
+                pathname === '/' ? 'text-maroon font-bold' : 'text-dark-brown/60'
+              }`}>
+                Home
+              </span>
+              <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${
+                pathname === '/' ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
+              }`} />
+            </Link>
 
-          {/* Cart */}
-          <button 
-            onClick={() => setIsCartOpen(true)}
-            className="flex flex-col items-center justify-center flex-1 py-1 relative group"
-          >
-            <div className="relative">
-              <ShoppingBag 
+            {/* Categories */}
+            <Link 
+              href="/sarees" 
+              className="flex flex-col items-center justify-center flex-1 py-1 relative"
+            >
+              <Grid 
                 size={20} 
-                className="text-dark-brown/65 group-hover:text-maroon group-hover:scale-110 transition-all duration-300" 
+                className={`transition-all duration-300 ${
+                  (pathname.startsWith('/sarees') && !searchParams.get('search') && !searchParams.get('focusSearch')) 
+                    ? 'text-maroon scale-110' 
+                    : 'text-dark-brown/65 hover:text-maroon'
+                }`} 
               />
-              {cart.length > 0 && (
-                <span className="absolute -top-1.5 -right-2 bg-maroon text-[#FFF9F0] text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-[#FFF9F0] shadow-md">
-                  {cart.reduce((sum, item) => sum + item.quantity, 0)}
-                </span>
-              )}
-            </div>
-            <span className="text-[9px] font-serif uppercase tracking-wider mt-1 text-dark-brown/60 group-hover:text-maroon transition-all duration-300">
-              Cart
-            </span>
-          </button>
-        </nav>
-      </div>
+              <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${
+                (pathname.startsWith('/sarees') && !searchParams.get('search') && !searchParams.get('focusSearch')) 
+                  ? 'text-maroon font-bold' 
+                  : 'text-dark-brown/60'
+              }`}>
+                Shop
+              </span>
+              <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${
+                (pathname.startsWith('/sarees') && !searchParams.get('search') && !searchParams.get('focusSearch')) 
+                  ? 'opacity-100 scale-100' 
+                  : 'opacity-0 scale-0'
+              }`} />
+            </Link>
+
+            {/* Profile */}
+            <Link 
+              href="/account" 
+              className="flex flex-col items-center justify-center flex-1 py-1 relative"
+            >
+              <div className="relative">
+                {user?.user_metadata?.avatar_url ? (
+                  <img
+                    src={user.user_metadata.avatar_url}
+                    alt="Profile"
+                    className={`w-5 h-5 rounded-full object-cover border transition-all duration-300 ${
+                      pathname.startsWith('/account') ? 'border-maroon scale-110' : 'border-[#C9A45C]/40 hover:border-maroon'
+                    }`}
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <User 
+                    size={20} 
+                    className={`transition-all duration-300 ${
+                      pathname.startsWith('/account') ? 'text-maroon scale-110' : 'text-dark-brown/65 hover:text-maroon'
+                    }`} 
+                  />
+                )}
+              </div>
+              <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${
+                pathname.startsWith('/account') ? 'text-maroon font-bold' : 'text-dark-brown/60'
+              }`}>
+                Profile
+              </span>
+              <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${
+                pathname.startsWith('/account') ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
+              }`} />
+            </Link>
+            {/* Wishlist */}
+            <Link 
+              href="/wishlist" 
+              className="flex flex-col items-center justify-center flex-1 py-1 relative"
+            >
+              <div className="relative">
+                <Heart 
+                  size={20} 
+                  className={`transition-all duration-300 ${
+                    pathname === '/wishlist' ? 'text-maroon scale-110' : 'text-dark-brown/65 hover:text-maroon'
+                  }`} 
+                />
+                {wishlist.length > 0 && (
+                  <span className="absolute -top-1.5 -right-2 bg-gradient-to-r from-red-600 to-rose-500 text-white text-[8px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center border border-[#FFF9F0] shadow-md animate-pulse">
+                    {wishlist.length}
+                  </span>
+                )}
+              </div>
+              <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${
+                pathname === '/wishlist' ? 'text-maroon font-bold' : 'text-dark-brown/60'
+              }`}>
+                Wishlist
+              </span>
+              <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${
+                pathname === '/wishlist' ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
+              }`} />
+            </Link>
+
+            {/* Cart */}
+            <button 
+              onClick={() => setIsCartOpen(true)}
+              className="flex flex-col items-center justify-center flex-1 py-1 relative group"
+            >
+              <div className="relative">
+                <ShoppingBag 
+                  size={20} 
+                  className="text-dark-brown/65 group-hover:text-maroon group-hover:scale-110 transition-all duration-300" 
+                />
+                {cart.length > 0 && (
+                  <span className="absolute -top-1.5 -right-2 bg-maroon text-[#FFF9F0] text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-[#FFF9F0] shadow-md">
+                    {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                  </span>
+                )}
+              </div>
+              <span className="text-[9px] font-serif uppercase tracking-wider mt-1 text-dark-brown/60 group-hover:text-maroon transition-all duration-300">
+                Cart
+              </span>
+            </button>
+          </nav>
+        </div>
+      )}
 
       {/* Mobile Full Screen Search Sheet */}
       {isMobileSearchOpen && (

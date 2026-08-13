@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product, PRODUCTS } from '../data/products';
 import { 
+  supabase,
   fetchProducts, 
   fetchCategories, 
   DbCategory,
@@ -11,7 +12,8 @@ import {
   deleteDbCartItem,
   clearDbCart,
   createDbOrder,
-  fetchDbOrders
+  fetchDbOrders,
+  DeliveryCheckResult
 } from '../data/supabase';
 
 export interface CartItem {
@@ -82,8 +84,24 @@ interface StoreContextType {
   userPhone: string | null;
   loginUser: (phone: string) => void;
   logoutUser: () => void;
+  user: any | null;
+  userProfile: any | null;
+  loginWithGoogle: () => Promise<void>;
+  updateUserProfile: (updates: { full_name?: string | null; phone_number?: number | null }) => Promise<void>;
+  shippingAddresses: any[];
+  fetchShippingAddresses: (userId: string) => Promise<void>;
+  saveShippingAddress: (address: any) => Promise<void>;
+  deleteShippingAddress: (id: string) => Promise<void>;
+  setDefaultShippingAddress: (id: string) => Promise<void>;
+  isHydrated: boolean;
   isCartOpen: boolean;
   setIsCartOpen: (isOpen: boolean) => void;
+  deliveryInfo: DeliveryCheckResult | null;
+  setDeliveryInfo: (info: DeliveryCheckResult | null) => void;
+  customerCoords: { latitude: number; longitude: number } | null;
+  setCustomerCoords: (coords: { latitude: number; longitude: number } | null) => void;
+  checkedPincode: string;
+  setCheckedPincode: (pincode: string) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -98,10 +116,43 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [searchQuery, setSearchQuery] = useState('');
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [userPhone, setUserPhone] = useState<string | null>(null);
+  const [user, setUser] = useState<any | null>(null);
+  const [userProfile, setUserProfile] = useState<any | null>(null);
+  const [shippingAddresses, setShippingAddresses] = useState<any[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [deliveryInfo, setDeliveryInfo] = useState<DeliveryCheckResult | null>(null);
+  const [customerCoords, setCustomerCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [checkedPincode, setCheckedPincode] = useState<string>('');
 
-  // Load from localStorage on mount
+  // Helper to sync user cart and orders
+  const syncUserData = async (identifier: string, loadedProducts: Product[]) => {
+    try {
+      const dbCartItems = await fetchDbCart(identifier);
+      if (dbCartItems && dbCartItems.length > 0) {
+        const finalCartItems: CartItem[] = [];
+        for (const dbItem of dbCartItems) {
+          const product = loadedProducts.find(p => p.id === dbItem.product_id);
+          if (product) {
+            finalCartItems.push({
+              product,
+              quantity: dbItem.quantity
+            });
+          }
+        }
+        setCart(finalCartItems);
+      }
+
+      const dbOrders = await fetchDbOrders(identifier);
+      if (dbOrders && dbOrders.length > 0) {
+        setOrders(dbOrders);
+      }
+    } catch (err) {
+      console.error('Error syncing user data:', err);
+    }
+  };
+
+  // Load from localStorage on mount and listen to auth changes
   useEffect(() => {
     let storedUser: string | null = null;
     try {
@@ -123,35 +174,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     setIsHydrated(true);
 
+    let activeProducts = PRODUCTS;
+
     // Fetch dynamic products from Supabase
     fetchProducts().then(async (dbProducts) => {
-      let loadedProducts = PRODUCTS;
       if (dbProducts && dbProducts.length > 0) {
         setProducts(dbProducts);
-        loadedProducts = dbProducts;
+        activeProducts = dbProducts;
       }
 
-      // If user is logged in, fetch their cart and orders from database
-      if (storedUser) {
-        const dbCartItems = await fetchDbCart(storedUser);
-        if (dbCartItems && dbCartItems.length > 0) {
-          const finalCartItems: CartItem[] = [];
-          for (const dbItem of dbCartItems) {
-            const product = loadedProducts.find(p => p.id === dbItem.product_id);
-            if (product) {
-              finalCartItems.push({
-                product,
-                quantity: dbItem.quantity
-              });
-            }
-          }
-          setCart(finalCartItems);
-        }
-
-        const dbOrders = await fetchDbOrders(storedUser);
-        if (dbOrders && dbOrders.length > 0) {
-          setOrders(dbOrders);
-        }
+      // If user is logged in via phone (does not look like UUID), sync their data
+      if (storedUser && !storedUser.includes('-')) {
+        syncUserData(storedUser, activeProducts);
       }
     });
 
@@ -161,6 +195,79 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setCategories(dbCategories);
       }
     });
+
+    // Subscribe to Supabase authentication state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const currentUser = session.user;
+        setUser(currentUser);
+
+        // Fetch or create profile
+        let currentProfile = null;
+        try {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', currentUser.id)
+            .single();
+
+          if (profileError || !profile) {
+            // Profile does not exist, onboarding step: create profile row
+            const { data: newProfile, error: insertError } = await supabase
+              .from('profiles')
+              .insert({
+                id: currentUser.id,
+                email: currentUser.email,
+                role: 'user', // Default role set to user
+                full_name: currentUser.user_metadata?.full_name || null,
+                phone_number: currentUser.phone ? parseInt(currentUser.phone.replace(/\D/g, ''), 10) : null
+              })
+              .select()
+              .single();
+
+            if (!insertError && newProfile) {
+              currentProfile = newProfile;
+            } else {
+              console.error('Error creating profile on onboarding:', insertError);
+              currentProfile = {
+                id: currentUser.id,
+                email: currentUser.email,
+                role: 'user'
+              };
+            }
+          } else {
+            currentProfile = profile;
+          }
+        } catch (e) {
+          console.error('Failed to sync profile:', e);
+        }
+
+        setUserProfile(currentProfile);
+        setUserPhone(currentUser.id);
+
+        // Fetch shipping addresses
+        fetchShippingAddresses(currentUser.id).catch(err => {
+          console.error('Error fetching shipping addresses:', err);
+        });
+
+        // Fetch and merge cart & orders for this user
+        syncUserData(currentUser.id, activeProducts);
+
+        // Clean up URL hash and force a reload if redirected from OAuth to sync state cleanly
+        if (typeof window !== 'undefined' && (window.location.hash.includes('access_token') || window.location.hash.includes('id_token'))) {
+          window.history.replaceState(null, '', window.location.pathname);
+          window.location.reload();
+        }
+      } else {
+        setUser(null);
+        setUserProfile(null);
+        setShippingAddresses([]);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Save changes to localStorage
@@ -373,9 +480,171 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const logoutUser = () => {
+  const loginWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/account`
+      }
+    });
+    if (error) {
+      console.error('Google sign in error:', error);
+      throw error;
+    }
+  };
+
+  const updateUserProfile = async (updates: { full_name?: string | null; phone_number?: number | null }) => {
+    if (!user) throw new Error('User not authenticated');
+    const { data, error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        email: user.email,
+        full_name: updates.full_name,
+        phone_number: updates.phone_number
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
+
+    if (updates.full_name) {
+      const { data: authData, error: authError } = await supabase.auth.updateUser({
+        data: { full_name: updates.full_name }
+      });
+      if (!authError && authData?.user) {
+        setUser(authData.user);
+      }
+    }
+
+    if (data) {
+      setUserProfile(data);
+    }
+  };
+
+  const fetchShippingAddresses = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('shipping_addresses')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching shipping addresses:', error);
+    } else if (data) {
+      setShippingAddresses(data);
+    }
+  };
+
+  const saveShippingAddress = async (addr: any) => {
+    if (!user) throw new Error('User not authenticated');
+    
+    // If setting this address as default, unset other defaults first
+    if (addr.is_default) {
+      await supabase
+        .from('shipping_addresses')
+        .update({ is_default: false })
+        .eq('user_id', user.id);
+    }
+
+    const payload = {
+      user_id: user.id,
+      address_label: addr.address_label || 'Home',
+      full_name: addr.full_name,
+      phone: addr.phone,
+      address_line1: addr.address_line1,
+      address_line2: addr.address_line2 || null,
+      landmark: addr.landmark || null,
+      city: addr.city,
+      district: addr.district || null,
+      state: addr.state,
+      pincode: addr.pincode,
+      latitude: addr.latitude || null,
+      longitude: addr.longitude || null,
+      is_default: addr.is_default || false,
+      updated_at: new Date().toISOString()
+    };
+
+    let result;
+    if (addr.id) {
+      // Update
+      result = await supabase
+        .from('shipping_addresses')
+        .update(payload)
+        .eq('id', addr.id)
+        .select()
+        .single();
+    } else {
+      // Insert
+      result = await supabase
+        .from('shipping_addresses')
+        .insert({
+          ...payload,
+          id: crypto.randomUUID()
+        })
+        .select()
+        .single();
+    }
+
+    if (result.error) {
+      console.error('Error saving shipping address:', result.error);
+      throw result.error;
+    }
+
+    // Refresh addresses list
+    await fetchShippingAddresses(user.id);
+  };
+
+  const deleteShippingAddress = async (id: string) => {
+    if (!user) throw new Error('User not authenticated');
+    const { error } = await supabase
+      .from('shipping_addresses')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting address:', error);
+      throw error;
+    }
+
+    // Refresh addresses list
+    await fetchShippingAddresses(user.id);
+  };
+
+  const setDefaultShippingAddress = async (id: string) => {
+    if (!user) throw new Error('User not authenticated');
+    
+    // Unset all defaults
+    await supabase
+      .from('shipping_addresses')
+      .update({ is_default: false })
+      .eq('user_id', user.id);
+
+    // Set this one as default
+    const { error } = await supabase
+      .from('shipping_addresses')
+      .update({ is_default: true })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error setting default address:', error);
+      throw error;
+    }
+
+    // Refresh addresses list
+    await fetchShippingAddresses(user.id);
+  };
+
+  const logoutUser = async () => {
     setUserPhone(null);
+    setUser(null);
+    setUserProfile(null);
+    setShippingAddresses([]);
     setCart([]);
+    await supabase.auth.signOut();
   };
 
   return (
@@ -403,8 +672,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       userPhone,
       loginUser,
       logoutUser,
+      user,
+      userProfile,
+      loginWithGoogle,
+      updateUserProfile,
+      shippingAddresses,
+      fetchShippingAddresses,
+      saveShippingAddress,
+      deleteShippingAddress,
+      setDefaultShippingAddress,
+      isHydrated,
       isCartOpen,
-      setIsCartOpen
+      setIsCartOpen,
+      deliveryInfo,
+      setDeliveryInfo,
+      customerCoords,
+      setCustomerCoords,
+      checkedPincode,
+      setCheckedPincode
     }}>
       {children}
     </StoreContext.Provider>

@@ -34,7 +34,7 @@ export const Footer: React.FC = () => {
             </p>
             <div className="flex items-center gap-3 pt-2">
               <a
-                href="https://instagram.com"
+                href="https://www.instagram.com/shree.banarasisarees"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 rounded-full bg-ivory/10 hover:bg-gold hover:text-dark-brown transition-colors"
@@ -43,7 +43,7 @@ export const Footer: React.FC = () => {
                 <svg className="w-4 h-4 fill-none stroke-current" strokeWidth="2" viewBox="0 0 24 24"><rect width="20" height="20" x="2" y="2" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37zM17.5 6.5h.01" /></svg>
               </a>
               <a
-                href="https://facebook.com"
+                href="https://www.facebook.com/profile.php?id=61591806898752"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 rounded-full bg-ivory/10 hover:bg-gold hover:text-dark-brown transition-colors"

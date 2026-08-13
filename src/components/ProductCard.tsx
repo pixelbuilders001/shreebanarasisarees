@@ -12,8 +12,10 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
-  const { addToCart, toggleWishlist, isInWishlist } = useStore();
+  const { cart, addToCart, updateCartQuantity, toggleWishlist, isInWishlist } = useStore();
   const activeWishlist = isInWishlist(product.id);
+  const cartItem = cart.find(item => item.product.id === product.id);
+  const quantityInCart = cartItem ? cartItem.quantity : 0;
 
   // Calculate discount percentage
   const discountPercent = product.salePrice 
@@ -95,17 +97,40 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               )}
             </div>
 
-            {/* Quick Add To Cart */}
-            <button
-              onClick={() => product.stock > 0 && addToCart(product, 1)}
-              disabled={product.stock === 0}
-              className={`p-2 rounded-full bg-maroon text-ivory hover:bg-maroon-dark transition-all ${
-                product.stock === 0 ? 'opacity-40 cursor-not-allowed' : 'hover:scale-105 active:scale-95'
-              }`}
-              aria-label="Add to Cart"
-            >
-              <ShoppingBag size={14} />
-            </button>
+            {/* Quick Add To Cart / Quantity Selector */}
+            {quantityInCart > 0 ? (
+              <div className="flex items-center border border-maroon rounded-full bg-white overflow-hidden shadow-sm h-8">
+                <button
+                  onClick={() => updateCartQuantity(product.id, quantityInCart - 1)}
+                  className="px-2.5 h-full text-xs font-bold text-maroon hover:bg-cream/20 transition-colors flex items-center justify-center"
+                  aria-label="Decrease quantity"
+                >
+                  -
+                </button>
+                <span className="px-1 text-xs font-bold text-dark-brown min-w-[16px] text-center select-none">
+                  {quantityInCart}
+                </span>
+                <button
+                  onClick={() => updateCartQuantity(product.id, quantityInCart + 1)}
+                  disabled={product.stock > 0 && quantityInCart >= product.stock}
+                  className="px-2.5 h-full text-xs font-bold text-maroon hover:bg-cream/20 transition-colors disabled:opacity-40 disabled:hover:bg-transparent flex items-center justify-center"
+                  aria-label="Increase quantity"
+                >
+                  +
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => product.stock > 0 && addToCart(product, 1)}
+                disabled={product.stock === 0}
+                className={`p-2 rounded-full bg-maroon text-ivory hover:bg-maroon-dark transition-all ${
+                  product.stock === 0 ? 'opacity-40 cursor-not-allowed' : 'hover:scale-105 active:scale-95'
+                }`}
+                aria-label="Add to Cart"
+              >
+                <ShoppingBag size={14} />
+              </button>
+            )}
           </div>
 
           {/* Handwoven / In Stock Indicator */}

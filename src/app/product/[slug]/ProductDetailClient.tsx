@@ -7,7 +7,8 @@ import { Header } from '../../../components/Header';
 import { Footer } from '../../../components/Footer';
 import { Product } from '../../../data/products';
 import { useStore } from '../../../context/StoreContext';
-import { Heart, ShoppingBag, MessageCircle, ArrowLeft, Shield, Truck, Calendar } from 'lucide-react';
+import { Heart, ShoppingBag, MessageCircle, ArrowLeft, Shield, Truck, Calendar, MapPin } from 'lucide-react';
+import { checkDeliveryServiceability } from '../../../data/supabase';
 
 interface ProductDetailClientProps {
   product: Product;
@@ -15,12 +16,100 @@ interface ProductDetailClientProps {
 
 export default function ProductDetailClient({ product }: ProductDetailClientProps) {
   const router = useRouter();
-  const { addToCart, toggleWishlist, isInWishlist } = useStore();
+  const { 
+    addToCart, 
+    toggleWishlist, 
+    isInWishlist,
+    deliveryInfo,
+    setDeliveryInfo,
+    customerCoords,
+    setCustomerCoords,
+    checkedPincode,
+    setCheckedPincode,
+    cart,
+    setIsCartOpen
+  } = useStore();
+  
   const [activeImage, setActiveImage] = useState<string>(product.images[0]);
   const [quantity, setQuantity] = useState(1);
+  const [pincodeInput, setPincodeInput] = useState(checkedPincode);
+  const [loadingPincode, setLoadingPincode] = useState(false);
+  const [loadingLocation, setLoadingLocation] = useState(false);
+  const [locError, setLocError] = useState<string | null>(null);
 
   const isWishlisted = isInWishlist(product.id);
   const finalPrice = product.salePrice ?? product.price;
+
+  // React to store context pincode changes
+  React.useEffect(() => {
+    setPincodeInput(checkedPincode);
+  }, [checkedPincode]);
+
+  const handleCheckPincode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pincodeInput.length !== 6 || !/^\d+$/.test(pincodeInput)) {
+      setLocError("Please enter a valid 6-digit PIN code.");
+      return;
+    }
+
+    setLocError(null);
+    setLoadingPincode(true);
+    try {
+      const res = await checkDeliveryServiceability({ pincode: pincodeInput });
+      setDeliveryInfo(res);
+      setCheckedPincode(pincodeInput);
+      setCustomerCoords(null);
+      if (!res.success || !res.serviceable) {
+        setLocError("Delivery is not available at this location.");
+      }
+    } catch (err) {
+      console.error(err);
+      setLocError("Error checking delivery. Please try again.");
+    } finally {
+      setLoadingPincode(false);
+    }
+  };
+
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) {
+      setLocError("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setLocError(null);
+    setLoadingLocation(true);
+    
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const res = await checkDeliveryServiceability({ latitude, longitude });
+          setDeliveryInfo(res);
+          setCustomerCoords({ latitude, longitude });
+          setCheckedPincode('');
+          setPincodeInput('');
+          if (!res.success || !res.serviceable) {
+            setLocError("Delivery is not available at this location.");
+          }
+        } catch (err) {
+          console.error(err);
+          setLocError("Error checking location. Please try again.");
+        } finally {
+          setLoadingLocation(false);
+        }
+      },
+      (error) => {
+        console.error(error);
+        setLoadingLocation(false);
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocError("Location permission denied. Please enter your PIN code manually.");
+        } else {
+          setLocError("Unable to retrieve location. Please enter PIN code manually.");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   // WhatsApp Message Generator
   const handleWhatsAppInquiry = () => {
@@ -37,16 +126,25 @@ Please share more details.`;
     window.open(`https://wa.me/${whatsappNumber}?text=${encodedMessage}`, '_blank');
   };
 
+  const isAlreadyInCart = cart.some(item => item.product.id === product.id);
+
   const handleAddToCart = () => {
     if (product.stock > 0) {
-      addToCart(product, quantity);
+      if (isAlreadyInCart) {
+        setIsCartOpen(true);
+      } else {
+        addToCart(product, quantity);
+      }
     }
   };
 
   const handleBuyNow = () => {
     if (product.stock > 0) {
-      addToCart(product, quantity);
-      router.push('/checkout');
+      if (!isAlreadyInCart) {
+        addToCart(product, quantity);
+      } else {
+        setIsCartOpen(true);
+      }
     }
   };
 
@@ -54,7 +152,7 @@ Please share more details.`;
     <>
       <Header />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8">
 
         {/* Breadcrumbs & Back */}
         <div className="mb-6 flex items-center justify-between">
@@ -178,6 +276,87 @@ Please share more details.`;
               )}
             </div>
 
+            {/* Delivery Serviceability Widget */}
+            <div className="py-4 px-4 bg-cream/10 rounded border border-[#C9A45C]/20 text-dark-brown space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-dark-brown/85">
+                <MapPin size={16} className="text-maroon" />
+                <span>Check Delivery Serviceability</span>
+              </div>
+              
+              <form onSubmit={handleCheckPincode} className="flex gap-2">
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={pincodeInput}
+                  onChange={(e) => setPincodeInput(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Enter 6-digit PIN code"
+                  className="flex-1 bg-white border border-[#C9A45C]/30 focus:border-maroon focus:ring-1 focus:ring-maroon text-xs text-dark-brown rounded px-3 py-2 outline-none transition-all"
+                />
+                <button
+                  type="submit"
+                  disabled={loadingPincode || loadingLocation}
+                  className="bg-maroon hover:bg-maroon-dark text-white text-xs font-serif font-bold tracking-wider px-4 py-2 rounded transition-colors disabled:opacity-50"
+                >
+                  {loadingPincode ? 'CHECKING...' : 'CHECK'}
+                </button>
+              </form>
+
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-[10px] text-dark-brown/50 font-bold uppercase">Or use GPS location</div>
+                <button
+                  type="button"
+                  onClick={handleUseMyLocation}
+                  disabled={loadingPincode || loadingLocation}
+                  className="text-xs text-maroon hover:text-maroon-dark font-semibold flex items-center gap-1 transition-colors disabled:opacity-50"
+                >
+                  {loadingLocation ? (
+                    <>
+                      <span className="w-3 h-3 border-2 border-maroon border-t-transparent rounded-full animate-spin" />
+                      Detecting...
+                    </>
+                  ) : (
+                    <>
+                      📍 Use My Location
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Status Display */}
+              {locError && (
+                <div className="text-xs text-red-600 font-semibold mt-1">
+                  ⚠️ {locError}
+                </div>
+              )}
+
+              {deliveryInfo && !locError && (
+                <div className="mt-2 p-2 bg-white/60 rounded border border-[#C9A45C]/10 text-[10px] space-y-1 text-dark-brown/85">
+                  {deliveryInfo.serviceable ? (
+                    <>
+                      <div className="text-emerald-700 font-bold flex items-center gap-1 text-[11px]">
+                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                        ✓ Delivery Available
+                      </div>
+                      <div className="flex flex-col gap-0.5 mt-1 font-medium text-dark-brown/70">
+                        {deliveryInfo.delivery_type && (
+                          <div>Delivery Mode: <span className="font-semibold text-dark-brown uppercase">{deliveryInfo.delivery_type.replace('_', ' ')}</span></div>
+                        )}
+                        {deliveryInfo.delivery_charge !== undefined && (
+                          <div>
+                            Delivery Charge: <span className="font-bold text-maroon">₹{deliveryInfo.delivery_charge}</span>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-red-600 font-bold text-[11px]">
+                      ✕ Delivery not available at this location
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Product description */}
             <p className="text-xs sm:text-sm text-dark-brown/85 leading-relaxed font-light">
               {product.description}
@@ -252,7 +431,7 @@ Please share more details.`;
                   }`}
               >
                 <ShoppingBag size={16} />
-                ADD TO CART
+                {isAlreadyInCart ? 'GO TO CART' : 'ADD TO CART'}
               </button>
               <button
                 onClick={handleBuyNow}
@@ -292,6 +471,7 @@ Please share more details.`;
               </button>
             </div>
 
+
             {/* Shipping, Returns & Fabric trust signals */}
             <div className="grid grid-cols-3 gap-2 text-center text-[10px] text-dark-brown/60 pt-4 border-t border-cream/60 font-semibold">
               <div className="flex flex-col items-center gap-1">
@@ -315,6 +495,57 @@ Please share more details.`;
       </main>
 
       <Footer />
+
+      {/* Mobile Floating Bottom Bar */}
+      <div className="fixed bottom-0 inset-x-0 z-50 bg-[#FFF9F0] border-t border-[#C9A45C]/35 px-4 py-3.5 shadow-[0_-8px_24px_rgba(45,33,29,0.08)] flex items-center justify-between md:hidden animate-fadeIn">
+        {/* Left Side: Price Breakdown */}
+        <div className="flex flex-col">
+          <span className="text-[9px] text-dark-brown/40 uppercase font-bold tracking-wider leading-none">Price</span>
+          <div className="flex items-baseline gap-1.5 mt-0.5">
+            <span className="font-serif text-base font-extrabold text-maroon">
+              ₹{finalPrice.toLocaleString('en-IN')}
+            </span>
+            {product.salePrice && (
+              <span className="text-[10px] text-dark-brown/40 line-through">
+                ₹{product.price.toLocaleString('en-IN')}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Right Side: Add / Go To Cart */}
+        <div className="flex items-center gap-2">
+          {product.stock > 0 ? (
+            <>
+              {/* Wishlist Button */}
+              <button
+                onClick={() => toggleWishlist(product)}
+                className={`p-2.5 rounded-lg border transition-colors cursor-pointer ${
+                  isWishlisted
+                    ? 'bg-maroon/5 border-maroon text-maroon'
+                    : 'bg-white border-cream text-dark-brown/85 hover:border-maroon/40 hover:text-maroon'
+                }`}
+                aria-label="Wishlist"
+              >
+                <Heart size={16} className={isWishlisted ? 'fill-maroon text-maroon' : ''} />
+              </button>
+
+              {/* Add to Cart CTA */}
+              <button
+                onClick={handleAddToCart}
+                className="bg-maroon hover:bg-maroon-dark text-white rounded-lg px-4 py-2.5 font-serif font-bold text-xs uppercase tracking-widest flex items-center gap-1.5 shadow-md active:scale-[0.98] transition-all cursor-pointer"
+              >
+                <ShoppingBag size={14} />
+                {isAlreadyInCart ? 'GO TO CART' : 'ADD TO CART'}
+              </button>
+            </>
+          ) : (
+            <span className="text-[10px] font-bold text-red-700 bg-red-50 py-2.5 px-3.5 rounded-lg border border-red-100 uppercase tracking-wider">
+              Out of Stock
+            </span>
+          )}
+        </div>
+      </div>
     </>
   );
 }

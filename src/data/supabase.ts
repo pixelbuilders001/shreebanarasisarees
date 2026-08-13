@@ -336,7 +336,7 @@ export async function createDbOrder(orderData: {
   shipping: number;
   total: number;
   paymentMethod: 'UPI' | 'Cash on Delivery' | 'Online Payment';
-}): Promise<Order | null> {
+}, userId?: string | null): Promise<Order | null> {
   try {
     const orderNumber = `SBS-ORD-${Math.floor(100000 + Math.random() * 900000)}`;
     const shippingFee = orderData.shipping;
@@ -358,7 +358,8 @@ export async function createDbOrder(orderData: {
         payment_method: paymentMethodMap,
         payment_status: 'pending',
         order_status: 'placed',
-        notes: `Original payment method: ${orderData.paymentMethod}`
+        notes: `Original payment method: ${orderData.paymentMethod}`,
+        user_id: userId || null
       })
       .select('id, created_at')
       .single();
@@ -434,12 +435,18 @@ export async function createDbOrder(orderData: {
   }
 }
 
-export async function fetchDbOrders(phone: string): Promise<Order[]> {
+export async function fetchDbOrders(phoneOrUserId: string): Promise<Order[]> {
   try {
-    const { data: ordersData, error: ordersError } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('customer_phone', phone)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(phoneOrUserId);
+    
+    let query = supabase.from('orders').select('*');
+    if (isUuid) {
+      query = query.eq('user_id', phoneOrUserId);
+    } else {
+      query = query.eq('customer_phone', phoneOrUserId);
+    }
+
+    const { data: ordersData, error: ordersError } = await query
       .order('created_at', { ascending: false });
 
     if (ordersError || !ordersData) {
@@ -529,5 +536,47 @@ export async function fetchDbOrders(phone: string): Promise<Order[]> {
   } catch (err) {
     console.error('Exception in fetchDbOrders:', err);
     return [];
+  }
+}
+
+export interface DeliveryCheckResult {
+  success: boolean;
+  serviceable: boolean;
+  distance_km?: number;
+  estimated_drive_minutes?: number;
+  delivery_type?: 'express' | 'same_day' | 'standard' | null;
+  delivery_charge?: number;
+  message?: string;
+}
+
+export async function checkDeliveryServiceability(
+  params: { latitude: number; longitude: number } | { pincode: string }
+): Promise<DeliveryCheckResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke('check-delivery', {
+      body: params
+    });
+
+    if (error) {
+      console.error('Edge function invocation error:', error);
+      return { success: false, serviceable: false, message: error.message || 'API error' };
+    }
+
+    if (!data) {
+      return { success: false, serviceable: false, message: 'No data returned from API' };
+    }
+
+    return {
+      success: true,
+      serviceable: !!data.serviceable,
+      distance_km: data.distance_km,
+      estimated_drive_minutes: data.estimated_drive_minutes,
+      delivery_type: data.delivery_type,
+      delivery_charge: data.delivery_charge,
+      message: data.message
+    };
+  } catch (err: any) {
+    console.error('Exception in checkDeliveryServiceability:', err);
+    return { success: false, serviceable: false, message: err.message || 'Network error' };
   }
 }

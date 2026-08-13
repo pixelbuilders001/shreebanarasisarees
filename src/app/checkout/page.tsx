@@ -1,25 +1,43 @@
 "use client";
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Header } from '../../components/Header';
 import { Footer } from '../../components/Footer';
 import { useStore } from '../../context/StoreContext';
 import { CheckCircle, MapPin, CreditCard, Landmark, Truck, ShoppingBag, ArrowLeft } from 'lucide-react';
+import { checkDeliveryServiceability } from '../../data/supabase';
 
 function CheckoutContent() {
   const router = useRouter();
-  const { cart, placeOrder, clearCart, userPhone, loginUser } = useStore();
+  const { 
+    cart, 
+    placeOrder, 
+    clearCart, 
+    userPhone, 
+    loginUser,
+    deliveryInfo,
+    setDeliveryInfo,
+    customerCoords,
+    setCustomerCoords,
+    checkedPincode,
+    setCheckedPincode,
+    shippingAddresses,
+    saveShippingAddress,
+    user
+  } = useStore();
 
   // Order placing states
   const [isOrdered, setIsOrdered] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveToProfile, setSaveToProfile] = useState(false);
+  const [hasPrefilled, setHasPrefilled] = useState(false);
 
-  // Form Fields
   const [fullName, setFullName] = useState('');
-  const [mobileNumber, setMobileNumber] = useState(userPhone || '');
+  const isPhoneValid = userPhone && /^\d{10}$/.test(userPhone);
+  const [mobileNumber, setMobileNumber] = useState(isPhoneValid ? userPhone : '');
   const [email, setEmail] = useState('');
   const [deliveryMethod, setDeliveryMethod] = useState<'Home Delivery' | 'Store Pickup'>('Home Delivery');
   const [address, setAddress] = useState('');
@@ -30,6 +48,110 @@ function CheckoutContent() {
 
   // Validation States
   const [errorMsg, setErrorMsg] = useState('');
+  const [loadingPincode, setLoadingPincode] = useState(false);
+  const [loadingLocation, setLoadingLocation] = useState(false);
+  const [locError, setLocError] = useState<string | null>(null);
+
+  // Sync pincode with context
+  useEffect(() => {
+    if (checkedPincode) {
+      setPinCode(checkedPincode);
+    }
+  }, [checkedPincode]);
+
+  // Auto-prefill default address once loaded
+  useEffect(() => {
+    if (shippingAddresses && shippingAddresses.length > 0 && !hasPrefilled && !fullName && !address) {
+      const defaultAddr = shippingAddresses.find(a => a.is_default) || shippingAddresses[0];
+      if (defaultAddr) {
+        setFullName(defaultAddr.full_name || '');
+        setMobileNumber(defaultAddr.phone || '');
+        setAddress(defaultAddr.address_line1 + (defaultAddr.address_line2 ? ', ' + defaultAddr.address_line2 : '') + (defaultAddr.landmark ? ', Landmark: ' + defaultAddr.landmark : ''));
+        setCity(defaultAddr.city || '');
+        if (defaultAddr.state) {
+          setState(defaultAddr.state);
+        }
+        setPinCode(defaultAddr.pincode || '');
+        handleCheckPincode(defaultAddr.pincode);
+        setHasPrefilled(true);
+      }
+    }
+  }, [shippingAddresses, hasPrefilled, fullName, address]);
+
+  const handlePinCodeChange = (val: string) => {
+    const sanitized = val.replace(/\D/g, '').slice(0, 6);
+    setPinCode(sanitized);
+    if (sanitized !== checkedPincode) {
+      setDeliveryInfo(null);
+    }
+  };
+
+  const handleCheckPincode = async (targetPincode: string) => {
+    if (targetPincode.length !== 6 || !/^\d+$/.test(targetPincode)) {
+      setLocError("Please enter a valid 6-digit PIN code.");
+      return;
+    }
+
+    setLocError(null);
+    setLoadingPincode(true);
+    try {
+      const res = await checkDeliveryServiceability({ pincode: targetPincode });
+      setDeliveryInfo(res);
+      setCheckedPincode(targetPincode);
+      setCustomerCoords(null);
+      if (!res.success || !res.serviceable) {
+        setLocError("Delivery is not available at this location.");
+      }
+    } catch (err) {
+      console.error(err);
+      setLocError("Error checking delivery. Please try again.");
+    } finally {
+      setLoadingPincode(false);
+    }
+  };
+
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) {
+      setLocError("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setLocError(null);
+    setLoadingLocation(true);
+    
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const res = await checkDeliveryServiceability({ latitude, longitude });
+          setDeliveryInfo(res);
+          setCustomerCoords({ latitude, longitude });
+          setCheckedPincode('');
+          if (!res.success || !res.serviceable) {
+            setLocError("Delivery is not available at this location.");
+          } else {
+            setCity('Samastipur');
+            setState('Bihar');
+          }
+        } catch (err) {
+          console.error(err);
+          setLocError("Error checking location. Please try again.");
+        } finally {
+          setLoadingLocation(false);
+        }
+      },
+      (error) => {
+        console.error(error);
+        setLoadingLocation(false);
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocError("Location permission denied. Please enter PIN code manually.");
+        } else {
+          setLocError("Unable to retrieve location. Please enter PIN code manually.");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   // Calculate totals
   const subtotal = cart.reduce((total, item) => {
@@ -38,7 +160,9 @@ function CheckoutContent() {
   }, 0);
 
   const discount = 0; // Optional promotional coupon discount
-  const shipping = deliveryMethod === 'Home Delivery' && subtotal > 0 ? 0 : 0; // Free shipping
+  const shipping = deliveryMethod === 'Home Delivery' && subtotal > 0
+    ? (deliveryInfo?.serviceable ? (deliveryInfo.delivery_charge ?? 0) : 0)
+    : 0;
   const total = subtotal - discount + shipping;
 
   const indianStates = [
@@ -75,6 +199,18 @@ function CheckoutContent() {
         setErrorMsg('Please enter a valid 6-digit Indian PIN code.');
         return;
       }
+      if (!deliveryInfo) {
+        setErrorMsg('Please verify your delivery serviceability before placing order.');
+        return;
+      }
+      if (!deliveryInfo.serviceable) {
+        setErrorMsg('Delivery is not available at the selected location.');
+        return;
+      }
+      if (checkedPincode && pinCode !== checkedPincode && !customerCoords) {
+        setErrorMsg('Please click Verify to validate the entered PIN code.');
+        return;
+      }
     }
 
     setErrorMsg('');
@@ -103,6 +239,23 @@ function CheckoutContent() {
       if (!userPhone) {
         loginUser(mobileNumber);
       }
+
+      // Save shipping address if user requested
+      if (saveToProfile && user && deliveryMethod === 'Home Delivery') {
+        saveShippingAddress({
+          full_name: fullName,
+          phone: mobileNumber,
+          address_line1: address,
+          city: city,
+          state: state,
+          pincode: pinCode,
+          address_label: 'Home',
+          is_default: shippingAddresses.length === 0
+        }).catch((err) => {
+          console.error('Failed to auto-save shipping address:', err);
+        });
+      }
+
       setCreatedOrder(orderDetails);
       setIsOrdered(true);
       clearCart();
@@ -231,6 +384,42 @@ function CheckoutContent() {
                 <h2 className="font-serif text-lg font-bold text-dark-brown border-b border-cream pb-2.5">
                   1. Customer Details
                 </h2>
+
+                {user && shippingAddresses && shippingAddresses.length > 0 && (
+                  <div className="bg-[#FFF9F0]/60 p-4 rounded border border-cream/50 space-y-2 mb-4 animate-fadeIn">
+                    <label className="block text-xs font-bold text-dark-brown/70 uppercase tracking-wide">
+                      Select from Saved Addresses
+                    </label>
+                    <select
+                      onChange={(e) => {
+                        const addrId = e.target.value;
+                        if (addrId) {
+                          const selected = shippingAddresses.find(a => a.id === addrId);
+                          if (selected) {
+                            setFullName(selected.full_name || '');
+                            setMobileNumber(selected.phone || '');
+                            setAddress(selected.address_line1 + (selected.address_line2 ? ', ' + selected.address_line2 : '') + (selected.landmark ? ', Landmark: ' + selected.landmark : ''));
+                            setCity(selected.city || '');
+                            if (selected.state) {
+                              setState(selected.state);
+                            }
+                            setPinCode(selected.pincode || '');
+                            handleCheckPincode(selected.pincode);
+                            setDeliveryMethod('Home Delivery');
+                          }
+                        }
+                      }}
+                      className="w-full bg-[#FFFFFF] border border-[#C9A45C]/30 focus:border-maroon focus:ring-1 focus:ring-maroon text-xs font-semibold text-dark-brown rounded p-2.5 outline-none cursor-pointer"
+                    >
+                      <option value="">-- Choose a saved address --</option>
+                      {shippingAddresses.map((addr) => (
+                        <option key={addr.id} value={addr.id}>
+                          {addr.address_label} - {addr.full_name} ({addr.city}, {addr.pincode}) {addr.is_default ? '[Default]' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -366,16 +555,101 @@ function CheckoutContent() {
                         <label className="block text-xs font-bold text-dark-brown/70 uppercase tracking-wide mb-1.5">
                           PIN Code *
                         </label>
-                        <input
-                          type="tel"
-                          value={pinCode}
-                          onChange={(e) => setPinCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                          placeholder="6-digit PIN"
-                          required
-                          className="w-full bg-[#FFFFFF] border border-[#C9A45C]/30 focus:border-maroon focus:ring-1 focus:ring-maroon text-sm text-dark-brown rounded p-2.5 outline-none transition-all"
-                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="tel"
+                            value={pinCode}
+                            onChange={(e) => handlePinCodeChange(e.target.value)}
+                            placeholder="6-digit PIN"
+                            required
+                            className="flex-grow bg-[#FFFFFF] border border-[#C9A45C]/30 focus:border-maroon focus:ring-1 focus:ring-maroon text-sm text-dark-brown rounded p-2.5 outline-none transition-all"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleCheckPincode(pinCode)}
+                            disabled={loadingPincode || loadingLocation}
+                            className="bg-maroon hover:bg-maroon-dark text-white text-xs font-serif font-bold tracking-wider px-4 py-2 rounded transition-colors disabled:opacity-50 flex items-center justify-center min-w-[70px]"
+                          >
+                            {loadingPincode ? '...' : 'VERIFY'}
+                          </button>
+                        </div>
                       </div>
                     </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1.5">
+                      <span className="text-dark-brown/50">Or check using GPS:</span>
+                      <button
+                        type="button"
+                        onClick={handleUseMyLocation}
+                        disabled={loadingPincode || loadingLocation}
+                        className="text-maroon hover:text-maroon-dark font-bold flex items-center gap-1 transition-colors disabled:opacity-50"
+                      >
+                        {loadingLocation ? (
+                          <>
+                            <span className="w-3 h-3 border-2 border-maroon border-t-transparent rounded-full animate-spin inline-block" />
+                            Detecting...
+                          </>
+                        ) : (
+                          <>
+                            📍 Use My Location
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Status Display */}
+                    {locError && (
+                      <div className="text-xs text-red-600 font-semibold mt-1">
+                        ⚠️ {locError}
+                      </div>
+                    )}
+
+                    {deliveryInfo && !locError && (
+                      <div className="mt-2 p-2.5 bg-cream/10 rounded border border-[#C9A45C]/20 text-xs space-y-1.5">
+                        {deliveryInfo.serviceable ? (
+                          <>
+                            <div className="text-emerald-700 font-bold flex items-center gap-1.5">
+                              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                              ✓ Location Verified & Serviceable
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-dark-brown/80 font-medium">
+                              {deliveryInfo.distance_km !== undefined && (
+                                <div>Distance: <span className="font-semibold text-dark-brown">{deliveryInfo.distance_km.toFixed(1)} km</span></div>
+                              )}
+                              {deliveryInfo.estimated_drive_minutes !== undefined && (
+                                <div>Est. Time: <span className="font-semibold text-dark-brown">{deliveryInfo.estimated_drive_minutes} mins</span></div>
+                              )}
+                              {deliveryInfo.delivery_type && (
+                                <div>Mode: <span className="font-semibold text-dark-brown uppercase">{deliveryInfo.delivery_type.replace('_', ' ')}</span></div>
+                              )}
+                              {deliveryInfo.delivery_charge !== undefined && (
+                                <div className="col-span-2 text-maroon font-bold">
+                                  Shipping Fee: ₹{deliveryInfo.delivery_charge} (added to total)
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-red-600 font-bold">
+                            ✕ Delivery not available at this location
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {user && (
+                      <div className="pt-3 border-t border-cream/30 mt-3">
+                        <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-[#8B5A2B]">
+                          <input
+                            type="checkbox"
+                            checked={saveToProfile}
+                            onChange={(e) => setSaveToProfile(e.target.checked)}
+                            className="rounded border-[#C9A45C]/30 text-maroon focus:ring-maroon w-4 h-4"
+                          />
+                          Save this address to my profile for future orders
+                        </label>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="p-4 bg-cream/20 rounded border border-cream text-xs text-dark-brown/85 space-y-2 leading-relaxed">
@@ -494,7 +768,23 @@ function CheckoutContent() {
                   </div>
                   <div className="flex justify-between">
                     <span>Shipping</span>
-                    <span className="text-green-700 font-bold">FREE</span>
+                    {deliveryMethod === 'Home Delivery' ? (
+                      deliveryInfo ? (
+                        deliveryInfo.serviceable ? (
+                          deliveryInfo.delivery_charge && deliveryInfo.delivery_charge > 0 ? (
+                            <span className="text-maroon font-bold">₹{deliveryInfo.delivery_charge}</span>
+                          ) : (
+                            <span className="text-green-700 font-bold">FREE</span>
+                          )
+                        ) : (
+                          <span className="text-red-600 font-bold">Not Serviceable</span>
+                        )
+                      ) : (
+                        <span className="text-dark-brown/40 font-bold italic">Verify location</span>
+                      )
+                    ) : (
+                      <span className="text-green-700 font-bold">FREE (Pickup)</span>
+                    )}
                   </div>
                   <div className="flex justify-between border-t border-cream pt-2.5 text-sm font-serif font-bold text-dark-brown">
                     <span>Total Amount</span>

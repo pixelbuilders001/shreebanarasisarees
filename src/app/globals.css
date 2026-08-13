@@ -54,3 +54,20 @@ html {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Page Transition Loading Animation */
+@keyframes loadingProgress {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-loading-progress {
+  animation: loadingProgress 1.8s infinite ease-in-out;
+}
