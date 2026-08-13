@@ -65,7 +65,7 @@ export const CategoryCard: React.FC = () => {
     : CATEGORIES;
 
   return (
-    <section className="pt-4 pb-8 md:py-12 px-4 max-w-7xl mx-auto">
+    <section className="pt-4 pb-2 md:pt-6 md:pb-8 px-4 max-w-7xl mx-auto">
       {/* Header Container */}
       <div className="text-center mb-6 md:mb-10">
         <div className="flex items-center justify-center gap-3 mb-1.5">

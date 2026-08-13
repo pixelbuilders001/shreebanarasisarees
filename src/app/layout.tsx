@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 import { StoreProvider } from "../context/StoreContext";
 import { CartDrawer } from "../components/CartDrawer";
 import { WhatsAppButton } from "../components/WhatsAppButton";
+import PWARegistration from "../components/PWARegistration";
 
 const playfair = Playfair_Display({
   variable: "--font-serif",
@@ -17,10 +18,22 @@ const inter = Inter({
   weight: ["300", "400", "500", "600", "700"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#801F32",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5, // Allow zooming for accessibility
+};
+
 export const metadata: Metadata = {
   title: "Shree Banarasi Sarees | श्री बनारसी साड़ियाँ - Premium Indian Sarees",
   description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
   keywords: "sarees, banarasi silk, chikankari, bandhani, organza, wedding saree, bridal wear, samastipur, bihar",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Shree Banarasi",
+  },
   openGraph: {
     title: "Shree Banarasi Sarees | श्री बनारसी साड़ियाँ",
     description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
@@ -45,7 +58,8 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/favicon.ico",
-    apple: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/icon-192x192.png",
   }
 };
 
@@ -58,6 +72,7 @@ export default function RootLayout({
     <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
       <body className="font-sans antialiased text-[#2D211D] bg-[#FFF9F0] min-h-screen flex flex-col justify-between">
         <StoreProvider>
+          <PWARegistration />
           <div className="flex-grow pb-16 lg:pb-0">
             {children}
           </div>

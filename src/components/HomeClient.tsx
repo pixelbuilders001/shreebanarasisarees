@@ -53,7 +53,7 @@ export default function HomeClient({ allProducts = PRODUCTS }: HomeClientProps) 
         <CategoryCard />
 
         {/* Shop By Price Section */}
-        <section className="py-16 px-4 bg-gradient-to-b from-[#FFF9F0] to-[#FFFFFF] border-t border-cream">
+        <section className="pt-8 pb-16 md:py-16 px-4 bg-gradient-to-b from-[#FFF9F0] to-[#FFFFFF] border-t border-cream">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-12">
               <div className="flex items-center justify-center gap-3 mb-2">
