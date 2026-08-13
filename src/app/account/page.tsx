@@ -7,41 +7,8 @@ import {
   ShoppingBag, 
   FileText, 
   MessageCircle, 
-  CheckCircle2, 
-  Clock, 
-  Circle, 
   ArrowRight 
 } from 'lucide-react';
-
-const timelineSteps = [
-  { title: 'Ordered', desc: 'Order registered & being processed' },
-  { title: 'Designing', desc: 'Saree alignment & packaging setup' },
-  { title: 'Shipped', desc: 'Dispatched via premium delivery partner' },
-  { title: 'Delivered', desc: 'Successfully delivered to customer' }
-];
-
-function getStatusStep(status: string): number {
-  switch (status?.toLowerCase()) {
-    case 'order placed':
-    case 'ordered':
-    case 'pending':
-    case 'placed':
-      return 1;
-    case 'confirmed':
-    case 'processing':
-    case 'packed':
-      return 2;
-    case 'shipped':
-    case 'transit':
-    case 'out for delivery':
-    case 'out_for_delivery':
-      return 3;
-    case 'delivered':
-      return 4;
-    default:
-      return 1;
-  }
-}
 
 function getStatusDisplay(status: string): string {
   switch (status?.toLowerCase()) {
@@ -80,7 +47,6 @@ function AccountContent() {
 
   // Get active order details
   const activeOrder = orders.find(o => o.orderId === selectedOrderId) || (orders.length > 0 ? orders[0] : null);
-  const currentStep = activeOrder ? getStatusStep(activeOrder.orderStatus) : 0;
   const historyList = activeOrder?.statusHistory || [];
 
   return (
@@ -144,65 +110,7 @@ function AccountContent() {
                     </div>
                   </div>
 
-                  {/* Visual Progress Timeline */}
-                  <div className="space-y-4">
-                    <h3 className="text-xs font-bold text-dark-brown/65 uppercase tracking-wider font-serif">
-                      Delivery Timeline Status
-                    </h3>
 
-                    <div className="relative pl-6 md:pl-0 grid grid-cols-1 md:grid-cols-4 gap-6 pt-4">
-                      {/* Vertical line for mobile */}
-                      <div className="absolute left-[15px] top-6 bottom-6 w-0.5 bg-cream md:hidden">
-                        <div 
-                          className="w-full bg-green-600 transition-all duration-500" 
-                          style={{ height: `${((currentStep - 1) / 3) * 100}%` }}
-                        />
-                      </div>
-                      
-                      {/* Horizontal line for desktop */}
-                      <div className="absolute top-[28px] left-[32px] right-[32px] h-0.5 bg-cream hidden md:block -z-10">
-                        <div 
-                          className="h-full bg-green-600 transition-all duration-500" 
-                          style={{ width: `${((currentStep - 1) / 3) * 100}%` }}
-                        />
-                      </div>
-
-                      {timelineSteps.map((step, idx) => {
-                        const stepNum = idx + 1;
-                        const isCompleted = stepNum < currentStep;
-                        const isCurrent = stepNum === currentStep;
-
-                        return (
-                          <div key={idx} className="relative flex md:flex-col items-start md:items-center text-left md:text-center gap-4 md:gap-2">
-                            <div className="flex-shrink-0 z-10 bg-white py-1 md:py-0">
-                              {isCompleted ? (
-                                <div className="w-8 h-8 rounded-full bg-green-600 border-2 border-white flex items-center justify-center text-white shadow-sm">
-                                  <CheckCircle2 size={16} />
-                                </div>
-                              ) : isCurrent ? (
-                                <div className="w-8 h-8 rounded-full bg-maroon border-2 border-gold flex items-center justify-center text-[#FFFFFF] shadow-md animate-pulse">
-                                  <Clock size={15} />
-                                </div>
-                              ) : (
-                                <div className="w-8 h-8 rounded-full bg-white border-2 border-cream flex items-center justify-center text-dark-brown/30 shadow-sm">
-                                  <Circle size={12} className="fill-current" />
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="pt-1.5 md:pt-0">
-                              <h4 className={`text-xs font-serif font-bold ${isCurrent ? 'text-maroon' : isCompleted ? 'text-green-700' : 'text-dark-brown/65'}`}>
-                                {step.title}
-                              </h4>
-                              <p className="text-[10px] text-dark-brown/50 mt-0.5 leading-relaxed font-medium">
-                                {step.desc}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
 
                   {/* Detailed Tracking History */}
                   {historyList.length > 0 && (

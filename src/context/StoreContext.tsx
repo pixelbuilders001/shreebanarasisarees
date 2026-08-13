@@ -150,12 +150,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         }
         setCart(finalCartItems);
+      } else {
+        setCart([]);
       }
 
       const dbOrders = await fetchDbOrders(identifier);
-      if (dbOrders && dbOrders.length > 0) {
-        setOrders(dbOrders);
-      }
+      setOrders(dbOrders || []);
     } catch (err) {
       console.error('Error syncing user data:', err);
     }
@@ -192,8 +192,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         activeProducts = dbProducts;
       }
 
-      // If user is logged in via phone (does not look like UUID), sync their data
-      if (storedUser && !storedUser.includes('-')) {
+      // If user is logged in, sync their data (cart and orders) from DB
+      if (storedUser) {
         syncUserData(storedUser, activeProducts);
       }
     });
@@ -262,8 +262,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Fetch and merge cart & orders for this user
         syncUserData(currentUser.id, activeProducts);
 
-        // Clean up URL hash and force a reload if redirected from OAuth to sync state cleanly
-        if (typeof window !== 'undefined' && (window.location.hash.includes('access_token') || window.location.hash.includes('id_token'))) {
+        // Clean up URL hash/search and force a reload if redirected from OAuth to sync state cleanly
+        if (typeof window !== 'undefined' && (
+          window.location.hash.includes('access_token') || 
+          window.location.hash.includes('id_token') ||
+          window.location.search.includes('code=')
+        )) {
           window.history.replaceState(null, '', window.location.pathname);
           window.location.reload();
         }
@@ -271,6 +275,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setUser(null);
         setUserProfile(null);
         setShippingAddresses([]);
+        setOrders([]);
+        setCart([]);
       }
     });
 
@@ -390,7 +396,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       shipping: orderData.shipping,
       total: orderData.total,
       paymentMethod: orderData.paymentMethod
-    });
+    }, user?.id);
 
     if (dbOrder) {
       // 2. Add to orders state
@@ -493,7 +499,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/account`
+        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : `${process.env.NEXT_PUBLIC_SITE_URL || ''}/account`,
+        queryParams: {
+          prompt: 'select_account'
+        }
       }
     });
     if (error) {
@@ -653,7 +662,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setUserProfile(null);
     setShippingAddresses([]);
     setCart([]);
+    setOrders([]);
+    localStorage.removeItem('sbs_orders');
+    localStorage.removeItem('sbs_user_phone');
     await supabase.auth.signOut();
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
   };
 
   return (

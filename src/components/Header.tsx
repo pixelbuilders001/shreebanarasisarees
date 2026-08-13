@@ -316,27 +316,29 @@ const HeaderInner: React.FC = () => {
                       {userProfile?.full_name || user?.user_metadata?.full_name || user?.email || userPhone}
                     </span>
                   </Link>
-                  <div className="absolute right-0 mt-1 bg-white border border-cream shadow-lg rounded-md py-2 w-48 hidden group-hover:block z-50 animate-fadeIn">
-                    <Link href="/account" className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-dark-brown hover:bg-cream/40 transition-colors">
-                      <ShoppingBag size={14} className="text-maroon" />
-                      My Orders
-                    </Link>
-                    <Link href="/account/profile" className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-dark-brown hover:bg-cream/40 transition-colors">
-                      <User size={14} className="text-maroon" />
-                      My Profile
-                    </Link>
-                    <Link href="/account/addresses" className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-dark-brown hover:bg-cream/40 transition-colors">
-                      <MapPin size={14} className="text-maroon" />
-                      My Addresses
-                    </Link>
-                    <div className="border-t border-cream my-1"></div>
-                    <button
-                      onClick={() => logoutUser()}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors text-left"
-                    >
-                      <LogOut size={14} />
-                      Log Out
-                    </button>
+                  <div className="absolute right-0 top-full pt-1.5 hidden group-hover:block z-50">
+                    <div className="bg-white border border-cream shadow-lg rounded-md py-2 w-48 animate-fadeIn">
+                      <Link href="/account" className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-dark-brown hover:bg-cream/40 transition-colors">
+                        <ShoppingBag size={14} className="text-maroon" />
+                        My Orders
+                      </Link>
+                      <Link href="/account/profile" className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-dark-brown hover:bg-cream/40 transition-colors">
+                        <User size={14} className="text-maroon" />
+                        My Profile
+                      </Link>
+                      <Link href="/account/addresses" className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-dark-brown hover:bg-cream/40 transition-colors">
+                        <MapPin size={14} className="text-maroon" />
+                        My Addresses
+                      </Link>
+                      <div className="border-t border-cream my-1"></div>
+                      <button
+                        onClick={() => logoutUser()}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors text-left"
+                      >
+                        <LogOut size={14} />
+                        Log Out
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
