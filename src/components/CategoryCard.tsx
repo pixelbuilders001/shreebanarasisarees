@@ -84,30 +84,32 @@ export const CategoryCard: React.FC = () => {
         </p>
       </div>
 
-      {/* Categories Grid (4 columns on mobile/tablet, 8 columns on desktop) */}
-      <div className="grid grid-cols-4 md:grid-cols-8 gap-x-2 gap-y-5 sm:gap-6 md:gap-4">
+      {/* Categories container - Scrollable on mobile/tablet, Grid on desktop */}
+      <div className="flex overflow-x-auto no-scrollbar gap-x-4 pb-4 px-4 -mx-4 md:mx-0 md:px-0 md:grid md:grid-cols-8 md:gap-x-2 md:gap-y-5 sm:gap-6 md:gap-4 md:overflow-x-visible snap-x snap-mandatory">
         {displayCategories.map((category, idx) => (
           <Link
             key={idx}
             href={category.link}
-            className="group flex flex-col items-center text-center transition-transform duration-300 hover:-translate-y-1 w-full"
+            className="group flex flex-col items-center text-center transition-transform duration-300 hover:-translate-y-1 flex-shrink-0 w-20 min-[375px]:w-24 sm:w-28 md:w-full snap-start"
           >
             {/* Image Container with Luxury Double Ring */}
-            <div className="relative w-14 h-14 min-[375px]:w-16 min-[375px]:h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full p-[3px] border border-gold/30 group-hover:border-maroon/80 transition-all duration-300 bg-white/50 shadow-sm group-hover:shadow-md flex items-center justify-center">
-              <div className="w-full h-full rounded-full overflow-hidden relative border border-cream/50">
-                <img
-                  src={category.image}
-                  alt={category.name}
-                  className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
-                  loading="lazy"
-                />
-                {/* Subtle rich overlay on hover */}
-                <div className="absolute inset-0 bg-maroon/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative w-16 h-16 min-[375px]:w-20 min-[375px]:h-20 sm:w-24 sm:h-24 md:w-24 md:h-24 rounded-full p-[2px] bg-gradient-to-b from-gold/60 to-gold-light/20 group-hover:from-maroon/80 group-hover:to-maroon-light/40 transition-all duration-300 shadow-sm group-hover:shadow-md flex items-center justify-center">
+              <div className="w-full h-full rounded-full p-[2px] bg-[#FFF9F0] flex items-center justify-center">
+                <div className="w-full h-full rounded-full overflow-hidden relative border border-cream/50">
+                  <img
+                    src={category.image}
+                    alt={category.name}
+                    className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+                    loading="lazy"
+                  />
+                  {/* Subtle rich overlay on hover */}
+                  <div className="absolute inset-0 bg-maroon/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                </div>
               </div>
             </div>
 
             {/* Category Name */}
-            <span className="mt-2 font-serif text-[10px] min-[375px]:text-xs md:text-sm font-bold text-dark-brown group-hover:text-maroon transition-colors duration-300 tracking-wide line-clamp-2 max-w-[70px] min-[375px]:max-w-[85px] md:max-w-none leading-tight">
+            <span className="mt-2.5 font-serif text-[11px] min-[375px]:text-xs md:text-sm font-bold text-dark-brown group-hover:text-maroon transition-colors duration-300 tracking-wide line-clamp-2 max-w-[76px] min-[375px]:max-w-[88px] sm:max-w-[100px] md:max-w-none leading-snug">
               {category.name}
             </span>
           </Link>

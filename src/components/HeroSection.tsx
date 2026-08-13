@@ -48,7 +48,7 @@ export const HeroSection: React.FC = () => {
 
   return (
     <div className="w-full px-3.5 pt-3.5 pb-1 md:px-0 md:py-0">
-      <div className="relative w-full aspect-[7/3] rounded-2xl md:rounded-none overflow-hidden bg-dark-brown shadow-md md:shadow-none">
+      <div className="relative w-full aspect-[16/9] md:aspect-[7/3] rounded-2xl md:rounded-none overflow-hidden bg-dark-brown shadow-md md:shadow-none">
         {/* Slides */}
         {SLIDES.map((slide, index) => (
           <div
