@@ -1,6 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { fetchProductBySlug } from '../../../data/supabase';
 import ProductDetailClient from './ProductDetailClient';
 import { Header } from '../../../components/Header';
@@ -23,20 +24,43 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const finalPrice = product.salePrice ?? product.price;
 
+  // Resolve dynamic host for absolute URLs
+  let siteUrl = 'https://shreebanarasisarees.vercel.app';
+  try {
+    const headersList = await headers();
+    const hostHeader = headersList.get('host');
+    if (hostHeader) {
+      const cleanHost = hostHeader.replace(/^https?:\/\//i, '');
+      const protocol = cleanHost.includes('localhost') || cleanHost.includes('127.0.0.1') ? 'http' : 'https';
+      siteUrl = `${protocol}://${cleanHost}`;
+    }
+  } catch (e) {
+    console.error('Error getting headers:', e);
+  }
+
+  let ogImageUrl = product.images[0] || '';
+  if (ogImageUrl.includes('unsplash.com')) {
+    ogImageUrl = ogImageUrl.replace('auto=format', 'fm=jpg');
+    if (!ogImageUrl.includes('fm=jpg')) {
+      ogImageUrl += '&fm=jpg';
+    }
+  }
+
   return {
     title: `${product.name} | Shree Banarasi Sarees`,
     description: `Shop the ${product.name} from Shree Banarasi Sarees. Made of premium ${product.fabric} with ${product.work} work. Perfect for ${product.occasion} and festivals. Price: ₹${finalPrice.toLocaleString('en-IN')}.`,
     alternates: {
-      canonical: `https://shreebanarasisarees.com/product/${product.slug}`,
+      canonical: `${siteUrl}/product/${product.slug}`,
     },
     openGraph: {
       title: `${product.name} | Shree Banarasi Sarees`,
       description: product.description,
-      url: `https://shreebanarasisarees.com/product/${product.slug}`,
-      type: "article",
+      url: `${siteUrl}/product/${product.slug}`,
+      type: "website",
+      siteName: "Shree Banarasi Sarees",
       images: [
         {
-          url: product.images[0],
+          url: ogImageUrl,
           width: 800,
           height: 1067,
           alt: product.name,
@@ -47,7 +71,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: "summary_large_image",
       title: `${product.name} | Shree Banarasi Sarees`,
       description: product.description,
-      images: [product.images[0]],
+      images: [ogImageUrl],
     }
   };
 }
@@ -74,6 +98,20 @@ export default async function Page({ params }: PageProps) {
 
   const finalPrice = product.salePrice ?? product.price;
 
+  // Resolve dynamic host for absolute URLs
+  let siteUrl = 'https://shreebanarasisarees.vercel.app';
+  try {
+    const headersList = await headers();
+    const hostHeader = headersList.get('host');
+    if (hostHeader) {
+      const cleanHost = hostHeader.replace(/^https?:\/\//i, '');
+      const protocol = cleanHost.includes('localhost') || cleanHost.includes('127.0.0.1') ? 'http' : 'https';
+      siteUrl = `${protocol}://${cleanHost}`;
+    }
+  } catch (e) {
+    console.error('Error getting headers:', e);
+  }
+
   // Build JSON-LD structured data for the product
   const productJsonLd = {
     "@context": "https://schema.org",
@@ -89,7 +127,7 @@ export default async function Page({ params }: PageProps) {
     },
     "offers": {
       "@type": "Offer",
-      "url": `https://shreebanarasisarees.com/product/${product.slug}`,
+      "url": `${siteUrl}/product/${product.slug}`,
       "priceCurrency": "INR",
       "price": finalPrice,
       "priceValidUntil": "2027-12-31",

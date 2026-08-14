@@ -9,8 +9,12 @@ import {
   CheckCircle2,
   Calendar,
   DollarSign,
-  Package
+  Package,
+  X,
+  Star,
+  AlertCircle
 } from 'lucide-react';
+import { supabase } from '../../data/supabase';
 
 function getStatusDisplay(status: string): string {
   switch (status?.toLowerCase()) {
@@ -51,6 +55,98 @@ function AccountContent() {
   const [itemToCancel, setItemToCancel] = useState<string | null>(null);
   const [cancelType, setCancelType] = useState<'order' | 'item'>('order');
   const [cancelStatus, setCancelStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  // Review states
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewProduct, setReviewProduct] = useState<{ id: string; name: string; images: string[] } | null>(null);
+  const [formRating, setFormRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [formTitle, setFormTitle] = useState('');
+  const [formText, setFormText] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [submittingReview, setSubmittingReview] = useState(false);
+
+  const handleWriteReview = (product: { id: string; name: string; images: string[] }) => {
+    setReviewProduct(product);
+    setFormRating(0);
+    setFormTitle('');
+    setFormText('');
+    setFormError(null);
+    setFormSuccess(null);
+    setIsReviewModalOpen(true);
+  };
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewProduct) return;
+
+    if (formRating < 1 || formRating > 5) {
+      setFormError("Please select a rating between 1 and 5 stars.");
+      return;
+    }
+    if (!formTitle.trim()) {
+      setFormError("Please enter a review title.");
+      return;
+    }
+    if (!formText.trim()) {
+      setFormError("Please write your review details.");
+      return;
+    }
+
+    setSubmittingReview(true);
+    setFormError(null);
+    setFormSuccess(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzqlsawxvvyvsstyzzff.supabase.co'}/functions/v1/verify-review`, {
+        method: 'POST',
+        headers: {
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_6chwvgIpbfCpeEZrkS9VYg_IO__zSpY',
+          'Authorization': `Bearer ${token || ''}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          product_id: reviewProduct.id,
+          rating: formRating,
+          title: formTitle.trim(),
+          review_text: formText.trim()
+        })
+      });
+
+      const resData = await response.json().catch(() => ({}));
+
+      if (response.status === 201) {
+        setFormSuccess("Thank you! Your review has been submitted successfully and is pending approval.");
+        setFormRating(0);
+        setFormTitle('');
+        setFormText('');
+        setTimeout(() => {
+          setIsReviewModalOpen(false);
+          setReviewProduct(null);
+          setFormSuccess(null);
+        }, 3000);
+      } else {
+        if (response.status === 401) {
+          setFormError("Please log in to submit a review.");
+        } else if (response.status === 403) {
+          setFormError("Only verified purchasers can review this product.");
+        } else if (response.status === 409) {
+          setFormError("You have already reviewed this product.");
+        } else {
+          setFormError(resData.message || resData.error || "An error occurred while submitting your review.");
+        }
+      }
+    } catch (err: any) {
+      console.error('Submit review error:', err);
+      setFormError("Network error. Please try again.");
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   // Get active order details if one is selected
   const activeOrder = orders.find(o => o.orderId === selectedOrderId);
@@ -328,6 +424,14 @@ function AccountContent() {
                         {isCancelling ? 'Cancelling...' : activeOrder.items.length > 1 ? 'Cancel Item' : 'Cancel Order'}
                       </button>
                     )}
+                    {activeOrder.orderStatus?.toLowerCase() === 'delivered' && (
+                      <button
+                        onClick={() => handleWriteReview(item.product)}
+                        className="px-3 py-1.5 bg-gold/10 hover:bg-gold/20 text-[#801F32] border border-[#C9A45C]/30 hover:border-[#C9A45C]/65 rounded-lg text-[10px] font-serif font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                      >
+                        Write Review
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -547,6 +651,152 @@ function AccountContent() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {isReviewModalOpen && reviewProduct && (
+        <div className="fixed inset-0 z-55 flex items-center justify-center p-4 animate-fadeIn">
+          <div 
+            className="absolute inset-0 bg-[#2D211D]/60 backdrop-blur-sm" 
+            onClick={() => {
+              if (!submittingReview) {
+                setIsReviewModalOpen(false);
+                setReviewProduct(null);
+                setFormError(null);
+              }
+            }} 
+          />
+
+          <div className="bg-[#FFF9F0] border border-[#C9A45C]/35 shadow-2xl rounded-2xl w-full max-w-lg overflow-hidden z-10 relative animate-scaleIn p-6 sm:p-8 space-y-6">
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                setIsReviewModalOpen(false);
+                setReviewProduct(null);
+                setFormError(null);
+              }}
+              disabled={submittingReview}
+              className="absolute top-4 right-4 z-20 p-1.5 text-dark-brown/65 hover:text-maroon hover:bg-cream/40 rounded-full transition-all disabled:opacity-50 cursor-pointer"
+              aria-label="Close modal"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Modal Title */}
+            <div className="text-center space-y-1">
+              <h3 className="font-serif text-lg sm:text-xl font-extrabold text-dark-brown">
+                Write a Review
+              </h3>
+              <p className="text-xs text-dark-brown/60">
+                Share your experience with the {reviewProduct.name}
+              </p>
+            </div>
+
+            <div className="w-12 h-0.5 bg-gold/45 mx-auto rounded-full"></div>
+
+            {formError && (
+              <div className="p-3 bg-red-50 text-red-700 text-xs font-semibold rounded border border-red-100 flex items-start gap-2 animate-fadeIn">
+                <AlertCircle size={16} className="flex-shrink-0 mt-0.5 text-red-600" />
+                <span>{formError}</span>
+              </div>
+            )}
+
+            {formSuccess && (
+              <div className="p-3 bg-green-50 text-green-700 text-xs font-semibold rounded border border-green-100 flex items-start gap-2 animate-fadeIn">
+                <CheckCircle2 size={16} className="flex-shrink-0 mt-0.5 text-green-600" />
+                <span>{formSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleReviewSubmit} className="space-y-4">
+              {/* Star selector */}
+              <div className="space-y-1 text-center">
+                <label className="text-xs font-bold text-dark-brown/65 uppercase tracking-wider">Rating</label>
+                <div className="flex items-center justify-center gap-1 py-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      type="button"
+                      key={star}
+                      disabled={submittingReview}
+                      onClick={() => setFormRating(star)}
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(0)}
+                      className="p-1 text-gold transition-transform hover:scale-110 active:scale-95 disabled:opacity-50 cursor-pointer"
+                      aria-label={`Rate ${star} star`}
+                    >
+                      <Star
+                        size={28}
+                        className={((hoverRating || formRating) >= star) ? 'fill-gold text-gold' : 'text-dark-brown/20'}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Title input */}
+              <div className="space-y-1">
+                <label htmlFor="review-title" className="text-xs font-bold text-dark-brown/65 uppercase tracking-wider font-sans">Review Title</label>
+                <input
+                  id="review-title"
+                  type="text"
+                  required
+                  maxLength={100}
+                  disabled={submittingReview}
+                  value={formTitle}
+                  onChange={(e) => setFormTitle(e.target.value)}
+                  placeholder="e.g. Beautiful saree, highly recommend!"
+                  className="w-full bg-[#FFFFFF] border border-[#C9A45C]/40 focus:border-maroon focus:ring-1 focus:ring-maroon text-xs text-dark-brown rounded-lg px-3.5 py-2.5 outline-none transition-all font-sans"
+                />
+              </div>
+
+              {/* Review text textarea */}
+              <div className="space-y-1">
+                <label htmlFor="review-text" className="text-xs font-bold text-dark-brown/65 uppercase tracking-wider font-sans">Review Details</label>
+                <textarea
+                  id="review-text"
+                  required
+                  rows={4}
+                  maxLength={1000}
+                  disabled={submittingReview}
+                  value={formText}
+                  onChange={(e) => setFormText(e.target.value)}
+                  placeholder="Tell us about the fabric quality, color accuracy, and overall experience..."
+                  className="w-full bg-[#FFFFFF] border border-[#C9A45C]/40 focus:border-maroon focus:ring-1 focus:ring-maroon text-xs text-dark-brown rounded-lg px-3.5 py-2.5 outline-none transition-all resize-none font-sans"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={submittingReview}
+                  onClick={() => {
+                    setIsReviewModalOpen(false);
+                    setReviewProduct(null);
+                    setFormError(null);
+                  }}
+                  className="flex-1 py-2.5 border border-cream text-dark-brown/70 rounded font-serif font-bold text-xs tracking-wider uppercase hover:bg-cream/15 transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingReview}
+                  className="flex-1 py-2.5 bg-maroon text-white rounded font-serif font-bold text-xs tracking-wider uppercase hover:bg-maroon-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-sm"
+                >
+                  {submittingReview ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Review'
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
