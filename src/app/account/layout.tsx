@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Header } from '../../components/Header';
 import { Footer } from '../../components/Footer';
 import { useStore } from '../../context/StoreContext';
-import { User, ShoppingBag, MapPin, LogOut } from 'lucide-react';
+import { User, ShoppingBag, MapPin, LogOut, Heart, Sparkles } from 'lucide-react';
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -15,10 +15,12 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
     user,
     userProfile,
     isHydrated,
-    loginWithGoogle
+    loginWithGoogle,
+    orders,
+    wishlist,
+    shippingAddresses
   } = useStore();
 
-  // Login Form States
   const [authError, setAuthError] = useState('');
 
   if (!isHydrated) {
@@ -42,7 +44,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
       <>
         <Header />
         <main className="max-w-md mx-auto px-4 py-16 flex-grow">
-          <div className="bg-white border border-cream p-8 rounded-lg shadow-md space-y-6">
+          <div className="bg-white border border-cream p-8 rounded-2xl shadow-md space-y-6">
             <div className="text-center">
               <div className="mx-auto w-12 h-12 bg-cream flex items-center justify-center rounded-full text-maroon mb-3 shadow-inner">
                 <User size={22} />
@@ -68,7 +70,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                   setAuthError(err.message || 'Failed to initialize Google Login');
                 });
               }}
-              className="w-full py-3 px-4 border border-[#C9A45C]/30 hover:border-gold/50 bg-white text-dark-brown rounded font-serif font-bold text-xs tracking-wider uppercase transition-all shadow-sm flex items-center justify-center gap-3"
+              className="w-full py-3 px-4 border border-[#C9A45C]/30 hover:border-gold/50 bg-white text-dark-brown rounded-xl font-serif font-bold text-xs tracking-wider uppercase transition-all shadow-sm flex items-center justify-center gap-3 cursor-pointer"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" width="16" height="16">
                 <path
@@ -97,10 +99,14 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
     );
   }
 
+  // Updated account menu
   const menuItems = [
     { name: 'My Orders', path: '/account', icon: ShoppingBag },
-    { name: 'My Profile', path: '/account/profile', icon: User },
+    { name: 'Wishlist', path: '/wishlist', icon: Heart },
     { name: 'My Addresses', path: '/account/addresses', icon: MapPin },
+    { name: 'My Profile', path: '/account/profile', icon: User },
+    { name: 'My Customizations', path: '/account/customizations', icon: Sparkles },
+    { name: 'Logout', path: '#logout', icon: LogOut }
   ];
 
   return (
@@ -114,9 +120,23 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
             <span>/</span>
             <span className="text-dark-brown">Account</span>
           </nav>
-          <h1 className="font-serif text-xl sm:text-2xl font-extrabold text-dark-brown">
+          <h1 className="font-serif text-xl sm:text-2xl font-extrabold text-dark-brown leading-tight">
             Namaste, {userProfile?.full_name || user?.user_metadata?.full_name || user?.email}
           </h1>
+          {/* Quick Summary Counts Section */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-dark-brown/65 mt-1.5 font-semibold">
+            <Link href="/account" className="hover:text-maroon transition-colors">
+              {orders?.length || 0} {orders?.length === 1 ? 'Order' : 'Orders'}
+            </Link>
+            <span className="text-gold/40 select-none">•</span>
+            <Link href="/wishlist" className="hover:text-maroon transition-colors">
+              {wishlist?.length || 0} in Wishlist
+            </Link>
+            <span className="text-gold/40 select-none">•</span>
+            <Link href="/account/addresses" className="hover:text-maroon transition-colors">
+              {shippingAddresses?.length || 0} Saved {shippingAddresses?.length === 1 ? 'Address' : 'Addresses'}
+            </Link>
+          </div>
         </div>
 
         <style>{`
@@ -126,53 +146,48 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           {/* Navigation Sidebar/Tabbar */}
-          <aside className="lg:col-span-3 bg-white p-3 lg:p-4 rounded-lg border border-cream shadow-sm flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible gap-2 lg:gap-1 scrollbar-none sticky top-[80px] z-30">
-            <h2 className="hidden lg:block font-serif text-xs font-bold text-dark-brown/50 uppercase tracking-wider px-3 mb-3">
+          <aside className="lg:col-span-3 bg-white p-3 lg:p-4 rounded-2xl border border-cream shadow-sm flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible gap-2 lg:gap-1.5 scrollbar-none sticky top-[80px] z-30 w-full">
+            <h2 className="hidden lg:block font-serif text-[10px] font-bold text-dark-brown/50 uppercase tracking-widest px-3 mb-2">
               Account Menu
             </h2>
             {menuItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.path;
+              const isLogout = item.name === 'Logout';
+
+              if (isLogout) {
+                return (
+                  <button
+                    key={item.name}
+                    onClick={() => logoutUser()}
+                    className="flex items-center gap-2 lg:gap-3 px-4 lg:px-3 py-2.5 rounded-xl font-serif font-bold text-[11px] sm:text-xs transition-all whitespace-nowrap shadow-sm border bg-white text-red-600 border-red-100 hover:bg-red-50 cursor-pointer text-left w-full"
+                  >
+                    <Icon size={14} className="text-red-600 flex-shrink-0" />
+                    Logout
+                  </button>
+                );
+              }
+
               return (
                 <Link
                   key={item.path}
                   href={item.path}
-                  className={`flex items-center gap-2 lg:gap-3 px-4 lg:px-3 py-2.5 rounded font-serif font-bold text-[11px] sm:text-xs transition-all whitespace-nowrap shadow-sm border ${
+                  className={`flex items-center gap-2 lg:gap-3 px-4 lg:px-3 py-2.5 rounded-xl font-serif font-bold text-[11px] sm:text-xs transition-all whitespace-nowrap shadow-sm border ${
                     isActive
                       ? 'bg-maroon text-ivory border-maroon'
                       : 'bg-white text-dark-brown/80 border-cream/80 hover:bg-cream/20'
                   }`}
                 >
-                  <Icon size={14} className={isActive ? 'text-ivory' : 'text-maroon'} />
+                  <Icon size={14} className={isActive ? 'text-ivory flex-shrink-0' : 'text-maroon flex-shrink-0'} />
                   {item.name}
                 </Link>
               );
             })}
-
-            {/* Desktop Logout Button at the bottom of the sidebar */}
-            <button
-              onClick={() => logoutUser()}
-              className="hidden lg:flex items-center gap-3 px-3 py-2.5 mt-4 border border-red-100 text-red-600 hover:bg-red-50 rounded font-serif font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer w-full"
-            >
-              <LogOut size={14} className="text-red-600" />
-              Log Out
-            </button>
           </aside>
 
           {/* Main Dashboard Content */}
-          <div className="lg:col-span-9 space-y-6">
+          <div className="lg:col-span-9 w-full">
             {children}
-
-            {/* Mobile Logout Button at the bottom of the content page */}
-            <div className="block lg:hidden pt-4 border-t border-cream/50">
-              <button
-                onClick={() => logoutUser()}
-                className="flex items-center justify-center gap-2 px-4 py-3 border border-red-200 text-red-600 hover:bg-red-50 rounded-lg font-serif font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer w-full bg-white shadow-sm"
-              >
-                <LogOut size={14} />
-                LOG OUT
-              </button>
-            </div>
           </div>
         </div>
       </main>

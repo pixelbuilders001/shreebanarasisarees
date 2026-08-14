@@ -11,15 +11,19 @@ interface Slide {
 
 const SLIDES: Slide[] = [
   {
-    desktopImage: "/hero_desktop_soon.png",
+    desktopImage: "/hero_desktop_soon2.png",
     ctaLink: "/about-us"
   },
   {
-    desktopImage: "/hero_desktop_1.png",
+    desktopImage: "/banner2.png",
     ctaLink: "/sarees?category=Banarasi"
   },
   {
-    desktopImage: "/hero_desktop_2.png",
+    desktopImage: "/sawan.png",
+    ctaLink: "/sarees?category=Organza"
+  },
+  {
+    desktopImage: "/wedding.png",
     ctaLink: "/sarees?category=Bridal"
   },
   {
@@ -53,9 +57,8 @@ export const HeroSection: React.FC = () => {
         {SLIDES.map((slide, index) => (
           <div
             key={index}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-              index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
-            }`}
+            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
+              }`}
           >
             <Link href={slide.ctaLink} className="block w-full h-full animate-fade-in">
               <img
@@ -89,9 +92,8 @@ export const HeroSection: React.FC = () => {
             <button
               key={index}
               onClick={() => setCurrentSlide(index)}
-              className={`w-2.5 h-2.5 rounded-full transition-all ${
-                index === currentSlide ? 'bg-gold w-6' : 'bg-white/50'
-              }`}
+              className={`w-2.5 h-2.5 rounded-full transition-all ${index === currentSlide ? 'bg-gold w-6' : 'bg-white/50'
+                }`}
               aria-label={`Go to slide ${index + 1}`}
             />
           ))}

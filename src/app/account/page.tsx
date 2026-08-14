@@ -1,15 +1,15 @@
 "use client";
 
 import React, { useState, Suspense } from 'react';
-import Link from 'next/link';
 import { useStore } from '../../context/StoreContext';
 import { 
   ShoppingBag, 
-  FileText, 
-  MessageCircle, 
-  ArrowRight,
+  ArrowLeft,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Calendar,
+  DollarSign,
+  Package
 } from 'lucide-react';
 
 function getStatusDisplay(status: string): string {
@@ -40,9 +40,6 @@ function getStatusDisplay(status: string): string {
 function AccountContent() {
   const { 
     orders, 
-    customRequests, 
-    recentSearches,
-    clearRecentSearches,
     cancelOrder,
     cancelOrderItem
   } = useStore();
@@ -55,8 +52,8 @@ function AccountContent() {
   const [cancelType, setCancelType] = useState<'order' | 'item'>('order');
   const [cancelStatus, setCancelStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-  // Get active order details
-  const activeOrder = orders.find(o => o.orderId === selectedOrderId) || (orders.length > 0 ? orders[0] : null);
+  // Get active order details if one is selected
+  const activeOrder = orders.find(o => o.orderId === selectedOrderId);
   const historyList = activeOrder?.statusHistory || [];
 
   const handleCancelOrder = async (productId?: string) => {
@@ -114,242 +111,330 @@ function AccountContent() {
     activeOrder.orderStatus !== 'Delivered' && 
     activeOrder.orderStatus !== 'Cancelled';
 
+  // Responsive Timeline component
+  const OrderTimeline = ({ currentStatus }: { currentStatus: string }) => {
+    const steps = [
+      'Order Placed',
+      'Confirmed',
+      'Packed',
+      'Shipped',
+      'Out for Delivery',
+      'Delivered'
+    ];
+
+    const getStatusIndex = (status: string) => {
+      const s = status?.toLowerCase() || '';
+      if (s.includes('placed') || s.includes('order') || s.includes('pending')) return 0;
+      if (s.includes('confirm') || s.includes('process')) return 1;
+      if (s.includes('pack')) return 2;
+      if (s.includes('ship') || s.includes('dispatch') || s.includes('transit')) return 3;
+      if (s.includes('out') || s.includes('delivery')) return 4;
+      if (s.includes('deliver')) return 5;
+      return -1;
+    };
+
+    const activeIndex = getStatusIndex(currentStatus);
+    const isCancelled = currentStatus?.toLowerCase() === 'cancelled';
+
+    if (isCancelled) {
+      return (
+        <div className="p-4 bg-red-50/70 border border-red-200 rounded-xl flex items-center gap-3 text-red-800 text-xs font-semibold">
+          <span className="text-base">✕</span>
+          <div>
+            <span className="font-bold text-sm block">Order Cancelled</span>
+            This order has been cancelled. If any payment was made, your refund is being processed to your original payment method.
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-[#FFF9F0]/30 p-5 rounded-2xl border border-cream/50 space-y-5">
+        <h3 className="text-xs font-bold text-dark-brown/65 uppercase tracking-wider font-serif">
+          Delivery Progress
+        </h3>
+
+        {/* Horizontal Timeline for Desktop */}
+        <div className="hidden md:flex items-center justify-between relative w-full pt-4 pb-2">
+          <div className="absolute top-[28px] left-[6%] right-[6%] h-[2px] bg-cream z-0" />
+          <div 
+            className="absolute top-[28px] left-[6%] h-[2px] bg-maroon z-0 transition-all duration-500" 
+            style={{ width: `${activeIndex >= 0 ? (activeIndex / (steps.length - 1)) * 88 : 0}%` }}
+          />
+
+          {steps.map((step, idx) => {
+            const isCompleted = idx <= activeIndex;
+            return (
+              <div key={step} className="flex flex-col items-center flex-1 relative z-10 text-center">
+                <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-xs transition-all duration-300 ${
+                  isCompleted 
+                    ? 'bg-maroon border-maroon text-[#FFF9F0] shadow-sm' 
+                    : 'bg-white border-cream text-dark-brown/40'
+                }`}>
+                  {isCompleted ? '✓' : idx + 1}
+                </div>
+                <span className={`text-[10px] font-bold mt-2 transition-colors duration-300 max-w-[85px] leading-tight ${
+                  isCompleted ? 'text-maroon' : 'text-dark-brown/45'
+                }`}>
+                  {step}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Vertical Timeline for Mobile */}
+        <div className="md:hidden space-y-4 pl-1">
+          {steps.map((step, idx) => {
+            const isCompleted = idx <= activeIndex;
+            return (
+              <div key={step} className="flex gap-4 relative">
+                {idx < steps.length - 1 && (
+                  <div className={`absolute left-[11px] top-6 bottom-[-16px] w-[2px] ${
+                    idx < activeIndex ? 'bg-maroon' : 'bg-cream'
+                  }`} />
+                )}
+
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold z-10 ${
+                  isCompleted 
+                    ? 'bg-maroon border-maroon text-[#FFF9F0]' 
+                    : 'bg-white border-cream text-dark-brown/45'
+                }`}>
+                  {isCompleted ? '✓' : idx + 1}
+                </div>
+
+                <div className="flex-grow pb-1">
+                  <span className={`text-xs font-serif font-bold ${
+                    isCompleted ? 'text-maroon' : 'text-dark-brown/50'
+                  }`}>
+                    {step}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Left Column: Orders & Tracking (2/3 width) */}
-      <div className="lg:col-span-2 space-y-6">
-        <div className="bg-white p-4 sm:p-6 rounded-2xl border border-cream shadow-sm space-y-6 animate-fadeIn">
+    <div className="w-full space-y-6 animate-fadeIn">
+      {/* 1. VIEW ACTIVE ORDER DETAIL */}
+      {selectedOrderId && activeOrder ? (
+        <div className="bg-white p-4 sm:p-6 rounded-2xl border border-cream shadow-sm space-y-6">
+          <div className="flex items-center justify-between border-b border-cream pb-3">
+            <button
+              onClick={() => setSelectedOrderId(null)}
+              className="flex items-center gap-1.5 text-xs font-serif font-bold text-maroon hover:text-maroon-dark transition-colors cursor-pointer"
+            >
+              <ArrowLeft size={16} />
+              Back to Orders
+            </button>
+            <span className="text-[10px] text-dark-brown/45 font-bold uppercase tracking-wider">
+              Order Details
+            </span>
+          </div>
+
+          {/* Active Order Summary Details */}
+          <div className="bg-[#FFF9F0]/40 p-4 rounded-xl border border-cream grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-semibold text-dark-brown/75">
+            <div>
+              <p className="text-dark-brown/40 uppercase font-bold text-[9px] tracking-wider">Order ID</p>
+              <p className="text-xs sm:text-sm font-bold text-maroon uppercase mt-0.5 break-all leading-tight">{activeOrder.orderId}</p>
+            </div>
+            <div>
+              <p className="text-dark-brown/40 uppercase font-bold text-[9px] tracking-wider">Placed On</p>
+              <p className="text-xs sm:text-sm font-bold text-dark-brown mt-0.5">
+                {new Date(activeOrder.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
+              </p>
+            </div>
+            <div>
+              <p className="text-dark-brown/40 uppercase font-bold text-[9px] tracking-wider">Total Amount</p>
+              <p className="text-xs sm:text-sm font-bold text-maroon mt-0.5">₹{activeOrder.total.toLocaleString('en-IN')}</p>
+            </div>
+            <div>
+              <p className="text-dark-brown/40 uppercase font-bold text-[9px] tracking-wider">Status</p>
+              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold mt-1 uppercase tracking-wider border ${
+                activeOrder.orderStatus === 'Delivered'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-150'
+                  : activeOrder.orderStatus === 'Cancelled'
+                  ? 'bg-red-50 text-red-800 border-red-150'
+                  : 'bg-green-50 text-green-800 border-green-150'
+              }`}>
+                {activeOrder.orderStatus}
+              </span>
+            </div>
+          </div>
+
+          {/* Progress Timeline */}
+          <OrderTimeline currentStatus={activeOrder.orderStatus} />
+
+          {/* detailed history logs if available */}
+          {historyList.length > 0 && (
+            <div className="border-t border-cream pt-5 space-y-3">
+              <h3 className="text-xs font-bold text-dark-brown/65 uppercase tracking-wider font-serif">
+                Activity Logs
+              </h3>
+              <div className="space-y-3 pl-1">
+                {historyList.map((history, idx) => {
+                  const date = new Date(history.createdAt);
+                  return (
+                    <div key={history.id || idx} className="text-xs flex justify-between items-start gap-4 border-b border-cream/35 pb-2.5 last:border-0 last:pb-0">
+                      <div>
+                        <span className="font-serif font-bold text-dark-brown">{getStatusDisplay(history.status)}</span>
+                        {history.note && (
+                          <p className="text-[11px] text-dark-brown/60 italic mt-0.5">&ldquo;{history.note}&rdquo;</p>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-dark-brown/40 font-semibold flex-shrink-0">
+                        {date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} &bull; {date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Saree Details in Active Order */}
+          <div className="border-t border-cream pt-5 space-y-4">
+            <h3 className="text-xs font-bold text-dark-brown/65 uppercase tracking-wider font-serif">
+              Saree Details
+            </h3>
+            <div className="space-y-3">
+              {activeOrder.items.map((item: any) => (
+                <div key={item.product.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 border border-cream/50 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex gap-4 items-center flex-grow">
+                    <img 
+                      src={item.product.images[0]} 
+                      alt={item.product.name} 
+                      className="w-14 aspect-[3/4] object-cover rounded-lg bg-cream flex-shrink-0 border border-cream/50" 
+                    />
+                    <div className="flex-grow flex flex-col justify-center">
+                      <h4 className="font-serif text-sm font-bold text-dark-brown leading-snug">{item.product.name}</h4>
+                      <p className="text-xs text-dark-brown/60 mt-1">{item.product.fabric} &bull; Qty {item.quantity}</p>
+                    </div>
+                  </div>
+                  <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-3">
+                    <span className="font-serif text-sm font-bold text-maroon">
+                      ₹{((item.product.salePrice ?? item.product.price) * item.quantity).toLocaleString('en-IN')}
+                    </span>
+                    {isCancellable && (
+                      <button
+                        onClick={() => handleCancelOrder(item.product.id)}
+                        disabled={isCancelling}
+                        className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 hover:border-red-300 rounded-lg text-[10px] font-serif font-bold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer shadow-sm"
+                      >
+                        {isCancelling ? 'Cancelling...' : activeOrder.items.length > 1 ? 'Cancel Item' : 'Cancel Order'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* 2. ORDER LIST CARD VIEW */
+        <div className="bg-white p-4 sm:p-6 rounded-2xl border border-cream shadow-sm space-y-6">
           <h2 className="font-serif text-base sm:text-lg font-bold text-dark-brown border-b border-cream pb-3 flex items-center gap-2">
             <ShoppingBag size={18} className="text-maroon" />
             Your Orders ({orders.length})
           </h2>
 
           {orders.length === 0 ? (
-            <div className="py-12 text-center text-xs text-dark-brown/50 italic">
-              No orders placed yet. Shop our premium collection to get started.
+            <div className="py-16 text-center text-xs text-dark-brown/50 italic flex flex-col items-center justify-center">
+              <ShoppingBag size={32} className="text-cream/80 mb-3" />
+              <span>No orders placed yet. Shop our premium collection to get started.</span>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Order Selector List */}
-              {orders.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-2 border-b border-cream/50 scrollbar-none">
-                  {orders.map((o) => (
-                    <button
-                      key={o.orderId}
-                      onClick={() => setSelectedOrderId(o.orderId)}
-                      className={`px-3.5 py-1.5 text-xs rounded-full border transition-all flex-shrink-0 font-serif font-bold ${
-                        (activeOrder?.orderId === o.orderId)
-                          ? 'bg-maroon border-maroon text-ivory shadow-sm'
-                          : 'bg-white border-cream text-dark-brown/70 hover:bg-cream/20'
-                      }`}
-                    >
-                      Order {o.orderId.substring(0, 8)}...
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {activeOrder && (
-                <div className="space-y-6">
-                  {/* Active Order Summary details */}
-                  <div className="bg-[#FFF9F0]/40 p-4 rounded-xl border border-cream grid grid-cols-2 sm:flex sm:flex-row justify-between gap-4 text-xs font-semibold text-dark-brown/75 shadow-sm">
-                    <div className="col-span-2 sm:col-span-1">
-                      <p className="text-dark-brown/40 uppercase font-bold text-[9px] tracking-wider">Order ID</p>
-                      <p className="text-xs sm:text-sm font-bold text-maroon uppercase mt-0.5 break-all leading-tight">{activeOrder.orderId}</p>
-                    </div>
-                    <div>
-                      <p className="text-dark-brown/40 uppercase font-bold text-[9px] tracking-wider">Placed On</p>
-                      <p className="text-xs sm:text-sm font-bold text-dark-brown mt-0.5">
-                        {new Date(activeOrder.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-dark-brown/40 uppercase font-bold text-[9px] tracking-wider">Total Amount</p>
-                      <p className="text-xs sm:text-sm font-bold text-maroon mt-0.5">₹{activeOrder.total.toLocaleString('en-IN')}</p>
-                    </div>
-                    <div>
-                      <p className="text-dark-brown/40 uppercase font-bold text-[9px] tracking-wider">Status</p>
-                      <span className="inline-block px-2.5 py-0.5 bg-green-50 text-green-800 border border-green-150 rounded-full text-[9px] font-bold mt-1 uppercase tracking-wider">
-                        {activeOrder.orderStatus}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Detailed Tracking History */}
-                  {historyList.length > 0 && (
-                    <div className="border-t border-cream pt-5 space-y-4">
-                      <h3 className="text-xs font-bold text-dark-brown/65 uppercase tracking-wider font-serif">
-                        Tracking Activity Log
-                      </h3>
-                      <div className="space-y-4 pl-2">
-                        {historyList.map((history, idx) => {
-                          const date = new Date(history.createdAt);
-                          const formattedDate = date.toLocaleDateString('en-IN', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric'
-                          });
-                          const formattedTime = date.toLocaleTimeString('en-IN', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          });
-
-                          return (
-                            <div key={history.id || idx} className="relative flex gap-4">
-                              {/* Connector line between tracking list items */}
-                              {idx < historyList.length - 1 && (
-                                <div className="absolute left-[11px] top-6 bottom-0 w-0.5 bg-cream/70" />
-                              )}
-                              
-                              {/* Dot indicator */}
-                              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-maroon/10 border border-maroon/30 flex items-center justify-center text-maroon z-10 bg-[#FFF9F0]">
-                                <div className="w-1.5 h-1.5 rounded-full bg-maroon" />
-                              </div>
-
-                              <div className="flex-grow bg-[#FFF9F0]/20 border border-cream/40 p-3 rounded-xl text-xs">
-                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1">
-                                  <span className="font-serif font-bold text-dark-brown text-xs">
-                                    {getStatusDisplay(history.status)}
-                                  </span>
-                                  <span className="text-[10px] text-dark-brown/40 font-semibold uppercase">
-                                    {formattedDate} &bull; {formattedTime}
-                                  </span>
-                                </div>
-                                {history.note && (
-                                  <p className="text-dark-brown/65 mt-1.5 italic text-[11px] leading-relaxed">
-                                    &ldquo;{history.note}&rdquo;
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Items Details */}
-                  <div className="border-t border-cream pt-5 space-y-4">
-                    <h3 className="text-xs font-bold text-dark-brown/65 uppercase tracking-wider font-serif">
-                      Saree details in order
-                    </h3>
-                    <div className="space-y-3">
-                      {activeOrder.items.map((item: any) => (
-                        <div key={item.product.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 border border-cream/50 rounded-xl bg-white shadow-sm hover:shadow transition-shadow animate-fadeIn">
-                          <div className="flex gap-4 items-center flex-grow">
-                            <img src={item.product.images[0]} alt={item.product.name} className="w-14 aspect-[3/4] object-cover rounded-lg bg-cream flex-shrink-0" />
-                            <div className="flex-grow flex flex-col justify-center">
-                              <h4 className="font-serif text-sm font-bold text-dark-brown leading-snug">{item.product.name}</h4>
-                              <p className="text-xs text-dark-brown/60 mt-1">{item.product.fabric} &bull; Qty {item.quantity}</p>
-                            </div>
+            <div className="space-y-4">
+              {orders.map((order) => {
+                const totalItemsCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+                return (
+                  <div 
+                    key={order.orderId}
+                    className="bg-white border border-cream rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-5"
+                  >
+                    <div className="space-y-3.5 flex-grow">
+                      {/* Header Info */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-cream/40 pb-2.5">
+                        <div className="flex gap-4">
+                          <div>
+                            <span className="text-[10px] text-dark-brown/40 uppercase font-bold tracking-wider block">Order Number</span>
+                            <span className="font-mono text-xs sm:text-sm font-bold text-maroon uppercase leading-none mt-0.5">{order.orderId}</span>
                           </div>
-                          <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
-                            <span className="font-serif text-sm font-bold text-maroon">
-                              ₹{((item.product.salePrice ?? item.product.price) * item.quantity).toLocaleString('en-IN')}
+                          <div>
+                            <span className="text-[10px] text-dark-brown/40 uppercase font-bold tracking-wider block">Placed On</span>
+                            <span className="text-xs sm:text-sm font-semibold text-dark-brown mt-0.5 block">
+                              {new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
                             </span>
-                            {isCancellable && (
-                              <button
-                                onClick={() => handleCancelOrder(item.product.id)}
-                                disabled={isCancelling}
-                                className="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 hover:border-red-300 rounded-lg text-[10px] font-serif font-bold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer shadow-sm animate-fadeIn"
-                              >
-                                {isCancelling ? 'Cancelling...' : 'Cancel Saree'}
-                              </button>
-                            )}
                           </div>
                         </div>
-                      ))}
+                      </div>
+
+                      {/* Thumbnail + Item count */}
+                      <div className="flex items-center gap-4">
+                        <div className="flex -space-x-3 overflow-hidden py-1">
+                          {order.items.map((item, idx) => (
+                            <img
+                              key={item.product.id || idx}
+                              src={item.product.images[0]}
+                              alt={item.product.name}
+                              className="w-12 h-16 object-cover rounded-md border-2 border-white bg-cream shadow-sm flex-shrink-0"
+                            />
+                          ))}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-dark-brown">
+                            {totalItemsCount} {totalItemsCount === 1 ? 'Item' : 'Items'}
+                          </p>
+                          <p className="text-[10px] text-dark-brown/50 mt-0.5 font-medium line-clamp-1 max-w-[200px] sm:max-w-md">
+                            {order.items.map(item => item.product.name).join(', ')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Side Details */}
+                    <div className="flex flex-row md:flex-col justify-between md:justify-center md:items-end gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-cream/50 flex-shrink-0">
+                      <div className="text-left md:text-right">
+                        <span className="text-[10px] text-dark-brown/40 uppercase font-bold tracking-wider block">Total Amount</span>
+                        <span className="font-serif text-sm sm:text-base font-bold text-maroon mt-0.5 block">
+                          ₹{order.total.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-3">
+                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
+                          order.orderStatus === 'Delivered'
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-150'
+                            : order.orderStatus === 'Cancelled'
+                            ? 'bg-red-50 text-red-800 border-red-150'
+                            : 'bg-green-50 text-green-800 border-green-150'
+                        }`}>
+                          {order.orderStatus}
+                        </span>
+
+                        <button
+                          onClick={() => setSelectedOrderId(order.orderId)}
+                          className="px-4 py-2 bg-white border border-[#C9A45C]/35 hover:border-maroon hover:bg-maroon hover:text-white text-maroon rounded-xl font-serif text-xs font-bold tracking-wider uppercase transition-all shadow-sm cursor-pointer"
+                        >
+                          View Order
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })}
             </div>
           )}
         </div>
-      </div>
+      )}
 
-      {/* Right Column: Custom Requests & Recent Searches (1/3 width) */}
-      <div className="space-y-6">
-        {/* Custom Saree Requests */}
-        <div className="bg-white p-6 rounded-lg border border-cream shadow-sm space-y-4">
-          <h2 className="font-serif text-base font-bold text-dark-brown border-b border-cream pb-3 flex items-center gap-2">
-            <FileText size={18} className="text-maroon" />
-            Customizations ({customRequests.length})
-          </h2>
-
-          {customRequests.length === 0 ? (
-            <div className="py-6 text-center text-xs text-dark-brown/50 italic">
-              No customization requests submitted yet.
-            </div>
-          ) : (
-            <div className="space-y-4 animate-fadeIn">
-              {customRequests.map((req) => (
-                <div 
-                  key={req.id} 
-                  className="border border-cream p-4 rounded-lg bg-[#FFF9F0]/30 space-y-2 text-xs"
-                >
-                  <div className="flex justify-between items-center border-b border-cream/50 pb-2">
-                    <span className="font-serif font-bold text-maroon text-sm">{req.sareeType}</span>
-                    <span className="px-2 py-0.5 bg-yellow-50 border border-yellow-100 text-yellow-800 font-bold rounded-[3px] text-[9px] uppercase tracking-wide">
-                      {req.status}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-dark-brown/80 font-medium">
-                    <p><strong>Color:</strong> {req.color}</p>
-                    <p><strong>Fabric:</strong> {req.fabric}</p>
-                    <p><strong>Budget:</strong> {req.budget}</p>
-                  </div>
-                  <div className="pt-2 flex justify-end">
-                    <a
-                      href={`https://wa.me/+916203909946?text=${encodeURIComponent(`Hello, I am tracking my Saree Customization Request (ID: ${req.id})`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="py-1 px-3 bg-[#25D366] text-white rounded text-[10px] font-bold flex items-center gap-1 hover:bg-[#20ba5a]"
-                    >
-                      <MessageCircle size={10} className="fill-current" />
-                      Chat
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Recent Searches */}
-        <div className="bg-white p-5 rounded-lg border border-cream shadow-sm space-y-3 text-xs">
-          <div className="flex justify-between items-center border-b border-cream pb-2">
-            <h3 className="font-serif text-sm font-bold text-dark-brown">
-              Recent Searches
-            </h3>
-            {recentSearches.length > 0 && (
-              <button onClick={clearRecentSearches} className="text-[10px] text-maroon hover:underline font-bold">
-                Clear
-              </button>
-            )}
-          </div>
-
-          {recentSearches.length === 0 ? (
-            <p className="text-dark-brown/40 italic">No search logs found.</p>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {recentSearches.map((s, idx) => (
-                <Link
-                  key={idx}
-                  href={`/sarees?search=${encodeURIComponent(s)}`}
-                  className="bg-cream/30 hover:bg-cream text-dark-brown/80 text-[10px] font-semibold px-2 py-1 rounded flex items-center gap-1 transition-colors"
-                >
-                  {s}
-                  <ArrowRight size={8} />
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
+      {/* Cancel Modal */}
       {showCancelModal && (
-        <div className="fixed inset-0 bg-[#0c0a09]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+        <div className="fixed inset-0 bg-[#0c0a09]/60 backdrop-blur-sm z-55 flex items-center justify-center p-4 animate-fadeIn">
           <div className="bg-[#FFF9F0] border border-[#C9A45C]/30 max-w-sm w-full rounded-2xl p-6 shadow-2xl relative animate-scaleIn space-y-5">
             {cancelStatus === 'idle' && (
               <>
@@ -423,6 +508,7 @@ function AccountContent() {
                       setOrderToCancel(null);
                       setItemToCancel(null);
                       setCancelStatus('idle');
+                      setSelectedOrderId(null); // Return to orders list since order is changed
                     }}
                     className="w-full max-w-[120px] py-2 bg-maroon text-ivory rounded-xl text-[11px] font-serif font-bold uppercase tracking-wider hover:bg-maroon-dark transition-colors cursor-pointer shadow-sm text-center"
                   >

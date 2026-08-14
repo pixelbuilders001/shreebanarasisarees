@@ -29,12 +29,13 @@ const HeaderInner: React.FC = () => {
     user,
     userProfile,
     loginWithGoogle,
-    isHydrated
+    isHydrated,
+    isAuthModalOpen,
+    setIsAuthModalOpen
   } = useStore();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   // Voice Search states
@@ -443,58 +444,94 @@ const HeaderInner: React.FC = () => {
       {/* Authentication Modal */}
       {isAuthModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-[#2D211D]/60 backdrop-blur-sm" onClick={() => setIsAuthModalOpen(false)} />
+          <div className="absolute inset-0 bg-[#2D211D]/60 backdrop-blur-sm animate-fade-in" onClick={() => {
+            setIsAuthModalOpen(false);
+            setAuthError('');
+          }} />
 
-          <div className="bg-white border border-gold/20 shadow-2xl rounded-lg max-w-sm w-full p-6 z-10 relative overflow-hidden animate-scale-up">
+          <div className="bg-white border border-[#C9A45C]/35 shadow-2xl rounded-2xl w-full max-w-3xl md:h-[480px] flex flex-col md:flex-row overflow-hidden z-10 relative animate-scale-up">
+            {/* Close Button */}
             <button
-              onClick={() => setIsAuthModalOpen(false)}
-              className="absolute top-4 right-4 p-1 text-dark-brown/65 hover:text-maroon rounded-full"
-            >
-              <X size={18} />
-            </button>
-
-            <h3 className="font-serif text-lg sm:text-xl font-bold text-dark-brown text-center mb-1">
-              Customer Account
-            </h3>
-            <p className="text-xs text-dark-brown/60 text-center mb-6">
-              Access your orders, wishlist, and customization requests
-            </p>
-
-            {authError && (
-              <div className="mb-4 p-2.5 bg-red-50 text-red-700 text-xs font-semibold rounded border border-red-100">
-                {authError}
-              </div>
-            )}
-
-            <button
-              type="button"
               onClick={() => {
-                loginWithGoogle().catch(err => {
-                  setAuthError(err.message || 'Failed to initialize Google Login');
-                });
+                setIsAuthModalOpen(false);
+                setAuthError('');
               }}
-              className="w-full py-3 px-4 border border-[#C9A45C]/30 hover:border-gold/50 bg-white text-dark-brown rounded font-serif font-bold text-xs tracking-wider uppercase transition-all shadow-sm flex items-center justify-center gap-3"
+              className="absolute top-4 right-4 z-25 p-1.5 text-dark-brown/65 hover:text-maroon hover:bg-cream/40 rounded-full transition-all"
+              aria-label="Close Modal"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" width="16" height="16">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                />
-              </svg>
-              Continue with Google
+              <X size={22} />
             </button>
+
+            {/* Left Side: Saree Workshop Image */}
+            <div 
+              className="hidden md:block md:w-1/2 relative bg-cover bg-center h-full min-h-[480px]"
+              style={{ backgroundImage: `url('/login_banner.jpg')` }}
+            >
+              {/* Premium Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-dark-brown/40 via-transparent to-transparent" />
+            </div>
+
+            {/* Right Side: Google Login Actions */}
+            <div className="w-full md:w-1/2 p-8 sm:p-10 flex flex-col justify-center bg-white h-full min-h-[480px] text-center space-y-6">
+              {/* Brand Logo */}
+              <div className="flex justify-center">
+                <img
+                  src="/brand_logo.png"
+                  alt="Shree Banarasi Sarees Logo"
+                  className="h-16 w-auto object-contain rounded-full border border-gold/20 p-1"
+                />
+              </div>
+
+              {/* Title & Subtitle */}
+              <div className="space-y-2">
+                <h3 className="font-serif text-xl sm:text-2xl font-black text-dark-brown leading-snug">
+                  Customer Account
+                </h3>
+                <p className="text-xs text-dark-brown/60 max-w-xs mx-auto leading-relaxed">
+                  Log in to track orders, manage your wishlist, and request custom saree designs.
+                </p>
+              </div>
+
+              {/* Gold border accent */}
+              <div className="w-16 h-0.5 bg-gold/45 mx-auto rounded-full"></div>
+
+              {authError && (
+                <div className="p-2.5 bg-red-50 text-red-700 text-xs font-semibold rounded border border-red-100 w-full max-w-[280px] sm:max-w-xs mx-auto">
+                  {authError}
+                </div>
+              )}
+
+              {/* Google Login Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  loginWithGoogle().catch(err => {
+                    setAuthError(err.message || 'Failed to initialize Google Login');
+                  });
+                }}
+                className="w-full max-w-[280px] sm:max-w-xs mx-auto py-3.5 px-5 border border-[#C9A45C]/35 hover:border-gold/60 bg-white hover:bg-cream/10 text-dark-brown rounded-xl font-serif font-bold text-xs tracking-wider uppercase transition-all shadow-sm flex items-center justify-center gap-3 cursor-pointer"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" width="20" height="20">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                  />
+                </svg>
+                Continue with Google
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -554,6 +591,12 @@ const HeaderInner: React.FC = () => {
             {/* Profile */}
             <Link 
               href="/account" 
+              onClick={(e) => {
+                if (!user && !userPhone) {
+                  e.preventDefault();
+                  setIsAuthModalOpen(true);
+                }
+              }}
               className="flex flex-col items-center justify-center flex-1 py-1 relative"
             >
               <div className="relative">

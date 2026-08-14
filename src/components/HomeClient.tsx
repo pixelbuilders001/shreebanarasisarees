@@ -52,6 +52,22 @@ export default function HomeClient({ allProducts = PRODUCTS }: HomeClientProps) 
         {/* Categories Section */}
         <CategoryCard />
 
+        {/* Clickable Rakhi Sale Banner Strip */}
+        <section className="my-8 max-w-7xl mx-auto px-4">
+          <Link
+            href="/sarees"
+            className="group block relative overflow-hidden rounded-xl sm:rounded-2xl border border-gold/15 hover:border-gold/35 hover:shadow-[0_8px_24px_rgba(212,175,55,0.12)] transition-all duration-300 hover:-translate-y-0.5"
+          >
+            <img
+              src="/rakhi_sale_banner.png"
+              alt="Rakhi Sale Buy 2 Get 1 Free - Shop Now"
+              className="w-full aspect-[1024/331] object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
+            />
+            {/* Subtle premium gold glow overlay on hover */}
+            <div className="absolute inset-0 bg-gold/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+          </Link>
+        </section>
+
         {/* Shop By Price Section */}
         <section className="pt-8 pb-16 md:py-16 px-4 bg-gradient-to-b from-[#FFF9F0] to-[#FFFFFF] border-t border-cream">
           <div className="max-w-7xl mx-auto">
@@ -79,74 +95,83 @@ export default function HomeClient({ allProducts = PRODUCTS }: HomeClientProps) 
                   tagline: "Budget Elegance",
                   description: "Everyday cottons & lightweight georgettes",
                   priceRange: "under_999",
-                  image: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=800",
-                  badge: "Best Value",
-                  color: "from-amber-950/90 to-transparent"
+                  image: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=600&h=750",
+                  badge: "Best Value"
                 },
                 {
                   title: "Under ₹1,499",
                   tagline: "Festive Grace",
                   description: "Charming organzas & contemporary fabrics",
                   priceRange: "under_1499",
-                  image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=800",
-                  badge: "Popular",
-                  color: "from-rose-950/90 to-transparent"
+                  image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=600&h=750",
+                  badge: "Popular"
                 },
                 {
                   title: "Under ₹2,000",
                   tagline: "Traditional Splendor",
                   description: "Fine chanderi & handloom designs",
                   priceRange: "under_2000",
-                  image: "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=800",
-                  badge: "Trending",
-                  color: "from-yellow-950/90 to-transparent"
+                  image: "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=600&h=750",
+                  badge: "Trending"
                 },
                 {
                   title: "Above ₹2,000",
                   tagline: "Heritage Luxury",
                   description: "Pure Katan silks & wedding Banarasis",
                   priceRange: "2000_5000",
-                  image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=800",
-                  badge: "Signature",
-                  color: "from-red-950/90 to-transparent"
+                  image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600&h=750",
+                  badge: "Signature"
                 }
               ].map((card, idx) => (
                 <Link
                   key={idx}
                   href={`/sarees?priceRange=${card.priceRange}`}
-                  className="group relative h-[280px] sm:h-[360px] rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-end border border-gold/15 hover:border-gold/40 hover:-translate-y-1"
+                  className="group bg-[#FFF9F0]/65 border border-gold/15 hover:border-gold/45 rounded-2xl p-2.5 sm:p-4 hover:shadow-[0_8px_24px_rgba(212,175,55,0.12)] hover:-translate-y-1 transition-all duration-500 flex flex-col justify-between"
                 >
-                  {/* Background Image */}
-                  <img
-                    src={card.image}
-                    alt={card.tagline}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  />
-                  {/* Premium overlay gradient */}
-                  <div className={`absolute inset-0 bg-gradient-to-t ${card.color} via-black/40 to-black/10 transition-opacity duration-300 group-hover:opacity-90`} />
+                  <div className="w-full">
+                    {/* Image Container with Gold frame */}
+                    <div className="relative w-full aspect-[4/5] rounded-xl p-[2px] bg-gradient-to-b from-gold/30 to-gold/10 group-hover:from-maroon/40 group-hover:to-maroon/10 transition-all duration-500 flex items-center justify-center overflow-hidden mb-3.5 sm:mb-4 shadow-sm">
+                      <div className="w-full h-full rounded-[10px] p-[2px] bg-[#FFF9F0] flex items-center justify-center overflow-hidden">
+                        <div className="w-full h-full rounded-lg overflow-hidden relative border border-gold/5">
+                          <img
+                            src={card.image}
+                            alt={card.tagline}
+                            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                          />
+                          {/* Inner Accent Line */}
+                          <div className="absolute inset-1.5 border border-gold/15 pointer-events-none rounded-[6px] transition-all duration-500 group-hover:border-maroon/20" />
+                          
+                          {/* Rich Overlay */}
+                          <div className="absolute inset-0 bg-maroon/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-                  {/* Badge */}
-                  <span className="absolute top-4 right-4 bg-gold text-dark-brown text-[9px] font-bold px-2 py-0.5 rounded shadow-md uppercase tracking-wider font-serif">
-                    {card.badge}
-                  </span>
+                          {/* Elegant Badge Overlay */}
+                          <span className="absolute top-2.5 right-2.5 bg-gold text-dark-brown text-[8px] sm:text-[9px] font-bold px-2 py-0.5 rounded shadow-sm uppercase tracking-wider font-serif">
+                            {card.badge}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
-                  {/* Card Content */}
-                  <div className="relative z-10 p-4 sm:p-5 text-white">
-                    <span className="text-[10px] text-gold font-bold uppercase tracking-widest font-serif block mb-1">
-                      {card.tagline}
-                    </span>
-                    <h3 className="font-serif text-lg sm:text-2xl font-extrabold tracking-wide text-ivory mb-1 sm:mb-2 group-hover:text-gold transition-colors duration-300">
-                      {card.title}
-                    </h3>
-                    <p className="text-[11px] text-ivory/80 font-light leading-relaxed mb-3 sm:mb-4 line-clamp-2">
-                      {card.description}
-                    </p>
-                    
-                    {/* Action link style */}
-                    <div className="inline-flex items-center gap-1.5 text-[10px] sm:text-xs text-gold font-bold font-serif uppercase tracking-wider group-hover:gap-2.5 transition-all">
+                    {/* Card Metadata */}
+                    <div className="px-1">
+                      <span className="text-[8px] sm:text-[9px] text-gold font-bold uppercase tracking-widest font-sans block mb-1">
+                        {card.tagline}
+                      </span>
+                      <h3 className="font-serif text-sm sm:text-lg font-extrabold tracking-wide text-dark-brown group-hover:text-maroon transition-colors duration-300 mb-1 leading-snug">
+                        {card.title}
+                      </h3>
+                      <p className="text-[10px] sm:text-xs text-dark-brown/65 font-light leading-relaxed mb-3 sm:mb-4 line-clamp-2 h-7 sm:h-8">
+                        {card.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Explore Button */}
+                  <div className="px-1 mt-auto">
+                    <div className="flex items-center justify-center gap-1.5 text-[9px] sm:text-[10px] text-maroon font-bold font-serif uppercase tracking-wider py-2 border border-maroon/25 rounded-lg group-hover:bg-maroon group-hover:text-ivory group-hover:border-maroon transition-all duration-300 w-full text-center">
                       <span>Explore Collection</span>
-                      <svg className="w-3 sm:w-3.5 h-3 sm:h-3.5 transform transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      <svg className="w-3 h-3 transform transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
                       </svg>
                     </div>
                   </div>
@@ -154,6 +179,22 @@ export default function HomeClient({ allProducts = PRODUCTS }: HomeClientProps) 
               ))}
             </div>
           </div>
+        </section>
+
+        {/* Clickable Silk Sarees Banner Strip */}
+        <section className="my-8 max-w-7xl mx-auto px-4">
+          <Link
+            href="/sarees/silk"
+            className="group block relative overflow-hidden rounded-xl sm:rounded-2xl border border-gold/15 hover:border-gold/35 hover:shadow-[0_8px_24px_rgba(212,175,55,0.12)] transition-all duration-300 hover:-translate-y-0.5"
+          >
+            <img
+              src="/silk_sarees_banner.png"
+              alt="Silk Sarees starting at ₹599 - Shop Now"
+              className="w-full aspect-[4/1] object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
+            />
+            {/* Subtle premium gold glow overlay on hover */}
+            <div className="absolute inset-0 bg-gold/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+          </Link>
         </section>
 
         {/* Featured Signature Collection */}

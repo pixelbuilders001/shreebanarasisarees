@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Product, PRODUCTS } from '../data/products';
+import { X, ShoppingBag } from 'lucide-react';
 import { 
   supabase,
   fetchProducts, 
@@ -112,13 +113,75 @@ interface StoreContextType {
   isHydrated: boolean;
   isCartOpen: boolean;
   setIsCartOpen: (isOpen: boolean) => void;
+  isAuthModalOpen: boolean;
+  setIsAuthModalOpen: (isOpen: boolean) => void;
   deliveryInfo: DeliveryCheckResult | null;
   setDeliveryInfo: (info: DeliveryCheckResult | null) => void;
   customerCoords: { latitude: number; longitude: number } | null;
   setCustomerCoords: (coords: { latitude: number; longitude: number } | null) => void;
   checkedPincode: string;
   setCheckedPincode: (pincode: string) => void;
+  toast: { message: string } | null;
+  showToast: (message: string) => void;
 }
+
+interface ToastProps {
+  message: string;
+  onClose: () => void;
+  onViewCart: () => void;
+}
+
+const ToastNotification: React.FC<ToastProps> = ({ message, onClose, onViewCart }) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <>
+      <style>{`
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-1rem);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-toast-slide-down {
+          animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+      `}</style>
+      <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-50 flex items-center justify-between gap-3 bg-[#FFF9F0] border border-gold/45 text-dark-brown px-4 py-3 rounded-xl shadow-lg animate-toast-slide-down sm:max-w-md w-auto sm:w-full">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-full bg-maroon/10 text-maroon flex-shrink-0">
+            <ShoppingBag size={15} />
+          </div>
+          <p className="text-xs sm:text-sm font-medium font-sans">{message}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={onViewCart}
+            className="text-[10px] sm:text-xs font-serif font-bold text-maroon hover:underline px-2 py-1"
+          >
+            View Bag
+          </button>
+          <button
+            onClick={onClose}
+            className="text-dark-brown/40 hover:text-dark-brown p-1"
+            aria-label="Close notification"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
@@ -137,10 +200,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [shippingAddresses, setShippingAddresses] = useState<any[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryCheckResult | null>(null);
   const [customerCoords, setCustomerCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [checkedPincode, setCheckedPincode] = useState<string>('');
+  const [toast, setToast] = useState<{ message: string } | null>(null);
   const currentUserRef = useRef<string | null>(null);
+
+  const showToast = (message: string) => {
+    setToast({ message });
+  };
 
   // Helper to sync user cart, wishlist and orders
   const syncUserData = async (identifier: string, loadedProducts: Product[], shouldMerge: boolean = false) => {
@@ -148,6 +217,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
       let dbCartItems: { product_id: string; quantity: number }[] = [];
       let dbWishlistProductIds: string[] = [];
+
+      let activeProds = loadedProducts;
+      if (!activeProds || activeProds.length === 0 || activeProds === PRODUCTS) {
+        const dbProducts = await fetchProducts();
+        if (dbProducts && dbProducts.length > 0) {
+          activeProds = dbProducts;
+        }
+      }
 
       if (isUuid) {
         dbCartItems = await fetchDbCart(identifier);
@@ -169,7 +246,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             for (const localItem of localCartItems) {
               const dbMatch = dbCartItems.find(dbItem => dbItem.product_id === localItem.product.id);
               if (dbMatch) {
-                const mergedQty = dbMatch.quantity + localItem.quantity;
+                const mergedQty = Math.max(dbMatch.quantity, localItem.quantity);
                 await upsertDbCartItem(identifier, localItem.product.id, mergedQty);
                 dbMatch.quantity = mergedQty;
               } else {
@@ -208,7 +285,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (isUuid && dbCartItems && dbCartItems.length > 0) {
         const finalCartItems: CartItem[] = [];
         for (const dbItem of dbCartItems) {
-          const product = loadedProducts.find(p => p.id === dbItem.product_id);
+          const product = activeProds.find(p => p.id === dbItem.product_id);
           if (product) {
             finalCartItems.push({
               product,
@@ -217,26 +294,33 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         }
         setCart(finalCartItems);
+        localStorage.setItem('sbs_cart', JSON.stringify(finalCartItems));
       } else if (isUuid) {
         setCart([]);
+        localStorage.setItem('sbs_cart', JSON.stringify([]));
       }
 
       // Populate wishlist from DB
       if (isUuid && dbWishlistProductIds && dbWishlistProductIds.length > 0) {
         const finalWishlistItems: Product[] = [];
         for (const pid of dbWishlistProductIds) {
-          const product = loadedProducts.find(p => p.id === pid);
+          const product = activeProds.find(p => p.id === pid);
           if (product) {
             finalWishlistItems.push(product);
           }
         }
         setWishlist(finalWishlistItems);
+        localStorage.setItem('sbs_wishlist', JSON.stringify(finalWishlistItems));
       } else if (isUuid) {
         setWishlist([]);
+        localStorage.setItem('sbs_wishlist', JSON.stringify([]));
       }
 
       const dbOrders = await fetchDbOrders(identifier);
       setOrders(dbOrders || []);
+      if (isUuid) {
+        localStorage.setItem('sbs_orders', JSON.stringify(dbOrders || []));
+      }
     } catch (err) {
       console.error('Error syncing user data:', err);
     }
@@ -339,6 +423,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         setUserProfile(currentProfile);
         setUserPhone(currentUser.id);
+        localStorage.setItem('sbs_user_phone', currentUser.id);
 
         // Fetch shipping addresses
         fetchShippingAddresses(currentUser.id).catch(err => {
@@ -348,7 +433,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Fetch and merge cart & orders for this user
         // We only merge if the user just signed in (i.e. transitioned from anonymous to logged-in)
         const shouldMerge = prevUserId === null;
-        syncUserData(currentUser.id, activeProducts, shouldMerge);
+        await syncUserData(currentUser.id, activeProducts, shouldMerge);
 
         // Clean up URL hash/search and force a reload if redirected from OAuth to sync state cleanly
         if (typeof window !== 'undefined' && (
@@ -363,9 +448,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setUser(null);
         setUserProfile(null);
         setShippingAddresses([]);
-        setOrders([]);
-        setCart([]);
-        setWishlist([]);
+        if (prevUserId !== null || event === 'SIGNED_OUT') {
+          setOrders([]);
+          setCart([]);
+          setWishlist([]);
+        }
       }
     });
 
@@ -411,6 +498,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Cart operations
   const addToCart = (product: Product, quantity = 1) => {
+    const isCartEmpty = cart.length === 0;
     const existingItem = cart.find(item => item.product.id === product.id);
     const newQty = existingItem ? existingItem.quantity + quantity : quantity;
 
@@ -431,7 +519,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (userPhone && isUuid) {
       upsertDbCartItem(userPhone, product.id, newQty);
     }
-    setIsCartOpen(true);
+    
+    if (isCartEmpty) {
+      setIsCartOpen(true);
+    } else {
+      showToast(`Added "${product.name}" to your bag!`);
+    }
   };
 
   const removeFromCart = (productId: string) => {
@@ -911,14 +1004,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       isHydrated,
       isCartOpen,
       setIsCartOpen,
+      isAuthModalOpen,
+      setIsAuthModalOpen,
       deliveryInfo,
       setDeliveryInfo,
       customerCoords,
       setCustomerCoords,
       checkedPincode,
-      setCheckedPincode
+      setCheckedPincode,
+      toast,
+      showToast
     }}>
       {children}
+      {toast && (
+        <ToastNotification 
+          message={toast.message} 
+          onClose={() => setToast(null)} 
+          onViewCart={() => {
+            setToast(null);
+            setIsCartOpen(true);
+          }}
+        />
+      )}
     </StoreContext.Provider>
   );
 };

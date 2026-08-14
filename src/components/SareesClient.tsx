@@ -134,10 +134,10 @@ export const SareesClient: React.FC<SareesClientProps> = ({
     <>
       <Header />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-[1650px] mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-6">
 
         {/* Breadcrumbs */}
-        <nav className="text-xs text-dark-brown/50 font-medium mb-3 flex items-center gap-1 select-none">
+        <nav className="text-xs text-dark-brown/50 font-medium mb-2 flex items-center gap-1 select-none">
           <Link href="/" className="hover:text-maroon">Home</Link>
           <span>/</span>
           {selectedCategory !== 'All' ? (
@@ -158,9 +158,9 @@ export const SareesClient: React.FC<SareesClientProps> = ({
         </nav>
 
         {/* Category Header Title */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-cream pb-6 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-cream pb-3 mb-4">
           <div>
-            <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-extrabold text-dark-brown flex items-baseline gap-2">
+            <h1 className="font-serif text-lg sm:text-xl lg:text-2xl font-extrabold text-dark-brown flex items-baseline gap-2">
               {h1Title}
               <span className="text-xs font-semibold text-dark-brown/40 font-sans">
                 ({filteredProducts.length} {filteredProducts.length === 1 ? 'Product' : 'Products'})
@@ -210,11 +210,11 @@ export const SareesClient: React.FC<SareesClientProps> = ({
           </div>
         )} */}
 
-        <div className="flex gap-8 items-start">
+        <div className="flex gap-4 xl:gap-5 items-start">
           {/* Desktop Filters Sidebar */}
-          <aside className="hidden lg:block w-64 flex-shrink-0 bg-white border border-cream p-5 rounded-lg shadow-sm space-y-6">
-            <div className="flex justify-between items-center border-b border-cream pb-3">
-              <h2 className="font-serif font-bold text-dark-brown text-base flex items-center gap-2">
+          <aside className="hidden lg:block w-56 flex-shrink-0 bg-white border border-cream p-4 rounded-lg shadow-sm space-y-4">
+            <div className="flex justify-between items-center border-b border-cream pb-2">
+              <h2 className="font-serif font-bold text-dark-brown text-sm flex items-center gap-2">
                 <Filter size={16} className="text-maroon" />
                 Filters
               </h2>
@@ -353,7 +353,7 @@ export const SareesClient: React.FC<SareesClientProps> = ({
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-3 lg:gap-4">
                 {filteredProducts.map((prod) => (
                   <ProductCard key={prod.id} product={prod} />
                 ))}
