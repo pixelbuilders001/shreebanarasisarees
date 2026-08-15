@@ -16,7 +16,7 @@ export const Footer: React.FC = () => {
           <div className="space-y-4">
             <Link href="/" className="flex items-center gap-3">
               <img
-                src="/brand_logo.png"
+                src="/brand_logo.webp"
                 alt="Shree Banarasi Sarees Logo"
                 className="h-14 w-auto object-contain bg-white rounded-full p-0.5 border border-gold/40"
               />

@@ -59,7 +59,7 @@ export default function HomeClient({ allProducts = PRODUCTS }: HomeClientProps) 
             className="group block relative overflow-hidden rounded-xl sm:rounded-2xl border border-gold/15 hover:border-gold/35 hover:shadow-[0_8px_24px_rgba(212,175,55,0.12)] transition-all duration-300 hover:-translate-y-0.5"
           >
             <img
-              src="/rakhi_sale_banner.png"
+              src="/rakhi_sale_banner.webp"
               alt="Rakhi Sale Buy 2 Get 1 Free - Shop Now"
               className="w-full aspect-[1024/331] object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
             />
@@ -188,7 +188,7 @@ export default function HomeClient({ allProducts = PRODUCTS }: HomeClientProps) 
             className="group block relative overflow-hidden rounded-xl sm:rounded-2xl border border-gold/15 hover:border-gold/35 hover:shadow-[0_8px_24px_rgba(212,175,55,0.12)] transition-all duration-300 hover:-translate-y-0.5"
           >
             <img
-              src="/silk_sarees_banner.png"
+              src="/silk_sarees_banner.webp"
               alt="Silk Sarees starting at ₹599 - Shop Now"
               className="w-full aspect-[4/1] object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
             />

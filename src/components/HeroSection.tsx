@@ -11,29 +11,30 @@ interface Slide {
 
 const SLIDES: Slide[] = [
   {
-    desktopImage: "/hero_desktop_soon2.png",
+    desktopImage: "/hero_desktop_soon2.webp",
     ctaLink: "/about-us"
   },
   {
-    desktopImage: "/banner2.png",
+    desktopImage: "/banner2.webp",
     ctaLink: "/sarees?category=Banarasi"
   },
   {
-    desktopImage: "/sawan.png",
+    desktopImage: "/sawan.webp",
     ctaLink: "/sarees?category=Organza"
   },
   {
-    desktopImage: "/wedding.png",
+    desktopImage: "/wedding.webp",
     ctaLink: "/sarees?category=Bridal"
   },
   {
-    desktopImage: "/hero_desktop_3.png",
+    desktopImage: "/hero_desktop_3.webp",
     ctaLink: "/sarees?category=Organza"
   }
 ];
 
 export const HeroSection: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [visitedSlides, setVisitedSlides] = useState<number[]>([0]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -41,6 +42,20 @@ export const HeroSection: React.FC = () => {
     }, 6000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const nextSlide = (currentSlide + 1) % SLIDES.length;
+    setVisitedSlides((prev) => {
+      const newVisited = [...prev];
+      if (!newVisited.includes(currentSlide)) {
+        newVisited.push(currentSlide);
+      }
+      if (!newVisited.includes(nextSlide)) {
+        newVisited.push(nextSlide);
+      }
+      return newVisited;
+    });
+  }, [currentSlide]);
 
   const handlePrev = () => {
     setCurrentSlide((prev) => (prev - 1 + SLIDES.length) % SLIDES.length);
@@ -61,11 +76,17 @@ export const HeroSection: React.FC = () => {
               }`}
           >
             <Link href={slide.ctaLink} className="block w-full h-full animate-fade-in">
-              <img
-                src={slide.desktopImage}
-                alt={`Hero banner ${index + 1}`}
-                className="w-full h-full object-cover"
-              />
+              {visitedSlides.includes(index) ? (
+                <img
+                  src={slide.desktopImage}
+                  alt={`Hero banner ${index + 1}`}
+                  className="w-full h-full object-cover"
+                  loading={index === 0 ? "eager" : "lazy"}
+                  {...(index === 0 ? { fetchPriority: "high" } : {})}
+                />
+              ) : (
+                <div className="w-full h-full bg-dark-brown" />
+              )}
             </Link>
           </div>
         ))}

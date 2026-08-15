@@ -187,7 +187,7 @@ const HeaderInner: React.FC = () => {
               className="flex items-center justify-center select-none lg:static absolute left-1/2 -translate-x-1/2 lg:left-0 lg:translate-x-0 z-10"
             >
               <img
-                src="/brand_logo.png"
+                src="/brand_logo.webp"
                 alt="Shree Banarasi Sarees Logo"
                 className="h-10 sm:h-11 md:h-14 w-auto object-contain rounded-full border border-gold/25"
               />
@@ -407,7 +407,7 @@ const HeaderInner: React.FC = () => {
             <div className="px-5 py-6 bg-white border-b border-cream flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <img
-                  src="/brand_logo.png"
+                  src="/brand_logo.webp"
                   alt="Shree Banarasi Sarees Logo"
                   className="h-9 w-auto object-contain rounded-full"
                 />
@@ -476,7 +476,7 @@ const HeaderInner: React.FC = () => {
               {/* Brand Logo */}
               <div className="flex justify-center">
                 <img
-                  src="/brand_logo.png"
+                  src="/brand_logo.webp"
                   alt="Shree Banarasi Sarees Logo"
                   className="h-16 w-auto object-contain rounded-full border border-gold/20 p-1"
                 />

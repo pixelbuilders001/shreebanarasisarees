@@ -356,7 +356,7 @@ function CheckoutContent() {
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <Link href="/" className="flex items-center select-none">
               <img
-                src="/brand_logo.png"
+                src="/brand_logo.webp"
                 alt="Shree Banarasi Sarees Logo"
                 className="h-10 sm:h-12 w-auto object-contain rounded-full border border-gold/25"
               />
@@ -453,7 +453,7 @@ function CheckoutContent() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center select-none">
             <img
-              src="/brand_logo.png"
+              src="/brand_logo.webp"
               alt="Shree Banarasi Sarees Logo"
               className="h-10 sm:h-12 w-auto object-contain rounded-full border border-gold/25"
             />
