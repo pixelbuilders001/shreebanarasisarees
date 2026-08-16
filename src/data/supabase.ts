@@ -857,3 +857,98 @@ export async function cancelDbOrderItem(orderNumber: string, productId: string):
     return { success: false, cancelledEntireOrder: false };
   }
 }
+
+export interface DbCampaign {
+  id: string;
+  name: string;
+  slug: string;
+  title: string;
+  subtitle: string | null;
+  desktop_banner_url: string | null;
+  mobile_banner_url: string | null;
+  start_date: string;
+  end_date: string;
+  status: 'draft' | 'active' | 'inactive';
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function fetchActiveCampaigns(): Promise<DbCampaign[]> {
+  try {
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('campaigns')
+      .select('*')
+      .eq('status', 'active')
+      .lte('start_date', now)
+      .gte('end_date', now)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching active campaigns:', error);
+      return [];
+    }
+    return (data || []) as DbCampaign[];
+  } catch (err) {
+    console.error('Exception in fetchActiveCampaigns:', err);
+    return [];
+  }
+}
+
+export async function fetchCampaignBySlug(slug: string): Promise<DbCampaign | null> {
+  try {
+    const { data, error } = await supabase
+      .from('campaigns')
+      .select('*')
+      .eq('slug', slug)
+      .single();
+
+    if (error || !data) {
+      console.error('Error fetching campaign by slug:', error);
+      return null;
+    }
+    return data as DbCampaign;
+  } catch (err) {
+    console.error('Exception in fetchCampaignBySlug:', err);
+    return null;
+  }
+}
+
+export async function fetchCampaignProducts(campaignId: string): Promise<Product[]> {
+  try {
+    const { data: campaignProds, error: cpError } = await supabase
+      .from('campaign_products')
+      .select('inventory_id')
+      .eq('campaign_id', campaignId);
+
+    if (cpError || !campaignProds) {
+      console.error('Error fetching campaign products relation:', cpError);
+      return [];
+    }
+
+    const inventoryIds = campaignProds.map(cp => cp.inventory_id);
+    if (inventoryIds.length === 0) {
+      return [];
+    }
+
+    const { data: inventoryData, error: invError } = await supabase
+      .from('inventory')
+      .select('*, inventory_images(*)')
+      .in('id', inventoryIds)
+      .eq('status', 'active');
+
+    if (invError || !inventoryData) {
+      console.error('Error fetching inventory for campaign:', invError);
+      return [];
+    }
+
+    const dbItems = inventoryData as DbInventory[];
+    return dbItems.map(mapDbProductToProduct);
+  } catch (err) {
+    console.error('Exception in fetchCampaignProducts:', err);
+    return [];
+  }
+}
+

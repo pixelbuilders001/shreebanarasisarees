@@ -13,12 +13,15 @@ import { StoreInfo } from './StoreInfo';
 import { Footer } from './Footer';
 import { Product, PRODUCTS } from '../data/products';
 import { ArrowLeft, ArrowRight, ShieldCheck, Award, Wrench, Headphones } from 'lucide-react';
+import { DbCampaign } from '../data/supabase';
+import { CampaignSection } from './CampaignSection';
 
 interface HomeClientProps {
   allProducts?: Product[];
+  activeCampaigns?: DbCampaign[];
 }
 
-export default function HomeClient({ allProducts = PRODUCTS }: HomeClientProps) {
+export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [] }: HomeClientProps) {
   // Get featured products (up to 8)
   const featuredProducts = allProducts.filter(p => p.featured).slice(0, 8);
 
@@ -53,7 +56,7 @@ export default function HomeClient({ allProducts = PRODUCTS }: HomeClientProps) 
         <CategoryCard />
 
         {/* Clickable Rakhi Sale Banner Strip */}
-        <section className="my-8 max-w-7xl mx-auto px-4">
+        {/* <section className="my-8 max-w-7xl mx-auto px-4">
           <Link
             href="/sarees"
             className="group block relative overflow-hidden rounded-xl sm:rounded-2xl border border-gold/15 hover:border-gold/35 hover:shadow-[0_8px_24px_rgba(212,175,55,0.12)] transition-all duration-300 hover:-translate-y-0.5"
@@ -63,10 +66,13 @@ export default function HomeClient({ allProducts = PRODUCTS }: HomeClientProps) 
               alt="Rakhi Sale Buy 2 Get 1 Free - Shop Now"
               className="w-full aspect-[1024/331] object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
             />
-            {/* Subtle premium gold glow overlay on hover */}
+          
             <div className="absolute inset-0 bg-gold/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
           </Link>
-        </section>
+        </section> */}
+
+        {/* Top Campaign Slot */}
+        <CampaignSection slot="top" />
 
         {/* Shop By Price Section */}
         <section className="pt-8 pb-16 md:py-16 px-4 bg-gradient-to-b from-[#FFF9F0] to-[#FFFFFF] border-t border-cream">
@@ -140,7 +146,7 @@ export default function HomeClient({ allProducts = PRODUCTS }: HomeClientProps) 
                           />
                           {/* Inner Accent Line */}
                           <div className="absolute inset-1.5 border border-gold/15 pointer-events-none rounded-[6px] transition-all duration-500 group-hover:border-maroon/20" />
-                          
+
                           {/* Rich Overlay */}
                           <div className="absolute inset-0 bg-maroon/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
@@ -182,7 +188,7 @@ export default function HomeClient({ allProducts = PRODUCTS }: HomeClientProps) 
         </section>
 
         {/* Clickable Silk Sarees Banner Strip */}
-        <section className="my-8 max-w-7xl mx-auto px-4">
+        {/* <section className="my-8 max-w-7xl mx-auto px-4">
           <Link
             href="/sarees/silk"
             className="group block relative overflow-hidden rounded-xl sm:rounded-2xl border border-gold/15 hover:border-gold/35 hover:shadow-[0_8px_24px_rgba(212,175,55,0.12)] transition-all duration-300 hover:-translate-y-0.5"
@@ -192,10 +198,13 @@ export default function HomeClient({ allProducts = PRODUCTS }: HomeClientProps) 
               alt="Silk Sarees starting at ₹599 - Shop Now"
               className="w-full aspect-[4/1] object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
             />
-            {/* Subtle premium gold glow overlay on hover */}
+
             <div className="absolute inset-0 bg-gold/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
           </Link>
-        </section>
+        </section> */}
+
+        {/* Middle Campaign Slot */}
+        <CampaignSection slot="middle" />
 
         {/* Featured Signature Collection */}
         <section className="py-16 px-4 bg-[#FFFFFF] border-t border-b border-cream">
@@ -320,6 +329,9 @@ export default function HomeClient({ allProducts = PRODUCTS }: HomeClientProps) 
             </div>
           </div>
         </section>
+
+        {/* Bottom Campaign Slot */}
+        <CampaignSection slot="bottom" />
 
         {/* Why Choose Us */}
         <section className="py-16 px-4 bg-[#FFFFFF] border-t border-b border-cream">

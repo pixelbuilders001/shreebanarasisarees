@@ -1,7 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import HomeClient from '../components/HomeClient';
-import { fetchProducts } from '../data/supabase';
+import { fetchProducts, fetchActiveCampaigns } from '../data/supabase';
 
 export const metadata: Metadata = {
   title: "Shree Banarasi Sarees | Banarasi & Traditional Sarees in Samastipur",
@@ -34,7 +34,10 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const dbProducts = await fetchProducts();
+  const [dbProducts, activeCampaigns] = await Promise.all([
+    fetchProducts(),
+    fetchActiveCampaigns()
+  ]);
   // 1. Organization Schema
   const organizationJsonLd = {
     "@context": "https://schema.org",
@@ -102,7 +105,7 @@ export default async function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
       />
-      <HomeClient allProducts={dbProducts} />
+      <HomeClient allProducts={dbProducts} activeCampaigns={activeCampaigns} />
     </>
   );
 }
