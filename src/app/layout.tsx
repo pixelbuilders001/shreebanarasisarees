@@ -43,18 +43,18 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "https://shreebanarasisarees.vercel.app/brand_logo.png",
-        width: 500,
-        height: 500,
-        alt: "Shree Banarasi Sarees Logo",
+        url: "https://shreebanarasisarees.vercel.app/og_image.jpg",
+        width: 1024,
+        height: 537,
+        alt: "Shree Banarasi Sarees Showcase",
       }
     ]
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Shree Banarasi Sarees | श्री बनारसी साड़ियाँ",
     description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
-    images: ["https://shreebanarasisarees.vercel.app/brand_logo.png"],
+    images: ["https://shreebanarasisarees.vercel.app/og_image.jpg"],
   },
   icons: {
     icon: "/favicon.ico",

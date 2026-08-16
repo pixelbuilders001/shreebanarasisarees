@@ -149,18 +149,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       type: "website",
       images: [
         {
-          url: "https://shreebanarasisarees.com/brand_logo.png",
-          width: 500,
-          height: 500,
-          alt: "Shree Banarasi Sarees Logo",
+          url: "https://shreebanarasisarees.com/og_image.jpg",
+          width: 1024,
+          height: 537,
+          alt: "Shree Banarasi Sarees Showcase",
         }
       ],
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: data.title,
       description: data.description,
-      images: ["https://shreebanarasisarees.com/brand_logo.png"],
+      images: ["https://shreebanarasisarees.com/og_image.jpg"],
     }
   };
 }
