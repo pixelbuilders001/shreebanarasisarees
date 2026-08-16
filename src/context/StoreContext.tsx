@@ -121,21 +121,30 @@ interface StoreContextType {
   setCustomerCoords: (coords: { latitude: number; longitude: number } | null) => void;
   checkedPincode: string;
   setCheckedPincode: (pincode: string) => void;
-  toast: { message: string } | null;
-  showToast: (message: string) => void;
+  toast: {
+    message: string;
+    type?: 'cart' | 'info';
+    action?: { label: string; onClick: () => void };
+  } | null;
+  showToast: (
+    message: string,
+    type?: 'cart' | 'info',
+    action?: { label: string; onClick: () => void }
+  ) => void;
 }
 
 interface ToastProps {
   message: string;
+  type?: 'cart' | 'info';
+  action?: { label: string; onClick: () => void };
   onClose: () => void;
-  onViewCart: () => void;
 }
 
-const ToastNotification: React.FC<ToastProps> = ({ message, onClose, onViewCart }) => {
+const ToastNotification: React.FC<ToastProps> = ({ message, type = 'info', action, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
-    }, 4000);
+    }, 5000);
     return () => clearTimeout(timer);
   }, [onClose]);
 
@@ -159,17 +168,22 @@ const ToastNotification: React.FC<ToastProps> = ({ message, onClose, onViewCart 
       <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-50 flex items-center justify-between gap-3 bg-[#FFF9F0] border border-gold/45 text-dark-brown px-4 py-3 rounded-xl shadow-lg animate-toast-slide-down sm:max-w-md w-auto sm:w-full">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-full bg-maroon/10 text-maroon flex-shrink-0">
-            <ShoppingBag size={15} />
+            {type === 'cart' ? <ShoppingBag size={15} /> : <span className="text-sm">🔔</span>}
           </div>
           <p className="text-xs sm:text-sm font-medium font-sans">{message}</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            onClick={onViewCart}
-            className="text-[10px] sm:text-xs font-serif font-bold text-maroon hover:underline px-2 py-1"
-          >
-            View Bag
-          </button>
+          {action && (
+            <button
+              onClick={() => {
+                action.onClick();
+                onClose();
+              }}
+              className="text-[10px] sm:text-xs font-serif font-bold text-maroon hover:underline px-2 py-1"
+            >
+              {action.label}
+            </button>
+          )}
           <button
             onClick={onClose}
             className="text-dark-brown/40 hover:text-dark-brown p-1"
@@ -204,11 +218,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryCheckResult | null>(null);
   const [customerCoords, setCustomerCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [checkedPincode, setCheckedPincode] = useState<string>('');
-  const [toast, setToast] = useState<{ message: string } | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type?: 'cart' | 'info';
+    action?: { label: string; onClick: () => void };
+  } | null>(null);
   const currentUserRef = useRef<string | null>(null);
 
-  const showToast = (message: string) => {
-    setToast({ message });
+  const showToast = (
+    message: string,
+    type: 'cart' | 'info' = 'info',
+    action?: { label: string; onClick: () => void }
+  ) => {
+    setToast({ message, type, action });
   };
 
   // Helper to sync user cart, wishlist and orders
@@ -435,6 +457,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const shouldMerge = prevUserId === null;
         await syncUserData(currentUser.id, activeProducts, shouldMerge);
 
+        // Sync FCM token if notification permission is granted
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+          navigator.serviceWorker.ready.then(async (registration) => {
+            try {
+              const { getFCMToken, saveFCMTokenToSupabase } = await import("../lib/firebase/messaging");
+              const token = await getFCMToken(registration);
+              if (token) {
+                await saveFCMTokenToSupabase(token, currentUser.id);
+              }
+            } catch (err) {
+              console.error("[FCM] Error syncing FCM token on auth change:", err);
+            }
+          });
+        }
+
         // Clean up URL hash/search and force a reload if redirected from OAuth to sync state cleanly
         if (typeof window !== 'undefined' && (
           window.location.hash.includes('access_token') || 
@@ -452,12 +489,65 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setOrders([]);
           setCart([]);
           setWishlist([]);
+
+          // Disassociate FCM token
+          if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+            navigator.serviceWorker.ready.then(async (registration) => {
+              try {
+                const { getFCMToken, disassociateFCMTokenInSupabase } = await import("../lib/firebase/messaging");
+                const token = await getFCMToken(registration);
+                if (token) {
+                  await disassociateFCMTokenInSupabase(token);
+                }
+              } catch (err) {
+                console.error("[FCM] Error disassociating FCM token on signout:", err);
+              }
+            });
+          }
         }
       }
     });
 
     return () => {
       subscription.unsubscribe();
+    };
+  }, []);
+
+  // Setup foreground notifications listener
+  useEffect(() => {
+    let unsubscribeFCM: (() => void) | null = null;
+
+    const setupFCM = async () => {
+      try {
+        const { isMessagingSupported, registerForegroundMessageHandler } = await import("../lib/firebase/messaging");
+        const supported = await isMessagingSupported();
+        if (!supported) return;
+
+        unsubscribeFCM = await registerForegroundMessageHandler((payload) => {
+          const title = payload.notification?.title || "Notification";
+          const body = payload.notification?.body || "";
+          const url = payload.data?.url || "";
+
+          showToast(`🔔 ${title}: ${body}`, "info", url ? {
+            label: "View",
+            onClick: () => {
+              if (typeof window !== "undefined") {
+                window.location.href = url;
+              }
+            }
+          } : undefined);
+        }) || null;
+      } catch (err) {
+        console.error("[FCM] Error initializing foreground listener:", err);
+      }
+    };
+
+    setupFCM();
+
+    return () => {
+      if (unsubscribeFCM) {
+        unsubscribeFCM();
+      }
     };
   }, []);
 
@@ -523,7 +613,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (isCartEmpty) {
       setIsCartOpen(true);
     } else {
-      showToast(`Added "${product.name}" to your bag!`);
+      showToast(`Added "${product.name}" to your bag!`, 'cart', {
+        label: 'View Bag',
+        onClick: () => setIsCartOpen(true)
+      });
     }
   };
 
@@ -1019,11 +1112,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       {toast && (
         <ToastNotification 
           message={toast.message} 
+          type={toast.type}
+          action={toast.action}
           onClose={() => setToast(null)} 
-          onViewCart={() => {
-            setToast(null);
-            setIsCartOpen(true);
-          }}
         />
       )}
     </StoreContext.Provider>

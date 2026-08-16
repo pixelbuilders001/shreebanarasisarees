@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../../context/StoreContext';
 import { Mail, Phone, User, Shield, Edit3, CheckCircle } from 'lucide-react';
+import NotificationSettings from '../../../components/notifications/NotificationSettings';
 
 export default function ProfilePage() {
   const { 
@@ -223,6 +224,8 @@ export default function ProfilePage() {
                   </span>
                 </div>
               )}
+
+              <NotificationSettings />
 
               <div className="pt-4 text-[10px] text-dark-brown/50 leading-relaxed text-center">
                 🔒 Your profile information is synchronized with Google authentication.

@@ -18,6 +18,13 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  experimental: {
+    serverActions: {
+      allowedOrigins: [
+        "custody-alliance-ensemble-donor.trycloudflare.com"
+      ]
+    }
+  }
 };
 
 export default nextConfig;

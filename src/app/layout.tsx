@@ -5,6 +5,7 @@ import { StoreProvider } from "../context/StoreContext";
 import { CartDrawer } from "../components/CartDrawer";
 import { WhatsAppButton } from "../components/WhatsAppButton";
 import PWARegistration from "../components/PWARegistration";
+import NotificationPrompt from "../components/notifications/NotificationPrompt";
 
 const playfair = Playfair_Display({
   variable: "--font-serif",
@@ -73,6 +74,7 @@ export default function RootLayout({
       <body className="font-sans antialiased text-[#2D211D] bg-[#FFF9F0] min-h-screen flex flex-col justify-between">
         <StoreProvider>
           <PWARegistration />
+          <NotificationPrompt />
           <div className="flex-grow pb-16 lg:pb-0">
             {children}
           </div>

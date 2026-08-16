@@ -109,3 +109,78 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// ==========================================
+// Firebase Cloud Messaging (FCM) Integration
+// ==========================================
+
+// Parse Firebase config from URL query parameters
+const swUrl = new URL(self.location.href);
+const firebaseConfig = {
+  apiKey: swUrl.searchParams.get('apiKey'),
+  authDomain: swUrl.searchParams.get('authDomain'),
+  projectId: swUrl.searchParams.get('projectId'),
+  storageBucket: swUrl.searchParams.get('storageBucket'),
+  messagingSenderId: swUrl.searchParams.get('messagingSenderId'),
+  appId: swUrl.searchParams.get('appId')
+};
+
+if (firebaseConfig.apiKey && firebaseConfig.messagingSenderId) {
+  try {
+    // Import Firebase Compat SDK inside service worker
+    importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+    importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
+
+    firebase.initializeApp(firebaseConfig);
+    const messaging = firebase.messaging();
+
+    // Listen to background messages
+    messaging.onBackgroundMessage((payload) => {
+      console.log('[Service Worker] Background message received:', payload);
+      
+      const notificationTitle = payload.notification?.title || 'Shree Banarasi Sarees';
+      const notificationOptions = {
+        body: payload.notification?.body || '',
+        icon: '/brand_logo.png',
+        badge: '/favicon.ico',
+        data: payload.data || {}
+      };
+
+      self.registration.showNotification(notificationTitle, notificationOptions);
+    });
+  } catch (err) {
+    console.error('[Service Worker] Failed to initialize Firebase Messaging:', err);
+  }
+}
+
+// Notification Click Handler
+self.addEventListener('notificationclick', (event) => {
+  console.log('[Service Worker] Notification click received:', event);
+  event.notification.close();
+
+  const targetUrl = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        // Resolve absolute URL
+        const absoluteTargetUrl = new URL(targetUrl, self.location.origin).href;
+
+        // Try to find an existing tab that matches the origin and focus it
+        for (const client of clientList) {
+          if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+            return client.focus().then((focusedClient) => {
+              if (focusedClient && 'navigate' in focusedClient) {
+                return focusedClient.navigate(absoluteTargetUrl);
+              }
+            });
+          }
+        }
+
+        // If no tab is open, open a new window
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(absoluteTargetUrl);
+        }
+      })
+  );
+});
