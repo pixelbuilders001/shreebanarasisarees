@@ -120,7 +120,7 @@ export const CampaignSection: React.FC<CampaignSectionProps> = ({ slot }) => {
           <img
             src={campaign.desktop_banner_url || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=1200"}
             alt={campaign.name}
-            className="w-full aspect-[1024/331] object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
+            className="w-full aspect-[2.2/1] sm:aspect-[1024/331] object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
           />
         </picture>
         {/* Subtle premium gold glow overlay on hover */}
