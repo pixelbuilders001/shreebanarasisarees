@@ -227,7 +227,7 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
             </div>
 
             {/* Product Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
               {featuredProducts.map((prod) => (
                 <ProductCard key={prod.id} product={prod} />
               ))}
@@ -243,7 +243,8 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
             </div>
           </div>
         </section>
-
+        {/* Bottom Campaign Slot */}
+        <CampaignSection slot="bottom" />
         {/* New Arrivals Section with Horizontal Scroll */}
         <section className="py-16 px-4 max-w-7xl mx-auto">
           <div className="flex justify-between items-end mb-10">
@@ -281,7 +282,7 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
           {/* Horizontally scrollable row */}
           <div
             ref={scrollRef}
-            className="flex gap-4 sm:gap-6 overflow-x-auto no-scrollbar pb-6 scroll-smooth snap-x snap-mandatory"
+            className="flex gap-2 sm:gap-3 overflow-x-auto no-scrollbar pb-6 scroll-smooth snap-x snap-mandatory"
           >
             {newArrivals.map((prod) => (
               <div
@@ -330,8 +331,7 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
           </div>
         </section>
 
-        {/* Bottom Campaign Slot */}
-        <CampaignSection slot="bottom" />
+
 
         {/* Why Choose Us */}
         <section className="py-16 px-4 bg-[#FFFFFF] border-t border-b border-cream">
