@@ -42,7 +42,7 @@ self.addEventListener('activate', (event) => {
 // Fetch Event - Handle cache first or network falling back to offline page
 self.addEventListener('fetch', (event) => {
   const request = event.request;
-  
+
   // Only handle GET requests and skip Supabase edge functions/API endpoints
   if (request.method !== 'GET' || request.url.includes('/api/') || request.url.includes('supabase.co')) {
     return;
@@ -88,8 +88,8 @@ self.addEventListener('fetch', (event) => {
               cache.put(request, networkResponse);
             });
           }
-        }).catch(() => {/* Ignore network errors for background updates */});
-        
+        }).catch(() => {/* Ignore network errors for background updates */ });
+
         return cachedResponse;
       }
 
@@ -137,12 +137,23 @@ if (firebaseConfig.apiKey && firebaseConfig.messagingSenderId) {
     // Listen to background messages
     messaging.onBackgroundMessage((payload) => {
       console.log('[Service Worker] Background message received:', payload);
-      
-      const notificationTitle = payload.notification?.title || 'Shree Banarasi Sarees';
+
+      // IMPORTANT: When the FCM payload contains a `notification` field, the
+      // Firebase Messaging compat SDK automatically shows a native OS notification.
+      // Calling showNotification() here as well would produce a DUPLICATE notification.
+      // We only manually show a notification for data-only messages (no notification field).
+      if (payload.notification) {
+        console.log('[Service Worker] Notification field present — Firebase SDK will auto-display. Skipping manual showNotification to prevent duplicates.');
+        return;
+      }
+
+      // Data-only message: build and show the notification manually
+      const notificationTitle = payload.data?.title || 'Shree Banarasi Sarees';
       const notificationOptions = {
-        body: payload.notification?.body || '',
+        body: payload.data?.body || '',
         icon: '/brand_logo.png',
         badge: '/favicon.ico',
+        image: payload.data?.image_url || undefined,
         data: payload.data || {}
       };
 
