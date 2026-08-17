@@ -916,6 +916,52 @@ export async function fetchCampaignBySlug(slug: string): Promise<DbCampaign | nu
   }
 }
 
+export interface DbHeroBanner {
+  id: string;
+  eyebrow: string | null;
+  title: string | null;
+  subtitle: string | null;
+  image_url: string;
+  button_text: string | null;
+  button_link: string | null;
+  is_active: boolean;
+  sort_order: number;
+  start_at: string | null;
+  end_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function fetchActiveHeroBanners(): Promise<DbHeroBanner[]> {
+  try {
+    const now = new Date().toISOString();
+    // Fetch all active banners; we'll filter date ranges client-side
+    // because null start_at/end_at means "no restriction"
+    const { data, error } = await supabase
+      .from('hero_banners')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching hero banners:', error);
+      return [];
+    }
+
+    const banners = (data || []) as DbHeroBanner[];
+
+    // Filter by scheduling window — null means no restriction
+    return banners.filter(b => {
+      const afterStart = !b.start_at || now >= b.start_at;
+      const beforeEnd = !b.end_at || now <= b.end_at;
+      return afterStart && beforeEnd;
+    });
+  } catch (err) {
+    console.error('Exception in fetchActiveHeroBanners:', err);
+    return [];
+  }
+}
+
 export async function fetchCampaignProducts(campaignId: string): Promise<Product[]> {
   try {
     const { data: campaignProds, error: cpError } = await supabase

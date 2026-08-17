@@ -71,3 +71,15 @@ html {
 .animate-loading-progress {
   animation: loadingProgress 1.8s infinite ease-in-out;
 }
+
+/* Hero carousel animations */
+@keyframes heroProgress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
