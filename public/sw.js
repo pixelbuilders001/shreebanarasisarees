@@ -125,70 +125,107 @@ const firebaseConfig = {
   appId: swUrl.searchParams.get('appId')
 };
 
+// -----------------------------------------------------------------------
+// FCM Background Push Handler
+//
+// We intentionally do NOT use firebase.messaging().onBackgroundMessage().
+// The Firebase Messaging compat SDK (≤9.x) has a known behaviour where:
+//   1. It auto-displays a notification when the FCM payload has a `notification` field, AND
+//   2. It ALSO fires the onBackgroundMessage callback for the same message.
+// This results in two OS notifications shown for every push — the classic "duplicate" bug.
+//
+// Solution: initialise Firebase only to allow the SDK to receive the FCM message
+// (required for token generation / VAPID auth), but handle the actual push display
+// ourselves via the native `push` event listener. We suppress the SDK's auto-display
+// by NOT calling showNotification inside onBackgroundMessage, and instead handling
+// everything in the `push` event where we have full, exclusive control.
+// -----------------------------------------------------------------------
+
 if (firebaseConfig.apiKey && firebaseConfig.messagingSenderId) {
   try {
-    // Import Firebase Compat SDK inside service worker
     importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
     importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
 
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
 
-    // Listen to background messages
+    // Register a no-op onBackgroundMessage handler.
+    // This is REQUIRED to prevent the Firebase SDK from auto-displaying its own
+    // notification (the SDK only auto-displays when no handler is registered).
+    // Our actual display logic lives in the `push` event below.
     messaging.onBackgroundMessage((payload) => {
-      console.log('[Service Worker] Background message received:', payload);
-
-      // IMPORTANT: When the FCM payload contains a `notification` field, the
-      // Firebase Messaging compat SDK automatically shows a native OS notification.
-      // Calling showNotification() here as well would produce a DUPLICATE notification.
-      // We only manually show a notification for data-only messages (no notification field).
-      if (payload.notification) {
-        console.log('[Service Worker] Notification field present — Firebase SDK will auto-display. Skipping manual showNotification to prevent duplicates.');
-        return;
-      }
-
-      // Data-only message: build and show the notification manually
-      const notificationTitle = payload.data?.title || 'Shree Banarasi Sarees';
-      const notificationOptions = {
-        body: payload.data?.body || '',
-        icon: '/brand_logo.png',
-        badge: '/favicon.ico',
-        image: payload.data?.image_url || undefined,
-        data: payload.data || {}
-      };
-
-      self.registration.showNotification(notificationTitle, notificationOptions);
+      console.log('[Service Worker] FCM onBackgroundMessage intercepted (display handled by push event):', payload?.data?.title);
+      // Intentionally empty — we show the notification in the `push` listener below.
     });
   } catch (err) {
     console.error('[Service Worker] Failed to initialize Firebase Messaging:', err);
   }
 }
 
+// Raw push event — fires for every incoming FCM message regardless of payload shape.
+// By handling display here (and using a no-op onBackgroundMessage above),
+// we guarantee exactly ONE notification is shown per push event.
+self.addEventListener('push', (event) => {
+  console.log('[Service Worker] Push event received');
+
+  let data = {};
+  try {
+    const raw = event.data?.json();
+    // FCM wraps the payload differently depending on message type:
+    //   - Notification messages:  raw = { notification: {...}, data: {...} }
+    //   - Data-only messages:     raw = { data: {...} }
+    //   - Some backends:          raw = { title, body, ... } at root level
+    data = raw?.data || raw?.notification || raw || {};
+  } catch (e) {
+    console.warn('[Service Worker] Could not parse push payload as JSON:', e);
+  }
+
+  const title = data.title || 'Shree Banarasi Sarees';
+  const options = {
+    body: data.body || '',
+    icon: '/brand_logo.png',
+    badge: '/favicon.ico',
+    image: data.image_url || undefined,
+    data: data,                   // passed through to notificationclick handler
+    requireInteraction: false,
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
+});
+
 // Notification Click Handler
 self.addEventListener('notificationclick', (event) => {
   console.log('[Service Worker] Notification click received:', event);
   event.notification.close();
 
+  // Fall back to '/' if no URL is set in the notification data
   const targetUrl = event.notification.data?.url || '/';
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
-        // Resolve absolute URL
+        // Resolve to an absolute URL relative to the service worker origin
         const absoluteTargetUrl = new URL(targetUrl, self.location.origin).href;
 
-        // Try to find an existing tab that matches the origin and focus it
+        // Look for an existing window on this origin
         for (const client of clientList) {
           if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+            // Focus the existing window then navigate it to the target URL.
+            // Always try navigate() first; if the API is absent (older browsers)
+            // fall back to opening a new window so the user still lands correctly.
             return client.focus().then((focusedClient) => {
               if (focusedClient && 'navigate' in focusedClient) {
                 return focusedClient.navigate(absoluteTargetUrl);
               }
+              // navigate() unavailable — open new window as fallback
+              return self.clients.openWindow(absoluteTargetUrl);
             });
           }
         }
 
-        // If no tab is open, open a new window
+        // No existing window found — open a fresh one
         if (self.clients.openWindow) {
           return self.clients.openWindow(absoluteTargetUrl);
         }
