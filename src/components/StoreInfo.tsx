@@ -11,17 +11,10 @@ export const StoreInfo: React.FC = () => {
     <section className="py-16 px-4 bg-cream/35 border-b border-cream">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <div className="w-8 h-px bg-gold/50"></div>
-            <span className="text-xs text-gold uppercase tracking-[0.2em] font-bold block">
-              Samastipur Outlet
-            </span>
-            <div className="w-8 h-px bg-gold/50"></div>
-          </div>
-          <h2 className="font-serif text-2xl sm:text-4xl font-extrabold tracking-wide text-dark-brown">
+          <h2 className="font-serif text-2xl sm:text-3xl font-extrabold tracking-wide text-dark-brown">
             Visit Our Store
           </h2>
-          <div className="w-16 h-0.5 bg-maroon mx-auto my-4"></div>
+          <div className="w-16 h-0.5 bg-maroon mx-auto mt-3 mb-4"></div>
           <p className="text-sm text-dark-brown/70 max-w-xl mx-auto leading-relaxed">
             Step into our showroom in Samastipur, Bihar to feel the soft fabrics, inspect the real gold zari borders, and enjoy direct personal assistance.
           </p>

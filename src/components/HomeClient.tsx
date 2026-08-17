@@ -15,6 +15,7 @@ import { Product, PRODUCTS } from '../data/products';
 import { ArrowLeft, ArrowRight, ShieldCheck, Award, Wrench, Headphones } from 'lucide-react';
 import { DbCampaign } from '../data/supabase';
 import { CampaignSection } from './CampaignSection';
+import { ProductSectionHeading, EditorialSectionHeading } from './SectionHeading';
 
 interface HomeClientProps {
   allProducts?: Product[];
@@ -77,22 +78,11 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
         {/* Shop By Price Section */}
         <section className="pt-8 pb-16 md:py-16 px-4 bg-gradient-to-b from-[#FFF9F0] to-[#FFFFFF] border-t border-cream">
           <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-12">
-              <div className="flex items-center justify-center gap-3 mb-2">
-                <div className="w-8 h-px bg-gold/50"></div>
-                <span className="text-xs text-gold uppercase tracking-[0.2em] font-bold block">
-                  Find Your Perfect Drape
-                </span>
-                <div className="w-8 h-px bg-gold/50"></div>
-              </div>
-              <h2 className="font-serif text-2xl sm:text-4xl font-extrabold tracking-wide text-dark-brown">
-                Shop By Budget
-              </h2>
-              <div className="w-16 h-0.5 bg-maroon mx-auto my-4"></div>
-              <p className="text-sm text-dark-brown/65 max-w-lg mx-auto leading-relaxed font-light">
-                Beautiful sarees curated across budget ranges to help you find elegance within your style.
-              </p>
-            </div>
+            <ProductSectionHeading
+              title="Shop by Budget"
+              subtitle="Beautiful sarees curated across every budget range."
+              viewAllHref="/sarees"
+            />
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
               {[
@@ -209,22 +199,11 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
         {/* Featured Signature Collection */}
         <section className="py-16 px-4 bg-[#FFFFFF] border-t border-b border-cream">
           <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-12">
-              <div className="flex items-center justify-center gap-3 mb-2">
-                <div className="w-8 h-px bg-gold/50"></div>
-                <span className="text-xs text-gold uppercase tracking-[0.2em] font-bold block">
-                  Signature Picks
-                </span>
-                <div className="w-8 h-px bg-gold/50"></div>
-              </div>
-              <h2 className="font-serif text-2xl sm:text-4xl font-extrabold tracking-wide text-dark-brown">
-                Our Signature Collection
-              </h2>
-              <div className="w-16 h-0.5 bg-maroon mx-auto my-4"></div>
-              <p className="text-sm text-dark-brown/65 max-w-lg mx-auto leading-relaxed font-light">
-                Choose from our handpicked pieces of pure zari and silk heritage weaves.
-              </p>
-            </div>
+            <ProductSectionHeading
+              title="Our Signature Collection"
+              subtitle="Handpicked pure zari and silk heritage weaves."
+              viewAllHref="/sarees"
+            />
 
             {/* Product Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
@@ -232,36 +211,31 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
                 <ProductCard key={prod.id} product={prod} />
               ))}
             </div>
-
-            <div className="text-center mt-12">
-              <Link
-                href="/sarees"
-                className="inline-flex py-3 px-8 border border-maroon text-maroon hover:bg-maroon hover:text-white rounded font-serif font-bold text-xs sm:text-sm tracking-widest uppercase transition-all shadow-sm"
-              >
-                VIEW ALL SAREES
-              </Link>
-            </div>
           </div>
         </section>
         {/* Bottom Campaign Slot */}
         <CampaignSection slot="bottom" />
         {/* New Arrivals Section with Horizontal Scroll */}
         <section className="py-16 px-4 max-w-7xl mx-auto">
-          <div className="flex justify-between items-end mb-10">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-xs text-gold uppercase tracking-[0.2em] font-bold block">
-                  Just Woven
-                </span>
-                <div className="w-8 h-px bg-gold/50"></div>
-              </div>
-              <h2 className="font-serif text-2xl sm:text-3xl font-extrabold text-dark-brown">
+          {/* Header row: title left, scroll controls right */}
+          <div className="flex items-end justify-between gap-4 mb-4 sm:mb-5">
+            <div className="min-w-0">
+              <h2 className="font-serif text-xl sm:text-2xl font-extrabold tracking-wide text-dark-brown leading-tight">
                 New Arrivals
               </h2>
+              <p className="text-xs text-dark-brown/55 mt-1 font-light leading-snug">
+                Just arrived from the loom
+              </p>
             </div>
 
-            {/* Scroll Navigation Buttons */}
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Link
+                href="/sarees"
+                className="text-xs font-bold font-serif text-maroon hover:text-maroon-dark hover:underline underline-offset-2 transition-colors whitespace-nowrap mr-2 min-h-[36px] flex items-center"
+              >
+                View All →
+              </Link>
+              {/* Scroll Navigation Buttons */}
               <button
                 onClick={scrollLeft}
                 className="p-2.5 rounded-full border border-cream hover:bg-cream/40 text-dark-brown hover:scale-105 active:scale-95 transition-all shadow-sm"
@@ -336,19 +310,10 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
         {/* Why Choose Us */}
         <section className="py-16 px-4 bg-[#FFFFFF] border-t border-b border-cream">
           <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-12">
-              <div className="flex items-center justify-center gap-3 mb-2">
-                <div className="w-8 h-px bg-gold/50"></div>
-                <span className="text-xs text-gold uppercase tracking-[0.2em] font-bold block">
-                  Why Shop With Us
-                </span>
-                <div className="w-8 h-px bg-gold/50"></div>
-              </div>
-              <h2 className="font-serif text-2xl sm:text-3xl font-extrabold tracking-wide text-dark-brown">
-                Why Choose Us
-              </h2>
-              <div className="w-16 h-0.5 bg-maroon mx-auto my-3"></div>
-            </div>
+            <EditorialSectionHeading
+              title="Why Choose Us"
+              showDivider={true}
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
 

@@ -72,19 +72,12 @@ export const TestimonialSection: React.FC = () => {
     <section className="py-16 px-4 bg-white border-b border-cream">
       <div className="max-w-7xl mx-auto">
         
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-12 gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-10 gap-4">
           <div className="text-center sm:text-left">
-            <div className="flex items-center justify-center sm:justify-start gap-3 mb-2">
-              <div className="w-8 h-px bg-gold/50"></div>
-              <span className="text-xs text-gold uppercase tracking-[0.2em] font-bold block">
-                Customer Stories
-              </span>
-              <div className="w-8 h-px bg-gold/50"></div>
-            </div>
-            <h2 className="font-serif text-2xl sm:text-4xl font-extrabold tracking-wide text-dark-brown">
+            <h2 className="font-serif text-2xl sm:text-3xl font-extrabold tracking-wide text-dark-brown">
               What Our Customers Say
             </h2>
-            <div className="w-16 h-0.5 bg-maroon my-3 mx-auto sm:mx-0"></div>
+            <p className="text-sm text-gold font-bold mt-1.5">★★★★★ 4.8/5</p>
           </div>
           <button
             onClick={() => setIsModalOpen(true)}

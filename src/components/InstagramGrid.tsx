@@ -39,19 +39,12 @@ export const InstagramGrid: React.FC = () => {
   return (
     <section className="py-16 px-4 max-w-7xl mx-auto">
       <div className="text-center mb-10">
-        <div className="flex items-center justify-center gap-3 mb-2">
-          <div className="w-8 h-px bg-gold/50"></div>
-          <span className="text-xs text-gold uppercase tracking-[0.2em] font-bold block">
-            Digital Showroom
-          </span>
-          <div className="w-8 h-px bg-gold/50"></div>
-        </div>
-        <h2 className="font-serif text-2xl sm:text-4xl font-extrabold tracking-wide text-dark-brown">
+        <h2 className="font-serif text-2xl sm:text-3xl font-extrabold tracking-wide text-dark-brown">
           Follow Our Saree Stories
         </h2>
-        <div className="w-16 h-0.5 bg-maroon mx-auto my-4"></div>
+        <div className="w-16 h-0.5 bg-maroon mx-auto mt-3 mb-4"></div>
         <p className="text-sm text-dark-brown/65 max-w-md mx-auto leading-relaxed">
-          Get daily draping inspiration, behind-the-scenes loom stories, and sneak peeks at upcoming launches.
+          Daily draping inspiration, behind-the-scenes loom stories, and sneak peeks at upcoming launches.
         </p>
       </div>
 
