@@ -86,10 +86,10 @@ export const CampaignSection: React.FC<CampaignSectionProps> = ({ slot }) => {
   }
 
   return (
-    <section className="my-10 max-w-7xl mx-auto px-4 animate-fade-in">
+    <section className="my-4 sm:my-8 max-w-7xl mx-auto px-4 animate-fade-in">
       {/* Campaign Header Details (Centered) - Only render if title is provided */}
       {campaign.title && campaign.title.trim() !== '' && (
-        <div className="text-center mb-6">
+        <div className="text-center mb-3 sm:mb-6">
           <div className="flex items-center justify-center gap-3 mb-2">
             <div className="w-8 h-px bg-gold/50"></div>
             <span className="text-xs text-gold uppercase tracking-[0.2em] font-bold block">
@@ -113,14 +113,14 @@ export const CampaignSection: React.FC<CampaignSectionProps> = ({ slot }) => {
         href={`/collections/${campaign.slug}`}
         className="group block relative overflow-hidden rounded-xl sm:rounded-2xl border border-gold/15 hover:border-gold/35 hover:shadow-[0_8px_24px_rgba(212,175,55,0.12)] transition-all duration-300 hover:-translate-y-0.5"
       >
-        <picture className="w-full">
+        <picture className="block w-full">
           {campaign.mobile_banner_url && (
             <source media="(max-width: 640px)" srcSet={campaign.mobile_banner_url} />
           )}
           <img
             src={campaign.desktop_banner_url || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=1200"}
             alt={campaign.name}
-            className="w-full aspect-[2.2/1] sm:aspect-[1024/331] object-cover transition-transform duration-700 ease-out group-hover:scale-[1.015]"
+            className="w-full aspect-[3/1] sm:aspect-[1024/331] object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.015]"
           />
         </picture>
         {/* Subtle premium gold glow overlay on hover */}
