@@ -15,7 +15,6 @@ import {
 import { Product } from '../data/products';
 
 interface AdvancedSearchBarProps {
-  /** If true, renders as the compact header inline bar */
   variant?: 'header' | 'mobile-overlay';
   onClose?: () => void;
   autoFocus?: boolean;
@@ -40,26 +39,25 @@ export const AdvancedSearchBar: React.FC<AdvancedSearchBarProps> = ({
   const recognitionRef = useRef<any>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-focus
   useEffect(() => {
     if (autoFocus && inputRef.current) {
-      inputRef.current.focus();
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [autoFocus]);
 
-  // Click outside to close
+  // Close on outside click
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handle = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsFocused(false);
         setActiveSuggestionIndex(-1);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
   }, []);
 
-  // Voice search
+  // Voice search setup
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -69,22 +67,21 @@ export const AdvancedSearchBar: React.FC<AdvancedSearchBarProps> = ({
     rec.interimResults = false;
     rec.lang = 'en-IN';
     rec.onstart = () => setIsListening(true);
-    rec.onend = () => setIsListening(false);
+    rec.onend   = () => setIsListening(false);
     rec.onerror = () => setIsListening(false);
     rec.onresult = (event: any) => {
       const text = event.results[0][0].transcript;
       setSearchQuery(text);
       setIsListening(false);
-      handleQueryChange(text);
+      processQuery(text);
     };
     recognitionRef.current = rec;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Debounced suggestion generation
-  const handleQueryChange = useCallback(
+  // Debounced query processing
+  const processQuery = useCallback(
     (value: string) => {
-      setSearchQuery(value);
-      setActiveSuggestionIndex(-1);
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         if (!value.trim()) {
@@ -96,10 +93,16 @@ export const AdvancedSearchBar: React.FC<AdvancedSearchBarProps> = ({
         setDetectedFilters(filters);
         const suggs = generateSuggestions(value, products as Product[]);
         setSuggestions(suggs);
-      }, 180);
+      }, 150);
     },
-    [products, setSearchQuery]
+    [products]
   );
+
+  const handleQueryChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    setActiveSuggestionIndex(-1);
+    processQuery(value);
+  }, [setSearchQuery, processQuery]);
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -108,20 +111,21 @@ export const AdvancedSearchBar: React.FC<AdvancedSearchBarProps> = ({
     const filters = parseSearchQuery(q);
     addRecentSearch(q);
     setIsFocused(false);
-    const url = buildSearchUrl(q, filters);
-    router.push(url);
+    setActiveSuggestionIndex(-1);
+    router.push(buildSearchUrl(q, filters));
     onClose?.();
   };
 
   const handleSuggestionClick = (suggestion: SearchSuggestion) => {
     setIsFocused(false);
+    setActiveSuggestionIndex(-1);
     addRecentSearch(suggestion.label);
     if (suggestion.type === 'product' && suggestion.product) {
       router.push(`/product/${suggestion.product.slug}`);
     } else {
+      // The suggestion.value is the raw query string — parse it and build URL
       const filters = parseSearchQuery(suggestion.value);
-      const url = buildSearchUrl(suggestion.value, filters);
-      router.push(url);
+      router.push(buildSearchUrl(suggestion.value, filters));
     }
     onClose?.();
   };
@@ -136,13 +140,13 @@ export const AdvancedSearchBar: React.FC<AdvancedSearchBarProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const totalItems = suggestions.length;
+    if (!suggestions.length) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActiveSuggestionIndex(i => (i + 1) % totalItems);
+      setActiveSuggestionIndex(i => Math.min(i + 1, suggestions.length - 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setActiveSuggestionIndex(i => (i - 1 + totalItems) % totalItems);
+      setActiveSuggestionIndex(i => Math.max(i - 1, -1));
     } else if (e.key === 'Enter' && activeSuggestionIndex >= 0) {
       e.preventDefault();
       handleSuggestionClick(suggestions[activeSuggestionIndex]);
@@ -156,24 +160,30 @@ export const AdvancedSearchBar: React.FC<AdvancedSearchBarProps> = ({
     setSearchQuery('');
     setSuggestions([]);
     setDetectedFilters(null);
+    setActiveSuggestionIndex(-1);
     inputRef.current?.focus();
   };
 
-  // Filter pills to show above input when typing
-  const hasDetectedFilters = detectedFilters && (
+  // Derived booleans
+  const hasDetectedFilters = !!(detectedFilters && (
     detectedFilters.colors.length > 0 ||
     detectedFilters.fabrics.length > 0 ||
     detectedFilters.occasions.length > 0 ||
     detectedFilters.categories.length > 0 ||
     detectedFilters.price
-  );
+  ));
 
-  const showDropdown = isFocused && (searchQuery.trim() ? suggestions.length > 0 : recentSearches.length > 0);
+  // Never show the dropdown on mobile-overlay — the full-screen modal handles its own UI
+  const showDropdown = variant !== 'mobile-overlay' && isFocused && (
+    searchQuery.trim()
+      ? (hasDetectedFilters || suggestions.length > 0)
+      : recentSearches.length > 0
+  );
 
   return (
     <div ref={containerRef} className="relative w-full">
-      <form onSubmit={handleSubmit} className="relative">
-        {/* Search Input */}
+      <form onSubmit={handleSubmit} autoComplete="off">
+        {/* ── Input Row ── */}
         <div className={`
           relative flex items-center bg-white border rounded-full transition-all duration-200
           ${isFocused
@@ -181,36 +191,36 @@ export const AdvancedSearchBar: React.FC<AdvancedSearchBarProps> = ({
             : 'border-[#C9A45C]/40 shadow-sm hover:border-[#C9A45C]/70'
           }
         `}>
-          <Search
-            size={16}
-            className="absolute left-4 text-dark-brown/40 pointer-events-none shrink-0"
-          />
+          <Search size={16} className="absolute left-4 text-dark-brown/40 pointer-events-none" />
           <input
             ref={inputRef}
             type="text"
             value={searchQuery}
             onChange={e => handleQueryChange(e.target.value)}
-            onFocus={() => setIsFocused(true)}
+            onFocus={() => {
+              setIsFocused(true);
+              // Re-generate suggestions when focused with existing text
+              if (searchQuery.trim()) processQuery(searchQuery);
+            }}
             onKeyDown={handleKeyDown}
-            placeholder='Search sarees, colors, fabrics, "red Banarasi under ₹5000"…'
-            className="w-full bg-transparent text-sm text-dark-brown placeholder-dark-brown/35 rounded-full py-2.5 pl-10 pr-16 outline-none font-medium"
-            autoComplete="off"
+            placeholder='Search: "red silk", "banarasi under 3000", "wedding saree"…'
+            className="w-full bg-transparent text-sm text-dark-brown placeholder-dark-brown/35 rounded-full py-2.5 pl-10 pr-20 outline-none font-medium"
             spellCheck={false}
           />
 
-          {/* Clear button */}
+          {/* Clear */}
           {searchQuery && (
             <button
               type="button"
               onClick={clearQuery}
-              className="absolute right-10 p-1 text-dark-brown/40 hover:text-maroon transition-colors"
+              className="absolute right-11 p-1 text-dark-brown/40 hover:text-maroon transition-colors"
               aria-label="Clear search"
             >
               <X size={14} />
             </button>
           )}
 
-          {/* Mic / Submit */}
+          {/* Mic */}
           <button
             type="button"
             onClick={() => {
@@ -218,6 +228,8 @@ export const AdvancedSearchBar: React.FC<AdvancedSearchBarProps> = ({
                 recognitionRef.current?.stop();
               } else if (recognitionRef.current) {
                 try { recognitionRef.current.start(); } catch (_) {}
+              } else {
+                // no voice support
               }
             }}
             className={`absolute right-3.5 p-1.5 rounded-full transition-all duration-200 ${
@@ -232,102 +244,23 @@ export const AdvancedSearchBar: React.FC<AdvancedSearchBarProps> = ({
           </button>
         </div>
 
-        {/* Detected Filter Pills (shown while typing) */}
-        {isFocused && hasDetectedFilters && searchQuery.trim() && (
-          <div className="absolute top-full left-0 right-0 pt-1.5 z-50">
-            <div className="bg-white border border-[#C9A45C]/25 rounded-xl shadow-xl overflow-hidden">
-              <div className="px-3 pt-2.5 pb-1.5">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <Sparkles size={11} className="text-gold" />
-                  <span className="text-[10px] font-bold text-dark-brown/50 uppercase tracking-wider">Detected Filters</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {detectedFilters.categories.map(cat => (
-                    <span key={cat} className="inline-flex items-center gap-1 bg-maroon/10 text-maroon text-[11px] font-semibold px-2 py-0.5 rounded-full border border-maroon/20">
-                      <Tag size={9} /> {cat}
-                    </span>
-                  ))}
-                  {detectedFilters.fabrics.map(fab => (
-                    <span key={fab} className="inline-flex items-center gap-1 bg-gold/10 text-dark-brown text-[11px] font-semibold px-2 py-0.5 rounded-full border border-gold/20">
-                      ✨ {fab}
-                    </span>
-                  ))}
-                  {detectedFilters.colors.map(col => (
-                    <span key={col} className="inline-flex items-center gap-1 bg-cream text-dark-brown text-[11px] font-semibold px-2 py-0.5 rounded-full border border-cream">
-                      🎨 {col}
-                    </span>
-                  ))}
-                  {detectedFilters.occasions.map(occ => (
-                    <span key={occ} className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-green-100">
-                      🎉 {occ}
-                    </span>
-                  ))}
-                  {detectedFilters.price && (
-                    <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-blue-100">
-                      💰 {formatPriceFilter(detectedFilters.price)}
-                    </span>
-                  )}
-                </div>
-              </div>
-              {/* Suggestions below pills */}
-              <div className="border-t border-cream/60 py-1">
-                {suggestions.slice(0, 5).map((sugg, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => handleSuggestionClick(sugg)}
-                    className={`w-full text-left px-3.5 py-2 flex items-center gap-3 transition-colors ${
-                      activeSuggestionIndex === idx ? 'bg-cream/60' : 'hover:bg-cream/35'
-                    }`}
-                  >
-                    {sugg.type === 'product' && sugg.product ? (
-                      <>
-                        <img
-                          src={sugg.product.images[0]}
-                          alt={sugg.product.name}
-                          className="w-8 aspect-[3/4] object-cover rounded bg-cream flex-shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <div className="text-xs font-serif font-bold text-dark-brown truncate">{sugg.product.name}</div>
-                          <div className="text-[10px] text-dark-brown/50">{sugg.product.fabric} · ₹{(sugg.product.salePrice ?? sugg.product.price).toLocaleString('en-IN')}</div>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-base leading-none flex-shrink-0">{sugg.icon || '🔍'}</span>
-                        <span className="text-xs font-semibold text-dark-brown">{sugg.label}</span>
-                      </>
-                    )}
-                    <ChevronRight size={12} className="ml-auto text-dark-brown/30 flex-shrink-0" />
-                  </button>
-                ))}
-                <button
-                  type="submit"
-                  className="w-full text-left px-3.5 py-2.5 flex items-center gap-2 text-maroon font-bold text-xs hover:bg-cream/35 transition-colors border-t border-cream/60"
-                >
-                  <Search size={12} />
-                  Search all results for &quot;{searchQuery.trim()}&quot;
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* ── Dropdown ── */}
+        {showDropdown && (
+          <div className="absolute left-0 right-0 top-full pt-1.5 z-[60]">
+            <div className="bg-white border border-[#C9A45C]/25 rounded-xl shadow-2xl overflow-hidden">
 
-        {/* Dropdown without detected filters */}
-        {!hasDetectedFilters && showDropdown && (
-          <div className="absolute left-0 right-0 top-full pt-1.5 z-50">
-            <div className="bg-white border border-cream shadow-xl rounded-xl overflow-hidden">
-              {/* Recent searches */}
-              {!searchQuery && recentSearches.length > 0 && (
+              {/* ── No query: Recent searches ── */}
+              {!searchQuery.trim() && recentSearches.length > 0 && (
                 <div className="p-3 border-b border-cream">
                   <div className="flex justify-between items-center text-[10px] font-bold text-dark-brown/45 uppercase tracking-wider mb-2">
-                    <span className="flex items-center gap-1"><Clock size={10} /> Recent Searches</span>
-                    <button onClick={clearRecentSearches} className="text-maroon hover:underline">Clear</button>
+                    <span className="flex items-center gap-1"><Clock size={10} /> Recent</span>
+                    <button type="button" onClick={clearRecentSearches} className="text-maroon hover:underline">Clear</button>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {recentSearches.map((s, i) => (
                       <button
                         key={i}
+                        type="button"
                         onClick={() => handleRecentClick(s)}
                         className="bg-cream/50 hover:bg-cream text-dark-brown/80 text-[11px] font-medium px-2.5 py-1 rounded-full border border-cream/80 transition-colors"
                       >
@@ -338,48 +271,88 @@ export const AdvancedSearchBar: React.FC<AdvancedSearchBarProps> = ({
                 </div>
               )}
 
-              {/* Suggestions while typing */}
-              {searchQuery && (
-                <div className="py-1">
-                  <div className="px-3.5 py-1 text-[10px] font-bold text-dark-brown/40 uppercase tracking-wider">
-                    Suggestions
+              {/* ── With query: filter pills ── */}
+              {searchQuery.trim() && hasDetectedFilters && (
+                <div className="px-3 pt-2.5 pb-2 border-b border-cream/60">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <Sparkles size={10} className="text-gold" />
+                    <span className="text-[9px] font-bold text-dark-brown/45 uppercase tracking-wider">Detected Filters</span>
                   </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {detectedFilters!.categories.map(cat => (
+                      <span key={cat} className="inline-flex items-center gap-1 bg-maroon/10 text-maroon text-[11px] font-semibold px-2 py-0.5 rounded-full border border-maroon/15">
+                        <Tag size={9} /> {cat}
+                      </span>
+                    ))}
+                    {detectedFilters!.fabrics.map(fab => (
+                      <span key={fab} className="inline-flex items-center gap-1 bg-gold/10 text-dark-brown text-[11px] font-semibold px-2 py-0.5 rounded-full border border-gold/20">
+                        ✨ {fab}
+                      </span>
+                    ))}
+                    {detectedFilters!.colors.map(col => (
+                      <span key={col} className="inline-flex items-center gap-1 bg-cream text-dark-brown text-[11px] font-semibold px-2 py-0.5 rounded-full border border-cream">
+                        🎨 {col}
+                      </span>
+                    ))}
+                    {detectedFilters!.occasions.map(occ => (
+                      <span key={occ} className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-green-100">
+                        🎉 {occ}
+                      </span>
+                    ))}
+                    {detectedFilters!.price && (
+                      <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-blue-100">
+                        💰 {formatPriceFilter(detectedFilters!.price)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ── With query: product/category suggestions ── */}
+              {searchQuery.trim() && (
+                <div className="py-1">
                   {suggestions.length > 0 ? (
-                    suggestions.map((sugg, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleSuggestionClick(sugg)}
-                        className={`w-full text-left px-3.5 py-2 flex items-center gap-3 transition-colors ${
-                          activeSuggestionIndex === idx ? 'bg-cream/60' : 'hover:bg-cream/35'
-                        }`}
-                      >
-                        {sugg.type === 'product' && sugg.product ? (
-                          <>
-                            <img
-                              src={sugg.product.images[0]}
-                              alt={sugg.product.name}
-                              className="w-8 aspect-[3/4] object-cover rounded bg-cream flex-shrink-0"
-                            />
-                            <div className="min-w-0">
-                              <div className="text-xs font-serif font-bold text-dark-brown truncate">{sugg.product.name}</div>
-                              <div className="text-[10px] text-dark-brown/50">{sugg.product.fabric} · ₹{(sugg.product.salePrice ?? sugg.product.price).toLocaleString('en-IN')}</div>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-base leading-none flex-shrink-0">{sugg.icon || '🔍'}</span>
-                            <span className="text-xs font-semibold text-dark-brown">{sugg.label}</span>
-                          </>
-                        )}
-                        <ChevronRight size={12} className="ml-auto text-dark-brown/30 flex-shrink-0" />
-                      </button>
-                    ))
+                    <>
+                      {suggestions.slice(0, 6).map((sugg, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleSuggestionClick(sugg)}
+                          className={`w-full text-left px-3.5 py-2 flex items-center gap-3 transition-colors ${
+                            activeSuggestionIndex === idx ? 'bg-cream/60' : 'hover:bg-cream/35'
+                          }`}
+                        >
+                          {sugg.type === 'product' && sugg.product ? (
+                            <>
+                              <img
+                                src={sugg.product.images[0]}
+                                alt={sugg.product.name}
+                                className="w-8 aspect-[3/4] object-cover rounded bg-cream flex-shrink-0"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs font-serif font-bold text-dark-brown truncate">{sugg.product.name}</div>
+                                <div className="text-[10px] text-dark-brown/50">
+                                  {sugg.product.fabric} · {sugg.product.color} ·{' '}
+                                  ₹{(sugg.product.salePrice ?? sugg.product.price).toLocaleString('en-IN')}
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-sm leading-none flex-shrink-0">{sugg.icon || '🔍'}</span>
+                              <span className="text-xs font-semibold text-dark-brown flex-1">{sugg.label}</span>
+                            </>
+                          )}
+                          <ChevronRight size={12} className="ml-auto text-dark-brown/30 flex-shrink-0" />
+                        </button>
+                      ))}
+                    </>
                   ) : (
-                    <div className="px-3.5 py-3 text-xs text-dark-brown/45 italic">
-                      No suggestions — press Enter to search all products
+                    <div className="px-3.5 py-2.5 text-xs text-dark-brown/45 italic">
+                      No direct matches — press Enter to search all products
                     </div>
                   )}
+                  {/* "Search all" footer */}
                   <button
                     type="submit"
                     className="w-full text-left px-3.5 py-2.5 flex items-center gap-2 text-maroon font-bold text-xs hover:bg-cream/35 transition-colors border-t border-cream/60"

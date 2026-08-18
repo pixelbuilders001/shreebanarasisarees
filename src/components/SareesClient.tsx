@@ -46,29 +46,50 @@ export const SareesClient: React.FC<SareesClientProps> = ({
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   // ── Advanced search params from URL ──
-  const urlSearch = searchParams.get('search') || '';
-  const urlColor = searchParams.get('color') || '';
-  const urlFabric = searchParams.get('fabric') || '';
+  const urlSearch   = searchParams.get('search')   || '';
+  const urlColor    = searchParams.get('color')    || '';
+  const urlFabric   = searchParams.get('fabric')   || '';
   const urlOccasion = searchParams.get('occasion') || '';
   const urlCategory = searchParams.get('category') || '';
   const urlMinPrice = searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : undefined;
   const urlMaxPrice = searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : undefined;
-  const urlSku = searchParams.get('sku') || '';
+  const urlSku      = searchParams.get('sku')      || '';
 
-  // Detected filters from URL (advanced search)
-  const urlFilters = useMemo<DetectedFilters>(() => ({
-    colors: urlColor ? urlColor.split(',') : [],
-    fabrics: urlFabric ? urlFabric.split(',') : [],
-    occasions: urlOccasion ? urlOccasion.split(',') : [],
-    categories: urlCategory ? urlCategory.split(',') : [],
-    price: (urlMinPrice !== undefined || urlMaxPrice !== undefined)
+  /**
+   * KEY FIX: Re-parse the raw urlSearch to get the proper CLEANED remainingQuery.
+   * Without this, "under 2000" stays as remainingQuery and fails to match any product name.
+   *
+   * Priority:
+   *  • Explicit URL params (color=, fabric=, minPrice=, etc.) WIN over parsed-from-text.
+   *  • remainingQuery always comes from the cleaned parse of urlSearch.
+   */
+  const urlFilters = useMemo<DetectedFilters>(() => {
+    // Parse the raw search string to extract its cleaned remaining text + any implicit filters
+    const parsed = urlSearch ? parseSearchQuery(urlSearch) : null;
+
+    // Explicit URL params take precedence; fall back to what was parsed from the search text
+    const colors    = urlColor    ? urlColor.split(',').filter(Boolean)    : (parsed?.colors    ?? []);
+    const fabrics   = urlFabric   ? urlFabric.split(',').filter(Boolean)   : (parsed?.fabrics   ?? []);
+    const occasions = urlOccasion ? urlOccasion.split(',').filter(Boolean) : (parsed?.occasions ?? []);
+    const categories= urlCategory ? urlCategory.split(',').filter(Boolean) : (parsed?.categories?? []);
+
+    const hasExplicitPrice = urlMinPrice !== undefined || urlMaxPrice !== undefined;
+    const price = hasExplicitPrice
       ? { min: urlMinPrice, max: urlMaxPrice }
-      : undefined,
-    skuMatch: urlSku || undefined,
-    remainingQuery: urlSearch,
-  }), [urlSearch, urlColor, urlFabric, urlOccasion, urlCategory, urlMinPrice, urlMaxPrice, urlSku]);
+      : parsed?.price;
 
-  const hasAdvancedSearch = !!(urlSearch || urlColor || urlFabric || urlOccasion || urlCategory || urlMinPrice || urlMaxPrice || urlSku);
+    const skuMatch = urlSku || parsed?.skuMatch;
+
+    // THE FIX: use the CLEANED remaining query from parsing, not the raw urlSearch
+    const remainingQuery = parsed?.remainingQuery ?? '';
+
+    return { colors, fabrics, occasions, categories, price, skuMatch, remainingQuery };
+  }, [urlSearch, urlColor, urlFabric, urlOccasion, urlCategory, urlMinPrice, urlMaxPrice, urlSku]);
+
+  const hasAdvancedSearch = !!(
+    urlSearch || urlColor || urlFabric || urlOccasion || urlCategory ||
+    urlMinPrice !== undefined || urlMaxPrice !== undefined || urlSku
+  );
 
   // Sync state if server props change (navigation)
   useEffect(() => {
@@ -83,24 +104,29 @@ export const SareesClient: React.FC<SareesClientProps> = ({
   const removeFilterChip = (type: keyof DetectedFilters, value?: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (type === 'colors') {
-      const remaining = (urlColor.split(',').filter(c => c !== value)).join(',');
+      const remaining = urlColor.split(',').filter(c => c !== value).join(',');
       remaining ? params.set('color', remaining) : params.delete('color');
     } else if (type === 'fabrics') {
-      const remaining = (urlFabric.split(',').filter(f => f !== value)).join(',');
+      const remaining = urlFabric.split(',').filter(f => f !== value).join(',');
       remaining ? params.set('fabric', remaining) : params.delete('fabric');
     } else if (type === 'occasions') {
-      const remaining = (urlOccasion.split(',').filter(o => o !== value)).join(',');
+      const remaining = urlOccasion.split(',').filter(o => o !== value).join(',');
       remaining ? params.set('occasion', remaining) : params.delete('occasion');
     } else if (type === 'categories') {
-      const remaining = (urlCategory.split(',').filter(c => c !== value)).join(',');
+      const remaining = urlCategory.split(',').filter(c => c !== value).join(',');
       remaining ? params.set('category', remaining) : params.delete('category');
     } else if (type === 'price') {
+      // Remove explicit price params
       params.delete('minPrice');
       params.delete('maxPrice');
+      // Also clear the raw search since it may have contained the price phrase
+      // (re-search without the price part would be ambiguous, so clear it too)
+      params.delete('search');
     } else if (type === 'skuMatch') {
       params.delete('sku');
     } else if (type === 'remainingQuery') {
       params.delete('search');
+      // Keep structured filter params; they were extracted and stored separately
     }
     router.push(`/sarees?${params.toString()}`);
   };
@@ -224,7 +250,22 @@ export const SareesClient: React.FC<SareesClientProps> = ({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-cream pb-3 mb-4">
           <div className="min-w-0">
             <h1 className="font-serif text-lg sm:text-xl lg:text-2xl font-extrabold text-dark-brown flex items-baseline gap-2 flex-wrap">
-              {hasAdvancedSearch && urlSearch ? `Results for "${urlSearch}"` : h1Title}
+              {hasAdvancedSearch
+                ? urlSearch
+                  ? `Results for "${urlSearch}"`
+                  : urlFilters.price
+                    ? `Sarees ${formatPriceFilter(urlFilters.price)}`
+                    : urlFilters.categories.length
+                      ? `${urlFilters.categories.join(', ')} Sarees`
+                      : urlFilters.fabrics.length
+                        ? `${urlFilters.fabrics.join(', ')} Sarees`
+                        : urlFilters.colors.length
+                          ? `${urlFilters.colors.join(', ')} Sarees`
+                          : urlFilters.occasions.length
+                            ? `${urlFilters.occasions.join(', ')} Sarees`
+                            : h1Title
+                : h1Title
+              }
               <span className="text-xs font-semibold text-dark-brown/40 font-sans">
                 ({filteredProducts.length} {filteredProducts.length === 1 ? 'Product' : 'Products'})
               </span>

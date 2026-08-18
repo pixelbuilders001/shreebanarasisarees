@@ -6,90 +6,123 @@
 
 import { Product } from '../data/products';
 
+// ─── Stop Words (consumed silently, not treated as product keywords) ──────────
+// These are words that should be ignored when building the remaining query
+const STOP_WORDS = new Set([
+  // English
+  'saree', 'sarees', 'sari', 'saris', 'the', 'a', 'an', 'in', 'for', 'with',
+  'and', 'or', 'buy', 'shop', 'show', 'find', 'get', 'me', 'my',
+  'best', 'good', 'nice', 'beautiful', 'pure', 'original', 'genuine',
+  'indian', 'traditional', 'ethnic', 'designer', 'handwoven', 'handloom', 'woven',
+  'new', 'latest', 'trending', 'cheap', 'affordable', 'premium', 'luxury',
+  // Hindi connectors & common words
+  'ka', 'ki', 'ke', 'ko', 'se', 'mein', 'par', 'aur', 'ya', 'liye', 'lekin',
+  'bhi', 'sirf', 'koi', 'kuch', 'wala', 'wali', 'wale', 'ek', 'iske', 'uske',
+  'mujhe', 'chahiye', 'dikhao', 'batao', 'dedo', 'dekhna', 'lena',
+]);
+
 // ─── Synonym / Alias Maps ───────────────────────────────────────────────────
 
 export const COLOR_SYNONYMS: Record<string, string> = {
-  // English variants
   lal: 'Red', red: 'Red', rouge: 'Red',
-  peela: 'Yellow', yellow: 'Yellow',
+  peela: 'Yellow', yellow: 'Yellow', pila: 'Yellow',
   nila: 'Blue', blue: 'Blue', neela: 'Blue',
-  hara: 'Green', green: 'Green', hari: 'Green',
+  hara: 'Green', green: 'Green', hari: 'Green', sabz: 'Green',
   kala: 'Black', black: 'Black',
-  safed: 'White', white: 'White', cream: 'White',
-  maroon: 'Maroon', gulabi: 'Pink', pink: 'Pink',
-  purple: 'Purple', baingani: 'Purple', violet: 'Purple',
-  orange: 'Orange', narangi: 'Orange',
-  gold: 'Gold', golden: 'Gold', sona: 'Gold',
-  silver: 'Silver', chandi: 'Silver',
-  beige: 'Beige', ivory: 'White',
+  safed: 'White', white: 'White', ivory: 'White',
+  maroon: 'Maroon', dark: 'Maroon', darkred: 'Maroon',
+  gulabi: 'Pink', pink: 'Pink', gulabi: 'Pink', rose: 'Pink',
+  purple: 'Purple', baingani: 'Purple', violet: 'Purple', neela: 'Purple',
+  orange: 'Orange', narangi: 'Orange', kesariya: 'Orange',
+  gold: 'Gold', golden: 'Gold', sona: 'Gold', sone: 'Gold',
+  silver: 'Silver', chandi: 'Silver', chandni: 'Silver',
+  beige: 'Beige', cream: 'Beige',
+  grey: 'Grey', gray: 'Grey',
+  brown: 'Brown', bhura: 'Brown',
+  navy: 'Blue', teal: 'Green',
 };
 
 export const FABRIC_SYNONYMS: Record<string, string> = {
-  silk: 'Silk', resham: 'Silk', रेशम: 'Silk',
+  silk: 'Silk', resham: 'Silk', silken: 'Silk',
   cotton: 'Cotton', suthi: 'Cotton', sutti: 'Cotton',
   georgette: 'Georgette',
   organza: 'Organza',
   chanderi: 'Chanderi Silk', chandari: 'Chanderi Silk',
-  banarasi: 'Banarasi Silk', banaras: 'Banarasi Silk',
   'banarasi silk': 'Banarasi Silk',
   katan: 'Banarasi Silk', kataan: 'Banarasi Silk',
   chiffon: 'Chiffon',
-  net: 'Net',
+  net: 'Net', netting: 'Net',
   linen: 'Linen',
-  tussar: 'Tussar Silk', tasar: 'Tussar Silk',
-  kanjivaram: 'Silk', kanjeevaram: 'Silk',
-  raw: 'Raw Silk', 'raw silk': 'Raw Silk',
+  tussar: 'Tussar Silk', tasar: 'Tussar Silk', tussah: 'Tussar Silk',
+  kanjivaram: 'Silk', kanjeevaram: 'Silk', kanchipuram: 'Silk',
+  'raw silk': 'Raw Silk', raw: 'Raw Silk',
+  crepe: 'Crepe',
+  velvet: 'Velvet', maslin: 'Muslin', muslin: 'Muslin',
 };
 
 export const OCCASION_SYNONYMS: Record<string, string> = {
-  wedding: 'Wedding', shaadi: 'Wedding', vivah: 'Wedding', bridal: 'Wedding', bride: 'Wedding',
-  festive: 'Festive', festival: 'Festive', puja: 'Festive', pooja: 'Festive', durga: 'Festive',
+  wedding: 'Wedding', shaadi: 'Wedding', vivah: 'Wedding', bridal: 'Wedding',
+  bride: 'Wedding', dulhan: 'Wedding', shadi: 'Wedding',
+  'wedding saree': 'Wedding', 'shaadi saree': 'Wedding',
+  festive: 'Festive', festival: 'Festive', puja: 'Festive', pooja: 'Festive',
+  durga: 'Festive', navratri: 'Festive', diwali: 'Festive', holi: 'Festive',
   party: 'Party', 'party wear': 'Party', cocktail: 'Party',
-  daily: 'Daily Wear', casual: 'Daily Wear', 'daily wear': 'Daily Wear', everyday: 'Daily Wear',
-  office: 'Office', work: 'Office', formal: 'Office',
-  gift: 'Gift', gifting: 'Gift', present: 'Gift',
+  evening: 'Party', reception: 'Party',
+  daily: 'Daily Wear', casual: 'Daily Wear', 'daily wear': 'Daily Wear',
+  everyday: 'Daily Wear', regular: 'Daily Wear',
+  office: 'Office', work: 'Office', formal: 'Office', professional: 'Office',
+  gift: 'Gift', gifting: 'Gift', present: 'Gift', uphar: 'Gift',
 };
 
 export const CATEGORY_SYNONYMS: Record<string, string> = {
-  banarasi: 'Banarasi', banaras: 'Banarasi',
-  chikankari: 'Chikankari', chikan: 'Chikankari', lucknowi: 'Chikankari',
-  bandhani: 'Bandhani', bandhej: 'Bandhani', tie: 'Bandhani',
+  banarasi: 'Banarasi', banaras: 'Banarasi', benares: 'Banarasi', varanasi: 'Banarasi',
+  chikankari: 'Chikankari', chikan: 'Chikankari', lucknowi: 'Chikankari', lucknow: 'Chikankari',
+  bandhani: 'Bandhani', bandhej: 'Bandhani', bandhan: 'Bandhani',
   organza: 'Organza',
   chanderi: 'Chanderi', chandari: 'Chanderi',
-  bridal: 'Bridal', 'bridal collection': 'Bridal',
-  silk: 'Silk',
+  'bridal collection': 'Bridal', bridal: 'Bridal',
 };
 
 // ─── Price Pattern Detection ─────────────────────────────────────────────────
 
-interface PriceFilter {
+export interface PriceFilter {
   min?: number;
   max?: number;
 }
 
 const PRICE_PATTERNS: { regex: RegExp; extract: (m: RegExpMatchArray) => PriceFilter }[] = [
-  // "under 5000" / "below 5000" / "less than 5000" / "upto 5000" / "up to 5000"
+  // "under 5000" / "below 5000" / "less than 5000" / "upto 5000" / "budget 5000"
   {
-    regex: /(?:under|below|less than|upto|up to|within|kam se kam|se kam)\s*(?:rs\.?|₹|inr)?\s*(\d[\d,]*)/i,
-    extract: (m) => ({ max: parseInt(m[1].replace(/,/g, '')) }),
+    regex: /(?:under|below|less\s+than|upto|up\s+to|within|max|budget|atmost|at\s+most|se\s+kam|kam\s+se\s+kam|neeche)\s*(?:rs\.?|₹|inr|rupees?)?\s*(\d[\d,]*(?:\.\d+)?)/i,
+    extract: (m) => ({ max: Math.round(parseFloat(m[1].replace(/,/g, ''))) }),
   },
-  // "above 2000" / "more than 2000" / "over 2000"
+  // "above 2000" / "more than 2000" / "over 2000" / "minimum 2000" / "2000 se upar"
   {
-    regex: /(?:above|more than|over|greater than|from|zyada|se jyada)\s*(?:rs\.?|₹|inr)?\s*(\d[\d,]*)/i,
-    extract: (m) => ({ min: parseInt(m[1].replace(/,/g, '')) }),
+    regex: /(?:above|more\s+than|over|greater\s+than|minimum|atleast|at\s+least|from|zyada|se\s+jyada|upar)\s*(?:rs\.?|₹|inr|rupees?)?\s*(\d[\d,]*(?:\.\d+)?)/i,
+    extract: (m) => ({ min: Math.round(parseFloat(m[1].replace(/,/g, ''))) }),
   },
-  // "₹1000 to ₹5000" / "1000 - 5000" / "between 1000 and 5000"
+  // "(number) se upar" – Hindi: "2000 se upar" = above 2000
   {
-    regex: /(?:₹|rs\.?|inr)?\s*(\d[\d,]*)\s*(?:to|-|–|and)\s*(?:₹|rs\.?|inr)?\s*(\d[\d,]*)/i,
+    regex: /(?:rs\.?|₹|inr|rupees?)?\s*(\d[\d,]*(?:\.\d+)?)\s*(?:se\s+upar|se\s+jyada|se\s+zyada)/i,
+    extract: (m) => ({ min: Math.round(parseFloat(m[1].replace(/,/g, ''))) }),
+  },
+  // "between 1000 and 5000" / "1000 to 5000" / "1000 - 5000" / "₹1000-₹5000"
+  {
+    regex: /(?:between\s+)?(?:₹|rs\.?|inr|rupees?)?\s*(\d[\d,]*(?:\.\d+)?)\s*(?:to|–|-|and|se)\s*(?:₹|rs\.?|inr|rupees?)?\s*(\d[\d,]*(?:\.\d+)?)/i,
     extract: (m) => ({
-      min: parseInt(m[1].replace(/,/g, '')),
-      max: parseInt(m[2].replace(/,/g, '')),
+      min: Math.round(parseFloat(m[1].replace(/,/g, ''))),
+      max: Math.round(parseFloat(m[2].replace(/,/g, ''))),
     }),
   },
-  // "5000 rupees" / "5000 rs" / "5000 inr" standalone
+  // "₹5000" or "rs 5000" standalone (with currency marker)
   {
-    regex: /(\d[\d,]*)\s*(?:rupees?|rs\.?|inr)\b/i,
-    extract: (m) => ({ max: parseInt(m[1].replace(/,/g, '')) }),
+    regex: /(?:₹|rs\.?|inr)\s*(\d[\d,]*(?:\.\d+)?)\b/i,
+    extract: (m) => ({ max: Math.round(parseFloat(m[1].replace(/,/g, ''))) }),
+  },
+  // "5000 rupees" standalone
+  {
+    regex: /(\d[\d,]*(?:\.\d+)?)\s*(?:rupees?|rs\.?)\b/i,
+    extract: (m) => ({ max: Math.round(parseFloat(m[1].replace(/,/g, ''))) }),
   },
 ];
 
@@ -102,10 +135,10 @@ export interface DetectedFilters {
   categories: string[];
   price?: PriceFilter;
   skuMatch?: string;
-  remainingQuery: string;  // keywords not consumed by filter detection
+  remainingQuery: string;  // keywords NOT consumed by filter detection
 }
 
-// ─── Levenshtein Distance (for fuzzy matching) ───────────────────────────────
+// ─── Levenshtein Distance (fuzzy matching) ────────────────────────────────────
 
 function levenshtein(a: string, b: string): number {
   const m = a.length, n = b.length;
@@ -122,21 +155,16 @@ function levenshtein(a: string, b: string): number {
   return dp[m][n];
 }
 
-/**
- * Returns true if `token` fuzzy-matches any value in `candidates` within `threshold` edits.
- * Threshold scales with word length.
- */
-function fuzzyMatch(token: string, candidates: string[], threshold = 2): string | null {
+function fuzzyMatch(token: string, candidates: string[], maxEdits = 2): string | null {
   const lower = token.toLowerCase();
+  if (lower.length < 3) return null; // skip very short tokens
   for (const cand of candidates) {
     const cl = cand.toLowerCase();
-    // Exact / starts-with / contains fast paths
-    if (cl === lower || cl.startsWith(lower) || lower.startsWith(cl)) return cand;
+    if (cl === lower) return cand;
+    if (cl.startsWith(lower) || lower.startsWith(cl)) return cand;
     if (lower.length >= 4 && cl.includes(lower)) return cand;
-    // Levenshtein fallback
-    const dist = levenshtein(lower, cl);
-    const maxDist = lower.length <= 4 ? 1 : lower.length <= 7 ? 2 : threshold;
-    if (dist <= maxDist) return cand;
+    const threshold = lower.length <= 4 ? 1 : lower.length <= 7 ? 2 : maxEdits;
+    if (levenshtein(lower, cl) <= threshold) return cand;
   }
   return null;
 }
@@ -154,119 +182,93 @@ export function parseSearchQuery(query: string): DetectedFilters {
 
   let working = query.trim();
 
-  // 1. Price detection
+  // ── 1. Price detection (highest priority) ──
   for (const pattern of PRICE_PATTERNS) {
     const m = working.match(pattern.regex);
     if (m) {
       result.price = pattern.extract(m);
-      working = working.replace(pattern.regex, ' ').trim();
-      break; // take first match
+      working = working.replace(m[0], ' ').replace(/\s+/g, ' ').trim();
+      break;
     }
   }
 
-  // 2. SKU detection (e.g. SBS-001 or SKU-XYZ)
-  const skuMatch = working.match(/\b([A-Z]{2,5}-\d{3,8}[A-Z0-9]*)\b/i);
+  // ── 2. SKU detection ──
+  const skuMatch = working.match(/\b([A-Z]{2,5}-[A-Z0-9]{3,10})\b/i);
   if (skuMatch) {
     result.skuMatch = skuMatch[1].toUpperCase();
-    working = working.replace(skuMatch[0], ' ').trim();
+    working = working.replace(skuMatch[0], ' ').replace(/\s+/g, ' ').trim();
   }
 
-  // 3. Multi-word synonym matching (process longest first)
-  const sortedColorKeys = Object.keys(COLOR_SYNONYMS).sort((a, b) => b.length - a.length);
-  const sortedFabricKeys = Object.keys(FABRIC_SYNONYMS).sort((a, b) => b.length - a.length);
-  const sortedOccasionKeys = Object.keys(OCCASION_SYNONYMS).sort((a, b) => b.length - a.length);
-  const sortedCategoryKeys = Object.keys(CATEGORY_SYNONYMS).sort((a, b) => b.length - a.length);
+  // ── 3. Multi-word synonyms (longest match first) ──
+  const multiWordMatch = (synonymMap: Record<string, string>, bucket: string[]) => {
+    const keys = Object.keys(synonymMap)
+      .filter(k => k.includes(' '))
+      .sort((a, b) => b.length - a.length);
+    for (const key of keys) {
+      const re = new RegExp(`\\b${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+      if (re.test(working)) {
+        const val = synonymMap[key];
+        if (!bucket.includes(val)) bucket.push(val);
+        working = working.replace(re, ' ').replace(/\s+/g, ' ').trim();
+      }
+    }
+  };
 
-  // Try multi-word matches first
-  for (const key of sortedColorKeys) {
-    if (key.includes(' ') && working.toLowerCase().includes(key)) {
-      const val = COLOR_SYNONYMS[key];
-      if (!result.colors.includes(val)) result.colors.push(val);
-      working = working.replace(new RegExp(key, 'gi'), ' ').trim();
-    }
-  }
-  for (const key of sortedFabricKeys) {
-    if (key.includes(' ') && working.toLowerCase().includes(key)) {
-      const val = FABRIC_SYNONYMS[key];
-      if (!result.fabrics.includes(val)) result.fabrics.push(val);
-      working = working.replace(new RegExp(key, 'gi'), ' ').trim();
-    }
-  }
-  for (const key of sortedOccasionKeys) {
-    if (key.includes(' ') && working.toLowerCase().includes(key)) {
-      const val = OCCASION_SYNONYMS[key];
-      if (!result.occasions.includes(val)) result.occasions.push(val);
-      working = working.replace(new RegExp(key, 'gi'), ' ').trim();
-    }
-  }
-  for (const key of sortedCategoryKeys) {
-    if (key.includes(' ') && working.toLowerCase().includes(key)) {
-      const val = CATEGORY_SYNONYMS[key];
-      if (!result.categories.includes(val)) result.categories.push(val);
-      working = working.replace(new RegExp(key, 'gi'), ' ').trim();
-    }
-  }
+  multiWordMatch(COLOR_SYNONYMS, result.colors);
+  multiWordMatch(FABRIC_SYNONYMS, result.fabrics);
+  multiWordMatch(OCCASION_SYNONYMS, result.occasions);
+  multiWordMatch(CATEGORY_SYNONYMS, result.categories);
 
-  // 4. Token-by-token synonym matching
+  // ── 4. Token-by-token matching ──
   const tokens = working.split(/\s+/).filter(Boolean);
   const remainingTokens: string[] = [];
 
   for (const token of tokens) {
     const ltoken = token.toLowerCase();
+
+    // Stop words — silently drop
+    if (STOP_WORDS.has(ltoken)) continue;
+
     let consumed = false;
 
-    // Color check
-    if (COLOR_SYNONYMS[ltoken]) {
+    // Exact synonym checks
+    if (!consumed && COLOR_SYNONYMS[ltoken]) {
       const val = COLOR_SYNONYMS[ltoken];
       if (!result.colors.includes(val)) result.colors.push(val);
       consumed = true;
     }
-    // Fabric check
-    else if (FABRIC_SYNONYMS[ltoken]) {
+    if (!consumed && FABRIC_SYNONYMS[ltoken]) {
       const val = FABRIC_SYNONYMS[ltoken];
       if (!result.fabrics.includes(val)) result.fabrics.push(val);
       consumed = true;
     }
-    // Occasion check
-    else if (OCCASION_SYNONYMS[ltoken]) {
+    if (!consumed && OCCASION_SYNONYMS[ltoken]) {
       const val = OCCASION_SYNONYMS[ltoken];
       if (!result.occasions.includes(val)) result.occasions.push(val);
       consumed = true;
     }
-    // Category check
-    else if (CATEGORY_SYNONYMS[ltoken]) {
+    if (!consumed && CATEGORY_SYNONYMS[ltoken]) {
       const val = CATEGORY_SYNONYMS[ltoken];
       if (!result.categories.includes(val)) result.categories.push(val);
       consumed = true;
     }
-    // Fuzzy fallback for colors
-    else {
-      const fuzzyColor = fuzzyMatch(ltoken, Object.keys(COLOR_SYNONYMS));
-      if (fuzzyColor) {
-        const val = COLOR_SYNONYMS[fuzzyColor];
-        if (!result.colors.includes(val)) result.colors.push(val);
-        consumed = true;
-      } else {
-        const fuzzyFabric = fuzzyMatch(ltoken, Object.keys(FABRIC_SYNONYMS));
-        if (fuzzyFabric) {
-          const val = FABRIC_SYNONYMS[fuzzyFabric];
-          if (!result.fabrics.includes(val)) result.fabrics.push(val);
-          consumed = true;
-        } else {
-          const fuzzyOccasion = fuzzyMatch(ltoken, Object.keys(OCCASION_SYNONYMS));
-          if (fuzzyOccasion) {
-            const val = OCCASION_SYNONYMS[fuzzyOccasion];
-            if (!result.occasions.includes(val)) result.occasions.push(val);
-            consumed = true;
-          } else {
-            const fuzzyCategory = fuzzyMatch(ltoken, Object.keys(CATEGORY_SYNONYMS));
-            if (fuzzyCategory) {
-              const val = CATEGORY_SYNONYMS[fuzzyCategory];
-              if (!result.categories.includes(val)) result.categories.push(val);
-              consumed = true;
-            }
-          }
-        }
+
+    // Fuzzy matching (only for longer tokens to avoid false positives)
+    if (!consumed && ltoken.length >= 4) {
+      const fc = fuzzyMatch(ltoken, Object.keys(COLOR_SYNONYMS));
+      if (fc) { const v = COLOR_SYNONYMS[fc]; if (!result.colors.includes(v)) result.colors.push(v); consumed = true; }
+
+      if (!consumed) {
+        const ff = fuzzyMatch(ltoken, Object.keys(FABRIC_SYNONYMS));
+        if (ff) { const v = FABRIC_SYNONYMS[ff]; if (!result.fabrics.includes(v)) result.fabrics.push(v); consumed = true; }
+      }
+      if (!consumed) {
+        const fo = fuzzyMatch(ltoken, Object.keys(OCCASION_SYNONYMS));
+        if (fo) { const v = OCCASION_SYNONYMS[fo]; if (!result.occasions.includes(v)) result.occasions.push(v); consumed = true; }
+      }
+      if (!consumed) {
+        const fcat = fuzzyMatch(ltoken, Object.keys(CATEGORY_SYNONYMS));
+        if (fcat) { const v = CATEGORY_SYNONYMS[fcat]; if (!result.categories.includes(v)) result.categories.push(v); consumed = true; }
       }
     }
 
@@ -276,7 +278,6 @@ export function parseSearchQuery(query: string): DetectedFilters {
   }
 
   result.remainingQuery = remainingTokens.join(' ').trim();
-
   return result;
 }
 
@@ -288,51 +289,77 @@ interface ScoredProduct {
 }
 
 /**
- * Score and filter products given a query + detected filters.
- * Returns products sorted by relevance score (highest first).
+ * Score and filter products given detected filters + remaining text query.
+ * Hard filters (color, fabric, occasion, category, price, SKU) are applied first.
+ * Surviving products are ranked by text relevance of the remaining query.
+ * If no remaining text query, all filter-matched products are returned (score = base).
  */
-export function scoreProducts(products: Product[], query: string, filters: DetectedFilters): Product[] {
-  const qLower = query.toLowerCase().trim();
+export function scoreProducts(
+  products: Product[],
+  _rawQuery: string,           // kept for API compat, not used directly
+  filters: DetectedFilters
+): Product[] {
   const remaining = filters.remainingQuery.toLowerCase().trim();
-
   const scored: ScoredProduct[] = [];
 
   for (const product of products) {
-    // ── Hard filter by detected filters ──
+
+    // ── Hard filters ──────────────────────────────────────────────────────────
+
     if (filters.colors.length > 0) {
-      const hasColor = filters.colors.some(c =>
-        product.color.toLowerCase().includes(c.toLowerCase())
-      );
-      if (!hasColor) continue;
+      const colorStr = product.color.toLowerCase();
+      const match = filters.colors.some(c => {
+        const cl = c.toLowerCase();
+        return colorStr.includes(cl) || cl.includes(colorStr) ||
+          fuzzyMatch(cl, [colorStr]) !== null;
+      });
+      if (!match) continue;
     }
+
     if (filters.fabrics.length > 0) {
-      const hasFabric = filters.fabrics.some(f =>
-        product.fabric.toLowerCase().includes(f.toLowerCase())
-      );
-      if (!hasFabric) continue;
+      const fabStr = product.fabric.toLowerCase();
+      const match = filters.fabrics.some(f => {
+        const fl = f.toLowerCase();
+        return fabStr.includes(fl) || fl.includes(fabStr) ||
+          fuzzyMatch(fl, [fabStr]) !== null;
+      });
+      if (!match) continue;
     }
+
     if (filters.occasions.length > 0) {
-      const hasOccasion = filters.occasions.some(o =>
-        product.occasion.toLowerCase().includes(o.toLowerCase())
-      );
-      if (!hasOccasion) continue;
+      const occStr = product.occasion.toLowerCase();
+      const match = filters.occasions.some(o => {
+        const ol = o.toLowerCase();
+        return occStr.includes(ol) || ol.includes(occStr);
+      });
+      if (!match) continue;
     }
+
     if (filters.categories.length > 0) {
-      const hasCat = filters.categories.some(cat =>
-        product.category.toLowerCase().includes(cat.toLowerCase())
-      );
-      if (!hasCat) continue;
+      const catStr = product.category.toLowerCase();
+      const match = filters.categories.some(cat => {
+        const cl = cat.toLowerCase();
+        return catStr.includes(cl) || cl.includes(catStr) ||
+          fuzzyMatch(cl, [catStr]) !== null;
+      });
+      if (!match) continue;
     }
+
+    // Price filter — compare against the actual selling price
     if (filters.price) {
       const effectivePrice = product.salePrice ?? product.price;
       if (filters.price.min !== undefined && effectivePrice < filters.price.min) continue;
       if (filters.price.max !== undefined && effectivePrice > filters.price.max) continue;
     }
+
+    // SKU filter
     if (filters.skuMatch) {
-      if (!(product.sku || '').toUpperCase().includes(filters.skuMatch)) continue;
+      const skuStr = (product.sku || '').toUpperCase();
+      if (!skuStr.includes(filters.skuMatch)) continue;
     }
 
-    // ── Scoring for sort order ──
+    // ── Relevance scoring ─────────────────────────────────────────────────────
+
     let score = 0;
 
     if (remaining) {
@@ -342,54 +369,50 @@ export function scoreProducts(products: Product[], query: string, filters: Detec
       const colorLower = product.color.toLowerCase();
       const descLower = (product.description || '').toLowerCase();
       const skuLower = (product.sku || '').toLowerCase();
+      const occLower = product.occasion.toLowerCase();
 
-      // Exact name match
-      if (nameLower === remaining) score += 100;
-      // Name starts with
-      else if (nameLower.startsWith(remaining)) score += 80;
-      // Name contains
-      else if (nameLower.includes(remaining)) score += 60;
-      // Category exact
-      else if (catLower === remaining) score += 70;
-      // Category contains
-      else if (catLower.includes(remaining)) score += 50;
-      // Fabric contains
-      else if (fabLower.includes(remaining)) score += 40;
-      // Color contains
-      else if (colorLower.includes(remaining)) score += 35;
-      // SKU contains
-      else if (skuLower.includes(remaining)) score += 90;
-      // Description contains
-      else if (descLower.includes(remaining)) score += 20;
+      // Full phrase matches (highest priority)
+      if (nameLower === remaining)         score += 200;
+      else if (nameLower.startsWith(remaining)) score += 160;
+      else if (nameLower.includes(remaining))   score += 120;
+      else if (skuLower.includes(remaining))    score += 180;
+      else if (catLower === remaining)           score += 140;
+      else if (catLower.includes(remaining))    score += 100;
+      else if (fabLower.includes(remaining))    score += 80;
+      else if (colorLower.includes(remaining))  score += 70;
+      else if (occLower.includes(remaining))    score += 60;
+      else if (descLower.includes(remaining))   score += 30;
 
-      // Token-level scoring
-      const queryTokens = remaining.split(/\s+/).filter(Boolean);
-      let tokenScore = 0;
+      // Token-level scoring (accumulates regardless of phrase match)
+      const queryTokens = remaining.split(/\s+/).filter(t => t.length >= 2);
       for (const tok of queryTokens) {
-        if (nameLower.includes(tok)) tokenScore += 15;
-        else if (catLower.includes(tok)) tokenScore += 10;
-        else if (fabLower.includes(tok)) tokenScore += 8;
-        else if (descLower.includes(tok)) tokenScore += 4;
+        if (nameLower.includes(tok))  score += 25;
+        if (catLower.includes(tok))   score += 15;
+        if (fabLower.includes(tok))   score += 12;
+        if (colorLower.includes(tok)) score += 10;
+        if (occLower.includes(tok))   score += 8;
+        if (descLower.includes(tok))  score += 4;
       }
-      score += tokenScore;
 
-      // If still 0 score after all checks, use fuzzy match as last resort
+      // Fuzzy name match as fallback (only if still 0)
       if (score === 0) {
-        const fuzzy = fuzzyMatch(remaining, [product.name, product.category, product.fabric]);
-        if (fuzzy) score += 10;
+        const fuzzy = fuzzyMatch(remaining, [product.name, product.category, product.fabric, product.color]);
+        if (fuzzy) score += 15;
       }
 
-      // Skip if no match at all and we had a remaining query
+      // Skip products with absolutely no text relevance
       if (score === 0) continue;
+
     } else {
-      // No remaining text query — all filter-matching products score equally
+      // No remaining text — all passing-filter products are shown, sorted by quality
       score = 50;
     }
 
-    // Boost featured/bestseller
-    if (product.featured) score += 5;
-    if (product.bestseller) score += 3;
-    if (product.newArrival) score += 2;
+    // Quality boosts
+    if (product.featured)    score += 6;
+    if (product.bestseller)  score += 4;
+    if (product.newArrival)  score += 2;
+    if (product.stock > 5)   score += 1;
 
     scored.push({ product, score });
   }
@@ -400,7 +423,7 @@ export function scoreProducts(products: Product[], query: string, filters: Detec
 // ─── Suggestion Generation ───────────────────────────────────────────────────
 
 export interface SearchSuggestion {
-  type: 'product' | 'category' | 'fabric' | 'color' | 'occasion' | 'query';
+  type: 'product' | 'category' | 'fabric' | 'color' | 'occasion' | 'price' | 'query';
   label: string;
   value: string;
   product?: Product;
@@ -412,92 +435,118 @@ export function generateSuggestions(query: string, products: Product[]): SearchS
   const q = query.toLowerCase().trim();
 
   const suggestions: SearchSuggestion[] = [];
-  const seen = new Set<string>();
+  const seenLabels = new Set<string>();
 
-  // 1. Product name matches
+  const addSugg = (s: SearchSuggestion) => {
+    if (!seenLabels.has(s.label)) {
+      seenLabels.add(s.label);
+      suggestions.push(s);
+    }
+  };
+
+  // 1. Parse the query to detect what filters are present
+  const filters = parseSearchQuery(query);
+
+  // 2. Detected filter suggestions (show at top with smart labels)
+  if (filters.categories.length > 0) {
+    filters.categories.forEach(cat => addSugg({ type: 'category', label: `${cat} Sarees`, value: query, icon: '🏷️' }));
+  }
+  if (filters.fabrics.length > 0) {
+    filters.fabrics.forEach(fab => addSugg({ type: 'fabric', label: `${fab} Sarees`, value: query, icon: '✨' }));
+  }
+  if (filters.colors.length > 0) {
+    filters.colors.forEach(col => addSugg({ type: 'color', label: `${col} Sarees`, value: query, icon: '🎨' }));
+  }
+  if (filters.occasions.length > 0) {
+    filters.occasions.forEach(occ => addSugg({ type: 'occasion', label: `${occ} Sarees`, value: query, icon: '🎉' }));
+  }
+  if (filters.price) {
+    addSugg({ type: 'price', label: `Sarees ${formatPriceFilter(filters.price)}`, value: query, icon: '💰' });
+  }
+
+  // 3. Product name matches (direct + fuzzy)
   const productMatches = products
     .filter(p => {
       const name = p.name.toLowerCase();
       const sku = (p.sku || '').toLowerCase();
-      return name.includes(q) || sku.includes(q) ||
-        (q.length >= 3 && fuzzyMatch(q, [name]) !== null);
+      const desc = (p.description || '').toLowerCase();
+      return name.includes(q) || sku.includes(q) || desc.includes(q) ||
+        (q.length >= 4 && fuzzyMatch(q, [name, p.category.toLowerCase(), p.fabric.toLowerCase()]) !== null);
     })
     .slice(0, 5);
 
   for (const p of productMatches) {
-    suggestions.push({ type: 'product', label: p.name, value: p.name, product: p });
+    addSugg({ type: 'product', label: p.name, value: p.name, product: p });
   }
 
-  // 2. Category suggestions
+  // 4. Category, fabric, color suggestions from product data
   const allCats = Array.from(new Set(products.map(p => p.category)));
   for (const cat of allCats) {
-    if (cat.toLowerCase().includes(q) && !seen.has(cat)) {
-      suggestions.push({ type: 'category', label: `${cat} Sarees`, value: cat, icon: '🏷️' });
-      seen.add(cat);
+    if (cat.toLowerCase().includes(q)) {
+      addSugg({ type: 'category', label: `${cat} Sarees`, value: cat, icon: '🏷️' });
     }
   }
 
-  // 3. Fabric suggestions
   const allFabrics = Array.from(new Set(products.map(p => p.fabric)));
   for (const fab of allFabrics) {
-    if (fab.toLowerCase().includes(q) && !seen.has(fab)) {
-      suggestions.push({ type: 'fabric', label: `${fab} Sarees`, value: fab, icon: '✨' });
-      seen.add(fab);
+    if (fab.toLowerCase().includes(q)) {
+      addSugg({ type: 'fabric', label: `${fab} Sarees`, value: fab, icon: '✨' });
     }
   }
 
-  // 4. Color suggestions
   const allColors = Array.from(new Set(products.map(p => p.color)));
   for (const col of allColors) {
-    if (col.toLowerCase().includes(q) && !seen.has(col)) {
-      suggestions.push({ type: 'color', label: `${col} Sarees`, value: col, icon: '🎨' });
-      seen.add(col);
+    if (col.toLowerCase().includes(q)) {
+      addSugg({ type: 'color', label: `${col} Sarees`, value: col, icon: '🎨' });
     }
-  }
-
-  // 5. Synonym-based suggestions
-  const filters = parseSearchQuery(query);
-  if (filters.colors.length > 0 && !seen.has(filters.colors[0])) {
-    suggestions.push({ type: 'color', label: `${filters.colors[0]} Sarees`, value: filters.colors[0], icon: '🎨' });
-  }
-  if (filters.occasions.length > 0 && !seen.has(filters.occasions[0])) {
-    suggestions.push({ type: 'occasion', label: `${filters.occasions[0]} Sarees`, value: filters.occasions[0], icon: '🎉' });
-  }
-  if (filters.fabrics.length > 0 && !seen.has(filters.fabrics[0])) {
-    suggestions.push({ type: 'fabric', label: `${filters.fabrics[0]} Sarees`, value: filters.fabrics[0], icon: '✨' });
   }
 
   return suggestions.slice(0, 8);
 }
 
-// ─── Filter Chip Label Formatters ────────────────────────────────────────────
+// ─── Price Filter Formatters ──────────────────────────────────────────────────
 
 export function formatPriceFilter(price?: PriceFilter): string {
   if (!price) return '';
-  if (price.min !== undefined && price.max !== undefined) return `₹${price.min.toLocaleString('en-IN')}–₹${price.max.toLocaleString('en-IN')}`;
-  if (price.max !== undefined) return `Under ₹${price.max.toLocaleString('en-IN')}`;
-  if (price.min !== undefined) return `Above ₹${price.min.toLocaleString('en-IN')}`;
+  if (price.min !== undefined && price.max !== undefined)
+    return `₹${price.min.toLocaleString('en-IN')} – ₹${price.max.toLocaleString('en-IN')}`;
+  if (price.max !== undefined)
+    return `Under ₹${price.max.toLocaleString('en-IN')}`;
+  if (price.min !== undefined)
+    return `Above ₹${price.min.toLocaleString('en-IN')}`;
   return '';
 }
 
+// ─── URL Builder ──────────────────────────────────────────────────────────────
+
+/**
+ * Build the /sarees search URL from a raw query + its detected filters.
+ * Stores both the raw query (for display) and the extracted filter params (for filtering).
+ */
 export function buildSearchUrl(
-  query: string,
+  rawQuery: string,
   filters: DetectedFilters,
   extraParams?: Record<string, string>
 ): string {
   const params = new URLSearchParams();
-  if (query) params.set('search', query);
-  if (filters.colors.length) params.set('color', filters.colors.join(','));
-  if (filters.fabrics.length) params.set('fabric', filters.fabrics.join(','));
+
+  // Always store the raw query so the search bar shows the original text
+  if (rawQuery.trim()) params.set('search', rawQuery.trim());
+
+  // Store extracted structured filters as explicit params
+  if (filters.colors.length)    params.set('color',    filters.colors.join(','));
+  if (filters.fabrics.length)   params.set('fabric',   filters.fabrics.join(','));
   if (filters.occasions.length) params.set('occasion', filters.occasions.join(','));
   if (filters.categories.length) params.set('category', filters.categories.join(','));
   if (filters.price?.min !== undefined) params.set('minPrice', String(filters.price.min));
   if (filters.price?.max !== undefined) params.set('maxPrice', String(filters.price.max));
-  if (filters.skuMatch) params.set('sku', filters.skuMatch);
+  if (filters.skuMatch)          params.set('sku', filters.skuMatch);
+
   if (extraParams) {
     for (const [k, v] of Object.entries(extraParams)) {
       if (v) params.set(k, v);
     }
   }
+
   return `/sarees?${params.toString()}`;
 }

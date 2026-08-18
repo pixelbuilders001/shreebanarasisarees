@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useRef, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Search, Heart, ShoppingBag, User, Menu, X, ChevronRight, LogOut, FileText, Home, Grid, Mic, ArrowLeft, Trash2, MapPin, Phone, MessageCircle, Store, Tag, Sparkles, Star } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { AnnouncementBar } from './AnnouncementBar';
 import { AdvancedSearchBar } from './AdvancedSearchBar';
-import { parseSearchQuery, buildSearchUrl } from '../lib/searchEngine';
+import { parseSearchQuery, buildSearchUrl, generateSuggestions, formatPriceFilter } from '../lib/searchEngine';
 
 
 const HeaderInner: React.FC = () => {
@@ -147,6 +147,25 @@ const HeaderInner: React.FC = () => {
       router.push(buildSearchUrl(searchQuery.trim(), filters));
     }
   };
+
+  // ── Mobile search: live suggestions computed from current searchQuery ──
+  const mobileSuggestions = useMemo(() => {
+    if (!searchQuery.trim() || !isMobileSearchOpen) return [];
+    return generateSuggestions(searchQuery, products as any[]);
+  }, [searchQuery, products, isMobileSearchOpen]);
+
+  const mobileDetectedFilters = useMemo(() => {
+    if (!searchQuery.trim() || !isMobileSearchOpen) return null;
+    return parseSearchQuery(searchQuery);
+  }, [searchQuery, isMobileSearchOpen]);
+
+  const mobileHasFilters = !!(mobileDetectedFilters && (
+    mobileDetectedFilters.colors.length > 0 ||
+    mobileDetectedFilters.fabrics.length > 0 ||
+    mobileDetectedFilters.occasions.length > 0 ||
+    mobileDetectedFilters.categories.length > 0 ||
+    mobileDetectedFilters.price
+  ));
 
   // Auth Operations
   // OTP forms are removed since only Google OAuth is active
@@ -950,8 +969,111 @@ const HeaderInner: React.FC = () => {
             </div>
           </div>
 
-          {/* Static content when no query */}
-          {!searchQuery.trim() && (
+          {/* ── Mobile body: suggestions when typing, static content when empty ── */}
+          {searchQuery.trim() ? (
+            <div className="flex-1 overflow-y-auto">
+              {/* Detected filter pills */}
+              {mobileHasFilters && (
+                <div className="px-4 pt-3 pb-2 border-b border-cream/60">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Sparkles size={10} className="text-gold" />
+                    <span className="text-[9px] font-bold text-dark-brown/45 uppercase tracking-widest">Detected Filters</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {mobileDetectedFilters!.categories.map(cat => (
+                      <span key={cat} className="inline-flex items-center gap-1 bg-maroon/10 text-maroon text-[11px] font-semibold px-2.5 py-1 rounded-full border border-maroon/15">
+                        <Tag size={9} /> {cat}
+                      </span>
+                    ))}
+                    {mobileDetectedFilters!.fabrics.map(fab => (
+                      <span key={fab} className="inline-flex items-center gap-1 bg-gold/10 text-dark-brown text-[11px] font-semibold px-2.5 py-1 rounded-full border border-gold/20">
+                        ✨ {fab}
+                      </span>
+                    ))}
+                    {mobileDetectedFilters!.colors.map(col => (
+                      <span key={col} className="inline-flex items-center gap-1 bg-cream text-dark-brown text-[11px] font-semibold px-2.5 py-1 rounded-full border border-cream">
+                        🎨 {col}
+                      </span>
+                    ))}
+                    {mobileDetectedFilters!.occasions.map(occ => (
+                      <span key={occ} className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-green-100">
+                        🎉 {occ}
+                      </span>
+                    ))}
+                    {mobileDetectedFilters!.price && (
+                      <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-blue-100">
+                        💰 {formatPriceFilter(mobileDetectedFilters!.price)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Suggestion list */}
+              {mobileSuggestions.length > 0 ? (
+                <div className="divide-y divide-cream/40">
+                  {mobileSuggestions.map((sugg, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        addRecentSearch(sugg.label);
+                        setIsMobileSearchOpen(false);
+                        if (sugg.type === 'product' && sugg.product) {
+                          router.push(`/product/${sugg.product.slug}`);
+                        } else {
+                          const filters = parseSearchQuery(sugg.value);
+                          router.push(buildSearchUrl(sugg.value, filters));
+                        }
+                      }}
+                      className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-cream/35 active:bg-cream/60 transition-colors"
+                    >
+                      {sugg.type === 'product' && sugg.product ? (
+                        <>
+                          <img
+                            src={sugg.product.images[0]}
+                            alt={sugg.product.name}
+                            className="w-12 aspect-[3/4] object-cover rounded-lg bg-cream flex-shrink-0 border border-cream"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-serif font-bold text-dark-brown truncate">{sugg.product.name}</div>
+                            <div className="text-[11px] text-dark-brown/50 mt-0.5">
+                              {sugg.product.fabric} · {sugg.product.color}
+                            </div>
+                            <div className="text-xs font-bold text-maroon mt-0.5">
+                              ₹{(sugg.product.salePrice ?? sugg.product.price).toLocaleString('en-IN')}
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-xl w-10 text-center flex-shrink-0">{sugg.icon || '🔍'}</span>
+                          <span className="text-sm font-semibold text-dark-brown flex-1">{sugg.label}</span>
+                        </>
+                      )}
+                      <ChevronRight size={16} className="text-dark-brown/30 flex-shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                  <Search size={32} className="text-dark-brown/15 mb-3" />
+                  <p className="text-sm font-semibold text-dark-brown/50">No suggestions found</p>
+                  <p className="text-xs text-dark-brown/35 mt-1">Press Search to see all matching results</p>
+                </div>
+              )}
+
+              {/* Search all CTA */}
+              <div className="sticky bottom-0 px-4 py-3 bg-white border-t border-cream">
+                <button
+                  onClick={handleMobileSearchSubmit}
+                  className="w-full py-3 bg-maroon text-white text-sm font-bold rounded-xl shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                  <Search size={15} />
+                  Search all results for &quot;{searchQuery.trim()}&quot;
+                </button>
+              </div>
+            </div>
+          ) : (
             <div className="flex-1 overflow-y-auto p-4 space-y-5">
               {/* Recent Searches */}
               {recentSearches.length > 0 && (
