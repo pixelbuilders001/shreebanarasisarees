@@ -13,18 +13,21 @@ import { StoreInfo } from './StoreInfo';
 import { Footer } from './Footer';
 import { Product, PRODUCTS } from '../data/products';
 import { ArrowLeft, ArrowRight, ShieldCheck, Award, Wrench, Headphones } from 'lucide-react';
-import { DbCampaign } from '../data/supabase';
+import { DbCampaign, DbHeroBanner } from '../data/supabase';
 import { CampaignSection } from './CampaignSection';
+import { FeatureGridSection } from './FeatureGridSection';
 import { ProductSectionHeading, EditorialSectionHeading } from './SectionHeading';
 import { RecentlyViewed } from './RecentlyViewed';
+import { ProductCardSkeleton } from './ProductCardSkeleton';
 import { useRecentlyViewed } from '../utils/useRecentlyViewed';
 
 interface HomeClientProps {
   allProducts?: Product[];
   activeCampaigns?: DbCampaign[];
+  heroBanners?: DbHeroBanner[];
 }
 
-export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [] }: HomeClientProps) {
+export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [], heroBanners }: HomeClientProps) {
   const featuredProducts = allProducts.filter(p => p.featured).slice(0, 8);
 
   // Get new arrivals (up to 6)
@@ -55,7 +58,7 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
         <h1 className="sr-only">Shree Banarasi Sarees | श्री बनारसी साड़ियाँ - Premium Indian Saree Showroom in Samastipur, Bihar</h1>
 
         {/* Hero Section */}
-        <HeroSection />
+        <HeroSection initialBanners={heroBanners} />
 
         {/* Categories Section */}
         <CategoryCard />
@@ -80,7 +83,7 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
         <CampaignSection slot="top" />
 
         {/* Shop By Price Section */}
-        <section className="pt-8 pb-16 md:py-16 px-4 bg-gradient-to-b from-[#FFF9F0] to-[#FFFFFF] border-t border-cream">
+        <section className="py-16 px-4 bg-gradient-to-b from-[#FFF9F0] to-[#FFFFFF] border-b border-cream">
           <div className="max-w-7xl mx-auto">
             <ProductSectionHeading
               title="Shop by Budget"
@@ -126,54 +129,55 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
                 <Link
                   key={idx}
                   href={`/sarees?priceRange=${card.priceRange}`}
-                  className="group bg-[#FFF9F0]/65 border border-gold/15 hover:border-gold/45 rounded-2xl p-2.5 sm:p-4 hover:shadow-[0_8px_24px_rgba(212,175,55,0.12)] hover:-translate-y-1 transition-all duration-500 flex flex-col justify-between"
+                  className="group relative bg-white border border-gold/15 hover:border-gold/45 rounded-2xl overflow-hidden hover:shadow-[0_8px_24px_rgba(212,175,55,0.12)] hover:-translate-y-1 transition-all duration-500 flex flex-col"
                 >
-                  <div className="w-full">
-                    {/* Image Container with Gold frame */}
-                    <div className="relative w-full aspect-[4/5] rounded-xl p-[2px] bg-gradient-to-b from-gold/30 to-gold/10 group-hover:from-maroon/40 group-hover:to-maroon/10 transition-all duration-500 flex items-center justify-center overflow-hidden mb-3.5 sm:mb-4 shadow-sm">
-                      <div className="w-full h-full rounded-[10px] p-[2px] bg-[#FFF9F0] flex items-center justify-center overflow-hidden">
-                        <div className="w-full h-full rounded-lg overflow-hidden relative border border-gold/5">
-                          <img
-                            src={card.image}
-                            alt={card.tagline}
-                            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                          />
-                          {/* Inner Accent Line */}
-                          <div className="absolute inset-1.5 border border-gold/15 pointer-events-none rounded-[6px] transition-all duration-500 group-hover:border-maroon/20" />
+                  {/* Image with overlaid copy */}
+                  <div className="relative w-full aspect-[4/5] overflow-hidden bg-cream">
+                    <img
+                      src={card.image}
+                      alt={card.title}
+                      loading="lazy"
+                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                    />
 
-                          {/* Rich Overlay */}
-                          <div className="absolute inset-0 bg-maroon/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                    {/* Scrim for legibility */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
 
-                          {/* Elegant Badge Overlay */}
-                          <span className="absolute top-2.5 right-2.5 bg-gold text-dark-brown text-[8px] sm:text-[9px] font-bold px-2 py-0.5 rounded shadow-sm uppercase tracking-wider font-serif">
-                            {card.badge}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                    {/* Gold halo ring on hover */}
+                    <div className="absolute inset-0 ring-1 ring-inset ring-gold/0 group-hover:ring-gold/30 transition-all duration-500 pointer-events-none rounded-2xl" />
 
-                    {/* Card Metadata */}
-                    <div className="px-1">
-                      <span className="text-[8px] sm:text-[9px] text-gold font-bold uppercase tracking-widest font-sans block mb-1">
+                    {/* Badge */}
+                    <span className="absolute top-3 right-3 bg-gold text-dark-brown text-[9px] sm:text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm uppercase tracking-wider font-serif">
+                      {card.badge}
+                    </span>
+
+                    {/* Overlay copy */}
+                    <div className="absolute bottom-0 inset-x-0 p-3.5 sm:p-5">
+                      <span className="text-[10px] sm:text-xs font-bold text-gold uppercase tracking-widest font-sans block">
                         {card.tagline}
                       </span>
-                      <h3 className="font-serif text-sm sm:text-lg font-extrabold tracking-wide text-dark-brown group-hover:text-maroon transition-colors duration-300 mb-1 leading-snug">
+                      <h3 className="font-serif text-lg sm:text-2xl font-extrabold tracking-wide text-ivory mt-1 leading-tight drop-shadow-md">
                         {card.title}
                       </h3>
-                      <p className="text-[10px] sm:text-xs text-dark-brown/65 font-light leading-relaxed mb-3 sm:mb-4 line-clamp-2 h-7 sm:h-8">
+                      <p className="text-[11px] sm:text-xs text-ivory/80 font-light leading-relaxed mt-1.5 line-clamp-2">
                         {card.description}
                       </p>
                     </div>
                   </div>
 
-                  {/* Explore Button */}
-                  <div className="px-1 mt-auto">
-                    <div className="flex items-center justify-center gap-1.5 text-[9px] sm:text-[10px] text-maroon font-bold font-serif uppercase tracking-wider py-2 border border-maroon/25 rounded-lg group-hover:bg-maroon group-hover:text-ivory group-hover:border-maroon transition-all duration-300 w-full text-center">
-                      <span>Explore Collection</span>
-                      <svg className="w-3 h-3 transform transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
+                  {/* CTA footer */}
+                  <div className="px-4 py-3 flex items-center justify-between gap-2 border-t border-gold/10 bg-[#FFF9F0]/60 mt-auto">
+                    <span className="text-maroon font-serif font-bold text-[11px] sm:text-xs uppercase tracking-wider">
+                      Shop Collection
+                    </span>
+                    <svg
+                      className="w-4 h-4 text-maroon flex-shrink-0 transform transition-transform duration-300 group-hover:translate-x-1"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
                 </Link>
               ))}
@@ -199,9 +203,11 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
 
         {/* Middle Campaign Slot */}
         <CampaignSection slot="middle" />
+        <FeatureGridSection />
+
 
         {/* Featured Signature Collection */}
-        <section className="py-16 px-4 bg-[#FFFFFF] border-t border-b border-cream">
+        <section className="py-16 px-4 bg-[#FFFFFF] border-b border-cream">
           <div className="max-w-7xl mx-auto">
             <ProductSectionHeading
               title="Our Signature Collection"
@@ -211,16 +217,20 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
 
             {/* Product Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-              {featuredProducts.map((prod) => (
-                <ProductCard key={prod.id} product={prod} />
-              ))}
+              {featuredProducts.length > 0 ? (
+                featuredProducts.map((prod) => (
+                  <ProductCard key={prod.id} product={prod} />
+                ))
+              ) : (
+                <ProductCardSkeleton count={8} />
+              )}
             </div>
           </div>
         </section>
         {/* Bottom Campaign Slot */}
         <CampaignSection slot="bottom" />
         {/* New Arrivals Section with Horizontal Scroll */}
-        <section className="py-16 px-4 max-w-7xl mx-auto">
+        <section className="py-16 px-4 max-w-7xl mx-auto border-b border-cream">
           {/* Header row: title left, scroll controls right */}
           <div className="flex items-end justify-between gap-4 mb-4 sm:mb-5">
             <div className="min-w-0">
@@ -262,25 +272,33 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
             ref={scrollRef}
             className="flex gap-2 sm:gap-3 overflow-x-auto no-scrollbar pb-6 scroll-smooth snap-x snap-mandatory"
           >
-            {newArrivals.map((prod) => (
-              <div
-                key={prod.id}
-                className="w-[240px] sm:w-[280px] flex-shrink-0 snap-start relative"
-              >
-                <ProductCard product={prod} />
-                <span className="absolute top-4 left-4 bg-maroon text-ivory text-[8px] font-bold px-1.5 py-0.5 rounded shadow z-10">
-                  JUST IN
-                </span>
+            {newArrivals.length > 0 ? (
+              newArrivals.map((prod) => (
+                <div
+                  key={prod.id}
+                  className="w-[240px] sm:w-[280px] flex-shrink-0 snap-start relative"
+                >
+                  <ProductCard product={prod} />
+                  <span className="absolute top-4 left-4 bg-maroon text-ivory text-[8px] font-bold px-1.5 py-0.5 rounded shadow z-10">
+                    JUST IN
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 w-full">
+                <ProductCardSkeleton count={6} />
               </div>
-            ))}
+            )}
           </div>
         </section>
+
+        {/* Feature Grid Promo Section */}
 
         {/* Recently Viewed Section */}
         <RecentlyViewed viewedIds={viewedIds} />
 
         {/* Promotional Banner */}
-        <section className="my-8 max-w-7xl mx-auto px-4">
+<section className="my-12 md:my-16 max-w-7xl mx-auto px-4">
           <div className="relative rounded-2xl overflow-hidden h-[320px] bg-maroon-dark flex items-center shadow-lg border border-gold/30">
             {/* Background Image */}
             <div className="absolute inset-0 bg-black/50 z-10" />
@@ -315,7 +333,7 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
 
 
         {/* Why Choose Us */}
-        <section className="py-16 px-4 bg-[#FFFFFF] border-t border-b border-cream">
+        <section className="py-16 px-4 bg-[#FFFFFF] border-t border-cream">
           <div className="max-w-7xl mx-auto">
             <EditorialSectionHeading
               title="Why Choose Us"

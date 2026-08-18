@@ -70,7 +70,7 @@ export function RecentlyViewed({ viewedIds, excludeId }: RecentlyViewedProps) {
 
   return (
     <section
-      className="py-14 px-4 border-t border-cream bg-gradient-to-b from-[#FFF9F0] to-white"
+      className="py-16 px-4 border-b border-cream bg-gradient-to-b from-[#FFF9F0] to-white"
       aria-labelledby="recently-viewed-heading"
     >
       <div className="max-w-7xl mx-auto">

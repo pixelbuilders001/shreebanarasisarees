@@ -65,13 +65,13 @@ export const CategoryCard: React.FC = () => {
     : CATEGORIES;
 
   return (
-    <section className="py-10 md:py-14">
+    <section className="py-16 border-b border-cream">
       {/* Section Header */}
       <div className="text-center mb-8 md:mb-10 px-4">
         <h2 className="font-serif text-2xl sm:text-3xl font-extrabold tracking-wide text-dark-brown">
           Shop by Category
         </h2>
-        <div className="w-12 md:w-16 h-0.5 bg-maroon mx-auto mt-3 mb-3" />
+        <div className="w-16 h-0.5 bg-maroon mx-auto mt-3 mb-3" />
         <p className="text-sm text-dark-brown/60 font-light">
           Explore our beautiful collections
         </p>

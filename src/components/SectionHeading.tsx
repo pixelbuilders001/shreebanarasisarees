@@ -59,7 +59,7 @@ export const EditorialSectionHeading: React.FC<EditorialSectionHeadingProps> = (
       {title}
     </h2>
     {showDivider && (
-      <div className="w-12 h-0.5 bg-maroon mx-auto mt-3 mb-4" />
+      <div className="w-16 h-0.5 bg-maroon mx-auto mt-3 mb-4" />
     )}
     {subtitle && (
       <p className="text-sm text-dark-brown/65 max-w-lg mx-auto leading-relaxed font-light">

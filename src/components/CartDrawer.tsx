@@ -3,8 +3,11 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { X, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
+import { X, Plus, Minus, Trash2, ShoppingBag, Truck } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
+
+const FREE_SHIPPING_THRESHOLD = 999;
+const SHIPPING_FEE = 99;
 
 export const CartDrawer: React.FC = () => {
   const router = useRouter();
@@ -37,8 +40,11 @@ export const CartDrawer: React.FC = () => {
     return total + itemPrice * item.quantity;
   }, 0);
 
-  const shipping = subtotal > 0 ? 0 : 0; // Free shipping
+  const freeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
+  const shipping = subtotal > 0 ? (freeShipping ? 0 : SHIPPING_FEE) : 0;
   const total = subtotal + shipping;
+  const remainingForFreeShipping = Math.max(FREE_SHIPPING_THRESHOLD - subtotal, 0);
+  const freeShippingProgress = Math.min((subtotal / FREE_SHIPPING_THRESHOLD) * 100, 100);
 
   if (!isCartOpen) return null;
 
@@ -88,7 +94,32 @@ export const CartDrawer: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div>
+                {/* Free Shipping Progress */}
+                <div className="mb-3 bg-white border border-gold/25 rounded-xl p-3 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <Truck size={14} className="text-maroon flex-shrink-0" />
+                    {freeShipping ? (
+                      <p className="text-[11px] font-bold text-green-700">
+                        Congratulations! You have unlocked FREE shipping.
+                      </p>
+                    ) : (
+                      <p className="text-[11px] font-semibold text-dark-brown/80">
+                        Add <span className="font-bold text-maroon">₹{remainingForFreeShipping.toLocaleString('en-IN')}</span> more for FREE shipping
+                      </p>
+                    )}
+                  </div>
+                  <div className="mt-2 h-1.5 rounded-full bg-cream overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        freeShipping ? 'bg-green-600' : 'bg-gradient-to-r from-maroon to-gold'
+                      }`}
+                      style={{ width: `${freeShippingProgress}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
                 {cart.map((item) => {
                   const currentPrice = item.product.salePrice ?? item.product.price;
                   return (
@@ -185,6 +216,7 @@ export const CartDrawer: React.FC = () => {
                     </div>
                   );
                 })}
+                </div>
               </div>
             )}
           </div>
@@ -199,7 +231,11 @@ export const CartDrawer: React.FC = () => {
                 </div>
                 <div className="flex justify-between text-xs text-dark-brown/70 font-medium">
                   <span>Shipping</span>
-                  <span className="text-green-700 font-bold">FREE</span>
+                  {freeShipping ? (
+                    <span className="text-green-700 font-bold">FREE</span>
+                  ) : (
+                    <span className="font-semibold">₹{SHIPPING_FEE.toLocaleString('en-IN')}</span>
+                  )}
                 </div>
                 <div className="flex justify-between text-sm font-serif font-bold text-dark-brown border-t border-cream pt-2 mt-1">
                   <span>Total</span>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { fetchActiveHeroBanners, DbHeroBanner } from '../data/supabase';
 
@@ -57,9 +58,15 @@ function HeroSkeleton() {
 }
 
 // ─── Main carousel ────────────────────────────────────────────────────────────
-export const HeroSection: React.FC = () => {
-  const [banners, setBanners] = useState<DbHeroBanner[]>([]);
-  const [loading, setLoading] = useState(true);
+// `initialBanners` (server-provided) lets the first hero image ship in the
+// initial HTML instead of waiting on a client fetch — the key LCP win.
+interface HeroSectionProps {
+  initialBanners?: DbHeroBanner[];
+}
+
+export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
+  const [banners, setBanners] = useState<DbHeroBanner[]>(initialBanners ?? []);
+  const [loading, setLoading] = useState(initialBanners === undefined);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [visitedSlides, setVisitedSlides] = useState<number[]>([0]);
   const [isPaused, setIsPaused] = useState(false);
@@ -69,8 +76,9 @@ export const HeroSection: React.FC = () => {
   const touchStartY = useRef<number>(0);
   const isDragging = useRef(false);
 
-  // ── Fetch banners on mount ──────────────────────────────────────────────────
+  // ── Fetch banners on mount (only when not server-provided) ─────────────────
   useEffect(() => {
+    if (initialBanners !== undefined) return;
     let cancelled = false;
     fetchActiveHeroBanners().then(data => {
       if (!cancelled) {
@@ -79,7 +87,7 @@ export const HeroSection: React.FC = () => {
       }
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [initialBanners]);
 
   // ── Slide navigation ────────────────────────────────────────────────────────
   const goTo = useCallback((index: number) => {
@@ -175,14 +183,27 @@ export const HeroSection: React.FC = () => {
           >
             {/* Image */}
             {visitedSlides.includes(index) ? (
-              <img
-                src={slide.image_url}
-                alt={slide.title || slide.eyebrow || `Hero banner ${index + 1}`}
-                className="w-full h-full object-cover"
-                loading={index === 0 ? 'eager' : 'lazy'}
-                {...(index === 0 ? { fetchPriority: 'high' } as React.ImgHTMLAttributes<HTMLImageElement> : {})}
-                draggable={false}
-              />
+              index === 0 ? (
+                <Image
+                  src={slide.image_url}
+                  alt={slide.title || slide.eyebrow || `Hero banner ${index + 1}`}
+                  fill
+                  priority
+                  sizes="100vw"
+                  draggable={false}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <Image
+                  src={slide.image_url}
+                  alt={slide.title || slide.eyebrow || `Hero banner ${index + 1}`}
+                  fill
+                  sizes="100vw"
+                  loading="lazy"
+                  draggable={false}
+                  className="w-full h-full object-cover"
+                />
+              )
             ) : (
               <div className="w-full h-full bg-dark-brown" />
             )}

@@ -37,7 +37,7 @@ const INSTA_POSTS = [
 
 export const InstagramGrid: React.FC = () => {
   return (
-    <section className="py-16 px-4 max-w-7xl mx-auto">
+    <section className="py-16 px-4 max-w-7xl mx-auto border-b border-cream">
       <div className="text-center mb-10">
         <h2 className="font-serif text-2xl sm:text-3xl font-extrabold tracking-wide text-dark-brown">
           Follow Our Saree Stories

@@ -6,9 +6,10 @@ import { MapPin, Clock, Phone, MessageCircle, Navigation } from 'lucide-react';
 export const StoreInfo: React.FC = () => {
   const mapQuery = "Shree Banarasi Sarees, Rudauli Chowk, Harpur Aloth, Samastipur, Bihar 848103";
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+  const mapEmbedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=15&output=embed`;
 
   return (
-    <section className="py-16 px-4 bg-cream/35 border-b border-cream">
+    <section className="py-16 px-4 bg-cream/35">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="font-serif text-2xl sm:text-3xl font-extrabold tracking-wide text-dark-brown">
@@ -89,35 +90,30 @@ export const StoreInfo: React.FC = () => {
           </div>
 
           {/* Map Column */}
-          <div className="lg:col-span-7 rounded-2xl overflow-hidden border border-cream shadow-sm relative min-h-[300px] bg-cream/15 flex flex-col items-center justify-center">
-            {/* Visual Map Layout Graphic inside code */}
-            <div className="absolute inset-0 p-4 opacity-30 pointer-events-none grid grid-cols-6 grid-rows-6 border border-cream/50 bg-[#F7EEDF]/20">
-              <div className="col-span-2 row-span-3 border-r border-b border-gold/25 bg-gold/5 flex items-center justify-center text-[10px] font-bold text-dark-brown/40">Ganga Road</div>
-              <div className="col-span-4 row-span-2 border-b border-gold/25 bg-gold/5 flex items-center justify-center text-[10px] font-bold text-dark-brown/40">Samastipur Highway</div>
-              <div className="col-span-3 row-span-4 border-r border-gold/25 bg-gold/5 flex items-center justify-center text-[10px] font-bold text-dark-brown/40">Harpur Aloth Area</div>
-            </div>
+          <div className="lg:col-span-7 rounded-2xl overflow-hidden border border-cream shadow-sm relative min-h-[300px] bg-cream/15">
+            {/* Live Google Maps Embed (no API key required) */}
+            <iframe
+              src={mapEmbedUrl}
+              title="Shree Banarasi Sarees Store Location - Rudauli Chowk, Samastipur"
+              width="100%"
+              height="100%"
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
+              className="absolute inset-0 w-full h-full border-0"
+              style={{ border: 0 }}
+            />
 
-            {/* Map Center Pin Design */}
-            <div className="z-10 flex flex-col items-center text-center p-6 space-y-4">
-              <div className="p-4 bg-maroon text-ivory rounded-full shadow-lg border-2 border-gold flex items-center justify-center animate-bounce">
-                <MapPin size={32} className="fill-current" />
-              </div>
-              <div>
-                <h4 className="font-serif font-bold text-dark-brown text-sm">Rudauli Chowk, Samastipur</h4>
-                <p className="text-xs text-dark-brown/60 mt-1 max-w-xs leading-relaxed">
-                  Located at the heart of Samastipur's textile hub. Easy parking available directly in front of the store.
-                </p>
-              </div>
-              <a
-                href={mapUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="py-2 px-5 bg-white border border-gold text-gold font-serif font-bold text-xs tracking-wider rounded hover:bg-gold hover:text-[#FFFFFF] transition-all"
-              >
-                OPEN GOOGLE MAPS
-              </a>
-            </div>
-
+            {/* Floating Open in Google Maps chip */}
+            <a
+              href={mapUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute bottom-4 right-4 z-10 py-2 px-4 bg-white border border-gold text-gold font-serif font-bold text-[11px] tracking-wider uppercase rounded-lg shadow-lg hover:bg-gold hover:text-dark-brown hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-1.5"
+            >
+              <Navigation size={12} className="fill-current" />
+              Open in Maps
+            </a>
           </div>
 
         </div>
