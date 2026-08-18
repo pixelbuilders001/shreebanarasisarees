@@ -403,6 +403,11 @@ export interface Order {
   orderStatus: 'Order Placed' | 'Confirmed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
   createdAt: string;
   statusHistory?: OrderStatusHistoryEntry[];
+  // Gift order fields
+  is_gift?: boolean;
+  gift_recipient_name?: string | null;
+  gift_message?: string | null;
+  gift_wrap_charge?: number;
 }
 
 export async function createDbOrder(orderData: {
@@ -422,6 +427,10 @@ export async function createDbOrder(orderData: {
   shipping: number;
   total: number;
   paymentMethod: 'UPI' | 'Cash on Delivery' | 'Online Payment';
+  is_gift?: boolean;
+  gift_recipient_name?: string | null;
+  gift_message?: string | null;
+  gift_wrap_charge?: number;
 }, userId?: string | null): Promise<Order | null> {
   try {
     const orderNumber = `SBS-ORD-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -445,7 +454,12 @@ export async function createDbOrder(orderData: {
         payment_status: 'pending',
         order_status: 'placed',
         notes: `Original payment method: ${orderData.paymentMethod}`,
-        user_id: userId || null
+        user_id: userId || null,
+        // Gift fields
+        is_gift: orderData.is_gift ?? false,
+        gift_recipient_name: orderData.gift_recipient_name || null,
+        gift_message: orderData.gift_message || null,
+        gift_wrap_charge: orderData.gift_wrap_charge ?? 0
       })
       .select('id, created_at')
       .single();

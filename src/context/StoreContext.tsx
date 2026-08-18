@@ -73,6 +73,11 @@ export interface Order {
   orderStatus: 'Order Placed' | 'Confirmed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
   createdAt: string;
   statusHistory?: OrderStatusHistoryEntry[];
+  // Gift order fields
+  is_gift?: boolean;
+  gift_recipient_name?: string | null;
+  gift_message?: string | null;
+  gift_wrap_charge?: number;
 }
 
 interface StoreContextType {
@@ -687,7 +692,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       discount: orderData.discount,
       shipping: orderData.shipping,
       total: orderData.total,
-      paymentMethod: orderData.paymentMethod
+      paymentMethod: orderData.paymentMethod,
+      is_gift: orderData.is_gift,
+      gift_recipient_name: orderData.gift_recipient_name,
+      gift_message: orderData.gift_message,
+      gift_wrap_charge: orderData.gift_wrap_charge
     }, user?.id);
 
     if (dbOrder) {
