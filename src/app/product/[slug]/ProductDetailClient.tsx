@@ -27,6 +27,9 @@ import {
   Check
 } from 'lucide-react';
 import { checkDeliveryServiceability, supabase } from '../../../data/supabase';
+import { YouMayAlsoLike } from '../../../components/YouMayAlsoLike';
+import { RecentlyViewed } from '../../../components/RecentlyViewed';
+import { useRecentlyViewed } from '../../../utils/useRecentlyViewed';
 
 interface ProductDetailClientProps {
   product: Product;
@@ -87,6 +90,15 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const carouselRef = useRef<HTMLDivElement>(null);
   const isWishlisted = isInWishlist(product.id);
   const finalPrice = product.salePrice ?? product.price;
+
+  // Recently viewed tracking
+  const { viewedIds, recordView } = useRecentlyViewed();
+
+  // Record this product view on mount
+  useEffect(() => {
+    recordView(product.id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
 
   // React to store context pincode changes
   React.useEffect(() => {
@@ -959,7 +971,13 @@ Please share more details.`;
           )}
         </div>
 
+        {/* You May Also Like Recommendations */}
+        <YouMayAlsoLike currentProduct={product} />
+
       </main>
+
+      {/* Recently Viewed — rendered outside main so it spans full width */}
+      <RecentlyViewed viewedIds={viewedIds} excludeId={product.id} />
 
       <Footer />
 

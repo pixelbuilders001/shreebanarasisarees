@@ -1012,3 +1012,132 @@ export async function fetchCampaignProducts(campaignId: string): Promise<Product
   }
 }
 
+/**
+ * Fetch similar/recommended products for the "You May Also Like" section.
+ * Prioritisation order:
+ *   1. Same category + same fabric + same/similar colour
+ *   2. Same category + same fabric
+ *   3. Same category only (fallback)
+ * The current product is always excluded.
+ * Returns up to `limit` products.
+ */
+export async function fetchSimilarProducts(
+  currentProduct: {
+    id: string;
+    category: string;
+    fabric: string;
+    color: string;
+    price: number;
+  },
+  limit = 4
+): Promise<Product[]> {
+  try {
+    // Fetch a broader pool: same category, active, with images
+    const { data, error } = await supabase
+      .from('inventory')
+      .select('*, inventory_images(*)')
+      .eq('status', 'active')
+      .ilike('category', `%${currentProduct.category}%`)
+      .neq('id', currentProduct.id)
+      .limit(60); // fetch enough to score & rank
+
+    if (error || !data) {
+      console.error('Error fetching similar products:', error);
+      return [];
+    }
+
+    const pool = (data as DbInventory[]).map(mapDbProductToProduct);
+
+    // Score each product for similarity
+    const scored = pool.map((p) => {
+      let score = 0;
+
+      // Category match (guaranteed by query, but double-check normalised value)
+      const catMatch =
+        p.category.toLowerCase() === currentProduct.category.toLowerCase();
+      if (catMatch) score += 10;
+
+      // Fabric match
+      if (
+        p.fabric &&
+        currentProduct.fabric &&
+        p.fabric.toLowerCase() === currentProduct.fabric.toLowerCase()
+      ) {
+        score += 6;
+      }
+
+      // Color similarity (partial word match is good enough for sarees)
+      if (p.color && currentProduct.color) {
+        const currentColors = currentProduct.color.toLowerCase().split(/[\s,/]+/);
+        const pColors = p.color.toLowerCase().split(/[\s,/]+/);
+        const colorOverlap = currentColors.some((c) =>
+          pColors.some((pc) => pc.includes(c) || c.includes(pc))
+        );
+        if (colorOverlap) score += 4;
+      }
+
+      // Price similarity: within ±40% of current price
+      const priceDiff =
+        Math.abs(p.price - currentProduct.price) / (currentProduct.price || 1);
+      if (priceDiff <= 0.2) score += 3;
+      else if (priceDiff <= 0.4) score += 1;
+
+      return { product: p, score };
+    });
+
+    // Sort by score descending, then randomly for variety among equal scores
+    scored.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return Math.random() - 0.5;
+    });
+
+    const results = scored.slice(0, limit).map((s) => s.product);
+
+    // If we couldn't fill enough from category, no further fallback needed
+    // (the pool was already category-scoped). Return whatever we have.
+    return results;
+  } catch (err) {
+    console.error('Exception in fetchSimilarProducts:', err);
+    return [];
+  }
+}
+
+/**
+ * Fetch a set of active products by their UUIDs.
+ * Returns results in the same order as the provided IDs array.
+ * Products that no longer exist or are inactive are silently skipped.
+ */
+export async function fetchProductsByIds(ids: string[]): Promise<Product[]> {
+  if (!ids || ids.length === 0) return [];
+
+  // Sanitise: remove empty/whitespace-only strings
+  const validIds = ids.map((id) => id.trim()).filter(Boolean);
+  if (validIds.length === 0) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('inventory')
+      .select('*, inventory_images(*)')
+      .in('id', validIds)
+      .eq('status', 'active');
+
+    if (error) {
+      console.error('Error in fetchProductsByIds:', error);
+      return [];
+    }
+
+    const dbItems = (data || []) as DbInventory[];
+    const productMap = new Map(dbItems.map((item) => [item.id, mapDbProductToProduct(item)]));
+
+    // Return in caller-specified order, skipping missing/inactive entries
+    return validIds.reduce<Product[]>((acc, id) => {
+      const p = productMap.get(id);
+      if (p) acc.push(p);
+      return acc;
+    }, []);
+  } catch (err) {
+    console.error('Exception in fetchProductsByIds:', err);
+    return [];
+  }
+}
+

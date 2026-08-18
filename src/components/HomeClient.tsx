@@ -16,6 +16,8 @@ import { ArrowLeft, ArrowRight, ShieldCheck, Award, Wrench, Headphones } from 'l
 import { DbCampaign } from '../data/supabase';
 import { CampaignSection } from './CampaignSection';
 import { ProductSectionHeading, EditorialSectionHeading } from './SectionHeading';
+import { RecentlyViewed } from './RecentlyViewed';
+import { useRecentlyViewed } from '../utils/useRecentlyViewed';
 
 interface HomeClientProps {
   allProducts?: Product[];
@@ -23,11 +25,13 @@ interface HomeClientProps {
 }
 
 export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [] }: HomeClientProps) {
-  // Get featured products (up to 8)
   const featuredProducts = allProducts.filter(p => p.featured).slice(0, 8);
 
   // Get new arrivals (up to 6)
   const newArrivals = allProducts.filter(p => p.newArrival).slice(0, 6);
+
+  // Recently viewed
+  const { viewedIds } = useRecentlyViewed();
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -271,6 +275,9 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
             ))}
           </div>
         </section>
+
+        {/* Recently Viewed Section */}
+        <RecentlyViewed viewedIds={viewedIds} />
 
         {/* Promotional Banner */}
         <section className="my-8 max-w-7xl mx-auto px-4">
