@@ -3,12 +3,43 @@
 import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Search, Heart, ShoppingBag, User, Menu, X, ChevronRight, LogOut, FileText, Home, Grid, Mic, ArrowLeft, Trash2, MapPin, Phone, MessageCircle, Store, Tag, Sparkles, Star } from 'lucide-react';
+import { Search, Heart, ShoppingBag, User, Menu, X, ChevronRight, LogOut, FileText, Home, Grid, Mic, ArrowLeft, Trash2, MapPin, Phone, MessageCircle, Store, Tag, Sparkles, Star, Truck, Banknote } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { AnnouncementBar } from './AnnouncementBar';
 import { AdvancedSearchBar } from './AdvancedSearchBar';
 import { parseSearchQuery, buildSearchUrl, generateSuggestions, formatPriceFilter } from '../lib/searchEngine';
 
+
+interface MenuRowProps {
+  href: string;
+  active?: boolean;
+  onClick?: () => void;
+  className?: string;
+  children: React.ReactNode;
+  rightIcon?: React.ReactNode;
+}
+
+const MenuRow: React.FC<MenuRowProps> = ({
+  href,
+  active = false,
+  onClick,
+  className = '',
+  children,
+  rightIcon,
+}) => (
+  <Link
+    href={href}
+    onClick={onClick}
+    className={`group flex items-center justify-between px-3 py-3.5 rounded-xl transition-all duration-150 ${active ? 'bg-white shadow-sm' : 'hover:bg-white active:bg-cream/70'} ${className}`}
+  >
+    <span className={`text-[15px] font-semibold leading-tight transition-colors ${active ? 'text-maroon' : 'text-dark-brown group-hover:text-maroon'}`}>
+      {children}
+    </span>
+    {rightIcon ?? (
+      <ChevronRight size={16} className={`shrink-0 transition-colors ${active ? 'text-maroon' : 'text-dark-brown/30 group-hover:text-gold'}`} />
+    )}
+  </Link>
+);
 
 const HeaderInner: React.FC = () => {
   const router = useRouter();
@@ -180,6 +211,19 @@ const HeaderInner: React.FC = () => {
     }))
   ];
 
+  // Active state detection for drawer menu rows (query-param based links)
+  const drawerActive = {
+    newArrivals: searchParams.get('filter') === 'new',
+    allSarees: pathname === '/sarees' && !searchParams.get('category') && !searchParams.get('filter') && !searchParams.get('maxPrice'),
+    banarasi: searchParams.get('category') === 'Banarasi Sarees',
+    silk: searchParams.get('category') === 'Silk Sarees',
+    chanderi: searchParams.get('category') === 'Chanderi Sarees',
+    bandhani: searchParams.get('category') === 'Bandhani Sarees',
+    wedding: searchParams.get('category') === 'Wedding Collection',
+    offers: searchParams.get('filter') === 'offers',
+    under1999: searchParams.get('maxPrice') === '1999',
+  };
+
   return (
     <>
       <AnnouncementBar />
@@ -199,8 +243,8 @@ const HeaderInner: React.FC = () => {
             </div>
 
             {/* Center/Left Logo & Title */}
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="flex items-center justify-center select-none lg:static absolute left-1/2 -translate-x-1/2 lg:left-0 lg:translate-x-0 z-10"
             >
               <img
@@ -341,18 +385,16 @@ const HeaderInner: React.FC = () => {
         <div className="fixed inset-0 z-[60] lg:hidden" aria-modal="true" role="dialog">
           {/* Overlay */}
           <div
-            className={`absolute inset-0 bg-[#2D211D]/70 backdrop-blur-sm transition-opacity duration-300 ${
-              isMenuAnimating ? 'opacity-100' : 'opacity-0'
-            }`}
+            className={`absolute inset-0 bg-[#2D211D]/70 backdrop-blur-sm transition-opacity duration-300 ${isMenuAnimating ? 'opacity-100' : 'opacity-0'
+              }`}
             onClick={closeMobileMenu}
             aria-hidden="true"
           />
 
           {/* Drawer Panel */}
           <div
-            className={`absolute inset-y-0 left-0 w-[88vw] max-w-[360px] bg-[#FFF9F0] shadow-2xl flex flex-col z-10 transition-transform duration-[320ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-              isMenuAnimating ? 'translate-x-0' : '-translate-x-full'
-            }`}
+            className={`absolute inset-y-0 left-0 w-[88vw] max-w-[360px] bg-[#FFF9F0] shadow-2xl flex flex-col z-10 transition-transform duration-[320ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${isMenuAnimating ? 'translate-x-0' : '-translate-x-full'
+              }`}
           >
             {/* Drawer Header */}
             <div className="flex items-center justify-between px-5 py-4 bg-white border-b border-cream/80 shrink-0">
@@ -376,98 +418,98 @@ const HeaderInner: React.FC = () => {
               </button>
             </div>
 
+            {/* Promo Strip */}
+            <div className="shrink-0 bg-maroon text-ivory">
+              <div className="flex items-center justify-center gap-4 px-5 py-2 text-[10px] font-semibold tracking-wide">
+                <span className="flex items-center gap-1.5"><Truck size={12} className="text-gold" /> FREE SHIPPING</span>
+                <span className="w-px h-3 bg-ivory/25" />
+                <span className="flex items-center gap-1.5"><Banknote size={12} className="text-gold" /> COD AVAILABLE</span>
+              </div>
+            </div>
+
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto overscroll-contain pb-6">
+
+              {/* ─── SEARCH ENTRY ─── */}
+              {/* <div className="px-5 pt-4">
+                <button
+                  onClick={() => { closeMobileMenu(); setTimeout(() => setIsMobileSearchOpen(true), 320); }}
+                  className="w-full flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white border border-cream text-dark-brown/45 hover:border-gold/50 hover:text-dark-brown transition-all active:scale-[0.98]"
+                >
+                  <Search size={15} className="text-dark-brown/40" />
+                  <span className="text-[13px] font-medium">Search for sarees, fabrics, occasions...</span>
+                </button>
+              </div> */}
+
+              {/* ─── ACCOUNT GREETING ─── */}
+              {(user || userPhone) ? (
+                <Link
+                  href="/account"
+                  onClick={closeMobileMenu}
+                  className="flex items-center gap-3 px-5 pt-5 pb-2 group"
+                >
+                  <div className="w-10 h-10 rounded-full bg-cream flex items-center justify-center overflow-hidden border border-gold/30 shrink-0">
+                    {user?.user_metadata?.avatar_url ? (
+                      <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <User size={18} className="text-maroon" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-bold text-dark-brown truncate">
+                      Hi, {userProfile?.full_name || user?.user_metadata?.full_name || user?.email || userPhone}
+                    </p>
+                    <p className="text-[10px] text-dark-brown/50">View My Account</p>
+                  </div>
+                  <ChevronRight size={16} className="text-dark-brown/30 group-hover:text-gold transition-colors shrink-0" />
+                </Link>
+              ) : null}
 
               {/* ─── SHOP Section ─── */}
               <div className="pt-5 pb-1 px-5">
                 <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-gold/80 mb-3">Shop</p>
                 <nav className="space-y-0.5">
                   {/* New Arrivals */}
-                  <Link
+                  <MenuRow
                     href="/sarees?filter=new"
+                    active={drawerActive.newArrivals}
                     onClick={closeMobileMenu}
-                    className="group flex items-center justify-between px-3 py-3.5 rounded-xl hover:bg-white active:bg-cream/70 transition-all duration-150"
+                    rightIcon={<Sparkles size={14} className={drawerActive.newArrivals ? 'text-maroon' : 'text-gold'} />}
                   >
-                    <span className="text-[15px] font-semibold text-dark-brown group-hover:text-maroon transition-colors leading-tight">New Arrivals</span>
-                    <ChevronRight size={16} className="text-dark-brown/30 group-hover:text-gold transition-colors shrink-0" />
-                  </Link>
+                    New Arrivals
+                  </MenuRow>
 
-                  {/* Banarasi Sarees */}
-                  <Link
-                    href="/sarees?category=Banarasi+Sarees"
-                    onClick={closeMobileMenu}
-                    className="group flex items-center justify-between px-3 py-3.5 rounded-xl hover:bg-white active:bg-cream/70 transition-all duration-150"
-                  >
-                    <span className="text-[15px] font-semibold text-dark-brown group-hover:text-maroon transition-colors leading-tight">Banarasi Sarees</span>
-                    <ChevronRight size={16} className="text-dark-brown/30 group-hover:text-gold transition-colors shrink-0" />
-                  </Link>
+                  {/* All Sarees */}
+                  <MenuRow href="/sarees" active={drawerActive.allSarees} onClick={closeMobileMenu}>
+                    All Sarees
+                  </MenuRow>
+                </nav>
 
-                  {/* Silk Sarees */}
-                  <Link
-                    href="/sarees?category=Silk+Sarees"
-                    onClick={closeMobileMenu}
-                    className="group flex items-center justify-between px-3 py-3.5 rounded-xl hover:bg-white active:bg-cream/70 transition-all duration-150"
-                  >
-                    <span className="text-[15px] font-semibold text-dark-brown group-hover:text-maroon transition-colors leading-tight">Silk Sarees</span>
-                    <ChevronRight size={16} className="text-dark-brown/30 group-hover:text-gold transition-colors shrink-0" />
-                  </Link>
+                {/* By Fabric */}
+                {/* <p className="mt-4 mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-dark-brown/40">By Fabric</p> */}
+                <nav className="space-y-0.5">
+                  <MenuRow href="/sarees?category=Banarasi+Sarees" active={drawerActive.banarasi} onClick={closeMobileMenu}>Banarasi Sarees</MenuRow>
+                  <MenuRow href="/sarees?category=Silk+Sarees" active={drawerActive.silk} onClick={closeMobileMenu}>Silk Sarees</MenuRow>
+                  <MenuRow href="/sarees?category=Chanderi+Sarees" active={drawerActive.chanderi} onClick={closeMobileMenu}>Chanderi Sarees</MenuRow>
+                  <MenuRow href="/sarees?category=Bandhani+Sarees" active={drawerActive.bandhani} onClick={closeMobileMenu}>Bandhani Sarees</MenuRow>
+                </nav>
 
-                  {/* Chanderi Sarees */}
-                  <Link
-                    href="/sarees?category=Chanderi+Sarees"
-                    onClick={closeMobileMenu}
-                    className="group flex items-center justify-between px-3 py-3.5 rounded-xl hover:bg-white active:bg-cream/70 transition-all duration-150"
-                  >
-                    <span className="text-[15px] font-semibold text-dark-brown group-hover:text-maroon transition-colors leading-tight">Chanderi Sarees</span>
-                    <ChevronRight size={16} className="text-dark-brown/30 group-hover:text-gold transition-colors shrink-0" />
-                  </Link>
+                {/* By Occasion */}
+                <p className="mt-4 mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-dark-brown/40">By Occasion</p>
+                <nav className="space-y-0.5">
+                  <MenuRow href="/sarees?category=Wedding+Collection" active={drawerActive.wedding} onClick={closeMobileMenu}>Wedding Collection</MenuRow>
+                </nav>
 
-                  {/* Bandhani Sarees */}
-                  <Link
-                    href="/sarees?category=Bandhani+Sarees"
-                    onClick={closeMobileMenu}
-                    className="group flex items-center justify-between px-3 py-3.5 rounded-xl hover:bg-white active:bg-cream/70 transition-all duration-150"
-                  >
-                    <span className="text-[15px] font-semibold text-dark-brown group-hover:text-maroon transition-colors leading-tight">Bandhani Sarees</span>
-                    <ChevronRight size={16} className="text-dark-brown/30 group-hover:text-gold transition-colors shrink-0" />
-                  </Link>
-
-                  {/* Wedding Collection */}
-                  <Link
-                    href="/sarees?category=Wedding+Collection"
-                    onClick={closeMobileMenu}
-                    className="group flex items-center justify-between px-3 py-3.5 rounded-xl hover:bg-white active:bg-cream/70 transition-all duration-150"
-                  >
-                    <span className="text-[15px] font-semibold text-dark-brown group-hover:text-maroon transition-colors leading-tight">Wedding Collection</span>
-                    <ChevronRight size={16} className="text-dark-brown/30 group-hover:text-gold transition-colors shrink-0" />
-                  </Link>
-
-                  {/* Sarees Under ₹1,999 */}
-                  <Link
-                    href="/sarees?maxPrice=1999"
-                    onClick={closeMobileMenu}
-                    className="group flex items-center justify-between px-3 py-3.5 rounded-xl hover:bg-white active:bg-cream/70 transition-all duration-150"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-[15px] font-semibold text-dark-brown group-hover:text-maroon transition-colors leading-tight">Sarees Under ₹1,999</span>
-                      <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full uppercase tracking-wide">Value</span>
-                    </div>
-                    <ChevronRight size={16} className="text-dark-brown/30 group-hover:text-gold transition-colors shrink-0" />
-                  </Link>
-
-                  {/* Offers */}
-                  <Link
-                    href="/sarees?filter=offers"
-                    onClick={closeMobileMenu}
-                    className="group flex items-center justify-between px-3 py-3.5 rounded-xl hover:bg-white active:bg-cream/70 transition-all duration-150"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-[15px] font-semibold text-maroon leading-tight">Offers</span>
-                      <span className="text-[9px] font-bold bg-maroon text-ivory px-1.5 py-0.5 rounded-full uppercase tracking-wide">Hot</span>
-                    </div>
-                    <ChevronRight size={16} className="text-maroon/40 group-hover:text-gold transition-colors shrink-0" />
-                  </Link>
+                {/* Highlights */}
+                <nav className="mt-4 pt-3 border-t border-cream/70 space-y-0.5">
+                  <MenuRow href="/sarees?filter=offers" active={drawerActive.offers} onClick={closeMobileMenu}>
+                    Offers
+                    <span className="ml-2 inline-block align-middle text-[9px] font-bold bg-maroon text-ivory px-1.5 py-0.5 rounded-full uppercase tracking-wide">Hot</span>
+                  </MenuRow>
+                  <MenuRow href="/sarees?maxPrice=1999" active={drawerActive.under1999} onClick={closeMobileMenu}>
+                    Sarees Under ₹1,999
+                    <span className="ml-2 inline-block align-middle text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full uppercase tracking-wide">Value</span>
+                  </MenuRow>
                 </nav>
               </div>
 
@@ -523,7 +565,7 @@ const HeaderInner: React.FC = () => {
                     <ChevronRight size={16} className="text-dark-brown/30 group-hover:text-gold transition-colors" />
                   </Link>
 
-                  <Link
+                  {/* <Link
                     href={user || userPhone ? '/account/profile' : '#'}
                     onClick={(e) => {
                       if (!user && !userPhone) {
@@ -554,7 +596,7 @@ const HeaderInner: React.FC = () => {
                       </span>
                     </div>
                     <ChevronRight size={16} className="text-dark-brown/30 group-hover:text-gold transition-colors" />
-                  </Link>
+                  </Link> */}
                 </nav>
               </div>
 
@@ -568,51 +610,40 @@ const HeaderInner: React.FC = () => {
               {/* ─── HELP & STORE Section ─── */}
               <div className="pb-1 px-5">
                 <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-gold/80 mb-3">Help &amp; Store</p>
-                <nav className="space-y-0.5">
+                <div className="grid grid-cols-3 gap-2">
                   <Link
                     href="/contact"
                     onClick={closeMobileMenu}
-                    className="group flex items-center justify-between px-3 py-3.5 rounded-xl hover:bg-white active:bg-cream/70 transition-all duration-150"
+                    className="flex flex-col items-center justify-center gap-1.5 py-3.5 rounded-xl border border-cream bg-white/50 hover:bg-white hover:border-gold/40 active:scale-[0.97] transition-all"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-cream flex items-center justify-center shrink-0">
-                        <Phone size={15} className="text-dark-brown/70" />
-                      </div>
-                      <span className="text-[15px] font-semibold text-dark-brown group-hover:text-maroon transition-colors">Contact Us</span>
+                    <div className="w-8 h-8 rounded-lg bg-cream flex items-center justify-center">
+                      <Phone size={14} className="text-dark-brown/70" />
                     </div>
-                    <ChevronRight size={16} className="text-dark-brown/30 group-hover:text-gold transition-colors" />
+                    <span className="text-[10px] font-semibold text-dark-brown leading-none">Contact</span>
                   </Link>
-
                   <a
                     href="https://wa.me/916203909946"
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={closeMobileMenu}
-                    className="group flex items-center justify-between px-3 py-3.5 rounded-xl hover:bg-white active:bg-cream/70 transition-all duration-150"
+                    className="flex flex-col items-center justify-center gap-1.5 py-3.5 rounded-xl border border-cream bg-white/50 hover:bg-white hover:border-gold/40 active:scale-[0.97] transition-all"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
-                        <MessageCircle size={15} className="text-green-600" />
-                      </div>
-                      <span className="text-[15px] font-semibold text-dark-brown group-hover:text-green-600 transition-colors">WhatsApp Us</span>
+                    <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
+                      <MessageCircle size={14} className="text-green-600" />
                     </div>
-                    <ChevronRight size={16} className="text-dark-brown/30 group-hover:text-gold transition-colors" />
+                    <span className="text-[10px] font-semibold text-dark-brown leading-none">WhatsApp</span>
                   </a>
-
                   <Link
                     href="/store"
                     onClick={closeMobileMenu}
-                    className="group flex items-center justify-between px-3 py-3.5 rounded-xl hover:bg-white active:bg-cream/70 transition-all duration-150"
+                    className="flex flex-col items-center justify-center gap-1.5 py-3.5 rounded-xl border border-cream bg-white/50 hover:bg-white hover:border-gold/40 active:scale-[0.97] transition-all"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-cream flex items-center justify-center shrink-0">
-                        <Store size={15} className="text-dark-brown/70" />
-                      </div>
-                      <span className="text-[15px] font-semibold text-dark-brown group-hover:text-maroon transition-colors">Visit Our Store</span>
+                    <div className="w-8 h-8 rounded-lg bg-cream flex items-center justify-center">
+                      <Store size={14} className="text-dark-brown/70" />
                     </div>
-                    <ChevronRight size={16} className="text-dark-brown/30 group-hover:text-gold transition-colors" />
+                    <span className="text-[10px] font-semibold text-dark-brown leading-none">Visit Store</span>
                   </Link>
-                </nav>
+                </div>
               </div>
 
               {/* Store Info Footer */}
@@ -727,10 +758,10 @@ const HeaderInner: React.FC = () => {
                 className="w-full py-4 px-5 bg-maroon hover:bg-maroon-dark text-ivory rounded-2xl font-serif font-bold text-sm tracking-wide transition-all shadow-lg shadow-maroon/20 flex items-center justify-center gap-3 cursor-pointer active:scale-[0.98]"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path fill="#fff" fillOpacity=".9" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#fff" fillOpacity=".9" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#fff" fillOpacity=".9" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                  <path fill="#fff" fillOpacity=".9" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                  <path fill="#fff" fillOpacity=".9" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#fff" fillOpacity=".9" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#fff" fillOpacity=".9" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#fff" fillOpacity=".9" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                 </svg>
                 Continue with Google
               </button>
@@ -793,10 +824,10 @@ const HeaderInner: React.FC = () => {
                 className="w-full max-w-[280px] sm:max-w-xs mx-auto py-3.5 px-5 border border-[#C9A45C]/35 hover:border-gold/60 bg-white hover:bg-cream/10 text-dark-brown rounded-xl font-serif font-bold text-xs tracking-wider uppercase transition-all shadow-sm flex items-center justify-center gap-3 cursor-pointer"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" width="20" height="20">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                 </svg>
                 Continue with Google
               </button>
@@ -810,56 +841,50 @@ const HeaderInner: React.FC = () => {
         <div className="fixed bottom-4 inset-x-4 z-40 lg:hidden flex justify-center pointer-events-none">
           <nav className="pointer-events-auto bg-[#FFF9F0]/95 backdrop-blur-md border border-[#C9A45C]/40 shadow-[0_10px_25px_rgba(45,33,29,0.1)] flex items-center justify-around py-2.5 px-3 rounded-2xl w-full max-w-md mx-auto transition-all duration-300">
             {/* Home */}
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="flex flex-col items-center justify-center flex-1 py-1 relative"
             >
-              <Home 
-                size={20} 
-                className={`transition-all duration-300 ${
-                  pathname === '/' ? 'text-maroon scale-110' : 'text-dark-brown/65 hover:text-maroon'
-                }`} 
+              <Home
+                size={20}
+                className={`transition-all duration-300 ${pathname === '/' ? 'text-maroon scale-110' : 'text-dark-brown/65 hover:text-maroon'
+                  }`}
               />
-              <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${
-                pathname === '/' ? 'text-maroon font-bold' : 'text-dark-brown/60'
-              }`}>
+              <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${pathname === '/' ? 'text-maroon font-bold' : 'text-dark-brown/60'
+                }`}>
                 Home
               </span>
-              <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${
-                pathname === '/' ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
-              }`} />
+              <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${pathname === '/' ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
+                }`} />
             </Link>
 
             {/* Categories */}
-            <Link 
-              href="/sarees" 
+            <Link
+              href="/sarees"
               className="flex flex-col items-center justify-center flex-1 py-1 relative"
             >
-              <Grid 
-                size={20} 
-                className={`transition-all duration-300 ${
-                  (pathname.startsWith('/sarees') && !searchParams.get('search') && !searchParams.get('focusSearch')) 
-                    ? 'text-maroon scale-110' 
-                    : 'text-dark-brown/65 hover:text-maroon'
-                }`} 
+              <Grid
+                size={20}
+                className={`transition-all duration-300 ${(pathname.startsWith('/sarees') && !searchParams.get('search') && !searchParams.get('focusSearch'))
+                  ? 'text-maroon scale-110'
+                  : 'text-dark-brown/65 hover:text-maroon'
+                  }`}
               />
-              <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${
-                (pathname.startsWith('/sarees') && !searchParams.get('search') && !searchParams.get('focusSearch')) 
-                  ? 'text-maroon font-bold' 
-                  : 'text-dark-brown/60'
-              }`}>
+              <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${(pathname.startsWith('/sarees') && !searchParams.get('search') && !searchParams.get('focusSearch'))
+                ? 'text-maroon font-bold'
+                : 'text-dark-brown/60'
+                }`}>
                 Shop
               </span>
-              <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${
-                (pathname.startsWith('/sarees') && !searchParams.get('search') && !searchParams.get('focusSearch')) 
-                  ? 'opacity-100 scale-100' 
-                  : 'opacity-0 scale-0'
-              }`} />
+              <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${(pathname.startsWith('/sarees') && !searchParams.get('search') && !searchParams.get('focusSearch'))
+                ? 'opacity-100 scale-100'
+                : 'opacity-0 scale-0'
+                }`} />
             </Link>
 
             {/* Profile */}
-            <Link 
-              href="/account" 
+            <Link
+              href="/account"
               onClick={(e) => {
                 if (!user && !userPhone) {
                   e.preventDefault();
@@ -873,40 +898,35 @@ const HeaderInner: React.FC = () => {
                   <img
                     src={user.user_metadata.avatar_url}
                     alt="Profile"
-                    className={`w-5 h-5 rounded-full object-cover border transition-all duration-300 ${
-                      pathname.startsWith('/account') ? 'border-maroon scale-110' : 'border-[#C9A45C]/40 hover:border-maroon'
-                    }`}
+                    className={`w-5 h-5 rounded-full object-cover border transition-all duration-300 ${pathname.startsWith('/account') ? 'border-maroon scale-110' : 'border-[#C9A45C]/40 hover:border-maroon'
+                      }`}
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <User 
-                    size={20} 
-                    className={`transition-all duration-300 ${
-                      pathname.startsWith('/account') ? 'text-maroon scale-110' : 'text-dark-brown/65 hover:text-maroon'
-                    }`} 
+                  <User
+                    size={20}
+                    className={`transition-all duration-300 ${pathname.startsWith('/account') ? 'text-maroon scale-110' : 'text-dark-brown/65 hover:text-maroon'
+                      }`}
                   />
                 )}
               </div>
-              <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${
-                pathname.startsWith('/account') ? 'text-maroon font-bold' : 'text-dark-brown/60'
-              }`}>
+              <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${pathname.startsWith('/account') ? 'text-maroon font-bold' : 'text-dark-brown/60'
+                }`}>
                 Profile
               </span>
-              <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${
-                pathname.startsWith('/account') ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
-              }`} />
+              <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${pathname.startsWith('/account') ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
+                }`} />
             </Link>
             {/* Wishlist */}
-            <Link 
-              href="/wishlist" 
+            <Link
+              href="/wishlist"
               className="flex flex-col items-center justify-center flex-1 py-1 relative"
             >
               <div className="relative">
-                <Heart 
-                  size={20} 
-                  className={`transition-all duration-300 ${
-                    pathname === '/wishlist' ? 'text-maroon scale-110' : 'text-dark-brown/65 hover:text-maroon'
-                  }`} 
+                <Heart
+                  size={20}
+                  className={`transition-all duration-300 ${pathname === '/wishlist' ? 'text-maroon scale-110' : 'text-dark-brown/65 hover:text-maroon'
+                    }`}
                 />
                 {wishlist.length > 0 && (
                   <span className="absolute -top-1.5 -right-2 bg-gradient-to-r from-red-600 to-rose-500 text-white text-[8px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center border border-[#FFF9F0] shadow-md animate-pulse">
@@ -914,25 +934,23 @@ const HeaderInner: React.FC = () => {
                   </span>
                 )}
               </div>
-              <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${
-                pathname === '/wishlist' ? 'text-maroon font-bold' : 'text-dark-brown/60'
-              }`}>
+              <span className={`text-[9px] font-serif uppercase tracking-wider mt-1 transition-all duration-300 ${pathname === '/wishlist' ? 'text-maroon font-bold' : 'text-dark-brown/60'
+                }`}>
                 Wishlist
               </span>
-              <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${
-                pathname === '/wishlist' ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
-              }`} />
+              <span className={`absolute bottom-0 w-1 h-1 rounded-full bg-maroon transition-all duration-300 ${pathname === '/wishlist' ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
+                }`} />
             </Link>
 
             {/* Cart */}
-            <button 
+            <button
               onClick={() => setIsCartOpen(true)}
               className="flex flex-col items-center justify-center flex-1 py-1 relative group"
             >
               <div className="relative">
-                <ShoppingBag 
-                  size={20} 
-                  className="text-dark-brown/65 group-hover:text-maroon group-hover:scale-110 transition-all duration-300" 
+                <ShoppingBag
+                  size={20}
+                  className="text-dark-brown/65 group-hover:text-maroon group-hover:scale-110 transition-all duration-300"
                 />
                 {cart.length > 0 && (
                   <span className="absolute -top-1.5 -right-2 bg-maroon text-[#FFF9F0] text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-[#FFF9F0] shadow-md">
@@ -953,7 +971,7 @@ const HeaderInner: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-[#FFF9F0] flex flex-col animate-slide-in-up">
           {/* Header of Search Sheet */}
           <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-cream">
-            <button 
+            <button
               onClick={() => setIsMobileSearchOpen(false)}
               className="p-1 text-dark-brown/70 hover:text-maroon flex-shrink-0"
               aria-label="Go back"
@@ -1151,7 +1169,7 @@ const HeaderInner: React.FC = () => {
       {isListening && (
         <div className="fixed inset-0 z-50 bg-[#2D211D]/90 backdrop-blur-md flex flex-col items-center justify-center pointer-events-auto animate-fade-in">
           <div className="absolute top-4 right-4">
-            <button 
+            <button
               onClick={stopVoiceSearch}
               className="p-2 bg-white/10 text-white hover:bg-white/20 rounded-full transition-all"
               aria-label="Cancel voice search"
@@ -1159,19 +1177,19 @@ const HeaderInner: React.FC = () => {
               <X size={20} />
             </button>
           </div>
-          
+
           <div className="relative flex items-center justify-center">
             <div className="absolute w-24 h-24 rounded-full bg-[#C9A45C]/30 animate-ping" />
             <div className="absolute w-32 h-32 rounded-full bg-[#C9A45C]/15 animate-pulse" />
-            
-            <button 
+
+            <button
               onClick={stopVoiceSearch}
               className="relative w-20 h-20 rounded-full bg-gradient-to-tr from-maroon to-red-700 text-white flex items-center justify-center shadow-2xl border-2 border-gold"
             >
               <Mic size={36} className="animate-bounce" />
             </button>
           </div>
-          
+
           <h3 className="text-white font-serif text-lg font-bold mt-8 tracking-wider">
             Listening...
           </h3>

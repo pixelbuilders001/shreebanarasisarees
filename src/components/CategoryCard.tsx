@@ -58,14 +58,14 @@ export const CategoryCard: React.FC = () => {
 
   const displayCategories = categories && categories.length > 0
     ? categories.map(c => ({
-        name: c.name,
-        image: c.image_url || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600&h=750",
-        link: `/sarees/${c.slug.toLowerCase()}`
-      }))
+      name: c.name,
+      image: c.image_url || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600&h=750",
+      link: `/sarees/${c.slug.toLowerCase()}`
+    }))
     : CATEGORIES;
 
   return (
-    <section className="py-16 border-b border-cream">
+    <section className="pt-10 pb-16 border-b border-cream">
       {/* Section Header */}
       <div className="text-center mb-8 md:mb-10 px-4">
         <h2 className="font-serif text-2xl sm:text-3xl font-extrabold tracking-wide text-dark-brown">

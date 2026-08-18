@@ -10,6 +10,9 @@ import { Product, PRODUCTS } from '../data/products';
 import { Filter, SlidersHorizontal, X, Search, ChevronDown, BookOpen, Sparkles, Tag } from 'lucide-react';
 import { parseSearchQuery, scoreProducts, formatPriceFilter, buildSearchUrl, type DetectedFilters } from '../lib/searchEngine';
 
+const PAGE_SIZE = 24;
+const INITIAL_VISIBLE_COUNT = PAGE_SIZE;
+
 interface SareesClientProps {
   initialCategory: string;
   initialOccasion: string;
@@ -218,6 +221,28 @@ export const SareesClient: React.FC<SareesClientProps> = ({
       return 0;
     });
   }
+
+  // ── Client-side Pagination (Load More) ──
+  const [visibleCount, setVisibleCount] = useState<number>(INITIAL_VISIBLE_COUNT);
+
+  // Filter signature — changing any filter/sort/search resets pagination back to page 1
+  const filterSignature = [
+    selectedCategory,
+    selectedPriceRange,
+    selectedColors.join('~'),
+    selectedOccasions.join('~'),
+    selectedFabrics.join('~'),
+    sortBy,
+    hasAdvancedSearch ? `${urlSearch}|${urlColor}|${urlFabric}|${urlOccasion}|${urlCategory}|${urlMinPrice}|${urlMaxPrice}|${urlSku}` : '',
+  ].join('|');
+
+  const [lastSignature, setLastSignature] = useState<string>(filterSignature);
+  if (lastSignature !== filterSignature) {
+    setLastSignature(filterSignature);
+    setVisibleCount(INITIAL_VISIBLE_COUNT);
+  }
+
+  const visibleProducts = filteredProducts.slice(0, visibleCount);
 
   return (
     <>
@@ -527,9 +552,22 @@ export const SareesClient: React.FC<SareesClientProps> = ({
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-1 sm:gap-1.5 lg:gap-2">
-                {filteredProducts.map((prod) => (
+                {visibleProducts.map((prod) => (
                   <ProductCard key={prod.id} product={prod} />
                 ))}
+              </div>
+            )}
+            {filteredProducts.length > 0 && visibleCount < filteredProducts.length && (
+              <div className="mt-8 flex flex-col items-center gap-3">
+                <div className="text-xs font-medium text-dark-brown/50">
+                  Showing {visibleProducts.length} of {filteredProducts.length} sarees
+                </div>
+                <button
+                  onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+                  className="px-8 py-3 bg-maroon text-ivory rounded font-serif font-bold text-xs tracking-wider uppercase hover:bg-maroon-dark hover:scale-105 active:scale-95 transition-all shadow"
+                >
+                  Load More ({filteredProducts.length - visibleCount} left)
+                </button>
               </div>
             )}
           </div>
