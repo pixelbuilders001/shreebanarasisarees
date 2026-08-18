@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { ProductCard } from './ProductCard';
 import { Product, PRODUCTS } from '../data/products';
-import { Filter, SlidersHorizontal, X, Search, ChevronDown, BookOpen } from 'lucide-react';
+import { Filter, SlidersHorizontal, X, Search, ChevronDown, BookOpen, Sparkles, Tag } from 'lucide-react';
+import { parseSearchQuery, scoreProducts, formatPriceFilter, buildSearchUrl, type DetectedFilters } from '../lib/searchEngine';
 
 interface SareesClientProps {
   initialCategory: string;
@@ -44,6 +45,31 @@ export const SareesClient: React.FC<SareesClientProps> = ({
   // Mobile filter drawer state
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
+  // ── Advanced search params from URL ──
+  const urlSearch = searchParams.get('search') || '';
+  const urlColor = searchParams.get('color') || '';
+  const urlFabric = searchParams.get('fabric') || '';
+  const urlOccasion = searchParams.get('occasion') || '';
+  const urlCategory = searchParams.get('category') || '';
+  const urlMinPrice = searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : undefined;
+  const urlMaxPrice = searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : undefined;
+  const urlSku = searchParams.get('sku') || '';
+
+  // Detected filters from URL (advanced search)
+  const urlFilters = useMemo<DetectedFilters>(() => ({
+    colors: urlColor ? urlColor.split(',') : [],
+    fabrics: urlFabric ? urlFabric.split(',') : [],
+    occasions: urlOccasion ? urlOccasion.split(',') : [],
+    categories: urlCategory ? urlCategory.split(',') : [],
+    price: (urlMinPrice !== undefined || urlMaxPrice !== undefined)
+      ? { min: urlMinPrice, max: urlMaxPrice }
+      : undefined,
+    skuMatch: urlSku || undefined,
+    remainingQuery: urlSearch,
+  }), [urlSearch, urlColor, urlFabric, urlOccasion, urlCategory, urlMinPrice, urlMaxPrice, urlSku]);
+
+  const hasAdvancedSearch = !!(urlSearch || urlColor || urlFabric || urlOccasion || urlCategory || urlMinPrice || urlMaxPrice || urlSku);
+
   // Sync state if server props change (navigation)
   useEffect(() => {
     setSelectedCategory(initialCategory);
@@ -52,6 +78,32 @@ export const SareesClient: React.FC<SareesClientProps> = ({
     const priceParam = searchParams.get('priceRange');
     setSelectedPriceRange(priceParam || 'All');
   }, [initialCategory, initialOccasion, searchParams]);
+
+  // Helper: remove a filter chip and re-push URL
+  const removeFilterChip = (type: keyof DetectedFilters, value?: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (type === 'colors') {
+      const remaining = (urlColor.split(',').filter(c => c !== value)).join(',');
+      remaining ? params.set('color', remaining) : params.delete('color');
+    } else if (type === 'fabrics') {
+      const remaining = (urlFabric.split(',').filter(f => f !== value)).join(',');
+      remaining ? params.set('fabric', remaining) : params.delete('fabric');
+    } else if (type === 'occasions') {
+      const remaining = (urlOccasion.split(',').filter(o => o !== value)).join(',');
+      remaining ? params.set('occasion', remaining) : params.delete('occasion');
+    } else if (type === 'categories') {
+      const remaining = (urlCategory.split(',').filter(c => c !== value)).join(',');
+      remaining ? params.set('category', remaining) : params.delete('category');
+    } else if (type === 'price') {
+      params.delete('minPrice');
+      params.delete('maxPrice');
+    } else if (type === 'skuMatch') {
+      params.delete('sku');
+    } else if (type === 'remainingQuery') {
+      params.delete('search');
+    }
+    router.push(`/sarees?${params.toString()}`);
+  };
 
   // Categories & attributes list
   const colorsList = ['Red', 'Pink', 'Green', 'Blue', 'Yellow', 'Black', 'White', 'Maroon', 'Purple'];
@@ -81,54 +133,65 @@ export const SareesClient: React.FC<SareesClientProps> = ({
     router.push('/sarees');
   };
 
-  // Filter Logic
-  let filteredProducts = allProducts.filter(product => {
-    // 1. Category Filter
-    if (selectedCategory !== 'All' && product.category !== selectedCategory) {
-      return false;
+  // ── Filter & Sort Logic ──
+  let filteredProducts: Product[];
+
+  if (hasAdvancedSearch) {
+    // Advanced search: use search engine for scoring + filtering
+    filteredProducts = scoreProducts(allProducts, urlSearch, urlFilters);
+    // Sort (if not Recommended)
+    if (sortBy !== 'Recommended') {
+      filteredProducts = [...filteredProducts].sort((a, b) => {
+        const aP = a.salePrice ?? a.price;
+        const bP = b.salePrice ?? b.price;
+        if (sortBy === 'Price Low to High') return aP - bP;
+        if (sortBy === 'Price High to Low') return bP - aP;
+        if (sortBy === 'Newest') return (b.newArrival ? 1 : 0) - (a.newArrival ? 1 : 0);
+        if (sortBy === 'Best Selling') return (b.bestseller ? 1 : 0) - (a.bestseller ? 1 : 0);
+        return 0;
+      });
     }
+  } else {
+    // Classic sidebar filter logic
+    filteredProducts = allProducts.filter(product => {
+      // 1. Category Filter
+      if (selectedCategory !== 'All' && product.category !== selectedCategory) return false;
 
-    // 2. Price Filter
-    const finalPrice = product.salePrice ?? product.price;
-    if (selectedPriceRange !== 'All') {
-      if (selectedPriceRange === 'under_999' && finalPrice > 999) return false;
-      if (selectedPriceRange === 'under_1499' && finalPrice > 1499) return false;
-      if (selectedPriceRange === 'under_2000' && finalPrice > 2000) return false;
-      if (selectedPriceRange === 'under_1000' && finalPrice > 1000) return false;
-      if (selectedPriceRange === '1000_2000' && (finalPrice < 1000 || finalPrice > 2000)) return false;
-      if (selectedPriceRange === '2000_5000' && (finalPrice < 2000 || finalPrice > 5000)) return false;
-      if (selectedPriceRange === '5000_plus' && finalPrice < 5000) return false;
-    }
+      // 2. Price Filter
+      const finalPrice = product.salePrice ?? product.price;
+      if (selectedPriceRange !== 'All') {
+        if (selectedPriceRange === 'under_999' && finalPrice > 999) return false;
+        if (selectedPriceRange === 'under_1499' && finalPrice > 1499) return false;
+        if (selectedPriceRange === 'under_2000' && finalPrice > 2000) return false;
+        if (selectedPriceRange === 'under_1000' && finalPrice > 1000) return false;
+        if (selectedPriceRange === '1000_2000' && (finalPrice < 1000 || finalPrice > 2000)) return false;
+        if (selectedPriceRange === '2000_5000' && (finalPrice < 2000 || finalPrice > 5000)) return false;
+        if (selectedPriceRange === '5000_plus' && finalPrice < 5000) return false;
+      }
 
-    // 3. Color Filter
-    if (selectedColors.length > 0 && !selectedColors.includes(product.color)) {
-      return false;
-    }
+      // 3. Color Filter
+      if (selectedColors.length > 0 && !selectedColors.includes(product.color)) return false;
 
-    // 4. Occasion Filter
-    if (selectedOccasions.length > 0 && !selectedOccasions.includes(product.occasion)) {
-      return false;
-    }
+      // 4. Occasion Filter
+      if (selectedOccasions.length > 0 && !selectedOccasions.includes(product.occasion)) return false;
 
-    // 5. Fabric Filter
-    if (selectedFabrics.length > 0 && !selectedFabrics.includes(product.fabric)) {
-      return false;
-    }
+      // 5. Fabric Filter
+      if (selectedFabrics.length > 0 && !selectedFabrics.includes(product.fabric)) return false;
 
-    return true;
-  });
+      return true;
+    });
 
-  // Sort Logic
-  filteredProducts = [...filteredProducts].sort((a, b) => {
-    const aPrice = a.salePrice ?? a.price;
-    const bPrice = b.salePrice ?? b.price;
-
-    if (sortBy === 'Price Low to High') return aPrice - bPrice;
-    if (sortBy === 'Price High to Low') return bPrice - aPrice;
-    if (sortBy === 'Newest') return b.newArrival ? 1 : -1;
-    if (sortBy === 'Best Selling') return b.bestseller ? 1 : -1;
-    return 0; // Recommended
-  });
+    // Sort Logic
+    filteredProducts = [...filteredProducts].sort((a, b) => {
+      const aPrice = a.salePrice ?? a.price;
+      const bPrice = b.salePrice ?? b.price;
+      if (sortBy === 'Price Low to High') return aPrice - bPrice;
+      if (sortBy === 'Price High to Low') return bPrice - aPrice;
+      if (sortBy === 'Newest') return b.newArrival ? 1 : -1;
+      if (sortBy === 'Best Selling') return b.bestseller ? 1 : -1;
+      return 0;
+    });
+  }
 
   return (
     <>
@@ -159,13 +222,82 @@ export const SareesClient: React.FC<SareesClientProps> = ({
 
         {/* Category Header Title */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-cream pb-3 mb-4">
-          <div>
-            <h1 className="font-serif text-lg sm:text-xl lg:text-2xl font-extrabold text-dark-brown flex items-baseline gap-2">
-              {h1Title}
+          <div className="min-w-0">
+            <h1 className="font-serif text-lg sm:text-xl lg:text-2xl font-extrabold text-dark-brown flex items-baseline gap-2 flex-wrap">
+              {hasAdvancedSearch && urlSearch ? `Results for "${urlSearch}"` : h1Title}
               <span className="text-xs font-semibold text-dark-brown/40 font-sans">
                 ({filteredProducts.length} {filteredProducts.length === 1 ? 'Product' : 'Products'})
               </span>
             </h1>
+
+            {/* ── Active Filter Chips (Advanced Search) ── */}
+            {hasAdvancedSearch && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {urlFilters.remainingQuery && (
+                  <span className="inline-flex items-center gap-1 bg-dark-brown/5 text-dark-brown text-[11px] font-semibold px-2.5 py-1 rounded-full border border-dark-brown/10">
+                    <Search size={10} />
+                    &quot;{urlFilters.remainingQuery}&quot;
+                    <button onClick={() => removeFilterChip('remainingQuery')} className="ml-0.5 hover:text-maroon transition-colors" aria-label="Remove search">
+                      <X size={10} />
+                    </button>
+                  </span>
+                )}
+                {urlFilters.categories.map(cat => (
+                  <span key={cat} className="inline-flex items-center gap-1 bg-maroon/10 text-maroon text-[11px] font-semibold px-2.5 py-1 rounded-full border border-maroon/20">
+                    <Tag size={10} /> {cat}
+                    <button onClick={() => removeFilterChip('categories', cat)} className="ml-0.5 hover:text-maroon-dark" aria-label={`Remove ${cat}`}>
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+                {urlFilters.fabrics.map(fab => (
+                  <span key={fab} className="inline-flex items-center gap-1 bg-gold/10 text-dark-brown text-[11px] font-semibold px-2.5 py-1 rounded-full border border-gold/20">
+                    ✨ {fab}
+                    <button onClick={() => removeFilterChip('fabrics', fab)} className="ml-0.5 hover:text-maroon" aria-label={`Remove ${fab}`}>
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+                {urlFilters.colors.map(col => (
+                  <span key={col} className="inline-flex items-center gap-1 bg-cream text-dark-brown text-[11px] font-semibold px-2.5 py-1 rounded-full border border-cream">
+                    🎨 {col}
+                    <button onClick={() => removeFilterChip('colors', col)} className="ml-0.5 hover:text-maroon" aria-label={`Remove ${col}`}>
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+                {urlFilters.occasions.map(occ => (
+                  <span key={occ} className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-green-100">
+                    🎉 {occ}
+                    <button onClick={() => removeFilterChip('occasions', occ)} className="ml-0.5 hover:text-green-900" aria-label={`Remove ${occ}`}>
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+                {urlFilters.price && (
+                  <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-blue-100">
+                    💰 {formatPriceFilter(urlFilters.price)}
+                    <button onClick={() => removeFilterChip('price')} className="ml-0.5 hover:text-blue-900" aria-label="Remove price filter">
+                      <X size={10} />
+                    </button>
+                  </span>
+                )}
+                {urlFilters.skuMatch && (
+                  <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-purple-100">
+                    SKU: {urlFilters.skuMatch}
+                    <button onClick={() => removeFilterChip('skuMatch')} className="ml-0.5 hover:text-purple-900" aria-label="Remove SKU filter">
+                      <X size={10} />
+                    </button>
+                  </span>
+                )}
+                <button
+                  onClick={() => router.push('/sarees')}
+                  className="text-[11px] font-bold text-maroon hover:underline px-1"
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Sorting Dropdown & Mobile Filter Trigger */}

@@ -6,6 +6,8 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Search, Heart, ShoppingBag, User, Menu, X, ChevronRight, LogOut, FileText, Home, Grid, Mic, ArrowLeft, Trash2, MapPin, Phone, MessageCircle, Store, Tag, Sparkles, Star } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { AnnouncementBar } from './AnnouncementBar';
+import { AdvancedSearchBar } from './AdvancedSearchBar';
+import { parseSearchQuery, buildSearchUrl } from '../lib/searchEngine';
 
 
 const HeaderInner: React.FC = () => {
@@ -129,8 +131,6 @@ const HeaderInner: React.FC = () => {
   // Auth Form State
   const [authError, setAuthError] = useState('');
 
-  const searchRef = useRef<HTMLDivElement>(null);
-
   // Sync search input with URL search params
   useEffect(() => {
     const urlQuery = searchParams.get('search');
@@ -139,44 +139,17 @@ const HeaderInner: React.FC = () => {
     }
   }, [searchParams, setSearchQuery]);
 
-  // Click outside listener for search suggestions
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setIsSearchFocused(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleMobileSearchSubmit = () => {
     if (searchQuery.trim()) {
+      const filters = parseSearchQuery(searchQuery.trim());
       addRecentSearch(searchQuery.trim());
-      setIsSearchFocused(false);
-      router.push(`/sarees?search=${encodeURIComponent(searchQuery.trim())}`);
+      setIsMobileSearchOpen(false);
+      router.push(buildSearchUrl(searchQuery.trim(), filters));
     }
-  };
-
-  const handleSuggestionClick = (suggestion: string) => {
-    setSearchQuery(suggestion);
-    addRecentSearch(suggestion);
-    setIsSearchFocused(false);
-    router.push(`/sarees?search=${encodeURIComponent(suggestion)}`);
   };
 
   // Auth Operations
   // OTP forms are removed since only Google OAuth is active
-
-  // Filter products for suggestions (up to 5 matches)
-  const searchSuggestions = searchQuery.trim()
-    ? products.filter(p =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.fabric.toLowerCase().includes(searchQuery.toLowerCase())
-    ).slice(0, 5)
-    : [];
 
   const navLinks = [
     { name: 'Home', href: '/' },
@@ -226,88 +199,9 @@ const HeaderInner: React.FC = () => {
               </div>
             </Link>
 
-            {/* Center: Search Bar */}
-            <div ref={searchRef} className="hidden md:block flex-1 max-w-lg relative">
-              <form onSubmit={handleSearchSubmit} className="relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onFocus={() => setIsSearchFocused(true)}
-                  placeholder="Search sarees, fabrics, colors..."
-                  className="w-full bg-[#FFFFFF] border border-[#C9A45C]/40 focus:border-[#C9A45C] focus:ring-1 focus:ring-[#C9A45C] text-sm text-dark-brown placeholder-dark-brown/40 rounded-full py-2.5 pl-5 pr-16 outline-none transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={startVoiceSearch}
-                  className="absolute right-10 top-1/2 -translate-y-1/2 p-1 text-dark-brown/50 hover:text-maroon transition-colors"
-                  title="Voice search"
-                  aria-label="Voice search"
-                >
-                  <Mic size={18} />
-                </button>
-                <button
-                  type="submit"
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-dark-brown/50 hover:text-maroon transition-colors"
-                  aria-label="Search"
-                >
-                  <Search size={18} />
-                </button>
-              </form>
-
-              {/* Search Suggestions Dropdown */}
-              {isSearchFocused && (
-                <div className="absolute left-0 right-0 mt-2 bg-white border border-cream shadow-xl rounded-lg overflow-hidden z-50 animate-fade-in">
-                  {recentSearches.length > 0 && !searchQuery && (
-                    <div className="p-3 border-b border-cream">
-                      <div className="flex justify-between items-center text-xs font-semibold text-dark-brown/50 mb-1">
-                        <span>RECENT SEARCHES</span>
-                        <button onClick={clearRecentSearches} className="text-maroon hover:underline">Clear</button>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 mt-1.5">
-                        {recentSearches.map((s, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => handleSuggestionClick(s)}
-                            className="bg-cream/40 text-dark-brown/80 hover:bg-cream text-[11px] font-medium px-2.5 py-1 rounded"
-                          >
-                            {s}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {searchQuery && (
-                    <div className="py-2">
-                      <div className="px-3 py-1 text-[10px] font-bold text-dark-brown/40 uppercase tracking-wider">
-                        Suggested Products
-                      </div>
-                      {searchSuggestions.length > 0 ? (
-                        searchSuggestions.map((prod) => (
-                          <button
-                            key={prod.id}
-                            onClick={() => {
-                              setIsSearchFocused(false);
-                              router.push(`/product/${prod.slug}`);
-                            }}
-                            className="w-full text-left px-4 py-2 hover:bg-cream/35 flex items-center gap-3 transition-colors"
-                          >
-                            <img src={prod.images[0]} alt={prod.name} className="w-8 aspect-[3/4] object-cover rounded bg-cream" />
-                            <div>
-                              <div className="text-xs font-serif font-bold text-dark-brown">{prod.name}</div>
-                              <div className="text-[10px] text-dark-brown/50">{prod.fabric} &bull; ₹{prod.price}</div>
-                            </div>
-                          </button>
-                        ))
-                      ) : (
-                        <div className="px-4 py-3 text-xs text-dark-brown/50 italic">
-                          No suggestions found. Press Enter to search all products.
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+            {/* Center: Advanced Search Bar */}
+            <div className="hidden md:block flex-1 max-w-lg">
+              <AdvancedSearchBar variant="header" />
             </div>
 
             {/* Right: Icons */}
@@ -1042,192 +936,92 @@ const HeaderInner: React.FC = () => {
           <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-cream">
             <button 
               onClick={() => setIsMobileSearchOpen(false)}
-              className="p-1 text-dark-brown/70 hover:text-maroon"
+              className="p-1 text-dark-brown/70 hover:text-maroon flex-shrink-0"
               aria-label="Go back"
             >
-              <ArrowLeft size={24} />
+              <ArrowLeft size={22} />
             </button>
-            <form onSubmit={handleSearchSubmit} className="flex-1 relative">
-              <input
-                type="text"
+            <div className="flex-1">
+              <AdvancedSearchBar
+                variant="mobile-overlay"
                 autoFocus
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search sarees, fabrics, colors..."
-                className="w-full bg-[#FFF9F0] border border-[#C9A45C]/40 focus:border-[#C9A45C] text-sm text-dark-brown placeholder-dark-brown/40 rounded-full py-2.5 pl-4 pr-16 outline-none"
+                onClose={() => setIsMobileSearchOpen(false)}
               />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-10 top-1/2 -translate-y-1/2 p-1 text-dark-brown/40 hover:text-maroon"
-                  aria-label="Clear text"
-                >
-                  <X size={16} />
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={startVoiceSearch}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-dark-brown/50 hover:text-maroon"
-                title="Voice search"
-                aria-label="Voice search"
-              >
-                <Mic size={18} />
-              </button>
-            </form>
+            </div>
           </div>
 
-          {/* Results/Suggestions Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            {speechError && (
-              <div className="p-3 bg-red-50 text-red-700 text-xs font-semibold rounded border border-red-100 flex items-center gap-2">
-                <span>{speechError}</span>
-              </div>
-            )}
-
-            {!searchQuery.trim() ? (
-              <>
-                {/* Recent Searches */}
-                {recentSearches.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center text-xs font-bold text-dark-brown/50 tracking-wider">
-                      <span>RECENT SEARCHES</span>
-                      <button 
-                        onClick={clearRecentSearches}
-                        className="text-maroon hover:underline flex items-center gap-1"
-                      >
-                        <Trash2 size={12} /> Clear
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {recentSearches.map((s, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => {
-                            setSearchQuery(s);
-                            addRecentSearch(s);
-                            setIsMobileSearchOpen(false);
-                            router.push(`/sarees?search=${encodeURIComponent(s)}`);
-                          }}
-                          className="bg-white border border-cream text-dark-brown/80 hover:bg-cream/30 text-xs px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5"
-                        >
-                          <svg className="w-3.5 h-3.5 text-dark-brown/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                          {s}
-                        </button>
-                      ))}
-                    </div>
+          {/* Static content when no query */}
+          {!searchQuery.trim() && (
+            <div className="flex-1 overflow-y-auto p-4 space-y-5">
+              {/* Recent Searches */}
+              {recentSearches.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-[10px] font-bold text-dark-brown/50 tracking-widest uppercase">
+                    <span className="flex items-center gap-1.5">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      Recent
+                    </span>
+                    <button onClick={clearRecentSearches} className="text-maroon hover:underline flex items-center gap-1">
+                      <Trash2 size={11} /> Clear
+                    </button>
                   </div>
-                )}
-
-                {/* Popular Categories */}
-                <div className="space-y-3">
-                  <div className="text-xs font-bold text-dark-brown/50 tracking-wider">
-                    POPULAR CATEGORIES
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { name: 'Banarasi Silk', query: 'Banarasi' },
-                      { name: 'Bridal Collection', query: 'Bridal' },
-                      { name: 'Organza Sarees', query: 'Organza' },
-                      { name: 'Chikankari Craft', query: 'Chikankari' },
-                      { name: 'New Arrivals', filter: 'new' },
-                      { name: 'Offers & Discounts', category: 'Offers' }
-                    ].map((tag, idx) => (
+                  <div className="flex flex-wrap gap-2">
+                    {recentSearches.map((s, idx) => (
                       <button
                         key={idx}
                         onClick={() => {
+                          const filters = parseSearchQuery(s);
+                          addRecentSearch(s);
                           setIsMobileSearchOpen(false);
-                          if (tag.filter) {
-                            router.push('/sarees?filter=new');
-                          } else if (tag.category) {
-                            router.push(`/sarees?category=${tag.category}`);
-                          } else {
-                            router.push(`/sarees?category=${tag.query}`);
-                          }
+                          router.push(buildSearchUrl(s, filters));
                         }}
-                        className="bg-white border border-cream hover:border-gold/50 text-dark-brown text-xs font-semibold py-3 px-4 rounded-xl text-left transition-all flex items-center justify-between"
+                        className="bg-white border border-cream text-dark-brown/80 hover:bg-cream/30 text-xs px-3.5 py-1.5 rounded-full transition-all"
                       >
-                        {tag.name}
-                        <ChevronRight size={14} className="text-gold" />
+                        {s}
                       </button>
                     ))}
                   </div>
                 </div>
+              )}
 
-                {/* Promotional banner or tip */}
-                <div className="bg-gradient-to-r from-cream/35 to-gold/10 rounded-2xl p-4 border border-gold/15 flex items-center gap-3">
-                  <div className="bg-gold/20 p-2 rounded-full text-gold">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-dark-brown">Try Voice Search!</h4>
-                    <p className="text-[10px] text-dark-brown/60 mt-0.5">Tap the microphone icon and say "Red Banarasi Saree" or "Organza" to search hands-free.</p>
-                  </div>
-                </div>
-              </>
-            ) : (
-              /* Realtime search suggestions list */
-              <div className="space-y-4">
-                <div className="text-xs font-bold text-dark-brown/40 uppercase tracking-wider">
-                  Suggested Products
-                </div>
-                {searchSuggestions.length > 0 ? (
-                  <div className="space-y-2">
-                    {searchSuggestions.map((prod) => (
-                      <button
-                        key={prod.id}
-                        onClick={() => {
-                          setIsMobileSearchOpen(false);
-                          router.push(`/product/${prod.slug}`);
-                        }}
-                        className="w-full text-left bg-white border border-cream rounded-xl p-3 flex items-center gap-3 transition-colors hover:border-gold/30"
-                      >
-                        <img 
-                          src={prod.images[0]} 
-                          alt={prod.name} 
-                          className="w-12 aspect-[3/4] object-cover rounded bg-cream border border-cream" 
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-serif font-bold text-dark-brown truncate">{prod.name}</div>
-                          <div className="text-[10px] text-dark-brown/50 mt-0.5">{prod.fabric} &bull; {prod.category}</div>
-                          <div className="text-xs font-bold text-maroon mt-1">₹{prod.price}</div>
-                        </div>
-                        <ChevronRight size={16} className="text-gold" />
-                      </button>
-                    ))}
-                    
-                    <button
-                      onClick={() => {
-                        addRecentSearch(searchQuery.trim());
-                        setIsMobileSearchOpen(false);
-                        router.push(`/sarees?search=${encodeURIComponent(searchQuery.trim())}`);
-                      }}
-                      className="w-full py-3 bg-maroon text-[#FFF9F0] text-xs font-semibold rounded-xl text-center shadow-md hover:bg-maroon-dark transition-all mt-4"
-                    >
-                      View All Results for "{searchQuery}"
-                    </button>
-                  </div>
-                ) : (
-                  <div className="bg-white border border-cream rounded-xl p-8 text-center">
-                    <svg className="w-10 h-10 text-dark-brown/20 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    <div className="text-xs font-bold text-dark-brown">No direct matches found</div>
-                    <p className="text-[10px] text-dark-brown/50 mt-1">Try spelling differently or click search below to search our catalog.</p>
-                    <button
-                      onClick={() => {
-                        addRecentSearch(searchQuery.trim());
-                        setIsMobileSearchOpen(false);
-                        router.push(`/sarees?search=${encodeURIComponent(searchQuery.trim())}`);
-                      }}
-                      className="mt-4 px-4 py-2 bg-cream text-maroon border border-gold/30 text-xs font-semibold rounded-full"
-                    >
-                      Search catalog for "{searchQuery}"
-                    </button>
-                  </div>
-                )}
+              {/* Tip banner */}
+              <div className="bg-gradient-to-r from-maroon/5 to-gold/5 rounded-2xl p-4 border border-gold/15">
+                <p className="text-xs font-bold text-dark-brown mb-1">💡 Smart Search Tips</p>
+                <ul className="text-[11px] text-dark-brown/60 space-y-1 list-disc list-inside">
+                  <li>Try &quot;red Banarasi saree under 5000&quot;</li>
+                  <li>Search by fabric like &quot;silk&quot; or &quot;organza&quot;</li>
+                  <li>Search occasion: &quot;wedding saree&quot; or &quot;shaadi&quot;</li>
+                </ul>
               </div>
-            )}
-          </div>
+
+              {/* Popular Categories */}
+              <div className="space-y-2">
+                <div className="text-[10px] font-bold text-dark-brown/50 tracking-widest uppercase">Popular Categories</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { name: 'Banarasi Silk', query: 'Banarasi' },
+                    { name: 'Bridal Collection', query: 'Bridal' },
+                    { name: 'Organza Sarees', query: 'Organza' },
+                    { name: 'Chikankari Craft', query: 'Chikankari' },
+                    { name: 'New Arrivals', href: '/sarees?filter=new' },
+                    { name: 'Offers & Discounts', href: '/sarees?category=Offers' },
+                  ].map((tag, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setIsMobileSearchOpen(false);
+                        router.push((tag as any).href || `/sarees?category=${(tag as any).query}`);
+                      }}
+                      className="bg-white border border-cream hover:border-gold/50 text-dark-brown text-xs font-semibold py-3 px-4 rounded-xl text-left transition-all flex items-center justify-between"
+                    >
+                      {tag.name}
+                      <ChevronRight size={14} className="text-gold" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
