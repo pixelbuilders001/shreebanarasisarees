@@ -63,12 +63,23 @@ serve(async (req) => {
 
         const { data: orderRow, error: fetchErr } = await supabase
           .from("orders")
-          .select("id, payment_status")
+          .select("id, payment_status, total_amount")
           .eq("order_number", orderId)
           .single();
 
         if (!fetchErr && orderRow) {
           if (orderRow.payment_status !== "paid") {
+            const cfAmount = Number(data.order_amount);
+            const dbAmount = Number(orderRow.total_amount);
+
+            if (Math.abs(cfAmount - dbAmount) > 0.01) {
+              console.error(`Amount mismatch for order ${orderId}: Cashfree ${cfAmount} vs DB ${dbAmount}`);
+              return new Response(
+                JSON.stringify({ error: "Payment amount does not match order total" }),
+                { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+
             await supabase
               .from("orders")
               .update({
@@ -84,6 +95,46 @@ serve(async (req) => {
               status: "confirmed",
               note: "Payment received & verified via Cashfree Hosted Checkout",
             });
+
+            // Send payment confirmation email with the current (paid) status
+            const { data: fullOrder } = await supabase
+              .from("orders")
+              .select("*, order_items(*)")
+              .eq("id", orderRow.id)
+              .single();
+
+            if (fullOrder) {
+              const sa = fullOrder.shipping_address || {};
+              const emailOrder = {
+                orderId: fullOrder.order_number,
+                customerName: fullOrder.customer_name || sa.name || "Valued Customer",
+                customerEmail: fullOrder.customer_email,
+                customerPhone: fullOrder.customer_phone || sa.phone || "",
+                address: sa.address || "Store Pickup",
+                city: sa.city || "Samastipur",
+                state: sa.state || "Bihar",
+                pinCode: sa.pinCode || "848103",
+                deliveryMethod: sa.deliveryMethod || "Home Delivery",
+                items: (fullOrder.order_items || []).map((it: any) => ({
+                  name: it.product_name || "Banarasi Saree",
+                  quantity: it.quantity || 1,
+                  price: it.unit_price || 0,
+                })),
+                subtotal: fullOrder.subtotal,
+                shipping: fullOrder.shipping_fee,
+                discount: fullOrder.discount,
+                total: fullOrder.total_amount,
+                paymentMethod: "Online Payment",
+                paymentStatus: "Paid",
+                isGift: fullOrder.is_gift,
+                giftRecipientName: fullOrder.gift_recipient_name,
+                giftMessage: fullOrder.gift_message,
+              };
+
+              await supabase.functions.invoke("send-email", {
+                body: { action: "ORDER_CONFIRMED", order: emailOrder },
+              });
+            }
           }
         }
       }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sbs-pwa-cache-v2';
+const CACHE_NAME = 'sbs-pwa-cache-v5';
 
 // Core assets to cache immediately on installation
 const PRECACHE_ASSETS = [
@@ -50,30 +50,10 @@ self.addEventListener('fetch', (event) => {
 
   // Handle page navigation requests (HTML docs)
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // If response is valid, clone and cache it for offline browsing
-          if (response && response.status === 200) {
-            const responseCopy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, responseCopy);
-            });
-          }
-          return response;
-        })
-        .catch(() => {
-          // If fetching fails (offline), serve the requested page from cache if available,
-          // otherwise fallback to the offline page
-          return caches.match(request)
-            .then((cachedResponse) => {
-              if (cachedResponse) {
-                return cachedResponse;
-              }
-              return caches.match('/offline.html');
-            });
-        })
-    );
+    // Do NOT intercept page navigations — let the browser handle them natively.
+    // Intercepting navigations here has repeatedly broken the Cashfree payment
+    // round-trip (back button / close / return_url), showing either the offline
+    // page or ERR_FAILED even though the user is fully online.
     return;
   }
 

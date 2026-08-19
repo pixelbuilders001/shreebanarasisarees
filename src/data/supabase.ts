@@ -435,7 +435,36 @@ export async function createDbOrder(orderData: {
   try {
     const orderNumber = `SBS-ORD-${Math.floor(100000 + Math.random() * 900000)}`;
     const shippingFee = orderData.shipping;
+    const discount = 0; // No coupon system — never trust a client-supplied discount
     const paymentMethodMap = 'cod'; // DB constraint check enforces cod
+
+    // Fetch authoritative prices + stock from the inventory table
+    const { data: dbInventory, error: inventoryError } = await supabase
+      .from('inventory')
+      .select('id, selling_price, stock')
+      .in('id', orderData.items.map(item => item.product.id));
+
+    if (inventoryError) {
+      console.error('Error fetching inventory for order:', inventoryError);
+      return null;
+    }
+
+    const priceMap = new Map((dbInventory ?? []).map(row => [row.id, row]));
+
+    let subtotal = 0;
+    for (const item of orderData.items) {
+      const dbRow = priceMap.get(item.product.id);
+      if (!dbRow) {
+        console.error('Order rejected: product not found in inventory', item.product.id);
+        return null;
+      }
+      if (Number(dbRow.stock) < item.quantity) {
+        console.error('Order rejected: insufficient stock for', item.product.id);
+        return null;
+      }
+      subtotal += Number(dbRow.selling_price) * item.quantity;
+    }
+    const total = Math.round((subtotal - discount + shippingFee) * 100) / 100;
 
     // 1. Insert order metadata into orders table
     const { data: orderRow, error: orderError } = await supabase
@@ -446,10 +475,10 @@ export async function createDbOrder(orderData: {
         customer_phone: orderData.customer.phone,
         customer_email: orderData.customer.email || null,
         shipping_address: orderData.customer,
-        subtotal: orderData.subtotal,
+        subtotal: subtotal,
         shipping_fee: shippingFee,
-        discount: orderData.discount,
-        total_amount: orderData.total,
+        discount: discount,
+        total_amount: total,
         payment_method: paymentMethodMap,
         payment_status: 'pending',
         order_status: 'placed',
@@ -474,7 +503,8 @@ export async function createDbOrder(orderData: {
 
     // 2. Prepare items insert
     const itemsRows = orderData.items.map(item => {
-      const unitPrice = item.product.salePrice ?? item.product.price;
+      const dbRow = priceMap.get(item.product.id);
+      const unitPrice = dbRow ? Number(dbRow.selling_price) : 0;
       const totalPrice = unitPrice * item.quantity;
       return {
         order_id: orderIdUuid,
@@ -518,10 +548,10 @@ export async function createDbOrder(orderData: {
       orderId: orderNumber,
       customer: orderData.customer,
       items: orderData.items,
-      subtotal: orderData.subtotal,
-      discount: orderData.discount,
+      subtotal: subtotal,
+      discount: discount,
       shipping: shippingFee,
-      total: orderData.total,
+      total: total,
       paymentMethod: orderData.paymentMethod,
       paymentStatus: 'Pending',
       orderStatus: 'Order Placed',
