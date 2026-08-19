@@ -537,6 +537,11 @@ export async function createDbOrder(orderData: {
       ]
     };
 
+    // Trigger email notification for order placement (COD or Online)
+    if (orderData.customer.email) {
+      triggerOrderNotificationEmail('ORDER_PLACED', finalOrder);
+    }
+
     return finalOrder;
   } catch (err) {
     console.error('Exception in createDbOrder:', err);
@@ -718,6 +723,176 @@ export async function checkDeliveryServiceability(
   } catch (err: any) {
     console.error('Exception in checkDeliveryServiceability:', err);
     return { success: false, serviceable: false, message: err.message || 'Network error' };
+  }
+}
+
+export async function createCashfreeOrder(params: {
+  orderId: string;
+  amount: number;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  userId?: string | null;
+}): Promise<{ payment_session_id: string; cf_order_id: string } | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('create-payment-order', {
+      body: params
+    });
+
+    if (error) {
+      console.error('Error invoking create-payment-order edge function:', error);
+      return null;
+    }
+
+    if (!data || !data.payment_session_id) {
+      console.error('Invalid response from create-payment-order:', data);
+      return null;
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Exception in createCashfreeOrder:', err);
+    return null;
+  }
+}
+
+export async function verifyCashfreePayment(
+  orderId: string
+): Promise<{ order_status: string; cf_order_id?: string; order_amount?: number } | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('verify-payment', {
+      body: { orderId }
+    });
+
+    if (error) {
+      console.error('Error invoking verify-payment edge function:', error);
+      return null;
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Exception in verifyCashfreePayment:', err);
+    return null;
+  }
+}
+
+export async function triggerOrderNotificationEmail(
+  action: 'ORDER_PLACED' | 'ORDER_CONFIRMED' | 'ORDER_DELIVERED',
+  order: any
+) {
+  try {
+    const email = order?.customer?.email || order?.customer_email;
+    if (!order || !email) return;
+
+    const payload = {
+      action,
+      order: {
+        orderId: order.orderId || order.order_number,
+        customerName: order.customer?.name || order.customer_name || 'Valued Customer',
+        customerEmail: email,
+        customerPhone: order.customer?.phone || order.customer_phone || '',
+        address: order.customer?.address || order.shipping_address?.address || 'Store Pickup',
+        city: order.customer?.city || order.shipping_address?.city || 'Samastipur',
+        state: order.customer?.state || order.shipping_address?.state || 'Bihar',
+        pinCode: order.customer?.pinCode || order.shipping_address?.pinCode || '848103',
+        deliveryMethod: order.customer?.deliveryMethod || order.shipping_address?.deliveryMethod || 'Home Delivery',
+        items: (order.items || []).map((i: any) => ({
+          name: i.product?.name || i.product_name || 'Banarasi Saree',
+          quantity: i.quantity || 1,
+          price: i.product?.salePrice ?? i.product?.price ?? i.unit_price ?? 0,
+        })),
+        subtotal: order.subtotal || order.total_amount || 0,
+        shipping: order.shipping || order.shipping_fee || 0,
+        discount: order.discount || 0,
+        total: order.total || order.total_amount || 0,
+        paymentMethod: order.paymentMethod || order.payment_method || 'Online Payment',
+        paymentStatus: order.paymentStatus || order.payment_status || 'Pending',
+        isGift: order.is_gift,
+        giftRecipientName: order.gift_recipient_name,
+        giftMessage: order.gift_message,
+      },
+    };
+
+    const { error } = await supabase.functions.invoke('send-email', {
+      body: payload,
+    });
+
+    if (error) {
+      console.error('Error invoking send-email edge function:', error);
+    }
+  } catch (err) {
+    console.error('Failed to trigger order notification email:', err);
+  }
+}
+
+export async function updateDbOrderStatus(
+  orderNumber: string,
+  newStatus: string,
+  note?: string
+): Promise<boolean> {
+  try {
+    const { data: orderRow, error: fetchError } = await supabase
+      .from('orders')
+      .select('*, order_items(*)')
+      .eq('order_number', orderNumber)
+      .single();
+
+    if (fetchError || !orderRow) {
+      console.error('Error fetching order for status update:', fetchError);
+      return false;
+    }
+
+    const { error: updateError } = await supabase
+      .from('orders')
+      .update({
+        order_status: newStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', orderRow.id);
+
+    if (updateError) {
+      console.error('Error updating order status:', updateError);
+      return false;
+    }
+
+    await supabase.from('order_status_history').insert({
+      order_id: orderRow.id,
+      status: newStatus,
+      note: note || `Order status updated to ${newStatus} by admin`,
+    });
+
+    const statusLower = (newStatus || '').toLowerCase();
+    const customerEmail = orderRow.customer_email || orderRow.shipping_address?.email;
+
+    const orderPayload = {
+      order_number: orderRow.order_number,
+      customer_name: orderRow.customer_name || orderRow.shipping_address?.name,
+      customer_email: customerEmail,
+      customer_phone: orderRow.customer_phone || orderRow.shipping_address?.phone,
+      shipping_address: orderRow.shipping_address,
+      items: (orderRow.order_items || []).map((item: any) => ({
+        product_name: item.product_name,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+      })),
+      total_amount: orderRow.total_amount,
+      shipping_fee: orderRow.shipping_fee,
+      discount: orderRow.discount,
+      payment_method: orderRow.payment_method,
+      payment_status: orderRow.payment_status,
+    };
+
+    // Trigger email based on status
+    if ((statusLower === 'confirmed' || statusLower.includes('confirm')) && customerEmail) {
+      triggerOrderNotificationEmail('ORDER_CONFIRMED', orderPayload);
+    } else if ((statusLower === 'delivered' || statusLower.includes('deliver')) && customerEmail) {
+      triggerOrderNotificationEmail('ORDER_DELIVERED', orderPayload);
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Exception in updateDbOrderStatus:', err);
+    return false;
   }
 }
 

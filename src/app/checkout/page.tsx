@@ -4,30 +4,39 @@ import React, { useState, Suspense, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useStore } from '../../context/StoreContext';
-import { 
-  CheckCircle, 
-  MapPin, 
-  CreditCard, 
-  Landmark, 
-  Truck, 
-  ShoppingBag, 
-  ArrowLeft, 
-  Lock, 
-  Plus, 
-  ChevronRight, 
+import {
+  CheckCircle,
+  MapPin,
+  CreditCard,
+  Landmark,
+  Truck,
+  ShoppingBag,
+  ArrowLeft,
+  Lock,
+  Plus,
+  ChevronRight,
   MessageSquare,
   Sparkles,
   AlertCircle
 } from 'lucide-react';
-import { checkDeliveryServiceability } from '../../data/supabase';
+import { checkDeliveryServiceability, createCashfreeOrder } from '../../data/supabase';
+import { load } from '@cashfreepayments/cashfree-js';
 
 function CheckoutContent() {
   const router = useRouter();
-  const { 
-    cart, 
-    placeOrder, 
-    clearCart, 
-    userPhone, 
+  const [cashfreeSDK, setCashfreeSDK] = useState<any>(null);
+
+  useEffect(() => {
+    load({ mode: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox' })
+      .then((cf: any) => setCashfreeSDK(cf))
+      .catch((err: any) => console.error('Failed to load Cashfree SDK:', err));
+  }, []);
+
+  const {
+    cart,
+    placeOrder,
+    clearCart,
+    userPhone,
     loginUser,
     deliveryInfo,
     setDeliveryInfo,
@@ -63,7 +72,7 @@ function CheckoutContent() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('Bihar');
   const [pinCode, setPinCode] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Cash on Delivery' | 'Online Payment'>('UPI');
+  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Cash on Delivery' | 'Online Payment'>('Cash on Delivery');
 
   // Address card selection state
   const [selectedAddressId, setSelectedAddressId] = useState<string | 'new'>('new');
@@ -156,7 +165,7 @@ function CheckoutContent() {
 
     setLocError(null);
     setLoadingLocation(true);
-    
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
@@ -341,9 +350,35 @@ function CheckoutContent() {
         });
       }
 
-      setCreatedOrder(orderDetails);
-      setIsOrdered(true);
-      clearCart();
+      if ((paymentMethod === 'Online Payment' || paymentMethod === 'UPI') && orderDetails?.orderId) {
+        createCashfreeOrder({
+          orderId: orderDetails.orderId,
+          amount: total,
+          customerName: fullName,
+          customerPhone: mobileNumber,
+          customerEmail: email || undefined,
+          userId: user?.id || null
+        }).then((cfData) => {
+          if (cfData && cfData.payment_session_id && cashfreeSDK) {
+            cashfreeSDK.checkout({
+              paymentSessionId: cfData.payment_session_id,
+              redirectTarget: '_self'
+            });
+          } else {
+            console.warn('Cashfree payment session creation failed, falling back to order confirmation view');
+            setCreatedOrder(orderDetails);
+            setIsOrdered(true);
+            clearCart();
+          }
+        }).catch((err) => {
+          console.error('Cashfree order creation error:', err);
+          setErrorMsg('Online payment initialization failed. Please try again or choose Cash on Delivery.');
+        });
+      } else {
+        setCreatedOrder(orderDetails);
+        setIsOrdered(true);
+        clearCart();
+      }
     }).catch((err) => {
       console.error(err);
       setErrorMsg('Failed to place order. Please try again.');
@@ -351,6 +386,7 @@ function CheckoutContent() {
       setIsSubmitting(false);
     });
   };
+
 
   const isOnline = paymentMethod === 'UPI' || paymentMethod === 'Online Payment';
   const ctaText = isOnline
@@ -504,10 +540,10 @@ function CheckoutContent() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
+
             {/* Left Column: Form Steps */}
             <div className="lg:col-span-7 xl:col-span-8 space-y-6">
-              
+
               {errorMsg && (
                 <div className="p-4 bg-red-50 text-red-700 text-xs font-semibold rounded-xl border border-red-100 flex items-center gap-2 animate-fadeIn">
                   <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
@@ -533,16 +569,14 @@ function CheckoutContent() {
                         <div
                           key={addr.id}
                           onClick={() => handleSelectAddress(addr)}
-                          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${
-                            isSelected
-                              ? 'border-maroon bg-maroon/[0.025]'
-                              : 'border-cream bg-white hover:border-gold/40'
-                          }`}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${isSelected
+                            ? 'border-maroon bg-maroon/[0.025]'
+                            : 'border-cream bg-white hover:border-gold/40'
+                            }`}
                         >
                           {/* Radio dot */}
-                          <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${
-                            isSelected ? 'border-maroon bg-maroon' : 'border-dark-brown/30 bg-white'
-                          }`} />
+                          <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${isSelected ? 'border-maroon bg-maroon' : 'border-dark-brown/30 bg-white'
+                            }`} />
                           <div className="flex-grow min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-xs font-bold text-dark-brown font-serif truncate">{addr.full_name}</span>
@@ -561,15 +595,13 @@ function CheckoutContent() {
                     {/* Add new address row */}
                     <div
                       onClick={handleAddNewAddressSelect}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border border-dashed cursor-pointer transition-all ${
-                        selectedAddressId === 'new'
-                          ? 'border-maroon text-maroon bg-maroon/[0.025]'
-                          : 'border-cream text-dark-brown/50 hover:border-gold/40 hover:text-maroon bg-white'
-                      }`}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border border-dashed cursor-pointer transition-all ${selectedAddressId === 'new'
+                        ? 'border-maroon text-maroon bg-maroon/[0.025]'
+                        : 'border-cream text-dark-brown/50 hover:border-gold/40 hover:text-maroon bg-white'
+                        }`}
                     >
-                      <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${
-                        selectedAddressId === 'new' ? 'border-maroon bg-maroon' : 'border-dark-brown/30 bg-white'
-                      }`} />
+                      <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${selectedAddressId === 'new' ? 'border-maroon bg-maroon' : 'border-dark-brown/30 bg-white'
+                        }`} />
                       <span className="text-xs font-bold">+ Add New Address</span>
                     </div>
                   </div>
@@ -700,13 +732,11 @@ function CheckoutContent() {
                   {/* Home Delivery */}
                   <div
                     onClick={() => setDeliveryMethod('Home Delivery')}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${
-                      deliveryMethod === 'Home Delivery' ? 'border-maroon bg-maroon/[0.025]' : 'border-cream bg-white hover:border-gold/40'
-                    }`}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${deliveryMethod === 'Home Delivery' ? 'border-maroon bg-maroon/[0.025]' : 'border-cream bg-white hover:border-gold/40'
+                      }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${
-                      deliveryMethod === 'Home Delivery' ? 'border-maroon bg-maroon' : 'border-dark-brown/30 bg-white'
-                    }`} />
+                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${deliveryMethod === 'Home Delivery' ? 'border-maroon bg-maroon' : 'border-dark-brown/30 bg-white'
+                      }`} />
                     <Truck size={14} className={`flex-shrink-0 ${deliveryMethod === 'Home Delivery' ? 'text-maroon' : 'text-dark-brown/35'}`} />
                     <div className="flex-grow min-w-0">
                       <span className="text-xs font-bold text-dark-brown font-serif">Home Delivery</span>
@@ -717,13 +747,11 @@ function CheckoutContent() {
                   {/* Store Pickup */}
                   <div
                     onClick={() => setDeliveryMethod('Store Pickup')}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${
-                      deliveryMethod === 'Store Pickup' ? 'border-maroon bg-maroon/[0.025]' : 'border-cream bg-white hover:border-gold/40'
-                    }`}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${deliveryMethod === 'Store Pickup' ? 'border-maroon bg-maroon/[0.025]' : 'border-cream bg-white hover:border-gold/40'
+                      }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${
-                      deliveryMethod === 'Store Pickup' ? 'border-maroon bg-maroon' : 'border-dark-brown/30 bg-white'
-                    }`} />
+                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${deliveryMethod === 'Store Pickup' ? 'border-maroon bg-maroon' : 'border-dark-brown/30 bg-white'
+                      }`} />
                     <MapPin size={14} className={`flex-shrink-0 ${deliveryMethod === 'Store Pickup' ? 'text-maroon' : 'text-dark-brown/35'}`} />
                     <div className="flex-grow min-w-0">
                       <span className="text-xs font-bold text-dark-brown font-serif">Store Pickup</span>
@@ -804,30 +832,11 @@ function CheckoutContent() {
                 {/* Compact radio rows */}
                 <div className="space-y-1.5">
                   {/* UPI */}
-                  <label className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${
-                    paymentMethod === 'UPI' ? 'border-maroon bg-maroon/[0.025]' : 'border-cream bg-white hover:border-gold/40'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={paymentMethod === 'UPI'}
-                      onChange={() => setPaymentMethod('UPI')}
-                      className="sr-only"
-                    />
-                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${
-                      paymentMethod === 'UPI' ? 'border-maroon bg-maroon' : 'border-dark-brown/30 bg-white'
-                    }`} />
-                    <div className="flex-grow min-w-0">
-                      <span className="text-xs font-bold text-dark-brown font-serif">UPI</span>
-                      <span className="text-[10px] text-dark-brown/50 ml-1.5">Google Pay · PhonePe · Paytm</span>
-                    </div>
-                    <span className="text-[9px] font-bold text-gold bg-amber-50 px-1.5 py-0.5 rounded flex-shrink-0">via WhatsApp</span>
-                  </label>
+
 
                   {/* Cash on Delivery */}
-                  <label className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${
-                    paymentMethod === 'Cash on Delivery' ? 'border-maroon bg-maroon/[0.025]' : 'border-cream bg-white hover:border-gold/40'
-                  }`}>
+                  <label className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${paymentMethod === 'Cash on Delivery' ? 'border-maroon bg-maroon/[0.025]' : 'border-cream bg-white hover:border-gold/40'
+                    }`}>
                     <input
                       type="radio"
                       name="payment"
@@ -835,19 +844,38 @@ function CheckoutContent() {
                       onChange={() => setPaymentMethod('Cash on Delivery')}
                       className="sr-only"
                     />
-                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${
-                      paymentMethod === 'Cash on Delivery' ? 'border-maroon bg-maroon' : 'border-dark-brown/30 bg-white'
-                    }`} />
+                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${paymentMethod === 'Cash on Delivery' ? 'border-maroon bg-maroon' : 'border-dark-brown/30 bg-white'
+                      }`} />
                     <div className="flex-grow min-w-0">
                       <span className="text-xs font-bold text-dark-brown font-serif">Cash on Delivery</span>
                       <span className="text-[10px] text-dark-brown/50 ml-1.5">Pay at doorstep</span>
                     </div>
                   </label>
+                  <label className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${paymentMethod === 'UPI' ? 'border-maroon bg-maroon/[0.025]' : 'border-cream bg-white hover:border-gold/40'
+                    }`}>
+                    <input
+                      type="radio"
+                      disabled
+                      name="payment"
+                      checked={paymentMethod === 'UPI'}
+                      onChange={() => setPaymentMethod('UPI')}
+                      className="sr-only"
+                    />
+                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${paymentMethod === 'UPI' ? 'border-maroon bg-maroon' : 'border-dark-brown/30 bg-white'
+                      }`} />
+                    <div className="flex-grow min-w-0">
+                      <span className="text-xs font-bold text-dark-brown font-serif">UPI</span>
+                      <span className="text-[10px] text-dark-brown/50 ml-1.5">Google Pay · PhonePe · Paytm</span>
+                      <span className="text-[10px] text-dark-brown/50 ml-1.5 text-green-600">(coming soon)</span>
+
+
+                    </div>
+                    <span className="text-[9px] font-bold text-gold bg-amber-50 px-1.5 py-0.5 rounded flex-shrink-0">secured payment via Cashfree</span>
+                  </label>
 
                   {/* Online Payment */}
-                  <label className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${
-                    paymentMethod === 'Online Payment' ? 'border-maroon bg-maroon/[0.025]' : 'border-cream bg-white hover:border-gold/40'
-                  }`}>
+                  {/* <label className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${paymentMethod === 'Online Payment' ? 'border-maroon bg-maroon/[0.025]' : 'border-cream bg-white hover:border-gold/40'
+                    }`}>
                     <input
                       type="radio"
                       name="payment"
@@ -855,14 +883,13 @@ function CheckoutContent() {
                       onChange={() => setPaymentMethod('Online Payment')}
                       className="sr-only"
                     />
-                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${
-                      paymentMethod === 'Online Payment' ? 'border-maroon bg-maroon' : 'border-dark-brown/30 bg-white'
-                    }`} />
+                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${paymentMethod === 'Online Payment' ? 'border-maroon bg-maroon' : 'border-dark-brown/30 bg-white'
+                      }`} />
                     <div className="flex-grow min-w-0">
                       <span className="text-xs font-bold text-dark-brown font-serif">Online Payment</span>
                       <span className="text-[10px] text-dark-brown/50 ml-1.5">Cards · Net Banking · Wallets</span>
                     </div>
-                  </label>
+                  </label> */}
                 </div>
 
                 {/* WhatsApp Support */}
@@ -885,7 +912,7 @@ function CheckoutContent() {
 
             {/* Right Column: Sticky Order Summary */}
             <div className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-24 space-y-6">
-              
+
               <div className="bg-white p-5 rounded-2xl border border-cream shadow-sm space-y-4">
                 <h3 className="font-serif text-base font-bold text-dark-brown border-b border-cream pb-3">
                   Order Summary
@@ -904,10 +931,10 @@ function CheckoutContent() {
 
                     return (
                       <div key={item.product.id} className="flex gap-3 text-xs border-b border-cream/35 pb-3 last:border-0 last:pb-0">
-                        <img 
-                          src={item.product.images[0]} 
-                          alt={item.product.name} 
-                          className="w-10 aspect-[3/4] object-cover rounded bg-cream flex-shrink-0 border border-cream/50" 
+                        <img
+                          src={item.product.images[0]}
+                          alt={item.product.name}
+                          className="w-10 aspect-[3/4] object-cover rounded bg-cream flex-shrink-0 border border-cream/50"
                         />
                         <div className="flex-grow">
                           <h4 className="font-serif font-bold text-dark-brown line-clamp-1">{item.product.name}</h4>
