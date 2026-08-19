@@ -1,11 +1,20 @@
 import type { NextConfig } from "next";
 
+const allowedOriginsEnv = process.env.ALLOWED_ORIGINS;
+const allowedOrigins = allowedOriginsEnv
+  ? allowedOriginsEnv.split(",").map((s) => s.trim())
+  : ["localhost:3000", "shreebanarasisarees.com", "www.shreebanarasisarees.com"];
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
         protocol: "https",
         hostname: "vzqlsawxvvyvsstyzzff.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
       },
     ],
   },
@@ -24,15 +33,42 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(self)",
+          },
+          {
+            key: "X-DNS-Prefetch-Control",
+            value: "on",
+          },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains; preload",
+          },
+        ],
+      },
     ];
   },
   experimental: {
     serverActions: {
-      allowedOrigins: [
-        "custody-alliance-ensemble-donor.trycloudflare.com"
-      ]
-    }
-  }
+      allowedOrigins,
+    },
+  },
 };
 
 export default nextConfig;

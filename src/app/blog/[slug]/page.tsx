@@ -52,6 +52,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
+function sanitizeHtml(html: string): string {
+  if (!html) return '';
+  // Strip dangerous tags: <script>, <iframe>, <object>, <embed>, <form>
+  let clean = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  clean = clean.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+  clean = clean.replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '');
+  clean = clean.replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '');
+  clean = clean.replace(/<form\b[^<]*(?:(?!<\/form>)<[^<]*)*<\/form>/gi, '');
+  // Remove event handler attributes (on*="...")
+  clean = clean.replace(/ on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+  // Neutralize javascript: URLs
+  clean = clean.replace(/href\s*=\s*(?:"javascript:[^"]*"|'javascript:[^']*')/gi, 'href="#"');
+  return clean;
+}
+
 export default async function BlogPostPage({ params }: PageProps) {
   const resolvedParams = await params;
   const post = BLOG_POSTS.find(p => p.slug === resolvedParams.slug);
@@ -130,11 +145,11 @@ export default async function BlogPostPage({ params }: PageProps) {
       {/* Inject Structured Data */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingJsonLd).replace(/</g, '\\u003c') }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, '\\u003c') }}
       />
 
       <Header />
@@ -206,7 +221,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               {/* Rich HTML Content Body */}
               <div
                 className="prose prose-stone max-w-none text-xs sm:text-sm text-dark-brown/85 font-light leading-relaxed space-y-4 pt-2"
-                dangerouslySetInnerHTML={{ __html: post.content }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
               />
 
               {/* Share & Custom Saree Promo */}

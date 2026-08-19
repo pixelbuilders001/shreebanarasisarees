@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Product, PRODUCTS } from './products';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzqlsawxvvyvsstyzzff.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_6chwvgIpbfCpeEZrkS9VYg_IO__zSpY';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -579,18 +579,17 @@ export async function createDbOrder(orderData: {
   }
 }
 
-export async function fetchDbOrders(phoneOrUserId: string): Promise<Order[]> {
+export async function fetchDbOrders(userId: string): Promise<Order[]> {
   try {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(phoneOrUserId);
-    
-    let query = supabase.from('orders').select('*');
-    if (isUuid) {
-      query = query.eq('user_id', phoneOrUserId);
-    } else {
-      query = query.eq('customer_phone', phoneOrUserId);
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!userId || !isUuid) {
+      return [];
     }
 
-    const { data: ordersData, error: ordersError } = await query
+    const { data: ordersData, error: ordersError } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (ordersError || !ordersData) {
@@ -758,7 +757,6 @@ export async function checkDeliveryServiceability(
 
 export async function createCashfreeOrder(params: {
   orderId: string;
-  amount: number;
   customerName: string;
   customerPhone: string;
   customerEmail?: string;

@@ -264,6 +264,7 @@ function CheckoutContent() {
 
   const handlePlaceOrder = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (isSubmitting) return;
 
     // Validations
     if (!fullName.trim()) {
@@ -353,7 +354,6 @@ function CheckoutContent() {
       if ((paymentMethod === 'Online Payment' || paymentMethod === 'UPI') && orderDetails?.orderId) {
         createCashfreeOrder({
           orderId: orderDetails.orderId,
-          amount: total,
           customerName: fullName,
           customerPhone: mobileNumber,
           customerEmail: email || undefined,
@@ -1129,7 +1129,7 @@ function CheckoutContent() {
             type="submit"
             form="checkout-form"
             disabled={isSubmitting}
-            className="bg-maroon hover:bg-maroon-dark text-white rounded-xl px-6 py-3 font-serif font-bold text-xs sm:text-sm tracking-widest uppercase flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all cursor-pointer min-w-[185px] text-center"
+            className="bg-maroon hover:bg-maroon-dark text-white rounded-xl px-6 py-3 font-serif font-bold text-xs sm:text-sm tracking-widest uppercase flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed min-w-[185px] text-center"
           >
             {isSubmitting ? (
               <>

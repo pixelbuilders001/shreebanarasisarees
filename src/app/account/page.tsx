@@ -105,7 +105,7 @@ function AccountContent() {
       const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzqlsawxvvyvsstyzzff.supabase.co'}/functions/v1/verify-review`, {
         method: 'POST',
         headers: {
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_6chwvgIpbfCpeEZrkS9VYg_IO__zSpY',
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
           'Authorization': `Bearer ${token || ''}`,
           'Content-Type': 'application/json'
         },

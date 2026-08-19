@@ -345,9 +345,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       const dbOrders = await fetchDbOrders(identifier);
       setOrders(dbOrders || []);
-      if (isUuid) {
-        localStorage.setItem('sbs_orders', JSON.stringify(dbOrders || []));
-      }
     } catch (err) {
       console.error('Error syncing user data:', err);
     }
@@ -359,14 +356,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const storedCart = localStorage.getItem('sbs_cart');
       const storedWishlist = localStorage.getItem('sbs_wishlist');
-      const storedOrders = localStorage.getItem('sbs_orders');
       const storedRequests = localStorage.getItem('sbs_custom_requests');
       const storedSearches = localStorage.getItem('sbs_recent_searches');
       storedUser = localStorage.getItem('sbs_user_phone');
 
+      // Clean legacy unencrypted order PII from local storage
+      if (localStorage.getItem('sbs_orders')) {
+        localStorage.removeItem('sbs_orders');
+      }
+
       if (storedCart) setCart(JSON.parse(storedCart));
       if (storedWishlist) setWishlist(JSON.parse(storedWishlist));
-      if (storedOrders) setOrders(JSON.parse(storedOrders));
       if (storedRequests) setCustomRequests(JSON.parse(storedRequests));
       if (storedSearches) setRecentSearches(JSON.parse(storedSearches));
       if (storedUser) setUserPhone(storedUser);
@@ -567,10 +567,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('sbs_wishlist', JSON.stringify(wishlist));
   }, [wishlist, isHydrated]);
 
-  useEffect(() => {
-    if (!isHydrated) return;
-    localStorage.setItem('sbs_orders', JSON.stringify(orders));
-  }, [orders, isHydrated]);
 
   useEffect(() => {
     if (!isHydrated) return;
@@ -851,39 +847,39 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const clearRecentSearches = () => setRecentSearches([]);
 
-  // Auth placeholder with Cart Synchronization
-  const loginUser = async (phone: string) => {
-    setUserPhone(phone);
+  // Auth sync helper
+  const loginUser = async (userId: string) => {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!isUuid) return;
 
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(phone);
-    if (isUuid) {
-      // Sync local storage cart to DB
-      const currentCart = [...cart];
-      for (const item of currentCart) {
-        await upsertDbCartItem(phone, item.product.id, item.quantity);
-      }
+    setUserPhone(userId);
 
-      // Fetch and merge final cart items from DB
-      const freshDbCart = await fetchDbCart(phone);
-      const finalCartItems: CartItem[] = [];
-      
-      for (const dbItem of freshDbCart) {
-        const product = products.find(p => p.id === dbItem.product_id);
-        if (product) {
-          finalCartItems.push({
-            product,
-            quantity: dbItem.quantity
-          });
-        }
-      }
+    // Sync local storage cart to DB
+    const currentCart = [...cart];
+    for (const item of currentCart) {
+      await upsertDbCartItem(userId, item.product.id, item.quantity);
+    }
 
-      if (finalCartItems.length > 0 || freshDbCart.length > 0) {
-        setCart(finalCartItems);
+    // Fetch and merge final cart items from DB
+    const freshDbCart = await fetchDbCart(userId);
+    const finalCartItems: CartItem[] = [];
+
+    for (const dbItem of freshDbCart) {
+      const product = products.find(p => p.id === dbItem.product_id);
+      if (product) {
+        finalCartItems.push({
+          product,
+          quantity: dbItem.quantity
+        });
       }
     }
 
-    // Fetch user orders from DB
-    const dbOrders = await fetchDbOrders(phone);
+    if (finalCartItems.length > 0 || freshDbCart.length > 0) {
+      setCart(finalCartItems);
+    }
+
+    // Fetch user orders from DB using UUID
+    const dbOrders = await fetchDbOrders(userId);
     if (dbOrders && dbOrders.length > 0) {
       setOrders(dbOrders);
     }

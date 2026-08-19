@@ -54,8 +54,12 @@ export const SareesClient: React.FC<SareesClientProps> = ({
   const urlFabric   = searchParams.get('fabric')   || '';
   const urlOccasion = searchParams.get('occasion') || '';
   const urlCategory = searchParams.get('category') || '';
-  const urlMinPrice = searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : undefined;
-  const urlMaxPrice = searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : undefined;
+  const rawMinPrice = searchParams.get('minPrice');
+  const rawMaxPrice = searchParams.get('maxPrice');
+  const parsedMin = rawMinPrice ? Number(rawMinPrice) : undefined;
+  const parsedMax = rawMaxPrice ? Number(rawMaxPrice) : undefined;
+  const urlMinPrice = parsedMin !== undefined && !isNaN(parsedMin) && parsedMin >= 0 ? parsedMin : undefined;
+  const urlMaxPrice = parsedMax !== undefined && !isNaN(parsedMax) && parsedMax >= 0 ? parsedMax : undefined;
   const urlSku      = searchParams.get('sku')      || '';
 
   /**
