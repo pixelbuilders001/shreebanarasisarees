@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Search, Heart, ShoppingBag, User, Menu, X, ChevronRight, LogOut, FileText, Home, Grid, Mic, ArrowLeft, Trash2, MapPin, Phone, MessageCircle, Store, Tag, Sparkles, Star, Truck, Banknote } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
+import PhoneCaptureCard from './PhoneCaptureCard';
 import { AnnouncementBar } from './AnnouncementBar';
 import { AdvancedSearchBar } from './AdvancedSearchBar';
 import { parseSearchQuery, buildSearchUrl, generateSuggestions, formatPriceFilter } from '../lib/searchEngine';
@@ -399,15 +400,39 @@ const HeaderInner: React.FC = () => {
             {/* Drawer Header */}
             <div className="flex items-center justify-between px-5 py-4 bg-white border-b border-cream/80 shrink-0">
               <div className="flex items-center gap-2.5">
-                <img
-                  src="/brand_logo.webp"
-                  alt="Shree Banarasi Sarees Logo"
-                  className="h-9 w-9 object-contain rounded-full border border-gold/20"
-                />
-                <div className="flex flex-col leading-tight">
-                  <span className="font-serif text-sm font-extrabold text-maroon tracking-wide">Shree</span>
-                  <span className="text-[9px] text-gold font-bold tracking-[0.15em] uppercase font-serif">Banarasi Sarees</span>
-                </div>
+                {(user || userPhone) ? (
+                  <Link
+                    href="/account"
+                    onClick={closeMobileMenu}
+                    className="flex items-center gap-3  pt-5 pb-2 group"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-cream flex items-center justify-center overflow-hidden border border-gold/30 shrink-0">
+                      {user?.user_metadata?.avatar_url ? (
+                        <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        <User size={18} className="text-maroon" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-bold text-dark-brown truncate">
+                        Hi, {userProfile?.full_name || user?.user_metadata?.full_name || user?.email || userPhone}
+                      </p>
+                      <p className="text-[10px] text-dark-brown/50">View My Account</p>
+                    </div>
+                    <ChevronRight size={16} className="text-dark-brown/30 group-hover:text-gold transition-colors shrink-0" />
+                  </Link>
+                ) : (<>
+                  <img
+                    src="/brand_logo.webp"
+                    alt="Shree Banarasi Sarees Logo"
+                    className="h-9 w-9 object-contain rounded-full border border-gold/20"
+                  />
+                  {/* <div className="flex flex-col leading-tight">
+                    <span className="font-serif text-sm font-extrabold text-maroon tracking-wide">Shree</span>
+                    <span className="text-[9px] text-gold font-bold tracking-[0.15em] uppercase font-serif">Banarasi Sarees</span>
+                  </div> */}
+                </>)}
+
               </div>
               <button
                 onClick={closeMobileMenu}
@@ -419,13 +444,13 @@ const HeaderInner: React.FC = () => {
             </div>
 
             {/* Promo Strip */}
-            <div className="shrink-0 bg-maroon text-ivory">
+            {/* <div className="shrink-0 bg-maroon text-ivory">
               <div className="flex items-center justify-center gap-4 px-5 py-2 text-[10px] font-semibold tracking-wide">
                 <span className="flex items-center gap-1.5"><Truck size={12} className="text-gold" /> FREE SHIPPING</span>
                 <span className="w-px h-3 bg-ivory/25" />
                 <span className="flex items-center gap-1.5"><Banknote size={12} className="text-gold" /> COD AVAILABLE</span>
               </div>
-            </div>
+            </div> */}
 
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto overscroll-contain pb-6">
@@ -442,28 +467,10 @@ const HeaderInner: React.FC = () => {
               </div> */}
 
               {/* ─── ACCOUNT GREETING ─── */}
-              {(user || userPhone) ? (
-                <Link
-                  href="/account"
-                  onClick={closeMobileMenu}
-                  className="flex items-center gap-3 px-5 pt-5 pb-2 group"
-                >
-                  <div className="w-10 h-10 rounded-full bg-cream flex items-center justify-center overflow-hidden border border-gold/30 shrink-0">
-                    {user?.user_metadata?.avatar_url ? (
-                      <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                    ) : (
-                      <User size={18} className="text-maroon" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-bold text-dark-brown truncate">
-                      Hi, {userProfile?.full_name || user?.user_metadata?.full_name || user?.email || userPhone}
-                    </p>
-                    <p className="text-[10px] text-dark-brown/50">View My Account</p>
-                  </div>
-                  <ChevronRight size={16} className="text-dark-brown/30 group-hover:text-gold transition-colors shrink-0" />
-                </Link>
-              ) : null}
+
+
+              {/* ─── PHONE NUMBER CAPTURE ─── */}
+              <PhoneCaptureCard />
 
               {/* ─── SHOP Section ─── */}
               <div className="pt-5 pb-1 px-5">
@@ -592,7 +599,7 @@ const HeaderInner: React.FC = () => {
                         )}
                       </div>
                       <span className="text-[15px] font-semibold text-dark-brown group-hover:text-maroon transition-colors">
-                        {user || userPhone ? (userProfile?.full_name || user?.user_metadata?.full_name || 'Account') : 'Sign In'}
+                        {user || userPhone ? (userProfile?.full_name || user?.user_metadata?.full_name || 'My Profile') : 'Sign In'}
                       </span>
                     </div>
                     <ChevronRight size={16} className="text-dark-brown/30 group-hover:text-gold transition-colors" />
