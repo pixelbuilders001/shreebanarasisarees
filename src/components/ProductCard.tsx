@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Heart, ShoppingBag, Eye, X, Star, Scissors, Bell } from 'lucide-react';
 import { Product } from '../data/products';
 import { useStore } from '../context/StoreContext';
@@ -35,9 +36,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       {/* Image Container with Luxury Full-bleed Top */}
       <div className={`relative w-full aspect-[3/4] overflow-hidden border-b border-gold/10 ${imageLoaded ? 'bg-cream/20' : 'bg-cream animate-pulse'}`}>
         <Link href={`/product/${product.slug}`} className="block w-full h-full">
-          <img
+          <Image
             src={product.images[0]}
             alt={product.name}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 300px"
             className={`w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out ${product.stock === 0 ? 'grayscale opacity-60' : ''}`}
             loading="lazy"
             onLoad={() => setImageLoaded(true)}

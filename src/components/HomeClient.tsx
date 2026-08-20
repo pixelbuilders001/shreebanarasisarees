@@ -2,24 +2,42 @@
 
 import React, { useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { Header } from './Header';
 import { HeroSection } from './HeroSection';
 import { CategoryCard } from './CategoryCard';
 import { ProductCard } from './ProductCard';
-import { CustomSareeRequest } from './CustomSareeRequest';
-import { TestimonialSection } from './TestimonialSection';
-import { InstagramGrid } from './InstagramGrid';
-import { StoreInfo } from './StoreInfo';
 import { Footer } from './Footer';
 import { Product, PRODUCTS } from '../data/products';
 import { ArrowLeft, ArrowRight, ShieldCheck, Award, Wrench, Headphones } from 'lucide-react';
 import { DbCampaign, DbHeroBanner } from '../data/supabase';
-import { CampaignSection } from './CampaignSection';
-import { FeatureGridSection } from './FeatureGridSection';
 import { ProductSectionHeading, EditorialSectionHeading } from './SectionHeading';
-import { RecentlyViewed } from './RecentlyViewed';
 import { ProductCardSkeleton } from './ProductCardSkeleton';
 import { useRecentlyViewed } from '../utils/useRecentlyViewed';
+
+// Dynamically imported below-the-fold components to reduce initial JS payload
+const CampaignSection = dynamic(() => import('./CampaignSection').then(m => m.CampaignSection), {
+  loading: () => <div className="h-28 bg-cream/30 animate-pulse rounded-xl my-4" />
+});
+const FeatureGridSection = dynamic(() => import('./FeatureGridSection').then(m => m.FeatureGridSection), {
+  loading: () => <div className="h-40 bg-cream/20 animate-pulse my-4" />
+});
+const CustomSareeRequest = dynamic(() => import('./CustomSareeRequest').then(m => m.CustomSareeRequest), {
+  loading: () => <div className="h-60 bg-cream/20 animate-pulse my-4" />
+});
+const TestimonialSection = dynamic(() => import('./TestimonialSection').then(m => m.TestimonialSection), {
+  loading: () => <div className="h-60 bg-cream/20 animate-pulse my-4" />
+});
+const InstagramGrid = dynamic(() => import('./InstagramGrid').then(m => m.InstagramGrid), {
+  loading: () => <div className="h-40 bg-cream/20 animate-pulse my-4" />
+});
+const StoreInfo = dynamic(() => import('./StoreInfo').then(m => m.StoreInfo), {
+  loading: () => <div className="h-60 bg-cream/20 animate-pulse my-4" />
+});
+const RecentlyViewed = dynamic(() => import('./RecentlyViewed').then(m => m.RecentlyViewed), {
+  loading: () => null
+});
 
 interface HomeClientProps {
   allProducts?: Product[];
@@ -133,9 +151,11 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
                 >
                   {/* Image with overlaid copy */}
                   <div className="relative w-full aspect-[4/5] overflow-hidden bg-cream">
-                    <img
+                    <Image
                       src={card.image}
                       alt={card.title}
+                      fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 300px"
                       loading="lazy"
                       className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                     />
@@ -302,9 +322,12 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
           <div className="relative rounded-2xl overflow-hidden h-[320px] bg-maroon-dark flex items-center shadow-lg border border-gold/30">
             {/* Background Image */}
             <div className="absolute inset-0 bg-black/50 z-10" />
-            <img
+            <Image
               src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=1200"
               alt="Elegance Within Your Budget"
+              fill
+              sizes="100vw"
+              loading="lazy"
               className="absolute inset-0 w-full h-full object-cover"
             />
 

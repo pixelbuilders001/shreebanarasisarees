@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useStore } from '../context/StoreContext';
 
 interface CategoryItem {
@@ -119,9 +120,11 @@ const CategoryTile: React.FC<CategoryTileProps> = ({ category, className = '' })
       transition-shadow duration-400 ${className}`}
   >
     {/* Background image with zoom on hover */}
-    <img
+    <Image
       src={category.image}
       alt={category.name}
+      fill
+      sizes="(max-width: 768px) 160px, 300px"
       loading="lazy"
       className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
     />

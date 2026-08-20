@@ -3,6 +3,8 @@ import { Metadata } from 'next';
 import HomeClient from '../components/HomeClient';
 import { fetchProducts, fetchActiveCampaigns, fetchActiveHeroBanners } from '../data/supabase';
 
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: "Shree Banarasi Sarees | Banarasi & Traditional Sarees in Samastipur",
   description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees, Samastipur, Bihar. Explore elegant sarees for weddings, festivals and special occasions.",
