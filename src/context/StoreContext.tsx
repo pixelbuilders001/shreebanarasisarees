@@ -21,6 +21,7 @@ import {
   addToDbWishlist,
   removeFromDbWishlist
 } from '../data/supabase';
+import { trackAddToCart, trackRemoveFromCart, trackAddToWishlist } from '../lib/gtag';
 
 export interface CartItem {
   product: Product;
@@ -606,6 +607,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return [...prevCart, { product, quantity }];
     });
 
+    // GA4 Event: add_to_cart
+    trackAddToCart(product, quantity);
+
     const isUuid = userPhone ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userPhone) : false;
     if (userPhone && isUuid) {
       upsertDbCartItem(userPhone, product.id, newQty);
@@ -622,6 +626,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const removeFromCart = (productId: string) => {
+    const targetItem = cart.find(item => item.product.id === productId);
+    if (targetItem) {
+      trackRemoveFromCart(targetItem.product, targetItem.quantity);
+    }
+
     setCart((prevCart) => prevCart.filter(item => item.product.id !== productId));
     const isUuid = userPhone ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userPhone) : false;
     if (userPhone && isUuid) {
@@ -657,6 +666,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const toggleWishlist = (product: Product) => {
     const exists = wishlist.some(item => item.id === product.id);
     
+    if (!exists) {
+      // GA4 Event: add_to_wishlist
+      trackAddToWishlist(product);
+    }
+
     setWishlist((prev) => {
       if (exists) {
         return prev.filter(item => item.id !== product.id);

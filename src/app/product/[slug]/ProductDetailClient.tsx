@@ -30,6 +30,7 @@ import { checkDeliveryServiceability, supabase } from '../../../data/supabase';
 import { YouMayAlsoLike } from '../../../components/YouMayAlsoLike';
 import { RecentlyViewed } from '../../../components/RecentlyViewed';
 import { useRecentlyViewed } from '../../../utils/useRecentlyViewed';
+import { trackViewItem } from '../../../lib/gtag';
 
 interface ProductDetailClientProps {
   product: Product;
@@ -94,9 +95,10 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   // Recently viewed tracking
   const { viewedIds, recordView } = useRecentlyViewed();
 
-  // Record this product view on mount
+  // Record this product view on mount & trigger GA4 view_item
   useEffect(() => {
     recordView(product.id);
+    trackViewItem(product);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product.id]);
 

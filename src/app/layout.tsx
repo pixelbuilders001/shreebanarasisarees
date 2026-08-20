@@ -6,6 +6,7 @@ import { CartDrawer } from "../components/CartDrawer";
 import { WhatsAppButton } from "../components/WhatsAppButton";
 import PWARegistration from "../components/PWARegistration";
 import NotificationPrompt from "../components/notifications/NotificationPrompt";
+import GoogleAnalytics from "../components/GoogleAnalytics";
 
 const playfair = Playfair_Display({
   variable: "--font-serif",
@@ -72,6 +73,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
       <body className="font-sans antialiased text-[#2D211D] bg-[#FFF9F0] min-h-screen flex flex-col justify-between">
+        <GoogleAnalytics />
         <StoreProvider>
           <PWARegistration />
           <NotificationPrompt />

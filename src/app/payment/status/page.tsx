@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { verifyCashfreePayment, triggerOrderNotificationEmail } from '../../../data/supabase';
 import { useStore } from '../../../context/StoreContext';
+import { trackPurchase } from '../../../lib/gtag';
 import { CheckCircle, XCircle, Loader2, ShoppingBag, ArrowRight } from 'lucide-react';
 
 function StatusContent() {
@@ -30,6 +31,21 @@ function StatusContent() {
           setPaymentStatus('PAID');
           setOrderDetails(res);
           clearCart(); // Clear local cart upon verified paid status
+
+          // Fire GA4 Purchase Event once
+          if (typeof window !== 'undefined' && orderId) {
+            const pKey = `sbs_ga_purchased_${orderId}`;
+            if (!sessionStorage.getItem(pKey)) {
+              sessionStorage.setItem(pKey, 'true');
+              trackPurchase({
+                orderId: orderId,
+                total: res.order_amount || 0,
+                shipping: 0,
+                paymentMethod: 'Online Payment (Cashfree)',
+                items: []
+              });
+            }
+          }
         } else {
           setPaymentStatus('FAILED');
         }

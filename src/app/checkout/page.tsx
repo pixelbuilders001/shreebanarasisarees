@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { checkDeliveryServiceability, createCashfreeOrder } from '../../data/supabase';
 import { load } from '@cashfreepayments/cashfree-js';
+import { trackBeginCheckout, trackPurchase } from '../../lib/gtag';
 
 function CheckoutContent() {
   const router = useRouter();
@@ -244,6 +245,15 @@ function CheckoutContent() {
     : 0;
   const total = subtotal - discount + shipping;
 
+  // Track GA4 begin_checkout event once per checkout session
+  const hasTrackedCheckout = React.useRef(false);
+  useEffect(() => {
+    if (cart.length > 0 && total > 0 && !hasTrackedCheckout.current) {
+      hasTrackedCheckout.current = true;
+      trackBeginCheckout(cart, total);
+    }
+  }, [cart, total]);
+
   // Calculate original list price totals to show product savings
   const totalOriginalPrice = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const totalSavings = totalOriginalPrice - subtotal;
@@ -368,6 +378,19 @@ function CheckoutContent() {
             console.warn('Cashfree payment session creation failed, falling back to order confirmation view');
             setCreatedOrder(orderDetails);
             setIsOrdered(true);
+            if (typeof window !== 'undefined' && orderDetails?.orderId) {
+              const pKey = `sbs_ga_purchased_${orderDetails.orderId}`;
+              if (!sessionStorage.getItem(pKey)) {
+                sessionStorage.setItem(pKey, 'true');
+                trackPurchase({
+                  orderId: orderDetails.orderId,
+                  total: orderDetails.total,
+                  shipping: orderDetails.shipping,
+                  paymentMethod: orderDetails.paymentMethod,
+                  items: orderDetails.items || cart
+                });
+              }
+            }
             clearCart();
           }
         }).catch((err) => {
@@ -377,6 +400,19 @@ function CheckoutContent() {
       } else {
         setCreatedOrder(orderDetails);
         setIsOrdered(true);
+        if (typeof window !== 'undefined' && orderDetails?.orderId) {
+          const pKey = `sbs_ga_purchased_${orderDetails.orderId}`;
+          if (!sessionStorage.getItem(pKey)) {
+            sessionStorage.setItem(pKey, 'true');
+            trackPurchase({
+              orderId: orderDetails.orderId,
+              total: orderDetails.total,
+              shipping: orderDetails.shipping,
+              paymentMethod: orderDetails.paymentMethod,
+              items: orderDetails.items || cart
+            });
+          }
+        }
         clearCart();
       }
     }).catch((err) => {
