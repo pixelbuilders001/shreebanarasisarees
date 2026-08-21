@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sbs-pwa-cache-v5';
+const CACHE_NAME = 'sbs-pwa-cache-v6';
 
 // Core assets to cache immediately on installation
 const PRECACHE_ASSETS = [
@@ -143,30 +143,31 @@ if (firebaseConfig.apiKey && firebaseConfig.messagingSenderId) {
 }
 
 // Raw push event — fires for every incoming FCM message regardless of payload shape.
-// By handling display here (and using a no-op onBackgroundMessage above),
-// we guarantee exactly ONE notification is shown per push event.
+// Handles display here to ensure title, body, and rich image banners are extracted cleanly.
 self.addEventListener('push', (event) => {
   console.log('[Service Worker] Push event received');
 
-  let data = {};
+  let raw = {};
   try {
-    const raw = event.data?.json();
-    // FCM wraps the payload differently depending on message type:
-    //   - Notification messages:  raw = { notification: {...}, data: {...} }
-    //   - Data-only messages:     raw = { data: {...} }
-    //   - Some backends:          raw = { title, body, ... } at root level
-    data = raw?.data || raw?.notification || raw || {};
+    raw = event.data?.json() || {};
   } catch (e) {
     console.warn('[Service Worker] Could not parse push payload as JSON:', e);
   }
 
-  const title = data.title || 'Shree Banarasi Sarees';
+  const notification = raw.notification || {};
+  const customData = raw.data || {};
+
+  const title = notification.title || customData.title || raw.title || 'Shree Banarasi Sarees';
+  const body = notification.body || customData.body || raw.body || '';
+  const imageUrl = notification.image || customData.image_url || customData.image || raw.image_url || undefined;
+  const targetUrl = customData.url || raw.url || '/';
+
   const options = {
-    body: data.body || '',
+    body: body,
     icon: '/brand_logo.png',
     badge: '/favicon.ico',
-    image: data.image_url || undefined,
-    data: data,                   // passed through to notificationclick handler
+    image: imageUrl,
+    data: { ...customData, ...notification, url: targetUrl },
     requireInteraction: false,
   };
 

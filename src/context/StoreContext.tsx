@@ -530,9 +530,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (!supported) return;
 
         unsubscribeFCM = await registerForegroundMessageHandler((payload) => {
-          const title = payload.notification?.title || "Notification";
-          const body = payload.notification?.body || "";
-          const url = payload.data?.url || "";
+          const title = payload.notification?.title || payload.data?.title || "Notification";
+          const body = payload.notification?.body || payload.data?.body || "";
+          const url = payload.data?.url || payload.notification?.url || "";
 
           showToast(`🔔 ${title}: ${body}`, "info", url ? {
             label: "View",
