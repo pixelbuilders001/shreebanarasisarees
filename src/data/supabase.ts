@@ -567,9 +567,18 @@ export async function createDbOrder(orderData: {
       ]
     };
 
-    // Trigger email notification for order placement (COD or Online)
+    // Trigger email & push notification for order placement (COD or Online)
     if (orderData.customer.email) {
       triggerOrderNotificationEmail('ORDER_PLACED', finalOrder);
+    }
+    if (userId) {
+      triggerOrderPushNotification('placed', {
+        order_number: orderNumber,
+        user_id: userId,
+        customer_name: orderData.customer.name,
+        total_amount: total,
+        image_url: orderData.items?.[0]?.product?.images?.[0] || null,
+      });
     }
 
     return finalOrder;
@@ -853,6 +862,40 @@ export async function triggerOrderNotificationEmail(
   }
 }
 
+export async function triggerOrderPushNotification(
+  orderStatus: 'placed' | 'confirmed' | 'packed' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled',
+  order: {
+    order_number: string;
+    user_id?: string | null;
+    customer_name?: string;
+    total_amount?: number;
+    image_url?: string | null;
+  }
+) {
+  try {
+    if (!order || !order.user_id) return;
+
+    const { error } = await supabase.functions.invoke('send-push', {
+      body: {
+        audience: 'user',
+        target_user_id: order.user_id,
+        order_status: orderStatus,
+        order_number: order.order_number,
+        customer_name: order.customer_name,
+        total_amount: order.total_amount,
+        image_url: order.image_url || null,
+        notification_type: 'order',
+      },
+    });
+
+    if (error) {
+      console.error('Error invoking send-push edge function:', error);
+    }
+  } catch (err) {
+    console.error('Failed to trigger order push notification:', err);
+  }
+}
+
 export async function updateDbOrderStatus(
   orderNumber: string,
   newStatus: string,
@@ -915,6 +958,28 @@ export async function updateDbOrderStatus(
       triggerOrderNotificationEmail('ORDER_CONFIRMED', orderPayload);
     } else if ((statusLower === 'delivered' || statusLower.includes('deliver')) && customerEmail) {
       triggerOrderNotificationEmail('ORDER_DELIVERED', orderPayload);
+    }
+
+    // Trigger FCM push notification to target customer
+    if (orderRow.user_id) {
+      let stageKey: any = 'placed';
+      if (statusLower.includes('confirm')) stageKey = 'confirmed';
+      else if (statusLower.includes('pack')) stageKey = 'packed';
+      else if (statusLower.includes('ship') || statusLower.includes('dispatch')) stageKey = 'shipped';
+      else if (statusLower.includes('out_for_delivery') || statusLower.includes('out for delivery')) stageKey = 'out_for_delivery';
+      else if (statusLower.includes('deliver')) stageKey = 'delivered';
+      else if (statusLower.includes('cancel')) stageKey = 'cancelled';
+
+      const firstItemSnapshot = orderRow.order_items?.[0]?.product_snapshot as any;
+      const firstItemImage = firstItemSnapshot?.images?.[0] || null;
+
+      triggerOrderPushNotification(stageKey, {
+        order_number: orderRow.order_number,
+        user_id: orderRow.user_id,
+        customer_name: orderRow.customer_name || orderRow.shipping_address?.name,
+        total_amount: Number(orderRow.total_amount),
+        image_url: firstItemImage,
+      });
     }
 
     return true;
