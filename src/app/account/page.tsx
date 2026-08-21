@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, Suspense } from 'react';
+import Link from 'next/link';
 import { useStore } from '../../context/StoreContext';
 import { 
   ShoppingBag, 
@@ -425,12 +426,12 @@ function AccountContent() {
                       </button>
                     )}
                     {activeOrder.orderStatus?.toLowerCase() === 'delivered' && (
-                      <button
-                        onClick={() => handleWriteReview(item.product)}
-                        className="px-3 py-1.5 bg-gold/10 hover:bg-gold/20 text-[#801F32] border border-[#C9A45C]/30 hover:border-[#C9A45C]/65 rounded-lg text-[10px] font-serif font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                      <Link
+                        href={`/review?orderId=${encodeURIComponent(activeOrder.orderId)}`}
+                        className="px-3 py-1.5 bg-gold/10 hover:bg-gold/20 text-[#801F32] border border-[#C9A45C]/30 hover:border-[#C9A45C]/65 rounded-lg text-[10px] font-serif font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm flex items-center gap-1"
                       >
-                        Write Review
-                      </button>
+                        <Star size={12} className="fill-gold text-gold" /> Write Review
+                      </Link>
                     )}
                   </div>
                 </div>
@@ -520,6 +521,14 @@ function AccountContent() {
                           {order.orderStatus}
                         </span>
 
+                        {order.orderStatus?.toLowerCase() === 'delivered' && (
+                          <Link
+                            href={`/review?orderId=${encodeURIComponent(order.orderId)}`}
+                            className="px-3 py-2 bg-[#FFF9F0] border border-[#C9A45C]/40 hover:bg-maroon hover:text-white text-maroon rounded-xl font-serif text-xs font-bold tracking-wider uppercase transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+                          >
+                            <Star size={12} className="fill-gold text-gold" /> Review Order
+                          </Link>
+                        )}
                         <button
                           onClick={() => setSelectedOrderId(order.orderId)}
                           className="px-4 py-2 bg-white border border-[#C9A45C]/35 hover:border-maroon hover:bg-maroon hover:text-white text-maroon rounded-xl font-serif text-xs font-bold tracking-wider uppercase transition-all shadow-sm cursor-pointer"

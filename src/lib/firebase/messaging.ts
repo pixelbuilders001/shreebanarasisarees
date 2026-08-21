@@ -89,36 +89,45 @@ export const saveFCMTokenToSupabase = async (token: string, userId: string | nul
     const userAgent = typeof window !== "undefined" ? window.navigator.userAgent : "";
     const isMobile = /Mobi|Android|iPhone/i.test(userAgent);
     const deviceType = isMobile ? "mobile" : "desktop";
+    const now = new Date().toISOString();
 
-    // Check if token already exists in the database
-    const { data: existing, error: selectError } = await supabase
+    // Query all matching records for this FCM token (avoids maybeSingle PGRST116 error if duplicates exist)
+    const { data: existingList, error: selectError } = await supabase
       .from("push_tokens")
-      .select("*")
-      .eq("fcm_token", token)
-      .maybeSingle();
+      .select("id, user_id")
+      .eq("fcm_token", token);
 
     if (selectError) {
       console.error("[FCM] Error checking existing token in Supabase:", selectError);
     }
 
-    const now = new Date().toISOString();
+    if (existingList && existingList.length > 0) {
+      const primaryRecord = existingList[0];
 
-    if (existing) {
-      // Update token row to associate with user, mark as active, and update device info
+      // Update primary token record
       const { error: updateError } = await supabase
         .from("push_tokens")
         .update({
-          user_id: userId || existing.user_id || null,
+          user_id: userId || primaryRecord.user_id || null,
           is_active: true,
           device_type: deviceType,
           user_agent: userAgent,
           updated_at: now,
         })
-        .eq("id", existing.id);
+        .eq("id", primaryRecord.id);
 
       if (updateError) {
         console.error("[FCM] Error updating existing token in Supabase:", updateError);
         return false;
+      }
+
+      // Clean up any duplicate token records for this exact token
+      if (existingList.length > 1) {
+        const duplicateIds = existingList.slice(1).map((r) => r.id);
+        await supabase
+          .from("push_tokens")
+          .delete()
+          .in("id", duplicateIds);
       }
     } else {
       // Insert a new token record

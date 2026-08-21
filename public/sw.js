@@ -160,13 +160,28 @@ self.addEventListener('push', (event) => {
   const title = notification.title || customData.title || raw.title || 'Shree Banarasi Sarees';
   const body = notification.body || customData.body || raw.body || '';
   const imageUrl = notification.image || customData.image_url || customData.image || raw.image_url || undefined;
-  const targetUrl = customData.url || raw.url || '/';
+  let targetUrl = customData.url || raw.url;
+  if (!targetUrl && customData.order_number) {
+    if (customData.order_status === 'delivered') {
+      targetUrl = `/review?orderId=${encodeURIComponent(customData.order_number)}`;
+    } else {
+      targetUrl = `/account?orderId=${encodeURIComponent(customData.order_number)}`;
+    }
+  }
+  if (!targetUrl) targetUrl = '/';
+
+  // Generate a unique tag to collapse duplicate notifications for the same event
+  const tag = customData.order_number
+    ? `order-${customData.order_number}-${customData.order_status || 'status'}`
+    : (customData.notification_id || raw.id || `sbs-${title}-${body}`);
 
   const options = {
     body: body,
     icon: '/brand_logo.png',
     badge: '/favicon.ico',
     image: imageUrl,
+    tag: tag,
+    renotify: false,
     data: { ...customData, ...notification, url: targetUrl },
     requireInteraction: false,
   };

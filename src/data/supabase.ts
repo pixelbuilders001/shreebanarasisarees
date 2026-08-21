@@ -875,6 +875,9 @@ export async function triggerOrderPushNotification(
   try {
     if (!order || !order.user_id) return;
 
+    // Instant notification on delivery confirms delivery and links to order details
+    const targetUrl = `/account?orderId=${encodeURIComponent(order.order_number)}`;
+
     const { error } = await supabase.functions.invoke('send-push', {
       body: {
         audience: 'user',
@@ -885,6 +888,7 @@ export async function triggerOrderPushNotification(
         total_amount: order.total_amount,
         image_url: order.image_url || null,
         notification_type: 'order',
+        url: targetUrl,
       },
     });
 
@@ -893,6 +897,113 @@ export async function triggerOrderPushNotification(
     }
   } catch (err) {
     console.error('Failed to trigger order push notification:', err);
+  }
+}
+
+/**
+ * Trigger a dedicated Review Request push notification (e.g. 24 hours post delivery).
+ */
+export async function triggerReviewReminderNotification(order: {
+  order_number: string;
+  user_id: string;
+  customer_name?: string;
+  image_url?: string | null;
+}) {
+  try {
+    if (!order || !order.user_id) return;
+
+    const targetUrl = `/review?orderId=${encodeURIComponent(order.order_number)}`;
+
+    const { error } = await supabase.functions.invoke('send-push', {
+      body: {
+        audience: 'user',
+        target_user_id: order.user_id,
+        title: 'How is your new Banarasi Saree? ✨',
+        body: `We hope you love your saree! Tap to rate your purchase for Order #${order.order_number} and share your feedback.`,
+        order_number: order.order_number,
+        customer_name: order.customer_name,
+        image_url: order.image_url || null,
+        notification_type: 'review_reminder',
+        url: targetUrl,
+      },
+    });
+
+    if (error) {
+      console.error('Error sending review reminder push:', error);
+    }
+  } catch (err) {
+    console.error('Failed to trigger review reminder push notification:', err);
+  }
+}
+
+/**
+ * Process delivered orders older than delayHours (default: 24 hours) and send review reminders.
+ */
+export async function processPendingReviewReminders(delayHours = 24): Promise<number> {
+  try {
+    const cutoffDate = new Date(Date.now() - delayHours * 60 * 60 * 1000).toISOString();
+
+    // Query order_status_history for orders marked 'delivered' before cutoffDate
+    const { data: deliveredHistory, error: hErr } = await supabase
+      .from('order_status_history')
+      .select('order_id, created_at')
+      .eq('status', 'delivered')
+      .lte('created_at', cutoffDate);
+
+    if (hErr || !deliveredHistory || deliveredHistory.length === 0) return 0;
+
+    const orderIds = deliveredHistory.map((h: any) => h.order_id);
+
+    // Fetch details for these orders
+    const { data: orders, error: oErr } = await supabase
+      .from('orders')
+      .select('*, order_items(*)')
+      .in('id', orderIds)
+      .eq('order_status', 'delivered');
+
+    if (oErr || !orders || orders.length === 0) return 0;
+
+    let count = 0;
+    for (const order of orders) {
+      if (!order.user_id) continue;
+
+      // Check if review reminder was already sent for this order
+      const { data: sentReminders } = await supabase
+        .from('push_notifications')
+        .select('id')
+        .eq('target_user_id', order.user_id)
+        .eq('notification_type', 'review_reminder')
+        .ilike('body', `%${order.order_number}%`);
+
+      if (sentReminders && sentReminders.length > 0) {
+        continue;
+      }
+
+      // Check if customer already reviewed all items in this order
+      const { data: existingReviews } = await supabase
+        .from('product_reviews')
+        .select('id')
+        .eq('order_id', order.id);
+
+      if (existingReviews && existingReviews.length >= (order.order_items?.length || 1)) {
+        continue;
+      }
+
+      // Send review reminder push!
+      const firstItemImage = order.order_items?.[0]?.product_snapshot?.images?.[0] || null;
+      await triggerReviewReminderNotification({
+        order_number: order.order_number,
+        user_id: order.user_id,
+        customer_name: order.customer_name,
+        image_url: firstItemImage
+      });
+      count++;
+    }
+
+    return count;
+  } catch (err) {
+    console.error('Error processing pending review reminders:', err);
+    return 0;
   }
 }
 
@@ -1408,4 +1519,110 @@ export async function fetchProductsByIds(ids: string[]): Promise<Product[]> {
     return [];
   }
 }
+
+export interface OrderReviewItem {
+  productId: string;
+  sku: string;
+  name: string;
+  fabric: string;
+  color: string;
+  price: number;
+  image: string;
+  quantity: number;
+  existingReview?: {
+    id: string;
+    rating: number;
+    title: string;
+    review_text: string;
+    created_at: string;
+    status: string;
+  } | null;
+}
+
+export interface OrderForReviewDetails {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerEmail?: string;
+  orderStatus: string;
+  createdAt: string;
+  totalAmount: number;
+  items: OrderReviewItem[];
+}
+
+export async function fetchOrderDetailsForReview(orderIdOrNumber: string): Promise<OrderForReviewDetails | null> {
+  if (!orderIdOrNumber || !orderIdOrNumber.trim()) return null;
+  const target = orderIdOrNumber.trim();
+
+  try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target);
+    
+    let query = supabase.from('orders').select('*, order_items(*)');
+    if (isUuid) {
+      query = query.eq('id', target);
+    } else {
+      query = query.ilike('order_number', target);
+    }
+
+    const { data: orderRow, error: orderError } = await query.single();
+
+    if (orderError || !orderRow) {
+      console.error('Error fetching order for review:', orderError);
+      return null;
+    }
+
+    // Fetch any existing product reviews for this order
+    const { data: existingReviews, error: reviewsError } = await supabase
+      .from('product_reviews')
+      .select('*')
+      .eq('order_id', orderRow.id);
+
+    if (reviewsError) {
+      console.warn('Could not fetch existing reviews for order:', reviewsError);
+    }
+
+    const reviewsList = existingReviews || [];
+
+    const items: OrderReviewItem[] = (orderRow.order_items || []).map((item: any) => {
+      const snap = item.product_snapshot || {};
+      const prodId = item.inventory_id || snap.id || '';
+      
+      const existingReviewObj = reviewsList.find((r: any) => r.product_id === prodId || (snap.id && r.product_id === snap.id));
+
+      return {
+        productId: prodId,
+        sku: item.sku || snap.sku || '',
+        name: item.product_name || snap.name || 'Banarasi Saree',
+        fabric: snap.fabric || 'Silk',
+        color: snap.color || '',
+        price: Number(item.unit_price || snap.price || 0),
+        image: snap.images?.[0] || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=600&q=80",
+        quantity: item.quantity || 1,
+        existingReview: existingReviewObj ? {
+          id: existingReviewObj.id,
+          rating: Number(existingReviewObj.rating),
+          title: existingReviewObj.title || '',
+          review_text: existingReviewObj.review_text || '',
+          created_at: existingReviewObj.created_at,
+          status: existingReviewObj.status || 'approved'
+        } : null
+      };
+    });
+
+    return {
+      id: orderRow.id,
+      orderNumber: orderRow.order_number,
+      customerName: orderRow.customer_name || orderRow.shipping_address?.name || 'Valued Customer',
+      customerEmail: orderRow.customer_email || orderRow.shipping_address?.email || '',
+      orderStatus: orderRow.order_status || 'Delivered',
+      createdAt: orderRow.created_at,
+      totalAmount: Number(orderRow.total_amount || 0),
+      items
+    };
+  } catch (err) {
+    console.error('Exception in fetchOrderDetailsForReview:', err);
+    return null;
+  }
+}
+
 
