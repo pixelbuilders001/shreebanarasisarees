@@ -7,6 +7,7 @@ import { WhatsAppButton } from "../components/WhatsAppButton";
 import PWARegistration from "../components/PWARegistration";
 import NotificationPrompt from "../components/notifications/NotificationPrompt";
 import GoogleAnalytics from "../components/GoogleAnalytics";
+import MicrosoftClarity from "../components/MicrosoftClarity";
 
 const playfair = Playfair_Display({
   variable: "--font-serif",
@@ -82,6 +83,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased text-[#2D211D] bg-[#FFF9F0] min-h-screen flex flex-col justify-between">
         <GoogleAnalytics />
+        <MicrosoftClarity />
         <StoreProvider>
           <PWARegistration />
           <NotificationPrompt />
