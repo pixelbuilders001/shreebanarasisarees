@@ -14,6 +14,7 @@ const SHOP = {
     address: 'Rudauli Chowk, Samastipur, Bihar – 848101',
     email: 'shreebanarasi180@gmail.com',
     phone: '+91-6203909946',
+    gstin: '10AAACS1234F1Z9',
 };
 
 const TERMS = [
@@ -45,6 +46,16 @@ interface ReceiptData {
     issuedVoucherAmount?: number | null;
     appliedVoucherCode?: string | null;
     appliedVoucherAmount?: number | null;
+    isGstApplied?: boolean;
+    gstRate?: number;
+    taxableAmount?: number;
+    cgstRate?: number;
+    cgstAmount?: number;
+    sgstRate?: number;
+    sgstAmount?: number;
+    igstRate?: number;
+    igstAmount?: number;
+    totalGst?: number;
 }
 
 const fmtDate = (iso: string) =>
@@ -53,7 +64,7 @@ const fmtDate = (iso: string) =>
 const fmtLong = (iso: string) =>
     new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
-const fmtCurrency = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+const fmtCurrency = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function ReceiptPage() {
     const params = useParams();
@@ -83,7 +94,8 @@ export default function ReceiptPage() {
                 .from('sales')
                 .select(`
                     id,
-                    invoice_number, created_at, payment_mode, total_amount, discount_amount,
+                    invoice_number, created_at, payment_mode, total_amount, discount_amount, discount_percentage,
+                    is_gst_applied, gst_rate, taxable_amount, cgst_rate, cgst_amount, sgst_rate, sgst_amount, igst_rate, igst_amount, total_gst,
                     customers ( name, mobile ),
                     sale_items ( quantity, selling_price, inventory ( saree_name, mrp, selling_price ) )
                 `)
@@ -137,6 +149,16 @@ export default function ReceiptPage() {
                     issuedVoucherAmount: issuedVoucher ? Number(issuedVoucher.original_amount) : null,
                     appliedVoucherCode: appliedVoucher?.voucher_code || null,
                     appliedVoucherAmount: appliedVoucher ? Number(appliedVoucher.original_amount) : null,
+                    isGstApplied: Boolean(data.is_gst_applied),
+                    gstRate: Number(data.gst_rate || 0),
+                    taxableAmount: data.taxable_amount !== null && data.taxable_amount !== undefined ? Number(data.taxable_amount) : undefined,
+                    cgstRate: Number(data.cgst_rate || 0),
+                    cgstAmount: Number(data.cgst_amount || 0),
+                    sgstRate: Number(data.sgst_rate || 0),
+                    sgstAmount: Number(data.sgst_amount || 0),
+                    igstRate: Number(data.igst_rate || 0),
+                    igstAmount: Number(data.igst_amount || 0),
+                    totalGst: Number(data.total_gst || 0),
                 };
             } else {
                 const { data: orderData, error: orderErr } = await supabase
@@ -278,7 +300,17 @@ export default function ReceiptPage() {
                             </div>
                         </div>
                         <div style={{ textAlign: 'right', flexShrink: 0, paddingLeft: '24px' }}>
+                            {receipt.isGstApplied && (
+                                <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#800000', marginBottom: '4px' }}>
+                                    GSTIN: {SHOP.gstin}
+                                </div>
+                            )}
                             <div style={{ color: '#555', fontSize: '12.5px' }}>{dateLong}</div>
+                            {receipt.isGstApplied && (
+                                <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 'bold', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                    TAX INVOICE
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -363,10 +395,12 @@ export default function ReceiptPage() {
                             </>
                         )}
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '48px', padding: '5px 0', borderBottom: '1px dashed #ccc', fontSize: '12.5px' }}>
-                            <span style={{ fontWeight: 'bold', letterSpacing: '0.5px' }}>SUBTOTAL</span>
-                            <span style={{ minWidth: '90px', textAlign: 'right' }}>{fmtCurrency(subtotal)}</span>
-                        </div>
+                        {(totalItemDiscount > 0 || billDiscount > 0 || (receipt.shippingFee && receipt.shippingFee > 0)) && (
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '48px', padding: '5px 0', borderBottom: '1px dashed #ccc', fontSize: '12.5px' }}>
+                                <span style={{ fontWeight: 'bold', letterSpacing: '0.5px' }}>SUBTOTAL</span>
+                                <span style={{ minWidth: '90px', textAlign: 'right' }}>{fmtCurrency(subtotal)}</span>
+                            </div>
+                        )}
 
                         {billDiscount > 0 && (
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '48px', padding: '5px 0', borderBottom: '1px dashed #ccc', fontSize: '12.5px', color: '#b91c1c' }}>
@@ -376,6 +410,33 @@ export default function ReceiptPage() {
                                 <span style={{ minWidth: '90px', textAlign: 'right' }}>− {fmtCurrency(billDiscount)}</span>
                             </div>
                         )}
+
+                        {receipt.isGstApplied ? (
+                            <>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '48px', padding: '5px 0', borderBottom: '1px dashed #ccc', fontSize: '12.5px' }}>
+                                    <span style={{ fontWeight: 'bold', letterSpacing: '0.5px' }}>TAXABLE AMOUNT</span>
+                                    <span style={{ minWidth: '90px', textAlign: 'right' }}>{fmtCurrency(receipt.taxableAmount || (subtotal - billDiscount))}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '48px', padding: '4px 0', borderBottom: '1px dashed #eee', fontSize: '12px', color: '#444' }}>
+                                    <span>CGST @ {receipt.cgstRate || 2.5}%</span>
+                                    <span style={{ minWidth: '90px', textAlign: 'right' }}>{fmtCurrency(receipt.cgstAmount || 0)}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '48px', padding: '4px 0', borderBottom: '1px dashed #eee', fontSize: '12px', color: '#444' }}>
+                                    <span>SGST @ {receipt.sgstRate || 2.5}%</span>
+                                    <span style={{ minWidth: '90px', textAlign: 'right' }}>{fmtCurrency(receipt.sgstAmount || 0)}</span>
+                                </div>
+                                {(receipt.igstAmount || 0) > 0 && (
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '48px', padding: '4px 0', borderBottom: '1px dashed #eee', fontSize: '12px', color: '#444' }}>
+                                        <span>IGST @ {receipt.igstRate}%</span>
+                                        <span style={{ minWidth: '90px', textAlign: 'right' }}>{fmtCurrency(receipt.igstAmount || 0)}</span>
+                                    </div>
+                                )}
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '48px', padding: '5px 0', borderBottom: '1px dashed #ccc', fontSize: '12.5px', color: '#047857' }}>
+                                    <span style={{ fontWeight: 'bold', letterSpacing: '0.5px' }}>TOTAL GST</span>
+                                    <span style={{ minWidth: '90px', textAlign: 'right', fontWeight: 'bold' }}>{fmtCurrency(receipt.totalGst || 0)}</span>
+                                </div>
+                            </>
+                        ) : null}
 
                         {receipt.shippingFee && receipt.shippingFee > 0 && (
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '48px', padding: '5px 0', borderBottom: '1px dashed #ccc', fontSize: '12.5px' }}>
