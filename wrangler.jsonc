@@ -1,0 +1,20 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "my-project",
+    "main": ".open-next/worker.js",
+    // Set this to today's date
+    "compatibility_date": "2026-08-22",
+    "compatibility_flags": [
+        "nodejs_compat"
+    ],
+    "assets": {
+        "binding": "ASSETS",
+        "directory": ".open-next/assets"
+    },
+    "images": {
+        "binding": "IMAGES"
+    },
+    "observability": {
+        "enabled": true
+    }
+}
