@@ -39,6 +39,7 @@ interface ReceiptData {
     items: ReceiptItem[];
     totalAmount: number;
     discountAmount: number;
+    discountPercentage?: number;
     shippingFee?: number;
     issuedVoucherCode?: string | null;
     issuedVoucherAmount?: number | null;
