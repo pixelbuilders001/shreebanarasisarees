@@ -73,8 +73,16 @@ function CheckoutContent() {
     shippingAddresses,
     saveShippingAddress,
     user,
-    isHydrated
+    isHydrated,
+    setIsAuthModalOpen
   } = useStore();
+
+  // Route Protection: Open AuthModal if unauthenticated
+  useEffect(() => {
+    if (isHydrated && !user) {
+      setIsAuthModalOpen(true);
+    }
+  }, [isHydrated, user, setIsAuthModalOpen]);
 
   // Order submission states
   const [isOrdered, setIsOrdered] = useState(false);
@@ -617,6 +625,43 @@ function CheckoutContent() {
   // ==========================================
   // 2. MAIN CHECKOUT VIEW
   // ==========================================
+  if (isHydrated && !user) {
+    return (
+      <div className="min-h-screen bg-[#FAF7F0] text-[#292524] flex flex-col font-sans">
+        <header className="bg-white border-b border-[#B08A3C]/20 py-3.5 px-4 sm:px-8 shadow-sm">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <button
+              onClick={() => router.push('/')}
+              className="text-[#6B625D] hover:text-[#6B1725] text-xs font-serif font-bold flex items-center gap-1 cursor-pointer"
+            >
+              <ArrowLeft size={14} /> Back to Store
+            </button>
+          </div>
+        </header>
+
+        <main className="flex-1 max-w-md mx-auto px-4 py-16 flex flex-col items-center justify-center text-center">
+          <div className="bg-white border border-[#B08A3C]/25 p-8 rounded-2xl shadow-md space-y-5 w-full">
+            <div className="w-14 h-14 bg-[#6B1725]/10 text-[#6B1725] rounded-full flex items-center justify-center mx-auto">
+              <Lock size={26} />
+            </div>
+            <h1 className="font-serif text-2xl font-extrabold text-[#292524]">
+              Sign In to Checkout
+            </h1>
+            <p className="text-xs text-[#6B625D] leading-relaxed">
+              Please sign in to your account to complete your order securely and track your delivery.
+            </p>
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="w-full py-3.5 bg-[#6B1725] text-white rounded-xl font-serif font-bold text-xs tracking-wider uppercase hover:bg-[#52111C] transition-all shadow-md cursor-pointer"
+            >
+              Sign In / Register
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#FAF7F0] text-[#292524] flex flex-col font-sans pb-28 lg:pb-12">
 

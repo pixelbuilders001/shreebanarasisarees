@@ -16,12 +16,20 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
     userProfile,
     isHydrated,
     loginWithGoogle,
+    setIsAuthModalOpen,
     orders,
     wishlist,
     shippingAddresses
   } = useStore();
 
   const [authError, setAuthError] = useState('');
+
+  // Automatically trigger AuthModal if visiting account while unauthenticated
+  React.useEffect(() => {
+    if (isHydrated && !user) {
+      setIsAuthModalOpen(true);
+    }
+  }, [isHydrated, user, setIsAuthModalOpen]);
 
   if (!isHydrated) {
     return (

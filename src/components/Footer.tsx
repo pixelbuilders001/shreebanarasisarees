@@ -278,7 +278,7 @@ export const Footer: React.FC = () => {
               href="https://wa.me/916203909946"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full py-3 px-4 bg-[#25D366] text-white rounded-xl font-medium text-xs flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] transition-all"
+              className="w-full py-3 px-4 bg-[#2EBE5D] hover:bg-[#25A650] text-white rounded-xl font-serif font-semibold text-xs flex items-center justify-center gap-2 shadow-xs active:scale-[0.98] transition-all"
             >
               <MessageCircle size={16} className="fill-current" />
               Chat on WhatsApp: +91 62039 09946

@@ -116,7 +116,7 @@ export const CartDrawer: React.FC = () => {
 
   // Checkout Handler
   const handleProceedToCheckout = () => {
-    if (!user && !userPhone) {
+    if (!user) {
       setIsCartOpen(false);
       setIsAuthModalOpen(true);
     } else {
@@ -362,9 +362,9 @@ export const CartDrawer: React.FC = () => {
                 {/* WhatsApp Chat Support */}
                 <button
                   onClick={handleWhatsAppHelp}
-                  className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-serif font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full py-2.5 bg-[#FAF7F0] hover:bg-[#F3ECE0] text-[#292524] border border-[#B08A3C]/30 rounded-xl text-xs font-serif font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                 >
-                  <MessageCircle size={14} className="text-emerald-600" />
+                  <MessageCircle size={15} className="text-[#2EBE5D]" />
                   Need help? Chat on WhatsApp
                 </button>
               </>

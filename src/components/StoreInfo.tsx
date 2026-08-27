@@ -80,9 +80,9 @@ export const StoreInfo: React.FC = () => {
                 href="https://wa.me/+916203909946"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="py-2.5 px-4 bg-white border border-[#25D366] text-[#25D366] text-center rounded font-serif font-bold text-xs tracking-wider uppercase hover:bg-[#25D366] hover:text-white transition-all flex items-center justify-center gap-1.5"
+                className="py-2.5 px-4 bg-[#FAF7F0] border border-[#B08A3C]/30 text-[#292524] text-center rounded font-serif font-bold text-xs tracking-wider uppercase hover:bg-[#2EBE5D] hover:text-white transition-all flex items-center justify-center gap-1.5"
               >
-                <MessageCircle size={14} className="fill-current" />
+                <MessageCircle size={14} className="text-[#2EBE5D]" />
                 WhatsApp
               </a>
             </div>

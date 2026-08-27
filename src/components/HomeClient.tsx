@@ -458,7 +458,7 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
               href="https://wa.me/916203909946?text=Hi%20Shree%20Banarasi%20Sarees,%20I%20need%20help%20choosing%20a%20saree"
               target="_blank"
               rel="noopener noreferrer"
-              className="py-3.5 px-8 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-xl font-serif font-bold text-xs sm:text-sm tracking-wider uppercase transition-all shadow-lg flex items-center gap-2 flex-shrink-0 active:scale-95"
+              className="py-3.5 px-8 bg-[#2EBE5D] hover:bg-[#25A650] text-white rounded-xl font-serif font-bold text-xs sm:text-sm tracking-wider uppercase transition-all shadow-md flex items-center gap-2 flex-shrink-0 active:scale-95"
             >
               <MessageCircle size={18} className="fill-current" />
               CHAT ON WHATSAPP
