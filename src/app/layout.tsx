@@ -3,11 +3,14 @@ import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 import { StoreProvider } from "../context/StoreContext";
 import { CartDrawer } from "../components/CartDrawer";
+import { MobileBottomNav } from "../components/MobileBottomNav";
 import { WhatsAppButton } from "../components/WhatsAppButton";
 import PWARegistration from "../components/PWARegistration";
 import NotificationPrompt from "../components/notifications/NotificationPrompt";
+import React, { Suspense } from "react";
 import GoogleAnalytics from "../components/GoogleAnalytics";
 import MicrosoftClarity from "../components/MicrosoftClarity";
+import RouteTransitionLoader from "../components/RouteTransitionLoader";
 
 const playfair = Playfair_Display({
   variable: "--font-serif",
@@ -76,22 +79,27 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://vzqlsawxvvyvsstyzzff.supabase.co" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://vzqlsawxvvyvsstyzzff.supabase.co" />
         <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://images.unsplash.com" />
       </head>
-      <body className="font-sans antialiased text-[#2D211D] bg-[#FFF9F0] min-h-screen flex flex-col justify-between">
+      <body className="font-sans antialiased text-[#292524] bg-[#FAF7F0] min-h-screen flex flex-col justify-between">
         <GoogleAnalytics />
         <MicrosoftClarity />
         <StoreProvider>
           <PWARegistration />
           <NotificationPrompt />
+          <Suspense fallback={null}>
+            <RouteTransitionLoader />
+          </Suspense>
           <div className="flex-grow pb-16 lg:pb-0">
             {children}
           </div>
           <CartDrawer />
-          {/* <WhatsAppButton /> */}
+          <MobileBottomNav />
         </StoreProvider>
       </body>
     </html>

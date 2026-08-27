@@ -203,7 +203,7 @@ export const AdvancedSearchBar: React.FC<AdvancedSearchBarProps> = ({
               if (searchQuery.trim()) processQuery(searchQuery);
             }}
             onKeyDown={handleKeyDown}
-            placeholder='Search: "red silk", "banarasi under 3000", "wedding saree"…'
+            placeholder="Search sarees, fabrics, colours..."
             className="w-full bg-transparent text-sm text-dark-brown placeholder-dark-brown/35 rounded-full py-2.5 pl-10 pr-20 outline-none font-medium"
             spellCheck={false}
           />

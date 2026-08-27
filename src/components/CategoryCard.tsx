@@ -4,53 +4,51 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useStore } from '../context/StoreContext';
+import { ArrowRight } from 'lucide-react';
 
 interface CategoryItem {
   name: string;
+  subtitle: string;
   image: string;
   link: string;
 }
 
-const CATEGORIES: CategoryItem[] = [
+const DEFAULT_CATEGORIES: CategoryItem[] = [
   {
-    name: "Banarasi Sarees",
+    name: "Banarasi Silk",
+    subtitle: "Pure Katan & Zari Jaals",
     image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600&h=750",
-    link: "/sarees/banarasi"
+    link: "/sarees?category=Banarasi+Sarees"
   },
   {
-    name: "Chikankari Sarees",
+    name: "Chikankari",
+    subtitle: "Lucknowi Hand Embroidery",
     image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=600&h=750",
-    link: "/sarees/chikankari"
+    link: "/sarees?category=Chikankari+Sarees"
   },
   {
-    name: "Bandhani Sarees",
+    name: "Bandhani",
+    subtitle: "Kutch Tie & Dye Crafts",
     image: "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=600&h=750",
-    link: "/sarees/bandhani"
+    link: "/sarees?category=Bandhani+Sarees"
   },
   {
-    name: "Organza Sarees",
+    name: "Organza",
+    subtitle: "Ethereal Glass Weaves",
     image: "https://images.unsplash.com/photo-1610030469668-93535c17b6b3?auto=format&fit=crop&q=80&w=600&h=750",
-    link: "/sarees/organza"
+    link: "/sarees?category=Organza+Sarees"
   },
   {
-    name: "Chanderi Silk",
+    name: "Chanderi",
+    subtitle: "Lightweight Cotton Silk",
     image: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=600&h=750",
-    link: "/sarees/chanderi"
-  },
-  {
-    name: "Georgette Sarees",
-    image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600&h=750",
-    link: "/sarees/georgette"
-  },
-  {
-    name: "Silk Sarees",
-    image: "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=600&h=750",
-    link: "/sarees/silk"
+    link: "/sarees?category=Chanderi+Sarees"
   },
   {
     name: "Bridal Wear",
-    image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600&h=750",
-    link: "/sarees/bridal"
+    subtitle: "Grand Wedding Trousseau",
+    image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600&h=750",
+    link: "/sarees?category=Bridal+Collection"
   }
 ];
 
@@ -59,53 +57,52 @@ export const CategoryCard: React.FC = () => {
 
   const displayCategories = categories && categories.length > 0
     ? categories.map(c => ({
-      name: c.name,
-      image: c.image_url || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600&h=750",
-      link: `/sarees/${c.slug.toLowerCase()}`
-    }))
-    : CATEGORIES;
+        name: c.name,
+        subtitle: "Handcrafted Heritage",
+        image: c.image_url || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600&h=750",
+        link: `/sarees?category=${encodeURIComponent(c.name)}`
+      }))
+    : DEFAULT_CATEGORIES;
 
   return (
-    <section className="pt-10 pb-16 border-b border-cream">
-      {/* Section Header */}
-      <div className="text-center mb-8 md:mb-10 px-4">
-        <h2 className="font-serif text-2xl sm:text-3xl font-extrabold tracking-wide text-dark-brown">
-          Shop by Category
-        </h2>
-        <div className="w-16 h-0.5 bg-maroon mx-auto mt-3 mb-3" />
-        <p className="text-sm text-dark-brown/60 font-light">
-          Explore our beautiful collections
-        </p>
-      </div>
+    <section className="py-14 sm:py-18 bg-[#FAF7F0] border-b border-[#B08A3C]/15">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Section Header */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-12">
+          <div>
+            <span className="text-[10px] sm:text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-1">
+              CURATED COLLECTIONS
+            </span>
+            <h2 className="font-serif text-2xl sm:text-4xl font-extrabold text-[#292524] tracking-wide">
+              Shop by Category
+            </h2>
+          </div>
+          <Link
+            href="/sarees"
+            className="mt-2 sm:mt-0 text-xs font-serif font-bold text-[#6B1725] hover:text-[#52111C] flex items-center gap-1 group transition-colors"
+          >
+            <span>Explore All Categories</span>
+            <ArrowRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
+          </Link>
+        </div>
 
-      {/*
-        ── Layout strategy ──────────────────────────────────────────────────
-        Mobile  : horizontal snap-scroll carousel, cards ~160px wide, full-bleed
-        Desktop : max-w-7xl container, 4-column grid, each card ~aspect-[3/4]
-        ─────────────────────────────────────────────────────────────────── */}
+        {/* Mobile Horizontal Carousel */}
+        <div className="md:hidden flex gap-3.5 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2">
+          {displayCategories.map((category, idx) => (
+            <CategoryTile key={idx} category={category} className="w-[170px] flex-shrink-0 snap-start" />
+          ))}
+        </div>
 
-      {/* Mobile carousel (hidden md+) */}
-      <div className="md:hidden flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory px-4">
-        {displayCategories.map((category, idx) => (
-          <CategoryTile key={idx} category={category} className="w-[160px] flex-shrink-0 snap-start" />
-        ))}
-        {/* Trailing spacer so the last card has breathing room */}
-        <div className="w-4 flex-shrink-0" aria-hidden="true" />
-      </div>
-
-      {/* Desktop grid (hidden below md) */}
-      <div className="hidden md:grid md:grid-cols-4 lg:grid-cols-4 gap-4 max-w-7xl mx-auto px-4">
-        {displayCategories.slice(0, 8).map((category, idx) => (
-          <CategoryTile key={idx} category={category} className="" />
-        ))}
+        {/* Desktop 6-Column Grid */}
+        <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-5">
+          {displayCategories.slice(0, 6).map((category, idx) => (
+            <CategoryTile key={idx} category={category} className="w-full" />
+          ))}
+        </div>
       </div>
     </section>
   );
 };
-
-/* ──────────────────────────────────────────────────────────────────────────
-   CategoryTile — shared card used by both mobile carousel and desktop grid
-   ────────────────────────────────────────────────────────────────────────── */
 
 interface CategoryTileProps {
   category: CategoryItem;
@@ -115,56 +112,41 @@ interface CategoryTileProps {
 const CategoryTile: React.FC<CategoryTileProps> = ({ category, className = '' }) => (
   <Link
     href={category.link}
-    className={`group relative block rounded-2xl overflow-hidden aspect-[3/4] bg-dark-brown
-      shadow-md hover:shadow-[0_12px_32px_rgba(45,33,29,0.22)]
-      transition-shadow duration-400 ${className}`}
+    className={`group relative block rounded-2xl overflow-hidden aspect-[3/4] bg-[#292524]
+      border border-[#B08A3C]/20 hover:border-[#B08A3C]/60
+      shadow-sm hover:shadow-[0_12px_28px_rgba(107,23,37,0.15)]
+      transition-all duration-500 hover:-translate-y-1 ${className}`}
   >
-    {/* Background image with zoom on hover */}
+    {/* Category Image */}
     <Image
       src={category.image}
       alt={category.name}
       fill
-      sizes="(max-width: 768px) 160px, 300px"
+      sizes="(max-width: 768px) 170px, 240px"
       loading="lazy"
-      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-108"
     />
 
-    {/* Static gradient scrim — always visible for legibility */}
-    <div className="absolute inset-0 bg-gradient-to-t from-[#2D211D]/80 via-[#2D211D]/15 to-transparent" />
+    {/* Gradient Scrim for Legibility */}
+    <div className="absolute inset-0 bg-gradient-to-t from-[#292524]/90 via-[#292524]/20 to-transparent" />
 
-    {/* Hover shimmer overlay */}
-    <div className="absolute inset-0 bg-maroon/20 opacity-0 group-hover:opacity-100 transition-opacity duration-400" />
+    {/* Subtle Wine Hover Highlight */}
+    <div className="absolute inset-0 bg-[#6B1725]/15 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-    {/* Top-right gold dot accent */}
-    <span className="absolute top-3 right-3 w-1.5 h-1.5 rounded-full bg-gold opacity-70 group-hover:opacity-100 transition-opacity duration-300" aria-hidden="true" />
-
-    {/* Bottom text layer */}
-    <div className="absolute bottom-0 left-0 right-0 px-3 pb-4 pt-8">
-      {/* Category name */}
-      <p className="font-serif font-bold text-ivory text-sm sm:text-base leading-tight tracking-wide line-clamp-1">
+    {/* Text Layer */}
+    <div className="absolute bottom-0 left-0 right-0 p-3.5 sm:p-4 text-center sm:text-left">
+      <h3 className="font-serif font-bold text-[#FAF7F0] text-base sm:text-lg leading-tight tracking-wide group-hover:text-[#D4B870] transition-colors">
         {category.name}
+      </h3>
+      <p className="text-[10px] sm:text-xs text-[#FAF7F0]/75 font-light mt-0.5 line-clamp-1">
+        {category.subtitle}
       </p>
 
-      {/* Explore CTA — slides up on hover */}
-      <div className="flex items-center gap-1 mt-1.5 translate-y-1 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out">
-        <span className="text-gold text-[11px] font-bold font-serif uppercase tracking-widest">
-          Explore
-        </span>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-3 h-3 text-gold group-hover:translate-x-0.5 transition-transform duration-300"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2.5}
-          aria-hidden="true"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
+      {/* Explore indicator */}
+      <div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-[#B08A3C] uppercase tracking-wider opacity-90 group-hover:translate-x-0.5 transition-transform">
+        <span>Shop Now</span>
+        <ArrowRight size={10} />
       </div>
     </div>
-
-    {/* Thin gold border on hover */}
-    <div className="absolute inset-0 rounded-2xl border border-gold/0 group-hover:border-gold/30 transition-all duration-400 pointer-events-none" />
   </Link>
 );

@@ -1,22 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Noto+Serif+Devanagari:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-serif: var(--font-serif), Georgia, serif;
-  --font-sans: var(--font-sans), sans-serif;
+  --font-serif: "Cormorant Garamond", var(--font-serif), Georgia, serif;
+  --font-cormorant: "Cormorant Garamond", Georgia, serif;
+  --font-devanagari: "Noto Serif Devanagari", serif;
+  --font-sans: "Inter", var(--font-sans), sans-serif;
   
-  --color-maroon: #801F32;
-  --color-maroon-dark: #6E1725;
-  --color-maroon-light: #9B2C42;
-  --color-ivory: #FFF9F0;
-  --color-cream: #F7EEDF;
-  --color-gold: #C9A45C;
-  --color-gold-light: #DFCDA5;
-  --color-dark-brown: #2D211D;
+  --color-maroon: #6B1725;
+  --color-maroon-dark: #52111C;
+  --color-maroon-light: #8C2234;
+  --color-ivory: #FAF7F0;
+  --color-cream: #F3ECE0;
+  --color-gold: #B08A3C;
+  --color-gold-light: #D4B870;
+  --color-gold-dark: #8C6A23;
+  --color-dark-brown: #292524;
+  --color-slate-muted: #6B625D;
 }
 
 :root {
-  --background: #FFF9F0;
-  --foreground: #2D211D;
+  --background: #FAF7F0;
+  --foreground: #292524;
 }
 
 body {
@@ -72,14 +77,65 @@ html {
   animation: loadingProgress 1.8s infinite ease-in-out;
 }
 
-/* Hero carousel animations */
-@keyframes heroProgress {
-  from { width: 0%; }
-  to { width: 100%; }
+/* Smooth Animations & Transitions */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fadeOut {
+  animation: fadeOut 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* CSS Grid Smooth Accordion Expand/Collapse */
+.accordion-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.accordion-wrapper.open {
+  grid-template-rows: 1fr;
+}
+
+.accordion-inner {
+  overflow: hidden;
+}
+
 
