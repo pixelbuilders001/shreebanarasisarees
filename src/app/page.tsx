@@ -9,18 +9,18 @@ export const metadata: Metadata = {
   title: "Shree Banarasi Sarees | Banarasi & Traditional Sarees in Samastipur",
   description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees, Samastipur, Bihar. Explore elegant sarees for weddings, festivals and special occasions.",
   alternates: {
-    canonical: "https://shreebanarasisarees.vercel.app",
+    canonical: "https://shreebanarasisarees.in",
   },
   openGraph: {
     title: "Shree Banarasi Sarees | Banarasi & Traditional Sarees in Samastipur",
     description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees, Samastipur, Bihar. Explore elegant sarees for weddings, festivals and special occasions.",
-    url: "https://shreebanarasisarees.vercel.app",
+    url: "https://shreebanarasisarees.in",
     siteName: "Shree Banarasi Sarees",
     locale: "en_IN",
     type: "website",
     images: [
       {
-        url: "https://shreebanarasisarees.vercel.app/og_image.jpg",
+        url: "https://shreebanarasisarees.in/og_image.jpg",
         width: 1024,
         height: 537,
         alt: "Shree Banarasi Sarees Showcase",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Shree Banarasi Sarees | Banarasi & Traditional Sarees in Samastipur",
     description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees, Samastipur, Bihar. Explore elegant sarees for weddings, festivals and special occasions.",
-    images: ["https://shreebanarasisarees.vercel.app/og_image.jpg"],
+    images: ["https://shreebanarasisarees.in/og_image.jpg"],
   }
 };
 
@@ -47,8 +47,8 @@ export default async function Home() {
     "@type": "Organization",
     "name": "Shree Banarasi Sarees",
     "alternateName": "श्री बनारसी साड़ियाँ",
-    "url": "https://shreebanarasisarees.vercel.app",
-    "logo": "https://shreebanarasisarees.vercel.app/brand_logo.png",
+    "url": "https://shreebanarasisarees.in",
+    "logo": "https://shreebanarasisarees.in/brand_logo.png",
     "description": "Premium traditional Indian ethnic fashion showroom in Samastipur, Bihar. Exquisite handloom sarees, Banarasi, Chikankari, Organza and wedding bridal collections.",
     "contactPoint": {
       "@type": "ContactPoint",
@@ -64,9 +64,9 @@ export default async function Home() {
     "@context": "https://schema.org",
     "@type": "ClothingStore",
     "name": "Shree Banarasi Sarees",
-    "image": "https://shreebanarasisarees.vercel.app/brand_logo.png",
-    "@id": "https://shreebanarasisarees.vercel.app/#store",
-    "url": "https://shreebanarasisarees.vercel.app",
+    "image": "https://shreebanarasisarees.in/brand_logo.png",
+    "@id": "https://shreebanarasisarees.in/#store",
+    "url": "https://shreebanarasisarees.in",
     "telephone": "+916203909946",
     "priceRange": "$$",
     "address": {

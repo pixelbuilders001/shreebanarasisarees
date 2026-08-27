@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const allowedOriginsEnv = process.env.ALLOWED_ORIGINS;
 const allowedOrigins = allowedOriginsEnv
   ? allowedOriginsEnv.split(",").map((s) => s.trim())
-  : ["localhost:3000", "shreebanarasisarees.com", "www.shreebanarasisarees.com"];
+  : ["localhost:3000", "shreebanarasisarees.in", "www.shreebanarasisarees.in", "shreebanarasisarees.com", "www.shreebanarasisarees.com"];
 
 const nextConfig: NextConfig = {
   images: {

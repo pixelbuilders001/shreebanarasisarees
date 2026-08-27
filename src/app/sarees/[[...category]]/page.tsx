@@ -140,16 +140,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: data.title,
     description: data.description,
     alternates: {
-      canonical: `https://shreebanarasisarees.com${canonicalPath}`,
+      canonical: `https://shreebanarasisarees.in${canonicalPath}`,
     },
     openGraph: {
       title: data.title,
       description: data.description,
-      url: `https://shreebanarasisarees.com${canonicalPath}`,
+      url: `https://shreebanarasisarees.in${canonicalPath}`,
       type: "website",
       images: [
         {
-          url: "https://shreebanarasisarees.com/og_image.jpg",
+          url: "https://shreebanarasisarees.in/og_image.jpg",
           width: 1024,
           height: 537,
           alt: "Shree Banarasi Sarees Showcase",
@@ -160,7 +160,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: "summary_large_image",
       title: data.title,
       description: data.description,
-      images: ["https://shreebanarasisarees.com/og_image.jpg"],
+      images: ["https://shreebanarasisarees.in/og_image.jpg"],
     }
   };
 }
@@ -207,13 +207,13 @@ export default async function Page({ params }: PageProps) {
       "@type": "ListItem",
       "position": 1,
       "name": "Home",
-      "item": "https://shreebanarasisarees.com"
+      "item": "https://shreebanarasisarees.in"
     },
     {
       "@type": "ListItem",
       "position": 2,
       "name": "Sarees",
-      "item": "https://shreebanarasisarees.com/sarees"
+      "item": "https://shreebanarasisarees.in/sarees"
     }
   ];
 
@@ -223,7 +223,7 @@ export default async function Page({ params }: PageProps) {
       "@type": "ListItem",
       "position": 3,
       "name": subName,
-      "item": `https://shreebanarasisarees.com/sarees/${resolvedParams.category[0].toLowerCase()}`
+      "item": `https://shreebanarasisarees.in/sarees/${resolvedParams.category[0].toLowerCase()}`
     });
   }
 

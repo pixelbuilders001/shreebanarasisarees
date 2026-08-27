@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "Returns & Exchanges Policy | Shree Banarasi Sarees",
   description: "Read the Shree Banarasi Sarees 7-day return policy, exchange conditions, and custom order exclusions.",
   alternates: {
-    canonical: "https://shreebanarasisarees.com/returns",
+    canonical: "https://shreebanarasisarees.in/returns",
   }
 };
 
@@ -92,7 +92,7 @@ export default function ReturnsPage() {
               
               <div className="text-xs sm:text-sm text-dark-brown/80 font-light leading-relaxed space-y-3">
                 <p>
-                  <strong>Step 1:</strong> Email us at <strong>returns@shreebanarasisarees.com</strong> or message us on WhatsApp at <strong>+91 62039 09946</strong> with your Order ID and photos showing the unstitched condition.
+                  <strong>Step 1:</strong> Email us at <strong>returns@shreebanarasisarees.in</strong> or message us on WhatsApp at <strong>+91 62039 09946</strong> with your Order ID and photos showing the unstitched condition.
                 </p>
                 <p>
                   <strong>Step 2:</strong> Once approved, package the saree securely. You can send it back to our Samastipur outlet using any major courier (BlueDart, SpeedPost).

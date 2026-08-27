@@ -10,12 +10,12 @@ export const metadata: Metadata = {
   title: "Saree Care, Styling & Shopping Blog | Shree Banarasi Sarees",
   description: "Read the latest articles on Indian saree styling, bridal trousseau guides, handloom identification tips, and local shopping guides from Shree Banarasi Sarees in Samastipur, Bihar.",
   alternates: {
-    canonical: "https://shreebanarasisarees.com/blog",
+    canonical: "https://shreebanarasisarees.in/blog",
   },
   openGraph: {
     title: "Saree Care, Styling & Shopping Blog | Shree Banarasi Sarees",
     description: "Read the latest articles on Indian saree styling, bridal trousseau guides, handloom identification tips, and local shopping guides from Shree Banarasi Sarees in Samastipur, Bihar.",
-    url: "https://shreebanarasisarees.com/blog",
+    url: "https://shreebanarasisarees.in/blog",
     type: "website",
   }
 };
@@ -30,13 +30,13 @@ export default function BlogHome() {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": "https://shreebanarasisarees.com"
+        "item": "https://shreebanarasisarees.in"
       },
       {
         "@type": "ListItem",
         "position": 2,
         "name": "Blog",
-        "item": "https://shreebanarasisarees.com/blog"
+        "item": "https://shreebanarasisarees.in/blog"
       }
     ]
   };

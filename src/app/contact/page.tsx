@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   title: "Contact Us | Shree Banarasi Sarees",
   description: "Get in touch with Shree Banarasi Sarees. Call us at +91 62039 09946, chat with us on WhatsApp, or visit our traditional saree showroom in Samastipur, Bihar.",
   alternates: {
-    canonical: "https://shreebanarasisarees.com/contact",
+    canonical: "https://shreebanarasisarees.in/contact",
   }
 };
 
