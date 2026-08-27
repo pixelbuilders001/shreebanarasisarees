@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "Our Showroom in Samastipur, Bihar | Shree Banarasi Sarees",
   description: "Visit Shree Banarasi Sarees outlet at Rudauli Chowk, Samastipur, Bihar. Draping advice, pure silks, and in-person customization services.",
   alternates: {
-    canonical: "https://shreebanarasisarees.com/our-store",
+    canonical: "https://shreebanarasisarees.in/our-store",
   }
 };
 

@@ -25,12 +25,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: `${post.title} | Shree Banarasi Sarees Blog`,
     description: post.excerpt,
     alternates: {
-      canonical: `https://shreebanarasisarees.com/blog/${post.slug}`,
+      canonical: `https://shreebanarasisarees.in/blog/${post.slug}`,
     },
     openGraph: {
       title: `${post.title} | Shree Banarasi Sarees Blog`,
       description: post.excerpt,
-      url: `https://shreebanarasisarees.com/blog/${post.slug}`,
+      url: `https://shreebanarasisarees.in/blog/${post.slug}`,
       type: "article",
       publishedTime: post.publishedAt,
       authors: [post.author],
@@ -93,7 +93,7 @@ export default async function BlogPostPage({ params }: PageProps) {
     "@type": "BlogPosting",
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": `https://shreebanarasisarees.com/blog/${post.slug}`
+      "@id": `https://shreebanarasisarees.in/blog/${post.slug}`
     },
     "headline": post.title,
     "description": post.excerpt,
@@ -109,7 +109,7 @@ export default async function BlogPostPage({ params }: PageProps) {
       "name": "Shree Banarasi Sarees",
       "logo": {
         "@type": "ImageObject",
-        "url": "https://shreebanarasisarees.com/brand_logo.png"
+        "url": "https://shreebanarasisarees.in/brand_logo.png"
       }
     }
   };
@@ -123,19 +123,19 @@ export default async function BlogPostPage({ params }: PageProps) {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": "https://shreebanarasisarees.com"
+        "item": "https://shreebanarasisarees.in"
       },
       {
         "@type": "ListItem",
         "position": 2,
         "name": "Blog",
-        "item": "https://shreebanarasisarees.com/blog"
+        "item": "https://shreebanarasisarees.in/blog"
       },
       {
         "@type": "ListItem",
         "position": 3,
         "name": post.title,
-        "item": `https://shreebanarasisarees.com/blog/${post.slug}`
+        "item": `https://shreebanarasisarees.in/blog/${post.slug}`
       }
     ]
   };

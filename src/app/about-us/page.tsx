@@ -10,12 +10,12 @@ export const metadata: Metadata = {
   title: "Shree Banarasi Sarees | Saree Shop in Samastipur, Bihar",
   description: "Visit Shree Banarasi Sarees, the leading traditional saree showroom in Samastipur, Bihar. Explore our premium collection of authentic Banarasi silk, Lucknowi Chikankari, Gujarati Bandhani, and designer bridal wedding sarees.",
   alternates: {
-    canonical: "https://shreebanarasisarees.com/about-us",
+    canonical: "https://shreebanarasisarees.in/about-us",
   },
   openGraph: {
     title: "Shree Banarasi Sarees | Saree Shop in Samastipur, Bihar",
     description: "Visit Shree Banarasi Sarees, the leading traditional saree showroom in Samastipur, Bihar. Explore our premium collection of authentic Banarasi silk, Lucknowi Chikankari, Gujarati Bandhani, and designer bridal wedding sarees.",
-    url: "https://shreebanarasisarees.com/about-us",
+    url: "https://shreebanarasisarees.in/about-us",
     type: "website",
   }
 };

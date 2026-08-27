@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "Shipping & Delivery Information | Shree Banarasi Sarees",
   description: "Learn about Shree Banarasi Sarees shipping rules, timelines, domestic free delivery details, and premium packaging policies.",
   alternates: {
-    canonical: "https://shreebanarasisarees.com/shipping",
+    canonical: "https://shreebanarasisarees.in/shipping",
   }
 };
 

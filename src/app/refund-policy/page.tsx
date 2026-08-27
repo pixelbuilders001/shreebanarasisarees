@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "Refund Policy | Shree Banarasi Sarees",
   description: "Read the Shree Banarasi Sarees refund policy. Learn about refund audits, credit processing times, and modes of refund.",
   alternates: {
-    canonical: "https://shreebanarasisarees.com/refund-policy",
+    canonical: "https://shreebanarasisarees.in/refund-policy",
   }
 };
 

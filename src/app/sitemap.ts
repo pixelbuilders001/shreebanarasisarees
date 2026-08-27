@@ -3,7 +3,7 @@ import { fetchCategories, fetchProducts } from '../data/supabase';
 import { BLOG_POSTS } from '../data/blog';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = 'https://shreebanarasisarees.com';
+  const baseUrl = 'https://shreebanarasisarees.in';
 
   const [products, categories] = await Promise.all([
     fetchProducts(),

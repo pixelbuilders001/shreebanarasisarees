@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const finalPrice = product.salePrice ?? product.price;
 
   // Resolve dynamic host for absolute URLs
-  let siteUrl = 'https://shreebanarasisarees.vercel.app';
+  let siteUrl = 'https://shreebanarasisarees.in';
   try {
     const headersList = await headers();
     const hostHeader = headersList.get('host');
@@ -99,7 +99,7 @@ export default async function Page({ params }: PageProps) {
   const finalPrice = product.salePrice ?? product.price;
 
   // Resolve dynamic host for absolute URLs
-  let siteUrl = 'https://shreebanarasisarees.vercel.app';
+  let siteUrl = 'https://shreebanarasisarees.in';
   try {
     const headersList = await headers();
     const hostHeader = headersList.get('host');

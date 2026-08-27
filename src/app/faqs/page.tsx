@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "Frequently Asked Questions (FAQs) | Shree Banarasi Sarees",
   description: "Find answers to frequently asked questions about authentic Banarasi silks, custom blouse stitching, free shipping, returns, and Samastipur showroom hours.",
   alternates: {
-    canonical: "https://shreebanarasisarees.com/faqs",
+    canonical: "https://shreebanarasisarees.in/faqs",
   }
 };
 

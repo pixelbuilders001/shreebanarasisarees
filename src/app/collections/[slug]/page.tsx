@@ -36,12 +36,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: `${campaign.name} | Shree Banarasi Sarees`,
     description: campaign.subtitle || campaign.title || `Shop exclusive collection of traditional sarees from ${campaign.name} at Shree Banarasi Sarees.`,
     alternates: {
-      canonical: `https://shreebanarasisarees.com/collections/${campaign.slug}`,
+      canonical: `https://shreebanarasisarees.in/collections/${campaign.slug}`,
     },
     openGraph: {
       title: `${campaign.name} | Shree Banarasi Sarees`,
       description: campaign.subtitle || campaign.title || `Shop exclusive collection of traditional sarees from ${campaign.name} at Shree Banarasi Sarees.`,
-      url: `https://shreebanarasisarees.com/collections/${campaign.slug}`,
+      url: `https://shreebanarasisarees.in/collections/${campaign.slug}`,
       type: "website",
       images: campaign.desktop_banner_url ? [
         {
@@ -89,19 +89,19 @@ export default async function CollectionPage({ params }: PageProps) {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": "https://shreebanarasisarees.com"
+        "item": "https://shreebanarasisarees.in"
       },
       {
         "@type": "ListItem",
         "position": 2,
         "name": "Collections",
-        "item": "https://shreebanarasisarees.com/sarees"
+        "item": "https://shreebanarasisarees.in/sarees"
       },
       {
         "@type": "ListItem",
         "position": 3,
         "name": campaign.name,
-        "item": `https://shreebanarasisarees.com/collections/${campaign.slug}`
+        "item": `https://shreebanarasisarees.in/collections/${campaign.slug}`
       }
     ]
   };
