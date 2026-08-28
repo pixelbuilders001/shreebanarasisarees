@@ -1653,4 +1653,34 @@ export async function fetchOrderDetailsForReview(orderIdOrNumber: string): Promi
   }
 }
 
+/**
+ * Record a PWA installation event into Supabase pwa_installs table.
+ */
+export async function recordPwaInstall(platform?: string): Promise<boolean> {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData?.session?.user?.id || null;
+    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : null;
+
+    const { error } = await supabase
+      .from('pwa_installs')
+      .insert({
+        user_id: userId,
+        platform: platform || 'unknown',
+        user_agent: userAgent
+      });
+
+    if (error) {
+      console.error('[Supabase] Error recording PWA install:', error);
+      return false;
+    }
+    console.log('[Supabase] PWA install recorded successfully');
+    return true;
+  } catch (err) {
+    console.error('[Supabase] Exception recording PWA install:', err);
+    return false;
+  }
+}
+
+
 

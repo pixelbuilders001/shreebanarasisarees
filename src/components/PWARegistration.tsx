@@ -2,10 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { Download, X, Share } from "lucide-react";
+import { recordPwaInstall } from "@/data/supabase";
+import { event as trackGAEvent } from "@/lib/gtag";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+function getPlatform(): string {
+  if (typeof window === "undefined") return "unknown";
+  const ua = window.navigator.userAgent.toLowerCase();
+  if (/android/.test(ua)) return "android";
+  if (/iphone|ipad|ipod/.test(ua)) return "ios";
+  if (/win/.test(ua)) return "windows";
+  if (/mac/.test(ua)) return "mac";
+  if (/linux/.test(ua)) return "linux";
+  return "other";
 }
 
 export default function PWARegistration() {
@@ -61,7 +74,30 @@ export default function PWARegistration() {
       }
     }
 
-    // 2. PWA Install Prompt Banner Handling
+    // 2. Track PWA Installation Event (appinstalled)
+    const handleAppInstalled = async () => {
+      console.log('[PWA] App was installed successfully');
+      setShowPrompt(false);
+
+      const alreadyRecorded = localStorage.getItem('pwa_install_recorded');
+      if (!alreadyRecorded) {
+        localStorage.setItem('pwa_install_recorded', Date.now().toString());
+        const platform = getPlatform();
+
+        // 1. Log to Google Analytics
+        trackGAEvent("pwa_installed", {
+          event_category: "PWA",
+          platform: platform,
+        });
+
+        // 2. Record event in Supabase pwa_installs table
+        await recordPwaInstall(platform);
+      }
+    };
+
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    // 3. PWA Install Prompt Banner Handling
     const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches 
       || (navigator as any).standalone 
       || document.referrer.includes('android-app://');
@@ -95,6 +131,7 @@ export default function PWARegistration() {
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
@@ -104,6 +141,14 @@ export default function PWARegistration() {
       await deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       console.log('[PWA] User install choice:', outcome);
+
+      if (outcome === 'accepted') {
+        const platform = getPlatform();
+        trackGAEvent("pwa_installed", { event_category: "PWA", platform });
+        await recordPwaInstall(platform);
+        localStorage.setItem('pwa_install_recorded', Date.now().toString());
+      }
+
       setDeferredPrompt(null);
       setShowPrompt(false);
     } catch (err) {
@@ -115,6 +160,7 @@ export default function PWARegistration() {
     setShowPrompt(false);
     localStorage.setItem('pwa_prompt_dismissed', Date.now().toString());
   };
+
 
   if (!showPrompt) return null;
 
