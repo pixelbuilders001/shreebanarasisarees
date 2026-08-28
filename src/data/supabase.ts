@@ -23,7 +23,6 @@ export interface DbInventory {
   category: string;
   fabric: string;
   color: string;
-  purchase_price: number;
   selling_price: number;
   stock: number;
   rack_no: string | null;
@@ -43,6 +42,11 @@ export interface DbInventory {
     sort_order: number;
   }[];
 }
+
+/**
+ * Public fields to select from the inventory table. Excludes confidential vendor pricing (purchase_price).
+ */
+export const PUBLIC_INVENTORY_SELECT = 'id, saree_name, category, fabric, color, selling_price, stock, rack_no, barcode, status, created_at, sku, design_code, hsn_code, description, mrp, discount_amount, discount_percentage, inventory_images(image_url, is_primary, sort_order)';
 
 /**
  * Stable slug generator for database products.
@@ -148,7 +152,7 @@ export async function fetchDesignVariants(designCode?: string | null): Promise<P
   try {
     const { data, error } = await supabase
       .from('inventory')
-      .select('*, inventory_images(*)')
+      .select(PUBLIC_INVENTORY_SELECT)
       .eq('status', 'active')
       .eq('design_code', designCode.trim().toUpperCase());
 
@@ -194,7 +198,7 @@ export async function fetchProducts(): Promise<Product[]> {
   try {
     const { data, error } = await supabase
       .from('inventory')
-      .select('*, inventory_images(*)')
+      .select(PUBLIC_INVENTORY_SELECT)
       .eq('status', 'active');
 
     if (error) {
@@ -221,7 +225,7 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
       const idCandidate = parts[parts.length - 1];
       const { data, error } = await supabase
         .from('inventory')
-        .select('*, inventory_images(*)')
+        .select(PUBLIC_INVENTORY_SELECT)
         .eq('id', idCandidate)
         .single();
 
@@ -1402,7 +1406,7 @@ export async function fetchCampaignProducts(campaignId: string): Promise<Product
 
     const { data: inventoryData, error: invError } = await supabase
       .from('inventory')
-      .select('*, inventory_images(*)')
+      .select(PUBLIC_INVENTORY_SELECT)
       .in('id', inventoryIds)
       .eq('status', 'active');
 
@@ -1442,7 +1446,7 @@ export async function fetchSimilarProducts(
     // Fetch a broader pool: same category, active, with images
     const { data, error } = await supabase
       .from('inventory')
-      .select('*, inventory_images(*)')
+      .select(PUBLIC_INVENTORY_SELECT)
       .eq('status', 'active')
       .ilike('category', `%${currentProduct.category}%`)
       .neq('id', currentProduct.id)
@@ -1524,7 +1528,7 @@ export async function fetchProductsByIds(ids: string[]): Promise<Product[]> {
   try {
     const { data, error } = await supabase
       .from('inventory')
-      .select('*, inventory_images(*)')
+      .select(PUBLIC_INVENTORY_SELECT)
       .in('id', validIds)
       .eq('status', 'active');
 
