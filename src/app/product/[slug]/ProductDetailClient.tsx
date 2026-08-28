@@ -33,7 +33,7 @@ import {
   HelpCircle,
   RotateCcw
 } from 'lucide-react';
-import { checkDeliveryServiceability, supabase } from '../../../data/supabase';
+import { checkDeliveryServiceability, fetchDesignVariants, supabase } from '../../../data/supabase';
 import { YouMayAlsoLike } from '../../../components/YouMayAlsoLike';
 import { RecentlyViewed } from '../../../components/RecentlyViewed';
 import { useRecentlyViewed } from '../../../utils/useRecentlyViewed';
@@ -104,6 +104,37 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
   // Recently viewed tracking
   const { viewedIds, recordView } = useRecentlyViewed();
+
+  // Design Variants state
+  const [designVariants, setDesignVariants] = useState<Product[]>([]);
+  const [loadingVariants, setLoadingVariants] = useState(false);
+
+  useEffect(() => {
+    if (product.designCode && typeof fetchDesignVariants === 'function') {
+      setLoadingVariants(true);
+      fetchDesignVariants(product.designCode)
+        .then((vars) => setDesignVariants(vars || []))
+        .catch((err) => console.error("Error loading design variants:", err))
+        .finally(() => setLoadingVariants(false));
+    } else {
+      setDesignVariants([]);
+    }
+  }, [product.designCode, product.id]);
+
+  const getColorHex = (colorStr: string): string => {
+    const c = colorStr.toLowerCase().trim();
+    if (c.includes('red')) return '#8C1D24';
+    if (c.includes('pink') || c.includes('rani')) return '#D63384';
+    if (c.includes('blue') || c.includes('peacock')) return '#0D6EFD';
+    if (c.includes('green') || c.includes('emerald')) return '#198754';
+    if (c.includes('yellow') || c.includes('mustard') || c.includes('gold')) return '#D97706';
+    if (c.includes('purple') || c.includes('lavender') || c.includes('wine')) return '#6F42C1';
+    if (c.includes('maroon')) return '#52111C';
+    if (c.includes('orange') || c.includes('peach')) return '#EA580C';
+    if (c.includes('white') || c.includes('ivory') || c.includes('cream')) return '#FFFFFF';
+    if (c.includes('black')) return '#18181B';
+    return '#B08A3C';
+  };
 
   // Record this product view on mount & trigger GA4 view_item
   useEffect(() => {
@@ -724,33 +755,75 @@ Can you please assist me with color availability, live video preview, or order p
               </span>
             </div>
 
-            {/* Color Swatch Display (If color specified) */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#6B625D] uppercase tracking-wider font-serif">
-                Fabric & Color: <span className="text-[#292524]">{product.color} ({product.fabric})</span>
-              </label>
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-7 h-7 rounded-full border-2 border-[#6B1725] ring-2 ring-[#B08A3C]/30 flex items-center justify-center shadow-sm"
-                  style={{
-                    backgroundColor:
-                      product.color.toLowerCase() === 'red' ? '#8C1D24' :
-                        product.color.toLowerCase() === 'pink' ? '#D63384' :
-                          product.color.toLowerCase() === 'blue' ? '#0D6EFD' :
-                            product.color.toLowerCase() === 'green' ? '#198754' :
-                              product.color.toLowerCase() === 'yellow' ? '#FFC107' :
-                                product.color.toLowerCase() === 'purple' ? '#6F42C1' :
-                                  product.color.toLowerCase() === 'maroon' ? '#52111C' :
-                                    product.color.toLowerCase() === 'white' ? '#FFFFFF' : '#B08A3C'
-                  }}
-                  title={product.color}
-                >
-                  <Check size={14} className={product.color.toLowerCase() === 'white' ? 'text-[#292524]' : 'text-white'} />
-                </div>
-                <span className="text-xs font-semibold text-[#292524] bg-white border border-[#B08A3C]/25 px-2.5 py-1 rounded">
-                  {product.color}
-                </span>
+            {/* Color Swatch Display (Variant Options for same design_code) */}
+            <div className="space-y-2.5 bg-white p-4 rounded-2xl border border-[#B08A3C]/30 shadow-sm">
+              <div className="flex items-center justify-between border-b border-[#F3ECE0] pb-2">
+                <label className="text-xs font-bold text-[#6B625D] uppercase tracking-wider font-serif flex items-center gap-1.5">
+                  <span>Color / Design Variant:</span>
+                  <span className="text-[#6B1725] font-extrabold">{product.color}</span>
+                </label>
+                {product.designCode && (
+                  <span className="text-[10px] font-mono font-bold bg-[#6B1725]/10 text-[#6B1725] px-2 py-0.5 rounded border border-[#6B1725]/20">
+                    DESIGN: {product.designCode}
+                  </span>
+                )}
               </div>
+
+              {loadingVariants ? (
+                <div className="flex items-center gap-2 text-xs text-[#6B625D] py-1">
+                  <div className="w-3.5 h-3.5 border-2 border-[#6B1725] border-t-transparent rounded-full animate-spin" />
+                  <span>Loading color options…</span>
+                </div>
+              ) : designVariants.length > 1 ? (
+                <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                  {designVariants.map((variant) => {
+                    const isSelected = variant.id === product.id;
+                    const colorBg = getColorHex(variant.color);
+                    const hasThumbnail = variant.images && variant.images.length > 0;
+
+                    return (
+                      <Link
+                        key={variant.id}
+                        href={`/product/${variant.slug}`}
+                        className={`group relative flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${
+                          isSelected
+                            ? 'border-[#6B1725] bg-[#6B1725]/10 text-[#6B1725] ring-2 ring-[#B08A3C]/40 font-bold shadow-sm'
+                            : 'border-[#B08A3C]/30 bg-[#FAF7F0]/60 text-[#292524] hover:border-[#6B1725] hover:bg-white'
+                        }`}
+                        title={`${variant.name} (${variant.color}) - ₹${(variant.salePrice ?? variant.price).toLocaleString('en-IN')}`}
+                      >
+                        {/* Swatch Circle with Image or Color */}
+                        <div className="relative w-5 h-5 rounded-full overflow-hidden border border-stone-300 shadow-inner flex-shrink-0">
+                          {hasThumbnail ? (
+                            <img src={variant.images[0]} alt={variant.color} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="block w-full h-full" style={{ backgroundColor: colorBg }} />
+                          )}
+                        </div>
+
+                        <span>{variant.color}</span>
+
+                        {isSelected && (
+                          <Check size={12} className="text-[#6B1725] flex-shrink-0" />
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2.5 pt-1">
+                  <div
+                    className="w-7 h-7 rounded-full border-2 border-[#6B1725] ring-2 ring-[#B08A3C]/30 flex items-center justify-center shadow-sm"
+                    style={{ backgroundColor: getColorHex(product.color) }}
+                    title={product.color}
+                  >
+                    <Check size={14} className={product.color.toLowerCase() === 'white' ? 'text-[#292524]' : 'text-white'} />
+                  </div>
+                  <span className="text-xs font-semibold text-[#292524] bg-[#FAF7F0] border border-[#B08A3C]/25 px-3 py-1 rounded-lg">
+                    {product.color} ({product.fabric})
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Purchase CTA Buttons */}

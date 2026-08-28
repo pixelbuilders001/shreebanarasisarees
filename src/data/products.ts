@@ -22,6 +22,7 @@ export interface Product {
   blousePiece: string;
   work: string;
   care: string;
+  designCode?: string;
 }
 
 export const PRODUCTS: Product[] = [

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sbs-pwa-cache-v6';
+const CACHE_NAME = 'sbs-pwa-cache-v7';
 
 // Core assets to cache immediately on installation
 const PRECACHE_ASSETS = [
@@ -43,8 +43,13 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const request = event.request;
 
-  // Only handle GET requests and skip Supabase edge functions/API endpoints
-  if (request.method !== 'GET' || request.url.includes('/api/') || request.url.includes('supabase.co')) {
+  // Only handle GET requests and skip API, Supabase, and Next.js internal /_next/ static/HMR assets
+  if (
+    request.method !== 'GET' ||
+    request.url.includes('/api/') ||
+    request.url.includes('supabase.co') ||
+    request.url.includes('/_next/')
+  ) {
     return;
   }
 

@@ -31,6 +31,8 @@ export interface DbInventory {
   status: string;
   created_at: string;
   sku: string | null;
+  design_code?: string | null;
+  hsn_code?: string | null;
   description: string | null;
   mrp: number | null;
   discount_amount: number | null;
@@ -133,8 +135,34 @@ export function mapDbProductToProduct(item: DbInventory): Product {
     length: "5.5 meters",
     blousePiece: "0.8 meters",
     work: "Traditional woven borders and zari motifs",
-    care: "Dry Clean Only"
+    care: "Dry Clean Only",
+    designCode: item.design_code || undefined
   };
+}
+
+/**
+ * Fetch all active sarees sharing the same design_code.
+ */
+export async function fetchDesignVariants(designCode?: string | null): Promise<Product[]> {
+  if (!designCode || !designCode.trim()) return [];
+  try {
+    const { data, error } = await supabase
+      .from('inventory')
+      .select('*, inventory_images(*)')
+      .eq('status', 'active')
+      .eq('design_code', designCode.trim().toUpperCase());
+
+    if (error) {
+      console.error('Error fetching design variants:', error);
+      return [];
+    }
+
+    const dbItems = (data || []) as DbInventory[];
+    return dbItems.map(mapDbProductToProduct);
+  } catch (err) {
+    console.error('Exception in fetchDesignVariants:', err);
+    return [];
+  }
 }
 
 /**

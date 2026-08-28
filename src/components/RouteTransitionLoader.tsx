@@ -100,7 +100,7 @@ export default function RouteTransitionLoader() {
             targetUrl.origin === currentUrl.origin &&
             (targetUrl.pathname !== currentUrl.pathname || targetUrl.search !== currentUrl.search)
           ) {
-            setIsLoading(true);
+            setTimeout(() => setIsLoading(true), 0);
           }
         } catch (e) { }
       }
@@ -117,7 +117,7 @@ export default function RouteTransitionLoader() {
             targetUrl.origin === currentUrl.origin &&
             (targetUrl.pathname !== currentUrl.pathname || targetUrl.search !== currentUrl.search)
           ) {
-            setIsLoading(true);
+            setTimeout(() => setIsLoading(true), 0);
           }
         } catch (e) { }
       }
@@ -125,7 +125,7 @@ export default function RouteTransitionLoader() {
     };
 
     const handlePopState = () => {
-      setIsLoading(true);
+      setTimeout(() => setIsLoading(true), 0);
     };
 
     document.addEventListener('click', handleAnchorClick, { capture: true });
