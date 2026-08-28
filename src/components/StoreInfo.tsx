@@ -32,7 +32,7 @@ export const StoreInfo: React.FC = () => {
                   Shree Banarasi Sarees
                 </h3>
                 <p className="text-[11px] text-gold font-bold tracking-widest uppercase">
-                  श्री बनारसी साड़ियाँ
+                  श्री बनारसी साड़ीज़
                 </p>
               </div>
 

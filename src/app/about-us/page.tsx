@@ -65,7 +65,7 @@ export default function AboutUs() {
 
               <div className="text-xs sm:text-sm text-dark-brown/80 space-y-4 leading-relaxed font-light">
                 <p>
-                  Shree Banarasi Sarees (श्री बनारसी साड़ियाँ) was founded with a singular mission: to make premium, authentic Indian ethnic wear accessible to families in Bihar. Strategically located at Rudauli Chowk, Harpur Aloth, Samastipur, our physical showroom has served thousands of local brides, mothers, and fashion enthusiasts seeking genuine craftsmanship.
+                  Shree Banarasi Sarees (श्री बनारसी साड़ीज़) was founded with a singular mission: to make premium, authentic Indian ethnic wear accessible to families in Bihar. Strategically located at Rudauli Chowk, Harpur Aloth, Samastipur, our physical showroom has served thousands of local brides, mothers, and fashion enthusiasts seeking genuine craftsmanship.
                 </p>
                 <p>
                   Unlike generic storefronts, we source our garments directly from traditional artisan clusters. From the handloom hubs of Varanasi to the intricate Chikankari artisans of Lucknow and the tie-dye specialists of Kutch, each saree in our collection is handpicked, quality-checked, and priced transparently.

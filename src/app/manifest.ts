@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Shree Banarasi Sarees | श्री बनारसी साड़ियाँ',
+    name: 'Shree Banarasi Sarees | श्री बनारसी साड़ीज़',
     short_name: 'Shree Banarasi',
     description: 'Shop premium Banarasi, Chikankari, Bandhani, Organza, and Chanderi sarees. Exquisite Indian ethnic fashion at accessible prices.',
     start_url: '/',

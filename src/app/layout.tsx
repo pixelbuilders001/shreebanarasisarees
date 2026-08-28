@@ -34,7 +34,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Shree Banarasi Sarees | श्री बनारसी साड़ियाँ - Premium Indian Sarees",
+  title: "Shree Banarasi Sarees | श्री बनारसी साड़ीज़ - Premium Indian Sarees",
   description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
   keywords: "sarees, banarasi silk, chikankari, bandhani, organza, wedding saree, bridal wear, samastipur, bihar",
   appleWebApp: {
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     title: "Shree Banarasi",
   },
   openGraph: {
-    title: "Shree Banarasi Sarees | श्री बनारसी साड़ियाँ",
+    title: "Shree Banarasi Sarees | श्री बनारसी साड़ीज़",
     description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
     url: "https://shreebanarasisarees.in",
     siteName: "Shree Banarasi Sarees",
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Shree Banarasi Sarees | श्री बनारसी साड़ियाँ",
+    title: "Shree Banarasi Sarees | श्री बनारसी साड़ीज़",
     description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
     images: ["https://shreebanarasisarees.in/og_image.jpg"],
   },

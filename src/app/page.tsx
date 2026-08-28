@@ -46,7 +46,7 @@ export default async function Home() {
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": "Shree Banarasi Sarees",
-    "alternateName": "श्री बनारसी साड़ियाँ",
+    "alternateName": "श्री बनारसी साड़ीज़",
     "url": "https://shreebanarasisarees.in",
     "logo": "https://shreebanarasisarees.in/brand_logo.png",
     "description": "Premium traditional Indian ethnic fashion showroom in Samastipur, Bihar. Exquisite handloom sarees, Banarasi, Chikankari, Organza and wedding bridal collections.",
