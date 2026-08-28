@@ -31,7 +31,8 @@ import {
   ChevronLeft,
   ChevronRight,
   HelpCircle,
-  RotateCcw
+  RotateCcw,
+  Plus
 } from 'lucide-react';
 import { checkDeliveryServiceability, fetchDesignVariants, supabase } from '../../../data/supabase';
 import { YouMayAlsoLike } from '../../../components/YouMayAlsoLike';
@@ -108,8 +109,10 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   // Design Variants state
   const [designVariants, setDesignVariants] = useState<Product[]>([]);
   const [loadingVariants, setLoadingVariants] = useState(false);
+  const [showAllVariants, setShowAllVariants] = useState(false);
 
   useEffect(() => {
+    setShowAllVariants(false);
     if (product.designCode && typeof fetchDesignVariants === 'function') {
       setLoadingVariants(true);
       fetchDesignVariants(product.designCode)
@@ -758,9 +761,14 @@ Can you please assist me with color availability, live video preview, or order p
             {/* Color Swatch Display (Variant Options for same design_code) */}
             <div className="space-y-2.5 bg-white p-4 rounded-2xl border border-[#B08A3C]/30 shadow-sm">
               <div className="flex items-center justify-between border-b border-[#F3ECE0] pb-2">
-                <label className="text-xs font-bold text-[#6B625D] uppercase tracking-wider font-serif flex items-center gap-1.5">
+                <label className="text-xs font-bold text-[#6B625D] uppercase tracking-wider font-serif flex items-center gap-1.5 flex-wrap">
                   <span>Color / Design Variant:</span>
                   <span className="text-[#6B1725] font-extrabold">{product.color}</span>
+                  {designVariants.length > 1 && (
+                    <span className="text-[11px] font-normal text-[#6B625D] normal-case font-sans">
+                      ({designVariants.length} available)
+                    </span>
+                  )}
                 </label>
                 {product.designCode && (
                   <span className="text-[10px] font-mono font-bold bg-[#6B1725]/10 text-[#6B1725] px-2 py-0.5 rounded border border-[#6B1725]/20">
@@ -775,40 +783,86 @@ Can you please assist me with color availability, live video preview, or order p
                   <span>Loading color options…</span>
                 </div>
               ) : designVariants.length > 1 ? (
-                <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                  {designVariants.map((variant) => {
-                    const isSelected = variant.id === product.id;
-                    const colorBg = getColorHex(variant.color);
-                    const hasThumbnail = variant.images && variant.images.length > 0;
+                (() => {
+                  const MAX_VISIBLE_VARIANTS = 4;
+                  const hasExcessVariants = designVariants.length > MAX_VISIBLE_VARIANTS;
 
-                    return (
-                      <Link
-                        key={variant.id}
-                        href={`/product/${variant.slug}`}
-                        className={`group relative flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${isSelected
-                          ? 'border-[#6B1725] bg-[#6B1725]/10 text-[#6B1725] ring-2 ring-[#B08A3C]/40 font-bold shadow-sm'
-                          : 'border-[#B08A3C]/30 bg-[#FAF7F0]/60 text-[#292524] hover:border-[#6B1725] hover:bg-white'
-                          }`}
-                        title={`${variant.name} (${variant.color}) - ₹${(variant.salePrice ?? variant.price).toLocaleString('en-IN')}`}
-                      >
-                        {/* Swatch Circle with Image or Color */}
-                        <div className="relative w-5 h-5 rounded-full overflow-hidden border border-stone-300 shadow-inner flex-shrink-0">
-                          {hasThumbnail ? (
-                            <img src={variant.images[0]} alt={variant.color} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="block w-full h-full" style={{ backgroundColor: colorBg }} />
-                          )}
-                        </div>
+                  let displayedVariants = designVariants;
+                  if (!showAllVariants && hasExcessVariants) {
+                    const selectedIndex = designVariants.findIndex(v => v.id === product.id);
+                    if (selectedIndex < MAX_VISIBLE_VARIANTS) {
+                      displayedVariants = designVariants.slice(0, MAX_VISIBLE_VARIANTS);
+                    } else {
+                      displayedVariants = [
+                        ...designVariants.slice(0, MAX_VISIBLE_VARIANTS - 1),
+                        designVariants[selectedIndex >= 0 ? selectedIndex : 0]
+                      ];
+                    }
+                  }
 
-                        <span>{variant.color}</span>
+                  const hiddenCount = designVariants.length - displayedVariants.length;
 
-                        {isSelected && (
-                          <Check size={12} className="text-[#6B1725] flex-shrink-0" />
-                        )}
-                      </Link>
-                    );
-                  })}
-                </div>
+                  return (
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      {displayedVariants.map((variant) => {
+                        const isSelected = variant.id === product.id;
+                        const colorBg = getColorHex(variant.color);
+                        const hasThumbnail = variant.images && variant.images.length > 0;
+
+                        return (
+                          <Link
+                            key={variant.id}
+                            href={`/product/${variant.slug}`}
+                            className={`group relative flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${isSelected
+                              ? 'border-[#6B1725] bg-[#6B1725]/10 text-[#6B1725] ring-2 ring-[#B08A3C]/40 font-bold shadow-sm'
+                              : 'border-[#B08A3C]/30 bg-[#FAF7F0]/60 text-[#292524] hover:border-[#6B1725] hover:bg-white'
+                              }`}
+                            title={`${variant.name} (${variant.color}) - ₹${(variant.salePrice ?? variant.price).toLocaleString('en-IN')}`}
+                          >
+                            {/* Swatch Circle with Image or Color */}
+                            <div className="relative w-5 h-5 rounded-full overflow-hidden border border-stone-300 shadow-inner flex-shrink-0">
+                              {hasThumbnail ? (
+                                <img src={variant.images[0]} alt={variant.color} className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="block w-full h-full" style={{ backgroundColor: colorBg }} />
+                              )}
+                            </div>
+
+                            <span>{variant.color}</span>
+
+                            {isSelected && (
+                              <Check size={12} className="text-[#6B1725] flex-shrink-0" />
+                            )}
+                          </Link>
+                        );
+                      })}
+
+                      {!showAllVariants && hiddenCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllVariants(true)}
+                          className="group flex items-center gap-1 px-3 py-1.5 rounded-full border border-[#6B1725] bg-[#6B1725]/5 text-[#6B1725] hover:bg-[#6B1725] hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
+                          title="View all color variants"
+                        >
+                          <Plus size={13} className="transition-transform group-hover:rotate-90" />
+                          <span>+{hiddenCount} More</span>
+                        </button>
+                      )}
+
+                      {showAllVariants && hasExcessVariants && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllVariants(false)}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-stone-300 bg-stone-100 text-stone-600 hover:bg-stone-200 text-xs font-semibold transition-all cursor-pointer"
+                          title="Collapse color variants"
+                        >
+                          <ChevronUp size={13} />
+                          <span>Show Less</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()
               ) : (
                 <div className="flex items-center gap-2.5 pt-1">
                   <div
