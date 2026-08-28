@@ -389,7 +389,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
   // WhatsApp Message Generator prefilled with current saree details
   const handleWhatsAppInquiry = () => {
-    const whatsappNumber = "9191620390946";
+    const whatsappNumber = "91620390946";
     const textMessage = `Namaste Shree Banarasi Sarees! 🌸
 I am interested in buying this saree from your store:
 
@@ -785,11 +785,10 @@ Can you please assist me with color availability, live video preview, or order p
                       <Link
                         key={variant.id}
                         href={`/product/${variant.slug}`}
-                        className={`group relative flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${
-                          isSelected
-                            ? 'border-[#6B1725] bg-[#6B1725]/10 text-[#6B1725] ring-2 ring-[#B08A3C]/40 font-bold shadow-sm'
-                            : 'border-[#B08A3C]/30 bg-[#FAF7F0]/60 text-[#292524] hover:border-[#6B1725] hover:bg-white'
-                        }`}
+                        className={`group relative flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${isSelected
+                          ? 'border-[#6B1725] bg-[#6B1725]/10 text-[#6B1725] ring-2 ring-[#B08A3C]/40 font-bold shadow-sm'
+                          : 'border-[#B08A3C]/30 bg-[#FAF7F0]/60 text-[#292524] hover:border-[#6B1725] hover:bg-white'
+                          }`}
                         title={`${variant.name} (${variant.color}) - ₹${(variant.salePrice ?? variant.price).toLocaleString('en-IN')}`}
                       >
                         {/* Swatch Circle with Image or Color */}
