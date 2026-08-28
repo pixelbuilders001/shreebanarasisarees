@@ -94,21 +94,21 @@ export const CampaignSection: React.FC<CampaignSectionProps> = ({ slot, initialC
   }
 
   return (
-    <section className="my-2 sm:my-8 max-w-7xl mx-auto px-0 sm:px-4 animate-fade-in">
+    <section className="my-1 sm:my-3 max-w-7xl mx-auto px-4 animate-fade-in">
       {/* Campaign Header Details (Centered) - Only render if title is provided */}
       {campaign.title && campaign.title.trim() !== '' && (
-        <div className="text-center mb-2 sm:mb-6 px-4">
-          <div className="flex items-center justify-center gap-3 mb-1 sm:mb-2">
+        <div className="text-center mb-2 sm:mb-4 px-2">
+          <div className="flex items-center justify-center gap-3 mb-1">
             <div className="w-8 h-px bg-[#B08A3C]/50" />
             <span className="text-[10px] sm:text-xs text-[#B08A3C] uppercase tracking-[0.2em] font-bold block font-sans">
               Exclusive Campaign
             </span>
             <div className="w-8 h-px bg-[#B08A3C]/50" />
           </div>
-          <h2 className="font-serif text-xl sm:text-4xl font-extrabold tracking-wide text-[#292524]">
+          <h2 className="font-serif text-xl sm:text-3xl font-extrabold tracking-wide text-[#292524]">
             {campaign.title}
           </h2>
-          <div className="w-12 sm:w-16 h-0.5 bg-[#6B1725] mx-auto my-2 sm:my-3" />
+          <div className="w-12 sm:w-16 h-0.5 bg-[#6B1725] mx-auto my-1.5 sm:my-2" />
           {campaign.subtitle && campaign.subtitle.trim() !== '' && (
             <p className="text-xs sm:text-sm text-[#6B625D] max-w-xl mx-auto leading-relaxed font-light">
               {campaign.subtitle}
@@ -119,7 +119,7 @@ export const CampaignSection: React.FC<CampaignSectionProps> = ({ slot, initialC
 
       <Link
         href={`/collections/${campaign.slug}`}
-        className="group block relative overflow-hidden rounded-none sm:rounded-2xl border-y sm:border border-[#B08A3C]/20 hover:border-[#B08A3C]/50 hover:shadow-[0_12px_28px_rgba(107,23,37,0.15)] transition-all duration-300"
+        className="group block relative overflow-hidden rounded-xl sm:rounded-2xl border border-[#B08A3C]/20 hover:border-[#B08A3C]/50 hover:shadow-[0_12px_28px_rgba(107,23,37,0.15)] transition-all duration-300"
       >
         <picture className="block w-full">
           {campaign.mobile_banner_url && (

@@ -65,7 +65,7 @@ export const CategoryCard: React.FC = () => {
     : DEFAULT_CATEGORIES;
 
   return (
-    <section className="py-14 sm:py-18 bg-[#FAF7F0] border-b border-[#B08A3C]/15">
+    <section className="pt-10 pb-6 sm:pt-14 sm:pb-8 bg-[#FAF7F0] border-b border-[#B08A3C]/15">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-12">

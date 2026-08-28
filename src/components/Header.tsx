@@ -429,7 +429,7 @@ const HeaderInner: React.FC = () => {
 
           {/* Drawer Container (85% Viewport Width, Max 360px) */}
           <aside
-            className={`fixed top-0 bottom-0 left-0 w-[85vw] max-w-[360px] bg-[#FAF7F0] shadow-2xl flex flex-col z-50 transform transition-transform duration-300 ease-out pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] rounded-r-3xl overflow-hidden ${isMenuAnimating ? 'translate-x-0' : '-translate-x-full'
+            className={`fixed top-0 bottom-0 left-0 w-[85vw] max-w-[360px] bg-[#FAF7F0] shadow-2xl flex flex-col z-50 transform transition-transform duration-300 ease-out pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] overflow-hidden ${isMenuAnimating ? 'translate-x-0' : '-translate-x-full'
               }`}
           >
             {/* DRAWER TOP HEADER */}

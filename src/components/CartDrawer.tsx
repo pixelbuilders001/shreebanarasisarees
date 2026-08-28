@@ -144,7 +144,7 @@ export const CartDrawer: React.FC = () => {
 
       {/* Drawer Container */}
       <div className="absolute inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
-        <div className="w-screen max-w-md bg-[#FFF9F0] border-l border-[#B08A3C]/25 flex flex-col shadow-2xl animate-slide-in rounded-l-3xl overflow-hidden">
+        <div className="w-screen max-w-md bg-[#FFF9F0] border-l border-[#B08A3C]/25 flex flex-col shadow-2xl animate-slide-in overflow-hidden">
           
           {/* Header */}
           <div className="px-4 py-3.5 bg-white border-b border-[#B08A3C]/20 flex items-center justify-between shrink-0">
