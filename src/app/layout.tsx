@@ -37,6 +37,7 @@ export const metadata: Metadata = {
   title: "Shree Banarasi Sarees | श्री बनारसी साड़ीज़ - Premium Indian Sarees",
   description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
   keywords: "sarees, banarasi silk, chikankari, bandhani, organza, wedding saree, bridal wear, samastipur, bihar",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

@@ -104,16 +104,21 @@ export const saveFCMTokenToSupabase = async (token: string, userId: string | nul
     if (existingList && existingList.length > 0) {
       const primaryRecord = existingList[0];
 
-      // Update primary token record
+      // Update primary token record without setting null user_id if column has NOT NULL constraint
+      const updatePayload: Record<string, any> = {
+        is_active: true,
+        device_type: deviceType,
+        user_agent: userAgent,
+        updated_at: now,
+      };
+
+      if (userId) {
+        updatePayload.user_id = userId;
+      }
+
       const { error: updateError } = await supabase
         .from("push_tokens")
-        .update({
-          user_id: userId || primaryRecord.user_id || null,
-          is_active: true,
-          device_type: deviceType,
-          user_agent: userAgent,
-          updated_at: now,
-        })
+        .update(updatePayload)
         .eq("id", primaryRecord.id);
 
       if (updateError) {
@@ -131,18 +136,23 @@ export const saveFCMTokenToSupabase = async (token: string, userId: string | nul
       }
     } else {
       // Insert a new token record
+      const insertPayload: Record<string, any> = {
+        id: crypto.randomUUID(),
+        fcm_token: token,
+        device_type: deviceType,
+        user_agent: userAgent,
+        is_active: true,
+        created_at: now,
+        updated_at: now,
+      };
+
+      if (userId) {
+        insertPayload.user_id = userId;
+      }
+
       const { error: insertError } = await supabase
         .from("push_tokens")
-        .insert({
-          id: crypto.randomUUID(),
-          user_id: userId || null,
-          fcm_token: token,
-          device_type: deviceType,
-          user_agent: userAgent,
-          is_active: true,
-          created_at: now,
-          updated_at: now,
-        });
+        .insert(insertPayload);
 
       if (insertError) {
         console.error("[FCM] Error inserting new token in Supabase:", insertError);
@@ -181,14 +191,13 @@ export const disableFCMTokenInSupabase = async (token: string): Promise<boolean>
 };
 
 /**
- * Disassociates an FCM token from a user (e.g. on logout) to prevent notifications going to wrong sessions.
+ * Disassociates an FCM token from a user (e.g. on logout) by setting is_active = false.
  */
 export const disassociateFCMTokenInSupabase = async (token: string): Promise<boolean> => {
   try {
     const { error } = await supabase
       .from("push_tokens")
       .update({
-        user_id: null,
         is_active: false,
         updated_at: new Date().toISOString(),
       })
