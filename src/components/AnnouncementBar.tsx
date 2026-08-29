@@ -1,18 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Smartphone } from 'lucide-react';
+import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 
 export const AnnouncementBar: React.FC = () => {
-  const [isStandalone, setIsStandalone] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const standalone = window.matchMedia('(display-mode: standalone)').matches 
-      || (navigator as any).standalone 
-      || document.referrer.includes('android-app://');
-    setIsStandalone(standalone);
-  }, []);
+  const isPwaInstalled = useIsPwaInstalled();
 
   const handlePwaInstall = async () => {
     const promptEvent = typeof window !== 'undefined' ? (window as any).deferredPwaPrompt : null;
@@ -22,6 +15,7 @@ export const AnnouncementBar: React.FC = () => {
         const { outcome } = await promptEvent.userChoice;
         if (outcome === 'accepted') {
           (window as any).deferredPwaPrompt = null;
+          markPwaAsInstalled();
         }
       } catch (err) {
         console.error('PWA install error:', err);
@@ -39,8 +33,8 @@ export const AnnouncementBar: React.FC = () => {
       <span className="hidden sm:inline-block w-1.5 h-1.5 rounded-full bg-[#B08A3C]" />
       <span className="hidden sm:inline-block text-[#D4B870] font-semibold">COD Available 🇮🇳</span>
 
-      {!isStandalone && (
-        <>
+      {!isPwaInstalled && (
+        <span className="sm:hidden inline-flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-[#B08A3C]" />
           <button
             onClick={handlePwaInstall}
@@ -50,7 +44,7 @@ export const AnnouncementBar: React.FC = () => {
             <Smartphone size={12} className="text-[#D4B870]" />
             <span>Install App</span>
           </button>
-        </>
+        </span>
       )}
     </div>
   );

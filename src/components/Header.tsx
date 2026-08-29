@@ -27,6 +27,7 @@ import {
   Download,
   Smartphone
 } from 'lucide-react';
+import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 
 import { useStore } from '../context/StoreContext';
 import { AnnouncementBar } from './AnnouncementBar';
@@ -102,20 +103,7 @@ const HeaderInner: React.FC = () => {
   const [isMobileSearchFocused, setIsMobileSearchFocused] = useState(false);
 
   // PWA Install state
-  const [isStandalone, setIsStandalone] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const checkStandalone = () => {
-      const standalone = window.matchMedia('(display-mode: standalone)').matches 
-        || (navigator as any).standalone 
-        || document.referrer.includes('android-app://');
-      setIsStandalone(standalone);
-    };
-
-    checkStandalone();
-  }, []);
+  const isStandalone = useIsPwaInstalled();
 
   const handlePwaInstall = async () => {
     const promptEvent = typeof window !== 'undefined' ? (window as any).deferredPwaPrompt : null;
@@ -125,6 +113,7 @@ const HeaderInner: React.FC = () => {
         const { outcome } = await promptEvent.userChoice;
         if (outcome === 'accepted') {
           (window as any).deferredPwaPrompt = null;
+          markPwaAsInstalled();
         }
       } catch (err) {
         console.error('PWA install error:', err);

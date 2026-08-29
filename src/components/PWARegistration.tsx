@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Download, X, Share } from "lucide-react";
 import { recordPwaInstall } from "@/data/supabase";
 import { event as trackGAEvent } from "@/lib/gtag";
+import { checkIsPwaInstalled, markPwaAsInstalled } from "@/lib/pwaUtils";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -79,6 +80,8 @@ export default function PWARegistration() {
       console.log('[PWA] App was installed successfully');
       setShowPrompt(false);
 
+      markPwaAsInstalled();
+
       const alreadyRecorded = localStorage.getItem('pwa_install_recorded');
       if (!alreadyRecorded) {
         localStorage.setItem('pwa_install_recorded', Date.now().toString());
@@ -98,11 +101,7 @@ export default function PWARegistration() {
     window.addEventListener('appinstalled', handleAppInstalled);
 
     // 3. PWA Install Prompt Banner Handling
-    const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches 
-      || (navigator as any).standalone 
-      || document.referrer.includes('android-app://');
-
-    if (isStandaloneMode) return;
+    if (checkIsPwaInstalled()) return;
 
     const dismissedTime = localStorage.getItem('pwa_prompt_dismissed');
     if (dismissedTime && Date.now() - Number(dismissedTime) < 7 * 24 * 60 * 60 * 1000) {
@@ -148,6 +147,7 @@ export default function PWARegistration() {
       console.log('[PWA] User install choice:', outcome);
 
       if (outcome === 'accepted') {
+        markPwaAsInstalled();
         const platform = getPlatform();
         trackGAEvent("pwa_installed", { event_category: "PWA", platform });
         await recordPwaInstall(platform);

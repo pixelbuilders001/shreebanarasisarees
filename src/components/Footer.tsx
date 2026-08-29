@@ -3,20 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { MessageCircle, Phone, MapPin, Heart, ShieldCheck, Truck, Sparkles, Headset, ChevronDown, ExternalLink, Smartphone, Download } from 'lucide-react';
+import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 
 export const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
   const [openSection, setOpenSection] = useState<string | null>(null);
 
-  const [isStandalone, setIsStandalone] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const standalone = window.matchMedia('(display-mode: standalone)').matches 
-      || (navigator as any).standalone 
-      || document.referrer.includes('android-app://');
-    setIsStandalone(standalone);
-  }, []);
+  const isStandalone = useIsPwaInstalled();
 
   const handlePwaInstall = async () => {
     const promptEvent = typeof window !== 'undefined' ? (window as any).deferredPwaPrompt : null;
@@ -26,6 +19,7 @@ export const Footer: React.FC = () => {
         const { outcome } = await promptEvent.userChoice;
         if (outcome === 'accepted') {
           (window as any).deferredPwaPrompt = null;
+          markPwaAsInstalled();
         }
       } catch (err) {
         console.error('PWA install error:', err);
@@ -100,18 +94,6 @@ export const Footer: React.FC = () => {
                 <MessageCircle size={17} />
               </a>
             </div>
-
-            {!isStandalone && (
-              <div className="pt-2">
-                <button
-                  onClick={handlePwaInstall}
-                  className="w-full py-2 px-3 bg-[#FAF7F0]/10 hover:bg-[#B08A3C] hover:text-[#292524] text-[#D4B870] border border-[#B08A3C]/40 rounded-xl text-xs font-serif font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs group"
-                >
-                  <Smartphone size={15} className="text-[#B08A3C] group-hover:text-[#292524] transition-colors" />
-                  <span>Install Mobile App</span>
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Col 2: Shop */}

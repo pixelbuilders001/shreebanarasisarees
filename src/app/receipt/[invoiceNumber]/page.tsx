@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { Loader2, Printer, AlertTriangle, Smartphone, Sparkles, Download } from 'lucide-react';
+import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzqlsawxvvyvsstyzzff.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -77,15 +78,9 @@ export default function ReceiptPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const [isStandalone, setIsStandalone] = useState(false);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const standalone = window.matchMedia('(display-mode: standalone)').matches 
-          || (navigator as any).standalone 
-          || document.referrer.includes('android-app://');
-        setIsStandalone(standalone);
-    }, []);
+    const [isStandalone] = useState(false);
+    const isPwaInstalled = useIsPwaInstalled();
+    const isInstalled = isStandalone || isPwaInstalled;
 
     const handlePwaInstall = async () => {
         const promptEvent = typeof window !== 'undefined' ? (window as any).deferredPwaPrompt : null;
@@ -95,6 +90,7 @@ export default function ReceiptPage() {
                 const { outcome } = await promptEvent.userChoice;
                 if (outcome === 'accepted') {
                     (window as any).deferredPwaPrompt = null;
+                    markPwaAsInstalled();
                 }
             } catch (err) {
                 console.error('PWA install error:', err);
@@ -305,8 +301,8 @@ export default function ReceiptPage() {
             <div style={{ minHeight: '100vh', background: '#f3f4f6', padding: '32px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 
                 {/* PWA App Install Banner with Popping Animation */}
-                {!isStandalone && (
-                    <div className="no-print" style={{ width: '100%', maxWidth: '760px', marginBottom: '20px' }}>
+                {!isInstalled && (
+                    <div className="no-print sm:hidden" style={{ width: '100%', maxWidth: '760px', marginBottom: '20px' }}>
                         <div style={{
                             background: 'linear-gradient(135deg, #6B1725 0%, #450C16 100%)',
                             borderRadius: '16px',

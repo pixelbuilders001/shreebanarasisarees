@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Smartphone
 } from 'lucide-react';
+import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 import { useStore, CartItem } from '../context/StoreContext';
 import { getProductSlug } from '../data/supabase';
 import { Product } from '../data/products';
@@ -49,15 +50,7 @@ export const CartDrawer: React.FC = () => {
   const [wishlistToastMsg, setWishlistToastMsg] = useState<string | null>(null);
 
   // PWA Install state
-  const [isStandalone, setIsStandalone] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const standalone = window.matchMedia('(display-mode: standalone)').matches 
-      || (navigator as any).standalone 
-      || document.referrer.includes('android-app://');
-    setIsStandalone(standalone);
-  }, []);
+  const isStandalone = useIsPwaInstalled();
 
   const handlePwaInstall = async () => {
     const promptEvent = typeof window !== 'undefined' ? (window as any).deferredPwaPrompt : null;
@@ -67,6 +60,7 @@ export const CartDrawer: React.FC = () => {
         const { outcome } = await promptEvent.userChoice;
         if (outcome === 'accepted') {
           (window as any).deferredPwaPrompt = null;
+          markPwaAsInstalled();
         }
       } catch (err) {
         console.error('PWA install error:', err);
@@ -185,7 +179,7 @@ export const CartDrawer: React.FC = () => {
               {!isStandalone && (
                 <button
                   onClick={handlePwaInstall}
-                  className="inline-flex items-center gap-1 bg-[#6B1725]/10 hover:bg-[#6B1725]/20 text-[#6B1725] px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer border border-[#6B1725]/20 active:scale-95"
+                  className="inline-flex items-center gap-1 bg-[#6B1725]/10 hover:bg-[#6B1725]/20 text-[#6B1725] px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer border border-[#6B1725]/20 active:scale-95 sm:hidden"
                   title="Install Mobile App"
                 >
                   <Smartphone size={13} />
