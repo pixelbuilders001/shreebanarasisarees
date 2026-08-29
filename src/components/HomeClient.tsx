@@ -81,23 +81,24 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
         {/* 4. Bestsellers Section */}
         <section className="pt-8 pb-14 sm:pt-10 sm:pb-18 px-4 bg-[#FFFFFF] border-b border-[#B08A3C]/15">
           <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-10">
+            <div className="flex items-end justify-between mb-6 sm:mb-10 gap-2">
               <div>
-                <span className="text-[10px] sm:text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-1">
+                <span className="text-[10px] sm:text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-0.5 sm:mb-1">
                   POPULAR FAVORITES
                 </span>
-                <h2 className="font-serif text-2xl sm:text-4xl font-extrabold text-[#292524] tracking-wide">
+                <h2 className="font-serif text-xl sm:text-4xl font-extrabold text-[#292524] tracking-wide">
                   Bestsellers
                 </h2>
-                <p className="text-xs sm:text-sm text-[#6B625D] font-light mt-1">
+                <p className="text-xs sm:text-sm text-[#6B625D] font-light mt-1 hidden sm:block">
                   Some of our most-loved sarees chosen by our customers.
                 </p>
               </div>
               <Link
                 href="/sarees"
-                className="mt-3 sm:mt-0 text-xs font-serif font-bold text-[#6B1725] hover:text-[#52111C] flex items-center gap-1 group transition-colors"
+                className="text-xs font-serif font-bold text-[#6B1725] hover:text-[#52111C] flex items-center gap-1 group transition-colors shrink-0"
               >
-                <span>View All Sarees</span>
+                <span className="hidden sm:inline">View All Sarees</span>
+                <span className="sm:hidden">View All</span>
                 <ArrowRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
@@ -138,28 +139,28 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
               {[
                 {
                   title: "Wedding & Bridal",
-                  description: "Heavy Banarasi Katan silks with rich gold zari",
+                  // description: "Heavy Banarasi Katan silks with rich gold zari",
                   occasion: "Wedding",
                   image: "/occasions/wedding_bridal.png",
                   badge: "Bridal Trousseau"
                 },
                 {
                   title: "Festive Celebrations",
-                  description: "Vibrant Bandhanis, Chikankaris & festive colors",
+                  // description: "Vibrant Bandhanis, Chikankaris & festive colors",
                   occasion: "Festive",
                   image: "/occasions/festive_celebrations.png",
                   badge: "Diwali & Pooja"
                 },
                 {
                   title: "Party & Evenings",
-                  description: "Ethereal organzas & sequined georgettes",
+                  // description: "Ethereal organzas & sequined georgettes",
                   occasion: "Party",
                   image: "/occasions/party_evenings.png",
                   badge: "Contemporary"
                 },
                 {
                   title: "Everyday & Office",
-                  description: "Breathable chanderi cottons & lightweight weaves",
+                  // description: "Breathable chanderi cottons & lightweight weaves",
                   occasion: "Daily Wear",
                   image: "/occasions/everyday_office.png",
                   badge: "Comfort Wear"
@@ -192,10 +193,10 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
                     <h3 className="font-serif text-lg sm:text-xl font-bold text-[#FAF7F0] group-hover:text-[#D4B870] transition-colors leading-tight">
                       {card.title}
                     </h3>
-                    <p className="text-[11px] sm:text-xs text-[#FAF7F0]/75 font-light mt-1 line-clamp-2">
-                      {card.description}
-                    </p>
-                    <div className="mt-3 flex items-center gap-1 text-[11px] font-serif font-bold text-[#D4B870] uppercase tracking-wider">
+                    {/* <p className="text-[11px] sm:text-xs text-[#FAF7F0]/75 font-light mt-1 line-clamp-2">
+                      {card?.description}
+                    </p> */}
+                    <div className="mt-2 flex items-center gap-1 text-[11px] font-serif font-bold text-[#D4B870] uppercase tracking-wider">
                       <span>Explore Collection</span>
                       <ArrowRight size={12} className="transform group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -296,15 +297,15 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
 
         {/* 10. New Arrivals Section */}
         <section className="py-14 sm:py-18 px-4 max-w-7xl mx-auto border-b border-[#B08A3C]/15">
-          <div className="flex items-end justify-between gap-4 mb-6 sm:mb-8">
+          <div className="flex items-end justify-between gap-2 mb-6 sm:mb-8">
             <div>
-              <span className="text-[10px] sm:text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-1">
+              <span className="text-[10px] sm:text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-0.5 sm:mb-1">
                 JUST ARRIVED ON THE LOOM
               </span>
-              <h2 className="font-serif text-2xl sm:text-4xl font-extrabold text-[#292524] tracking-wide">
+              <h2 className="font-serif text-xl sm:text-4xl font-extrabold text-[#292524] tracking-wide">
                 New Arrivals
               </h2>
-              <p className="text-xs sm:text-sm text-[#6B625D] font-light mt-1">
+              <p className="text-xs sm:text-sm text-[#6B625D] font-light mt-1 hidden sm:block">
                 Fresh colours, new weaves and timeless favourites.
               </p>
             </div>
@@ -312,24 +313,28 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
             <div className="flex items-center gap-2 flex-shrink-0">
               <Link
                 href="/sarees?filter=new"
-                className="text-xs font-serif font-bold text-[#6B1725] hover:underline underline-offset-2 mr-2 hidden sm:inline-block"
+                className="text-xs font-serif font-bold text-[#6B1725] hover:text-[#52111C] flex items-center gap-1 group transition-colors mr-1 sm:mr-2"
               >
-                View All New →
+                <span className="hidden sm:inline">View All New</span>
+                <span className="sm:hidden">View All</span>
+                <ArrowRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
               </Link>
-              <button
-                onClick={scrollLeft}
-                className="p-2.5 rounded-full border border-[#B08A3C]/30 bg-white hover:bg-[#FAF7F0] text-[#292524] transition-all shadow-sm active:scale-95"
-                aria-label="Scroll left"
-              >
-                <ArrowLeft size={16} />
-              </button>
-              <button
-                onClick={scrollRight}
-                className="p-2.5 rounded-full border border-[#B08A3C]/30 bg-white hover:bg-[#FAF7F0] text-[#292524] transition-all shadow-sm active:scale-95"
-                aria-label="Scroll right"
-              >
-                <ArrowRight size={16} />
-              </button>
+              <div className="hidden sm:flex items-center gap-2">
+                <button
+                  onClick={scrollLeft}
+                  className="p-2.5 rounded-full border border-[#B08A3C]/30 bg-white hover:bg-[#FAF7F0] text-[#292524] transition-all shadow-sm active:scale-95"
+                  aria-label="Scroll left"
+                >
+                  <ArrowLeft size={16} />
+                </button>
+                <button
+                  onClick={scrollRight}
+                  className="p-2.5 rounded-full border border-[#B08A3C]/30 bg-white hover:bg-[#FAF7F0] text-[#292524] transition-all shadow-sm active:scale-95"
+                  aria-label="Scroll right"
+                >
+                  <ArrowRight size={16} />
+                </button>
+              </div>
             </div>
           </div>
 

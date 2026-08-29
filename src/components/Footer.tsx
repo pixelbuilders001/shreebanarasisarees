@@ -1,12 +1,39 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MessageCircle, Phone, MapPin, Heart, ShieldCheck, Truck, Sparkles, Headset, ChevronDown, ExternalLink } from 'lucide-react';
+import { MessageCircle, Phone, MapPin, Heart, ShieldCheck, Truck, Sparkles, Headset, ChevronDown, ExternalLink, Smartphone, Download } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
   const [openSection, setOpenSection] = useState<string | null>(null);
+
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const standalone = window.matchMedia('(display-mode: standalone)').matches 
+      || (navigator as any).standalone 
+      || document.referrer.includes('android-app://');
+    setIsStandalone(standalone);
+  }, []);
+
+  const handlePwaInstall = async () => {
+    const promptEvent = typeof window !== 'undefined' ? (window as any).deferredPwaPrompt : null;
+    if (promptEvent) {
+      try {
+        await promptEvent.prompt();
+        const { outcome } = await promptEvent.userChoice;
+        if (outcome === 'accepted') {
+          (window as any).deferredPwaPrompt = null;
+        }
+      } catch (err) {
+        console.error('PWA install error:', err);
+      }
+    } else {
+      alert('To install our app:\n1. Tap the Share icon in your browser\n2. Select "Add to Home Screen"');
+    }
+  };
 
   const toggleSection = (section: string) => {
     setOpenSection(prev => (prev === section ? null : section));
@@ -73,6 +100,18 @@ export const Footer: React.FC = () => {
                 <MessageCircle size={17} />
               </a>
             </div>
+
+            {!isStandalone && (
+              <div className="pt-2">
+                <button
+                  onClick={handlePwaInstall}
+                  className="w-full py-2 px-3 bg-[#FAF7F0]/10 hover:bg-[#B08A3C] hover:text-[#292524] text-[#D4B870] border border-[#B08A3C]/40 rounded-xl text-xs font-serif font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs group"
+                >
+                  <Smartphone size={15} className="text-[#B08A3C] group-hover:text-[#292524] transition-colors" />
+                  <span>Install Mobile App</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Col 2: Shop */}
@@ -272,8 +311,18 @@ export const Footer: React.FC = () => {
             )}
           </div>
 
-          {/* Always accessible mobile WhatsApp CTA & Socials */}
-          <div className="pt-4 flex flex-col gap-3">
+          {/* Always accessible mobile WhatsApp CTA & PWA Install CTA */}
+          <div className="pt-4 flex flex-col gap-2.5">
+            {!isStandalone && (
+              <button
+                onClick={handlePwaInstall}
+                className="w-full py-3 px-4 bg-[#B08A3C] hover:bg-[#97732E] text-[#292524] rounded-xl font-serif font-bold text-xs flex items-center justify-center gap-2 shadow-xs active:scale-[0.98] transition-all cursor-pointer"
+              >
+                <Download size={15} />
+                <span>INSTALL MOBILE APP</span>
+              </button>
+            )}
+
             <a
               href="https://wa.me/916203909946"
               target="_blank"

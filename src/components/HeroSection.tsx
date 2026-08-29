@@ -137,16 +137,18 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
 
   if (loading) {
     return (
-      <div className="w-full bg-[#292524] aspect-[4/3] sm:aspect-[16/9] md:aspect-[2.2/1] animate-pulse relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-[shimmer_1.5s_infinite]" />
+      <div className="w-full bg-[#FAF7F0] sm:bg-[#292524] px-3.5 sm:px-0 py-2 sm:py-0">
+        <div className="w-full bg-[#292524] aspect-[2.1/1] sm:aspect-[16/9] md:aspect-[2.1/1] rounded-2xl sm:rounded-none animate-pulse relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-[shimmer_1.5s_infinite]" />
+        </div>
       </div>
     );
   }
 
   return (
-    <section className="relative w-full overflow-hidden bg-[#292524] select-none">
+    <section className="relative w-full overflow-hidden bg-[#FAF7F0] sm:bg-[#292524] select-none px-2 sm:px-0 py-2 sm:py-0">
       <div
-        className="relative w-full aspect-[2.1/1] sm:aspect-[16/9] md:aspect-[2.1/1] lg:aspect-[2.4/1] sm:min-h-[420px] md:min-h-[500px]"
+        className="relative w-full aspect-[2.1/1] sm:aspect-[16/9] md:aspect-[2.1/1] lg:aspect-[2.4/1] sm:min-h-[420px] md:min-h-[500px] rounded-2xl sm:rounded-none overflow-hidden shadow-sm sm:shadow-none border border-[#B08A3C]/20 sm:border-none"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
         onTouchStart={onTouchStart}

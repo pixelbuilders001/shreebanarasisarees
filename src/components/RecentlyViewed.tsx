@@ -92,9 +92,10 @@ export function RecentlyViewed({ viewedIds, excludeId }: RecentlyViewedProps) {
           <div className="flex items-center gap-2">
             <Link
               href="/sarees"
-              className="text-xs font-bold font-serif text-maroon hover:underline underline-offset-2 transition-colors whitespace-nowrap mr-1 hidden sm:block"
+              className="text-xs font-bold font-serif text-maroon hover:underline underline-offset-2 transition-colors whitespace-nowrap mr-1 flex items-center gap-1"
             >
-              View All →
+              <span>View All</span>
+              <span className="sm:inline"> →</span>
             </Link>
             {/* Scroll arrows — visible on all sizes for carousel UX */}
             <button

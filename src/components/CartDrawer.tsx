@@ -15,7 +15,8 @@ import {
   Lock,
   MessageCircle,
   RotateCcw,
-  ShieldCheck
+  ShieldCheck,
+  Smartphone
 } from 'lucide-react';
 import { useStore, CartItem } from '../context/StoreContext';
 import { getProductSlug } from '../data/supabase';
@@ -46,6 +47,34 @@ export const CartDrawer: React.FC = () => {
 
   // Wishlist notification state
   const [wishlistToastMsg, setWishlistToastMsg] = useState<string | null>(null);
+
+  // PWA Install state
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const standalone = window.matchMedia('(display-mode: standalone)').matches 
+      || (navigator as any).standalone 
+      || document.referrer.includes('android-app://');
+    setIsStandalone(standalone);
+  }, []);
+
+  const handlePwaInstall = async () => {
+    const promptEvent = typeof window !== 'undefined' ? (window as any).deferredPwaPrompt : null;
+    if (promptEvent) {
+      try {
+        await promptEvent.prompt();
+        const { outcome } = await promptEvent.userChoice;
+        if (outcome === 'accepted') {
+          (window as any).deferredPwaPrompt = null;
+        }
+      } catch (err) {
+        console.error('PWA install error:', err);
+      }
+    } else {
+      alert('To install our app:\n1. Tap the Share icon in your browser\n2. Select "Add to Home Screen"');
+    }
+  };
 
   // Disable body scroll when drawer is open
   useEffect(() => {
@@ -152,13 +181,25 @@ export const CartDrawer: React.FC = () => {
               <ShoppingBag size={18} className="text-[#6B1725]" />
               Your Bag ({cart.reduce((sum, item) => sum + item.quantity, 0)})
             </h2>
-            <button
-              onClick={() => setIsCartOpen(false)}
-              className="p-1 rounded-full text-[#6B625D]/60 hover:text-[#6B1725] hover:bg-[#FAF7F0] transition-colors cursor-pointer"
-              aria-label="Close cart"
-            >
-              <X size={18} />
-            </button>
+            <div className="flex items-center gap-2">
+              {!isStandalone && (
+                <button
+                  onClick={handlePwaInstall}
+                  className="inline-flex items-center gap-1 bg-[#6B1725]/10 hover:bg-[#6B1725]/20 text-[#6B1725] px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer border border-[#6B1725]/20 active:scale-95"
+                  title="Install Mobile App"
+                >
+                  <Smartphone size={13} />
+                  <span>Install App</span>
+                </button>
+              )}
+              <button
+                onClick={() => setIsCartOpen(false)}
+                className="p-1 rounded-full text-[#6B625D]/60 hover:text-[#6B1725] hover:bg-[#FAF7F0] transition-colors cursor-pointer"
+                aria-label="Close cart"
+              >
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
           {/* Toast Alerts inside Drawer */}

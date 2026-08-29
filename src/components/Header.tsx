@@ -23,7 +23,9 @@ import {
   Tag,
   Gift,
   HelpCircle,
-  Phone
+  Phone,
+  Download,
+  Smartphone
 } from 'lucide-react';
 
 import { useStore } from '../context/StoreContext';
@@ -98,6 +100,39 @@ const HeaderInner: React.FC = () => {
 
   // Search focus state for mobile search overlay
   const [isMobileSearchFocused, setIsMobileSearchFocused] = useState(false);
+
+  // PWA Install state
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const checkStandalone = () => {
+      const standalone = window.matchMedia('(display-mode: standalone)').matches 
+        || (navigator as any).standalone 
+        || document.referrer.includes('android-app://');
+      setIsStandalone(standalone);
+    };
+
+    checkStandalone();
+  }, []);
+
+  const handlePwaInstall = async () => {
+    const promptEvent = typeof window !== 'undefined' ? (window as any).deferredPwaPrompt : null;
+    if (promptEvent) {
+      try {
+        await promptEvent.prompt();
+        const { outcome } = await promptEvent.userChoice;
+        if (outcome === 'accepted') {
+          (window as any).deferredPwaPrompt = null;
+        }
+      } catch (err) {
+        console.error('PWA install error:', err);
+      }
+    } else {
+      alert('To install our app:\n1. Tap the Share icon in your browser\n2. Select "Add to Home Screen"');
+    }
+  };
 
   // Track window scroll for compact header styling
   useEffect(() => {
@@ -683,6 +718,36 @@ const HeaderInner: React.FC = () => {
                       </>
                     )}
                   </div>
+
+                  {/* PWA DOWNLOAD APP CTA (Clean, Minimalist Real-World Style) */}
+                  {!isStandalone && (
+                    <div className="border-t border-[#F3ECE0] pt-3">
+                      <button
+                        onClick={() => {
+                          closeMobileMenu();
+                          handlePwaInstall();
+                        }}
+                        className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white border border-[#F3ECE0] hover:border-[#6B1725]/30 text-left transition-all active:scale-98 shadow-2xs cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-[#6B1725]/10 text-[#6B1725] flex items-center justify-center shrink-0">
+                            <Smartphone size={16} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-[#292524]">Install Mobile App</span>
+                              <span className="text-[9px] bg-[#6B1725]/10 text-[#6B1725] font-semibold px-1.5 py-0.5 rounded-full">FAST</span>
+                            </div>
+                            <p className="text-[10px] text-[#6B625D] truncate">Get live delivery updates</p>
+                          </div>
+                        </div>
+                        <div className="text-[11px] font-serif font-bold text-[#6B1725] flex items-center gap-0.5 shrink-0">
+                          <span>Install</span>
+                          <ChevronRight size={14} />
+                        </div>
+                      </button>
+                    </div>
+                  )}
 
                   {/* WHATSAPP SUPPORT CTA */}
                   <div className="border-t border-[#F3ECE0] pt-4">

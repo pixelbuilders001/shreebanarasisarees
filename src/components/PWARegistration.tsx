@@ -115,7 +115,11 @@ export default function PWARegistration() {
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
+      (window as any).deferredPwaPrompt = e;
       setDeferredPrompt(e as BeforeInstallPromptEvent);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event('pwaPromptAvailable'));
+      }
       setTimeout(() => {
         setShowPrompt(true);
       }, 2500);
@@ -136,10 +140,11 @@ export default function PWARegistration() {
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
+    const promptEvent = deferredPrompt || (typeof window !== "undefined" ? (window as any).deferredPwaPrompt : null);
+    if (!promptEvent) return;
     try {
-      await deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
+      await promptEvent.prompt();
+      const { outcome } = await promptEvent.userChoice;
       console.log('[PWA] User install choice:', outcome);
 
       if (outcome === 'accepted') {
@@ -149,6 +154,7 @@ export default function PWARegistration() {
         localStorage.setItem('pwa_install_recorded', Date.now().toString());
       }
 
+      (window as any).deferredPwaPrompt = null;
       setDeferredPrompt(null);
       setShowPrompt(false);
     } catch (err) {
@@ -165,50 +171,43 @@ export default function PWARegistration() {
   if (!showPrompt) return null;
 
   return (
-    <div className="sm:hidden fixed bottom-20 left-3 right-3 z-50 bg-[#FAF7F0] border border-[#B08A3C]/40 text-[#292524] p-3.5 rounded-2xl shadow-2xl animate-fade-in transition-all">
-      <div className="flex items-start gap-3">
-        <img
-          src="/brand_logo.webp"
-          alt="Shree Banarasi Sarees"
-          className="w-11 h-11 object-contain rounded-xl bg-white p-1 border border-[#B08A3C]/30 shadow-md flex-shrink-0"
-        />
+    <div className="sm:hidden fixed bottom-16 left-3 right-3 z-50 bg-white/95 backdrop-blur-md border border-[#F3ECE0] text-[#292524] p-3 rounded-2xl shadow-xl transition-all">
+      <div className="flex items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <img
+            src="/brand_logo.webp"
+            alt="Shree Banarasi Sarees"
+            className="w-9 h-9 object-contain rounded-lg bg-[#FAF7F0] p-1 border border-[#F3ECE0] shrink-0"
+          />
 
-        <div className="flex-1 min-w-0 pr-6">
-          <h4 className="font-serif font-bold text-sm text-[#292524] leading-tight">
-            Install Shree Banarasi App
-          </h4>
-          <p className="text-xs text-[#6B625D] font-light mt-0.5 leading-snug">
-            {isIOS
-              ? "Tap Share and select 'Add to Home Screen' for faster access."
-              : "Install our app for faster shopping & instant order updates."}
-          </p>
+          <div className="min-w-0">
+            <h4 className="font-serif font-bold text-xs text-[#292524] truncate">
+              Shree Banarasi App
+            </h4>
+            <p className="text-[10px] text-[#6B625D] truncate">
+              {isIOS ? "Tap Share → Add to Home Screen" : "Faster checkout & order updates"}
+            </p>
+          </div>
+        </div>
 
-          {!isIOS && deferredPrompt && (
+        <div className="flex items-center gap-1.5 shrink-0">
+          {!isIOS && (deferredPrompt || (typeof window !== "undefined" && (window as any).deferredPwaPrompt)) && (
             <button
               onClick={handleInstallClick}
-              className="mt-2.5 px-4 py-1.5 bg-[#6B1725] hover:bg-[#52111C] text-[#FAF7F0] rounded-lg text-xs font-serif font-bold tracking-wider uppercase flex items-center gap-1.5 transition-all shadow-sm active:scale-95 border border-[#B08A3C]/30"
+              className="px-3 py-1.5 bg-[#6B1725] hover:bg-[#52111C] text-[#FAF7F0] rounded-xl text-xs font-serif font-bold tracking-wide transition-all active:scale-95 shadow-2xs"
             >
-              <Download size={13} />
-              <span>INSTALL NOW</span>
+              Install
             </button>
           )}
 
-          {isIOS && (
-            <div className="mt-2 text-[11px] text-[#6B1725] font-medium flex items-center gap-1">
-              <span>Tap</span>
-              <Share size={12} className="inline text-[#B08A3C]" />
-              <span>→ Add to Home Screen</span>
-            </div>
-          )}
+          <button
+            onClick={handleDismiss}
+            className="p-1 rounded-full text-[#6B625D] hover:text-[#292524] transition-all"
+            aria-label="Dismiss install prompt"
+          >
+            <X size={15} />
+          </button>
         </div>
-
-        <button
-          onClick={handleDismiss}
-          className="absolute top-3 right-3 p-1 rounded-full text-[#6B625D] hover:text-[#292524] hover:bg-[#B08A3C]/15 transition-all"
-          aria-label="Dismiss install prompt"
-        >
-          <X size={16} />
-        </button>
       </div>
     </div>
   );

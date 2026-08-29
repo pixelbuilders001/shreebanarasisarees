@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
-import { Loader2, Printer, AlertTriangle } from 'lucide-react';
+import { Loader2, Printer, AlertTriangle, Smartphone, Sparkles, Download } from 'lucide-react';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzqlsawxvvyvsstyzzff.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -76,6 +76,33 @@ export default function ReceiptPage() {
     console.log(receipt);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    const [isStandalone, setIsStandalone] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const standalone = window.matchMedia('(display-mode: standalone)').matches 
+          || (navigator as any).standalone 
+          || document.referrer.includes('android-app://');
+        setIsStandalone(standalone);
+    }, []);
+
+    const handlePwaInstall = async () => {
+        const promptEvent = typeof window !== 'undefined' ? (window as any).deferredPwaPrompt : null;
+        if (promptEvent) {
+            try {
+                await promptEvent.prompt();
+                const { outcome } = await promptEvent.userChoice;
+                if (outcome === 'accepted') {
+                    (window as any).deferredPwaPrompt = null;
+                }
+            } catch (err) {
+                console.error('PWA install error:', err);
+            }
+        } else {
+            alert('To install our app:\n1. Tap the Share icon in your browser\n2. Select "Add to Home Screen"');
+        }
+    };
 
     useEffect(() => {
         if (!autoPrint || !receipt) return;
@@ -261,9 +288,95 @@ export default function ReceiptPage() {
                 }
                 @page { margin: 10mm; size: A4; }
                 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                @keyframes pwaPopIn {
+                    0% { opacity: 0; transform: scale(0.85) translateY(20px); }
+                    100% { opacity: 1; transform: scale(1) translateY(0); }
+                }
+                @keyframes pwaIconPulse {
+                    0%, 100% { transform: scale(1); }
+                    50% { transform: scale(1.12); color: #FFF; }
+                }
+                @keyframes pwaBtnPulse {
+                    0%, 100% { transform: scale(1); box-shadow: 0 4px 14px rgba(176, 138, 60, 0.4); }
+                    50% { transform: scale(1.04); box-shadow: 0 6px 20px rgba(212, 184, 112, 0.7); }
+                }
             `}</style>
 
             <div style={{ minHeight: '100vh', background: '#f3f4f6', padding: '32px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                
+                {/* PWA App Install Banner with Popping Animation */}
+                {!isStandalone && (
+                    <div className="no-print" style={{ width: '100%', maxWidth: '760px', marginBottom: '20px' }}>
+                        <div style={{
+                            background: 'linear-gradient(135deg, #6B1725 0%, #450C16 100%)',
+                            borderRadius: '16px',
+                            padding: '18px 22px',
+                            color: '#FAF7F0',
+                            border: '1.5px solid rgba(176, 138, 60, 0.5)',
+                            boxShadow: '0 10px 25px -5px rgba(107, 23, 37, 0.4), 0 8px 10px -6px rgba(107, 23, 37, 0.2)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '16px',
+                            flexWrap: 'wrap',
+                            animation: 'pwaPopIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: '1', minWidth: '240px' }}>
+                                <div style={{
+                                    width: '46px',
+                                    height: '46px',
+                                    borderRadius: '14px',
+                                    background: 'rgba(255, 255, 255, 0.12)',
+                                    border: '1px solid rgba(212, 184, 112, 0.4)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#D4B870',
+                                    flexShrink: 0,
+                                    animation: 'pwaIconPulse 2s infinite ease-in-out'
+                                }}>
+                                    <Smartphone style={{ width: 24, height: 24 }} />
+                                </div>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Sparkles style={{ width: 14, height: 14, color: '#D4B870' }} />
+                                        <h3 style={{ fontFamily: 'Georgia, serif', fontWeight: 'bold', fontSize: '15px', color: '#FFF9F0', margin: 0, letterSpacing: '0.3px' }}>
+                                            Get Order Tracking on Shree Banarasi App
+                                        </h3>
+                                    </div>
+                                    <p style={{ fontSize: '12px', color: '#FAF7F0', opacity: 0.85, margin: '3px 0 0 0', lineHeight: 1.4 }}>
+                                        Install our app for 1-tap order tracking, instant delivery alerts & exclusive offers!
+                                    </p>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={handlePwaInstall}
+                                style={{
+                                    background: 'linear-gradient(135deg, #B08A3C 0%, #D4B870 100%)',
+                                    color: '#292524',
+                                    padding: '10px 20px',
+                                    borderRadius: '12px',
+                                    fontWeight: 'bold',
+                                    fontSize: '13px',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    boxShadow: '0 4px 14px rgba(176, 138, 60, 0.4)',
+                                    transition: 'all 0.2s ease',
+                                    whiteSpace: 'nowrap',
+                                    animation: 'pwaBtnPulse 2.5s infinite ease-in-out'
+                                }}
+                            >
+                                <Download style={{ width: 16, height: 16 }} />
+                                <span>INSTALL APP NOW</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 <div className="no-print" style={{ marginBottom: '20px' }}>
                     <button
                         onClick={handlePrint}

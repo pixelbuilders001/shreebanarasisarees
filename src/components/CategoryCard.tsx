@@ -40,22 +40,23 @@ export const CategoryCard: React.FC = () => {
     <section className="pt-10 pb-6 sm:pt-14 sm:pb-8 bg-[#FAF7F0] border-b border-[#B08A3C]/15">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 sm:mb-8 gap-4">
+        <div className="flex items-end justify-between mb-6 sm:mb-8 gap-2">
           <div>
-            <span className="text-[10px] sm:text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-1">
+            <span className="text-[10px] sm:text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-0.5 sm:mb-1">
               CURATED COLLECTIONS
             </span>
-            <h2 className="font-serif text-2xl sm:text-4xl font-extrabold text-[#292524] tracking-wide">
+            <h2 className="font-serif text-xl sm:text-4xl font-extrabold text-[#292524] tracking-wide">
               Shop by Category
             </h2>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <Link
               href="/sarees"
-              className="text-xs font-serif font-bold text-[#6B1725] hover:text-[#52111C] flex items-center gap-1 group transition-colors mr-1"
+              className="text-xs font-serif font-bold text-[#6B1725] hover:text-[#52111C] flex items-center gap-1 group transition-colors"
             >
-              <span>Explore All Categories</span>
+              <span className="hidden sm:inline">Explore All Categories</span>
+              <span className="sm:hidden">Explore All</span>
               <ArrowRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
             </Link>
 
