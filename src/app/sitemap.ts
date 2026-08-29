@@ -1,13 +1,14 @@
 import { MetadataRoute } from 'next';
-import { fetchCategories, fetchProducts } from '../data/supabase';
+import { fetchCategories, fetchProducts, fetchActiveCampaigns } from '../data/supabase';
 import { BLOG_POSTS } from '../data/blog';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://shreebanarasisarees.in';
 
-  const [products, categories] = await Promise.all([
+  const [products, categories, campaigns] = await Promise.all([
     fetchProducts(),
-    fetchCategories()
+    fetchCategories(),
+    fetchActiveCampaigns()
   ]);
 
   // 1. Static Pages
@@ -17,6 +18,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: 'daily' as const,
       priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/sarees`,
+      lastModified: new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 0.95,
     },
     {
       url: `${baseUrl}/about-us`,
@@ -34,18 +41,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${baseUrl}/blog`,
       lastModified: new Date(),
       changeFrequency: 'daily' as const,
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/sarees`,
-      lastModified: new Date(),
-      changeFrequency: 'daily' as const,
-      priority: 0.9,
+      priority: 0.75,
     },
     {
       url: `${baseUrl}/contact`,
       lastModified: new Date(),
       changeFrequency: 'monthly' as const,
+      priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/faqs`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
       priority: 0.6,
     },
     {
@@ -66,16 +73,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly' as const,
       priority: 0.5,
     },
-    {
-      url: `${baseUrl}/faqs`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
-      priority: 0.6,
-    },
   ];
 
   // 2. Saree Categories & Occasions
   const subCategories = [
+    'banarasi',
+    'chikankari',
+    'bandhani',
+    'organza',
+    'chanderi',
+    'bridal',
     'wedding',
     'party-wear',
     'offers',
@@ -90,7 +97,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }));
 
-  // 3. Product Pages
+  // 3. Campaign Collections Pages
+  const campaignPages = (campaigns || []).map((c) => ({
+    url: `${baseUrl}/collections/${c.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'daily' as const,
+    priority: 0.85,
+  }));
+
+  // 4. Product Pages
   const productPages = products.map((prod) => ({
     url: `${baseUrl}/product/${prod.slug}`,
     lastModified: new Date(),
@@ -98,13 +113,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  // 4. Blog Post Pages
+  // 5. Blog Post Pages
   const blogPages = BLOG_POSTS.map((post) => ({
     url: `${baseUrl}/blog/${post.slug}`,
     lastModified: new Date(post.publishedAt),
     changeFrequency: 'monthly' as const,
-    priority: 0.6,
+    priority: 0.65,
   }));
 
-  return [...staticPages, ...categoryPages, ...productPages, ...blogPages];
+  return [...staticPages, ...categoryPages, ...campaignPages, ...productPages, ...blogPages];
 }
+

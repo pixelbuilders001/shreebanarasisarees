@@ -18,8 +18,64 @@ export default function OurStorePage() {
   const mapQuery = "Shree Banarasi Sarees, Rudauli Chowk, Harpur Aloth, Samastipur, Bihar 848103";
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://shreebanarasisarees.in"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Our Store",
+        "item": "https://shreebanarasisarees.in/our-store"
+      }
+    ]
+  };
+
+  const storeJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ClothingStore",
+    "name": "Shree Banarasi Sarees Showroom",
+    "image": "https://shreebanarasisarees.in/brand_logo.png",
+    "url": "https://shreebanarasisarees.in/our-store",
+    "telephone": "+916203909946",
+    "priceRange": "₹₹",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Rudauli Chowk, Harpur Aloth",
+      "addressLocality": "Samastipur",
+      "addressRegion": "Bihar",
+      "postalCode": "848103",
+      "addressCountry": "IN"
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 25.827918,
+      "longitude": 85.7546103
+    },
+    "openingHoursSpecification": {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+      "opens": "10:00",
+      "closes": "20:30"
+    }
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(storeJsonLd) }}
+      />
       <Header />
       
       <main className="bg-[#FFF9F0] pb-16">

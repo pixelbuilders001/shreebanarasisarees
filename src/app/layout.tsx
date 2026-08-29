@@ -34,18 +34,49 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Shree Banarasi Sarees | श्री बनारसी साड़ीज़ - Premium Indian Sarees",
-  description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
-  keywords: "sarees, banarasi silk, chikankari, bandhani, organza, wedding saree, bridal wear, samastipur, bihar",
+  metadataBase: new URL("https://shreebanarasisarees.in"),
+  title: {
+    default: "Shree Banarasi Sarees | श्री बनारसी साड़ीज़ - Premium Indian Sarees",
+    template: "%s | Shree Banarasi Sarees",
+  },
+  description: "Discover authentic Banarasi silk, Lucknowi Chikankari, Gujarati Bandhani, Organza, and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic wear showroom in Samastipur, Bihar with free express shipping across India.",
+  keywords: [
+    "sarees",
+    "banarasi silk saree",
+    "pure silk sarees",
+    "chikankari sarees",
+    "bandhani silk",
+    "organza sarees",
+    "chanderi sarees",
+    "wedding sarees",
+    "bridal saree collection",
+    "saree shop in samastipur",
+    "bihar saree showroom",
+    "handloom sarees online"
+  ],
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Shree Banarasi",
   },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+  },
+  alternates: {
+    canonical: "https://shreebanarasisarees.in",
+  },
   openGraph: {
-    title: "Shree Banarasi Sarees | श्री बनारसी साड़ीज़",
-    description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
+    title: "Shree Banarasi Sarees | श्री बनारसी साड़ीज़ - Handloom Sarees",
+    description: "Discover authentic Banarasi silk, Lucknowi Chikankari, Gujarati Bandhani, Organza, and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic wear showroom in Samastipur, Bihar.",
     url: "https://shreebanarasisarees.in",
     siteName: "Shree Banarasi Sarees",
     locale: "en_IN",
@@ -62,7 +93,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Shree Banarasi Sarees | श्री बनारसी साड़ीज़",
-    description: "Shop beautiful Banarasi, Chikankari, Bandhani, Organza and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic fashion at accessible prices.",
+    description: "Discover authentic Banarasi silk, Lucknowi Chikankari, Gujarati Bandhani, Organza, and Chanderi sarees at Shree Banarasi Sarees.",
     images: ["https://shreebanarasisarees.in/og_image.jpg"],
   },
   icons: {

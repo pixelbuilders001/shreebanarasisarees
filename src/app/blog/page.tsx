@@ -41,11 +41,33 @@ export default function BlogHome() {
     ]
   };
 
+  const blogJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    "name": "Shree Banarasi Sarees Blog",
+    "description": "Guides on saree styling, silk care, handloom authentication, and ethnic fashion.",
+    "url": "https://shreebanarasisarees.in/blog",
+    "blogPost": BLOG_POSTS.map(post => ({
+      "@type": "BlogPosting",
+      "headline": post.title,
+      "url": `https://shreebanarasisarees.in/blog/${post.slug}`,
+      "datePublished": post.publishedAt,
+      "author": {
+        "@type": "Organization",
+        "name": post.author
+      }
+    }))
+  };
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogJsonLd) }}
       />
       <Header />
 

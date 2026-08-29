@@ -106,11 +106,30 @@ export default async function CollectionPage({ params }: PageProps) {
     ]
   };
 
+  const itemListJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": campaign.name,
+    "description": campaign.subtitle || campaign.title,
+    "numberOfItems": products.length,
+    "itemListElement": products.map((p, index) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "name": p.name,
+      "url": `https://shreebanarasisarees.in/product/${p.slug}`,
+      "image": p.images[0] || undefined
+    }))
+  };
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
       />
       
       <Header />

@@ -259,12 +259,37 @@ export default async function Page({ params }: PageProps) {
     "itemListElement": breadcrumbList
   };
 
+  const filteredProductsForSchema = dbProducts.filter(p => {
+    if (data.category === 'All' || !data.category) return true;
+    if (data.category === 'Offers') return p.salePrice !== undefined && p.salePrice !== null && p.salePrice < p.price;
+    return p.category.toLowerCase() === data.category.toLowerCase();
+  }).slice(0, 15);
+
+  const itemListJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": data.h1,
+    "description": data.intro,
+    "numberOfItems": filteredProductsForSchema.length,
+    "itemListElement": filteredProductsForSchema.map((p, index) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "name": p.name,
+      "url": `https://shreebanarasisarees.in/product/${p.slug}`,
+      "image": p.images[0] || undefined
+    }))
+  };
+
   return (
     <>
       {/* Inject Structured Data */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
       />
       <Suspense fallback={
         <div className="min-h-screen bg-[#FFF9F0] flex items-center justify-center">

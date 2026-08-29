@@ -5,8 +5,18 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/checkout', '/account'],
+      disallow: [
+        '/checkout',
+        '/account',
+        '/account/*',
+        '/wishlist',
+        '/payment',
+        '/receipt',
+        '/receipt/*',
+        '/review'
+      ],
     },
     sitemap: 'https://shreebanarasisarees.in/sitemap.xml',
   };
 }
+

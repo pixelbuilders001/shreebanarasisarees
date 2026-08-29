@@ -21,8 +21,43 @@ export const metadata: Metadata = {
 };
 
 export default function AboutUs() {
+  const aboutJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "AboutPage",
+    "name": "About Shree Banarasi Sarees",
+    "url": "https://shreebanarasisarees.in/about-us",
+    "description": "Learn about Shree Banarasi Sarees, Samastipur's premier handloom saree showroom offering authentic Banarasi, Chikankari, Bandhani, and wedding silk sarees."
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://shreebanarasisarees.in"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "About Us",
+        "item": "https://shreebanarasisarees.in/about-us"
+      }
+    ]
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(aboutJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <Header />
 
       <main className="bg-[#FFF9F0] pb-12">

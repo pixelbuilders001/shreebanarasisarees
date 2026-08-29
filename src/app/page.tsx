@@ -41,7 +41,25 @@ export default async function Home() {
     fetchActiveCampaigns(),
     fetchActiveHeroBanners()
   ]);
-  // 1. Organization Schema
+
+  // 1. WebSite Schema (Enables Google Sitelinks Searchbox)
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Shree Banarasi Sarees",
+    "alternateName": "श्री बनारसी साड़ीज़",
+    "url": "https://shreebanarasisarees.in",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://shreebanarasisarees.in/sarees?q={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
+    }
+  };
+
+  // 2. Organization Schema
   const organizationJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -59,7 +77,7 @@ export default async function Home() {
     }
   };
 
-  // 2. Local Business Schema (ClothingStore)
+  // 3. Local Business Schema (ClothingStore)
   const localBusinessJsonLd = {
     "@context": "https://schema.org",
     "@type": "ClothingStore",
@@ -68,7 +86,8 @@ export default async function Home() {
     "@id": "https://shreebanarasisarees.in/#store",
     "url": "https://shreebanarasisarees.in",
     "telephone": "+916203909946",
-    "priceRange": "$$",
+    "priceRange": "₹₹",
+    "hasMap": "https://www.google.com/maps/search/?api=1&query=Shree+Banarasi+Sarees+Samastipur",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Rudauli Chowk, Harpur Aloth",
@@ -100,6 +119,10 @@ export default async function Home() {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
