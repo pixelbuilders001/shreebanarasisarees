@@ -57,12 +57,14 @@ export const FABRIC_SYNONYMS: Record<string, string> = {
   kanjivaram: 'Silk', kanjeevaram: 'Silk', kanchipuram: 'Silk',
   'raw silk': 'Raw Silk', raw: 'Raw Silk',
   crepe: 'Crepe',
-  velvet: 'Velvet', maslin: 'Muslin', muslin: 'Muslin',
+  tanchui: 'Tanchui Silk', tanchoi: 'Tanchui Silk', 'tanchui silk': 'Tanchui Silk',
+  tissue: 'Tissue Silk', 'tissue silk': 'Tissue Silk',
+  bandhej: 'Bandhani Silk', 'bandhej silk': 'Bandhej Silk',
 };
 
 export const OCCASION_SYNONYMS: Record<string, string> = {
   wedding: 'Wedding', shaadi: 'Wedding', vivah: 'Wedding', bridal: 'Wedding',
-  bride: 'Wedding', dulhan: 'Wedding', shadi: 'Wedding',
+  bride: 'Wedding', dulhan: 'Wedding', shadi: 'Wedding', 'wedding wear': 'Wedding',
   'wedding saree': 'Wedding', 'shaadi saree': 'Wedding',
   festive: 'Festive', festival: 'Festive', puja: 'Festive', pooja: 'Festive',
   durga: 'Festive', navratri: 'Festive', diwali: 'Festive', holi: 'Festive',
@@ -76,11 +78,17 @@ export const OCCASION_SYNONYMS: Record<string, string> = {
 
 export const CATEGORY_SYNONYMS: Record<string, string> = {
   banarasi: 'Banarasi', banaras: 'Banarasi', benares: 'Banarasi', varanasi: 'Banarasi',
-  chikankari: 'Chikankari', chikan: 'Chikankari', lucknowi: 'Chikankari', lucknow: 'Chikankari',
-  bandhani: 'Bandhani', bandhej: 'Bandhani', bandhan: 'Bandhani',
+  chikankari: 'Chikankari', chikan: 'Chikankari', lucknowi: 'Chikankari', lucknow: 'Chikankari', 'chickan-kari': 'Chikankari', 'chickan kari': 'Chikankari',
+  bandhani: 'Bandhani', bandhej: 'Bandhani', bandhan: 'Bandhani', 'bandhani silk': 'Bandhani Silk', 'assamese bandhej': 'Assamese Bandhej',
   organza: 'Organza',
   chanderi: 'Chanderi', chandari: 'Chanderi',
   'bridal collection': 'Bridal', bridal: 'Bridal',
+  tanchui: 'Tanchui Silk', tanchoi: 'Tanchui Silk', 'tanchui white': 'Tanchui White', 'tanchui-white': 'Tanchui White',
+  katan: 'Katan Silk', 'katan silk': 'Katan Silk', 'katan-silk': 'Katan Silk',
+  'raw silk ada': 'Raw Silk Ada', 'raw-silk-ada': 'Raw Silk Ada',
+  shikargarh: 'Shikargarh',
+  'wedding wear': 'Wedding Wear',
+  'party wear': 'Party Wear',
 };
 
 // ─── Price Pattern Detection ─────────────────────────────────────────────────
@@ -308,9 +316,13 @@ export function scoreProducts(
 
     if (filters.colors.length > 0) {
       const colorStr = product.color.toLowerCase();
+      const nameStr = product.name.toLowerCase();
+      const descStr = (product.description || '').toLowerCase();
+      const combinedColor = `${colorStr} ${nameStr} ${descStr}`;
+
       const match = filters.colors.some(c => {
-        const cl = c.toLowerCase();
-        return colorStr.includes(cl) || cl.includes(colorStr) ||
+        const cl = c.toLowerCase().trim();
+        return combinedColor.includes(cl) || cl.includes(colorStr) ||
           fuzzyMatch(cl, [colorStr]) !== null;
       });
       if (!match) continue;
@@ -318,10 +330,14 @@ export function scoreProducts(
 
     if (filters.fabrics.length > 0) {
       const fabStr = product.fabric.toLowerCase();
+      const catStr = product.category.toLowerCase();
+      const nameStr = product.name.toLowerCase();
+      const combinedFab = `${fabStr} ${catStr} ${nameStr}`;
+
       const match = filters.fabrics.some(f => {
-        const fl = f.toLowerCase();
-        return fabStr.includes(fl) || fl.includes(fabStr) ||
-          fuzzyMatch(fl, [fabStr]) !== null;
+        const fl = f.toLowerCase().trim();
+        return combinedFab.includes(fl) || fl.includes(fabStr) ||
+          fuzzyMatch(fl, [fabStr, catStr]) !== null;
       });
       if (!match) continue;
     }
@@ -329,7 +345,7 @@ export function scoreProducts(
     if (filters.occasions.length > 0) {
       const occStr = product.occasion.toLowerCase();
       const match = filters.occasions.some(o => {
-        const ol = o.toLowerCase();
+        const ol = o.toLowerCase().trim();
         return occStr.includes(ol) || ol.includes(occStr);
       });
       if (!match) continue;
@@ -337,10 +353,33 @@ export function scoreProducts(
 
     if (filters.categories.length > 0) {
       const catStr = product.category.toLowerCase();
+      const fabStr = product.fabric.toLowerCase();
+      const colorStr = product.color.toLowerCase();
+      const nameStr = product.name.toLowerCase();
+      const descStr = (product.description || '').toLowerCase();
+      const combinedText = `${catStr} ${fabStr} ${colorStr} ${nameStr} ${descStr}`;
+
       const match = filters.categories.some(cat => {
-        const cl = cat.toLowerCase();
-        return catStr.includes(cl) || cl.includes(catStr) ||
-          fuzzyMatch(cl, [catStr]) !== null;
+        const rawCl = cat.toLowerCase().trim();
+        const cl = rawCl.replace(/-/g, ' ');
+
+        // Direct phrase or substring match across category, fabric, color, or name
+        if (catStr.includes(cl) || cl.includes(catStr) ||
+            fabStr.includes(cl) || cl.includes(fabStr) ||
+            colorStr.includes(cl) || cl.includes(colorStr) ||
+            nameStr.includes(cl) ||
+            fuzzyMatch(cl, [catStr, fabStr, colorStr]) !== null) {
+          return true;
+        }
+
+        // Tokenized multi-word match (e.g. "tanchui white" -> checks for "tanchui" AND "white")
+        const tokens = cl.split(/\s+/).filter(t => t.length >= 2);
+        if (tokens.length > 1) {
+          const allTokensMatch = tokens.every(tok => combinedText.includes(tok));
+          if (allTokensMatch) return true;
+        }
+
+        return false;
       });
       if (!match) continue;
     }

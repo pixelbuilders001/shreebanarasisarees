@@ -188,7 +188,30 @@ export const SareesClient: React.FC<SareesClientProps> = ({
     // Classic sidebar filter logic
     filteredProducts = allProducts.filter(product => {
       // 1. Category Filter
-      if (selectedCategory !== 'All' && product.category !== selectedCategory) return false;
+      if (selectedCategory !== 'All') {
+        const selLower = selectedCategory.toLowerCase().trim();
+        const catLower = product.category.toLowerCase();
+        const fabLower = product.fabric.toLowerCase();
+        const colorLower = product.color.toLowerCase();
+        const nameLower = product.name.toLowerCase();
+        const combinedText = `${catLower} ${fabLower} ${colorLower} ${nameLower}`;
+
+        let isMatch = catLower === selLower ||
+                      catLower.includes(selLower) ||
+                      selLower.includes(catLower) ||
+                      fabLower.includes(selLower) ||
+                      colorLower.includes(selLower) ||
+                      nameLower.includes(selLower);
+
+        if (!isMatch) {
+          const tokens = selLower.replace(/-/g, ' ').split(/\s+/).filter(t => t.length >= 2);
+          if (tokens.length > 1) {
+            isMatch = tokens.every(tok => combinedText.includes(tok));
+          }
+        }
+
+        if (!isMatch) return false;
+      }
 
       // 2. Price Filter
       const finalPrice = product.salePrice ?? product.price;

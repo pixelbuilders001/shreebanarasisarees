@@ -58,9 +58,9 @@ export const CategoryCard: React.FC = () => {
   const displayCategories = categories && categories.length > 0
     ? categories.map(c => ({
         name: c.name,
-        subtitle: "Handcrafted Heritage",
+        subtitle: c.description || "Handcrafted Heritage",
         image: c.image_url || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600&h=750",
-        link: `/sarees?category=${encodeURIComponent(c.name)}`
+        link: c.slug ? `/sarees/${c.slug}` : `/sarees?category=${encodeURIComponent(c.name)}`
       }))
     : DEFAULT_CATEGORIES;
 

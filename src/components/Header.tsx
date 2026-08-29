@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -44,7 +44,8 @@ const HeaderInner: React.FC = () => {
     setIsAuthModalOpen,
     user,
     userProfile,
-    logoutUser
+    logoutUser,
+    categories: dbCategories
   } = useStore();
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -139,16 +140,45 @@ const HeaderInner: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isMobileMenuOpen, isCollectionsOpen, isAccountMenuOpen]);
 
-  const categories = [
-    { name: 'Banarasi Sarees', slug: 'Banarasi', desc: 'Regal Katan & Zari Masterpieces' },
-    { name: 'Silk Sarees', slug: 'Silk', desc: 'Lustrous Pure Silk Weaves' },
-    { name: 'Chanderi', slug: 'Chanderi', desc: 'Lightweight Sheer Elegance' },
-    { name: 'Bandhani', slug: 'Bandhani', desc: 'Hand-Tied Artisanal Craft' },
-    { name: 'Organza', slug: 'Organza', desc: 'Contemporary Translucent Beauty' },
-    { name: 'Chikankari', slug: 'Chikankari', desc: 'Intricate Lucknowi Embroidery' },
-    { name: 'Georgette', slug: 'Georgette', desc: 'Fluid & Effortless Drapes' },
-    { name: 'Bridal Collection', slug: 'Bridal', desc: 'Opulent Heirloom Trousseau' },
-  ];
+  const categories = useMemo<{ name: string; slug: string; desc: string }[]>(() => {
+    if (dbCategories && dbCategories.length > 0) {
+      const merged = dbCategories.map(c => ({
+        name: c.name,
+        slug: c.slug,
+        desc: c.description || 'Exclusive Heritage Collection'
+      }));
+
+      const existingSlugs = new Set(merged.map(m => m.slug.toLowerCase()));
+      const defaultCats = [
+        { name: 'Banarasi Sarees', slug: 'Banarasi', desc: 'Regal Katan & Zari Masterpieces' },
+        { name: 'Silk Sarees', slug: 'Silk', desc: 'Lustrous Pure Silk Weaves' },
+        { name: 'Chanderi', slug: 'Chanderi', desc: 'Lightweight Sheer Elegance' },
+        { name: 'Bandhani', slug: 'Bandhani', desc: 'Hand-Tied Artisanal Craft' },
+        { name: 'Organza', slug: 'Organza', desc: 'Contemporary Translucent Beauty' },
+        { name: 'Chikankari', slug: 'Chikankari', desc: 'Intricate Lucknowi Embroidery' },
+        { name: 'Georgette', slug: 'Georgette', desc: 'Fluid & Effortless Drapes' },
+        { name: 'Bridal Collection', slug: 'Bridal', desc: 'Opulent Heirloom Trousseau' },
+      ];
+
+      for (const d of defaultCats) {
+        if (!existingSlugs.has(d.slug.toLowerCase())) {
+          merged.push(d);
+        }
+      }
+      return merged;
+    }
+
+    return [
+      { name: 'Banarasi Sarees', slug: 'Banarasi', desc: 'Regal Katan & Zari Masterpieces' },
+      { name: 'Silk Sarees', slug: 'Silk', desc: 'Lustrous Pure Silk Weaves' },
+      { name: 'Chanderi', slug: 'Chanderi', desc: 'Lightweight Sheer Elegance' },
+      { name: 'Bandhani', slug: 'Bandhani', desc: 'Hand-Tied Artisanal Craft' },
+      { name: 'Organza', slug: 'Organza', desc: 'Contemporary Translucent Beauty' },
+      { name: 'Chikankari', slug: 'Chikankari', desc: 'Intricate Lucknowi Embroidery' },
+      { name: 'Georgette', slug: 'Georgette', desc: 'Fluid & Effortless Drapes' },
+      { name: 'Bridal Collection', slug: 'Bridal', desc: 'Opulent Heirloom Trousseau' },
+    ];
+  }, [dbCategories]);
 
   return (
     <>

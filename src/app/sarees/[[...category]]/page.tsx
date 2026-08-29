@@ -100,27 +100,28 @@ const SEO_MAP: Record<string, SeoData> = {
   }
 };
 
-function getSeoKey(categoryPath?: string[]): string {
-  if (!categoryPath || categoryPath.length === 0) return 'all';
+function getSeoKey(categoryPath?: string[]): string | null {
+  if (!categoryPath || categoryPath.length === 0) return null;
   const key = categoryPath[0].toLowerCase();
-  return SEO_MAP[key] ? key : 'all';
+  return SEO_MAP[key] ? key : null;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const resolvedParams = await params;
-  const key = getSeoKey(resolvedParams.category);
+  const categoryPath = resolvedParams.category;
+  const seoKey = getSeoKey(categoryPath);
   
-  // Try to find the category in the database by slug
+  // Try to find the category in the database by slug or name
   let dbCategory = null;
-  if (resolvedParams.category && resolvedParams.category.length > 0) {
-    const slug = resolvedParams.category[0].toLowerCase();
+  if (categoryPath && categoryPath.length > 0) {
+    const rawSlug = categoryPath[0].toLowerCase();
     const categories = await fetchCategories();
-    dbCategory = categories.find(c => c.slug.toLowerCase() === slug);
+    dbCategory = categories.find(c => c.slug.toLowerCase() === rawSlug || c.name.toLowerCase() === rawSlug);
   }
 
   let data;
-  if (SEO_MAP[key]) {
-    data = SEO_MAP[key];
+  if (seoKey && SEO_MAP[seoKey]) {
+    data = SEO_MAP[seoKey];
   } else if (dbCategory) {
     data = {
       title: `${dbCategory.name} Sarees | Traditional & Designer Collections`,
@@ -130,11 +131,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       category: dbCategory.name,
       occasion: "All",
     };
+  } else if (categoryPath && categoryPath.length > 0) {
+    const categoryName = decodeURIComponent(categoryPath[0])
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
+    data = {
+      title: `${categoryName} Sarees | Traditional & Designer Collections`,
+      description: `Explore elegant ${categoryName} sarees at Shree Banarasi Sarees. Discover beautiful wedding, festive and party styles.`,
+      h1: `${categoryName} Sarees`,
+      intro: `Discover our exclusive collection of handpicked ${categoryName} sarees. Each piece represents India's rich weaving heritage, crafted with premium fabrics and exquisite work.`,
+      category: categoryName,
+      occasion: "All",
+    };
   } else {
     data = SEO_MAP.all;
   }
 
-  const canonicalPath = resolvedParams.category ? `/sarees/${resolvedParams.category.join('/')}` : '/sarees';
+  const canonicalPath = categoryPath ? `/sarees/${categoryPath.join('/')}` : '/sarees';
 
   return {
     title: data.title,
@@ -167,7 +180,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function Page({ params }: PageProps) {
   const resolvedParams = await params;
-  const key = getSeoKey(resolvedParams.category);
+  const categoryPath = resolvedParams.category;
+  const seoKey = getSeoKey(categoryPath);
   
   const [categories, dbProducts] = await Promise.all([
     fetchCategories(),
@@ -175,14 +189,14 @@ export default async function Page({ params }: PageProps) {
   ]);
 
   let dbCategory = null;
-  if (resolvedParams.category && resolvedParams.category.length > 0) {
-    const slug = resolvedParams.category[0].toLowerCase();
-    dbCategory = categories.find(c => c.slug.toLowerCase() === slug);
+  if (categoryPath && categoryPath.length > 0) {
+    const rawSlug = categoryPath[0].toLowerCase();
+    dbCategory = categories.find(c => c.slug.toLowerCase() === rawSlug || c.name.toLowerCase() === rawSlug);
   }
 
   let data;
-  if (SEO_MAP[key]) {
-    data = SEO_MAP[key];
+  if (seoKey && SEO_MAP[seoKey]) {
+    data = SEO_MAP[seoKey];
   } else if (dbCategory) {
     data = {
       title: `${dbCategory.name} Sarees | Traditional & Designer Collections`,
@@ -190,6 +204,18 @@ export default async function Page({ params }: PageProps) {
       h1: `${dbCategory.name} Sarees`,
       intro: dbCategory.description || `Discover our exclusive collection of handpicked ${dbCategory.name} sarees. Each piece represents India's rich weaving heritage, crafted with premium fabrics and exquisite work.`,
       category: dbCategory.name,
+      occasion: "All",
+    };
+  } else if (categoryPath && categoryPath.length > 0) {
+    const categoryName = decodeURIComponent(categoryPath[0])
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
+    data = {
+      title: `${categoryName} Sarees | Traditional & Designer Collections`,
+      description: `Explore elegant ${categoryName} sarees at Shree Banarasi Sarees. Discover beautiful wedding, festive and party styles.`,
+      h1: `${categoryName} Sarees`,
+      intro: `Discover our exclusive collection of handpicked ${categoryName} sarees. Each piece represents India's rich weaving heritage, crafted with premium fabrics and exquisite work.`,
+      category: categoryName,
       occasion: "All",
     };
   } else {
