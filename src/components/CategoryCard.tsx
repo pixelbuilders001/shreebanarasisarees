@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useStore } from '../context/StoreContext';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ArrowLeft } from 'lucide-react';
 
 interface CategoryItem {
   name: string;
@@ -54,6 +54,19 @@ const DEFAULT_CATEGORIES: CategoryItem[] = [
 
 export const CategoryCard: React.FC = () => {
   const { categories } = useStore();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollLeft = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+    }
+  };
 
   const displayCategories = categories && categories.length > 0
     ? categories.map(c => ({
@@ -68,7 +81,7 @@ export const CategoryCard: React.FC = () => {
     <section className="pt-10 pb-6 sm:pt-14 sm:pb-8 bg-[#FAF7F0] border-b border-[#B08A3C]/15">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-12">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 sm:mb-8 gap-4">
           <div>
             <span className="text-[10px] sm:text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-1">
               CURATED COLLECTIONS
@@ -77,26 +90,46 @@ export const CategoryCard: React.FC = () => {
               Shop by Category
             </h2>
           </div>
-          <Link
-            href="/sarees"
-            className="mt-2 sm:mt-0 text-xs font-serif font-bold text-[#6B1725] hover:text-[#52111C] flex items-center gap-1 group transition-colors"
-          >
-            <span>Explore All Categories</span>
-            <ArrowRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
-          </Link>
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/sarees"
+              className="text-xs font-serif font-bold text-[#6B1725] hover:text-[#52111C] flex items-center gap-1 group transition-colors mr-1"
+            >
+              <span>Explore All Categories</span>
+              <ArrowRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
+            </Link>
+
+            <div className="hidden sm:flex items-center gap-2">
+              <button
+                onClick={scrollLeft}
+                className="p-2 sm:p-2.5 rounded-full border border-[#B08A3C]/30 bg-white hover:bg-[#FAF7F0] text-[#292524] transition-all shadow-sm active:scale-95 cursor-pointer"
+                aria-label="Scroll categories left"
+              >
+                <ArrowLeft size={16} />
+              </button>
+              <button
+                onClick={scrollRight}
+                className="p-2 sm:p-2.5 rounded-full border border-[#B08A3C]/30 bg-white hover:bg-[#FAF7F0] text-[#292524] transition-all shadow-sm active:scale-95 cursor-pointer"
+                aria-label="Scroll categories right"
+              >
+                <ArrowRight size={16} />
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Mobile Horizontal Carousel */}
-        <div className="md:hidden flex gap-3.5 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2">
+        {/* Scrollable Categories Container */}
+        <div
+          ref={scrollRef}
+          className="flex gap-3.5 sm:gap-5 overflow-x-auto no-scrollbar pb-4 scroll-smooth snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0"
+        >
           {displayCategories.map((category, idx) => (
-            <CategoryTile key={idx} category={category} className="w-[170px] flex-shrink-0 snap-start" />
-          ))}
-        </div>
-
-        {/* Desktop 6-Column Grid */}
-        <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-5">
-          {displayCategories.slice(0, 6).map((category, idx) => (
-            <CategoryTile key={idx} category={category} className="w-full" />
+            <CategoryTile
+              key={idx}
+              category={category}
+              className="w-[170px] sm:w-[210px] lg:w-[220px] flex-shrink-0 snap-start"
+            />
           ))}
         </div>
       </div>

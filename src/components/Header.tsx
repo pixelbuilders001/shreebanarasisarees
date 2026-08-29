@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   Search,
@@ -140,44 +141,16 @@ const HeaderInner: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isMobileMenuOpen, isCollectionsOpen, isAccountMenuOpen]);
 
-  const categories = useMemo<{ name: string; slug: string; desc: string }[]>(() => {
+  const categories = useMemo<{ name: string; slug: string; desc: string; image_url: string | null }[]>(() => {
     if (dbCategories && dbCategories.length > 0) {
-      const merged = dbCategories.map(c => ({
+      return dbCategories.map(c => ({
         name: c.name,
         slug: c.slug,
-        desc: c.description || 'Exclusive Heritage Collection'
+        desc: c.description || 'Collection',
+        image_url: c.image_url || null
       }));
-
-      const existingSlugs = new Set(merged.map(m => m.slug.toLowerCase()));
-      const defaultCats = [
-        { name: 'Banarasi Sarees', slug: 'Banarasi', desc: 'Regal Katan & Zari Masterpieces' },
-        { name: 'Silk Sarees', slug: 'Silk', desc: 'Lustrous Pure Silk Weaves' },
-        { name: 'Chanderi', slug: 'Chanderi', desc: 'Lightweight Sheer Elegance' },
-        { name: 'Bandhani', slug: 'Bandhani', desc: 'Hand-Tied Artisanal Craft' },
-        { name: 'Organza', slug: 'Organza', desc: 'Contemporary Translucent Beauty' },
-        { name: 'Chikankari', slug: 'Chikankari', desc: 'Intricate Lucknowi Embroidery' },
-        { name: 'Georgette', slug: 'Georgette', desc: 'Fluid & Effortless Drapes' },
-        { name: 'Bridal Collection', slug: 'Bridal', desc: 'Opulent Heirloom Trousseau' },
-      ];
-
-      for (const d of defaultCats) {
-        if (!existingSlugs.has(d.slug.toLowerCase())) {
-          merged.push(d);
-        }
-      }
-      return merged;
     }
-
-    return [
-      { name: 'Banarasi Sarees', slug: 'Banarasi', desc: 'Regal Katan & Zari Masterpieces' },
-      { name: 'Silk Sarees', slug: 'Silk', desc: 'Lustrous Pure Silk Weaves' },
-      { name: 'Chanderi', slug: 'Chanderi', desc: 'Lightweight Sheer Elegance' },
-      { name: 'Bandhani', slug: 'Bandhani', desc: 'Hand-Tied Artisanal Craft' },
-      { name: 'Organza', slug: 'Organza', desc: 'Contemporary Translucent Beauty' },
-      { name: 'Chikankari', slug: 'Chikankari', desc: 'Intricate Lucknowi Embroidery' },
-      { name: 'Georgette', slug: 'Georgette', desc: 'Fluid & Effortless Drapes' },
-      { name: 'Bridal Collection', slug: 'Bridal', desc: 'Opulent Heirloom Trousseau' },
-    ];
+    return [];
   }, [dbCategories]);
 
   return (
@@ -400,43 +373,64 @@ const HeaderInner: React.FC = () => {
           <div
             onMouseEnter={handleCollectionsMouseEnter}
             onMouseLeave={handleCollectionsMouseLeave}
-            className="hidden lg:block absolute top-full left-0 right-0 w-full bg-white border-b border-[#B08A3C]/30 shadow-2xl z-50 animate-slideDown"
+            className="hidden lg:block absolute top-full left-0 right-0 w-full bg-white border-b border-[#B08A3C]/30 shadow-xl z-50 animate-slideDown"
           >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-              <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#F3ECE0]">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+              {/* Header Bar */}
+              <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#F3ECE0]">
                 <div className="text-xs font-serif font-bold text-[#B08A3C] uppercase tracking-widest flex items-center gap-2">
-                  <Sparkles size={15} className="text-[#6B1725]" />
-                  Explore Our Collections
+                  <Sparkles size={14} className="text-[#6B1725]" />
+                  Curated Categories
                 </div>
                 <Link
                   href="/sarees"
                   onClick={() => setIsCollectionsOpen(false)}
-                  className="text-xs font-bold text-[#6B1725] hover:text-[#52111C] inline-flex items-center gap-1 hover:underline tracking-wide"
+                  className="text-xs font-serif font-bold text-[#6B1725] hover:text-[#52111C] inline-flex items-center gap-1 hover:underline tracking-wider uppercase"
                 >
-                  VIEW ALL SAREES →
+                  View All Sarees →
                 </Link>
               </div>
 
-              <div className="grid grid-cols-4 lg:grid-cols-8 gap-3">
-                {categories.map(cat => (
-                  <Link
-                    key={cat.slug}
-                    href={`/sarees?category=${cat.slug}`}
-                    onClick={() => setIsCollectionsOpen(false)}
-                    className="flex flex-col justify-between p-3.5 rounded-2xl bg-[#FAF7F0]/70 border border-[#F3ECE0] hover:bg-[#6B1725] hover:border-[#6B1725] group transition-all duration-200 cursor-pointer shadow-xs hover:shadow-lg"
-                  >
-                    <div className="flex items-start justify-between gap-1 mb-2">
-                      <span className="text-xs font-bold text-[#292524] group-hover:text-[#FAF7F0] transition-colors leading-tight">
-                        {cat.name}
-                      </span>
-                      <ChevronRight size={13} className="text-[#6B625D]/40 group-hover:text-[#FAF7F0] group-hover:translate-x-0.5 transition-all shrink-0 mt-0.5" />
-                    </div>
-                    <span className="text-[10px] text-[#6B625D] group-hover:text-[#FAF7F0]/80 font-normal transition-colors leading-snug">
-                      {cat.desc}
-                    </span>
-                  </Link>
-                ))}
-              </div>
+              {categories.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {categories.map(cat => (
+                    <Link
+                      key={cat.slug}
+                      href={cat.slug ? `/sarees/${cat.slug}` : `/sarees?category=${encodeURIComponent(cat.name)}`}
+                      onClick={() => setIsCollectionsOpen(false)}
+                      className="group flex items-center gap-3 p-2.5 rounded-xl bg-[#FAF7F0]/70 border border-[#B08A3C]/15 hover:bg-[#6B1725] hover:border-[#6B1725] transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md min-w-0"
+                    >
+                      {/* Small Category Image Thumbnail */}
+                      <div className="relative w-11 h-11 rounded-lg overflow-hidden shrink-0 bg-[#292524] border border-[#B08A3C]/30 group-hover:border-white/50 transition-colors">
+                        <Image
+                          src={cat.image_url || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=200"}
+                          alt={cat.name}
+                          fill
+                          sizes="44px"
+                          className="object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                      </div>
+
+                      {/* Text content */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <h4 className="text-xs font-serif font-bold text-[#292524] group-hover:text-[#FAF7F0] transition-colors leading-tight truncate">
+                            {cat.name}
+                          </h4>
+                          <ChevronRight size={13} className="text-[#B08A3C] group-hover:text-[#FAF7F0] group-hover:translate-x-0.5 transition-all shrink-0" />
+                        </div>
+                        <p className="text-[10px] text-[#6B625D] group-hover:text-[#FAF7F0]/80 font-light transition-colors leading-tight line-clamp-1 mt-0.5">
+                          {cat.desc}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-4 text-center text-xs text-[#6B625D]">
+                  No categories available
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -744,15 +738,24 @@ const HeaderInner: React.FC = () => {
                     {categories.map(cat => (
                       <Link
                         key={cat.slug}
-                        href={`/sarees?category=${cat.slug}`}
+                        href={cat.slug ? `/sarees/${cat.slug}` : `/sarees?category=${encodeURIComponent(cat.name)}`}
                         onClick={closeMobileMenu}
-                        className="flex items-center justify-between p-3 rounded-xl bg-white border border-[#F3ECE0] hover:border-[#B08A3C] transition-colors"
+                        className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-[#F3ECE0] hover:border-[#B08A3C] transition-colors"
                       >
-                        <div>
-                          <p className="text-xs font-bold text-[#292524]">{cat.name}</p>
-                          <p className="text-[10px] text-[#6B625D] font-light">{cat.desc}</p>
+                        <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-[#292524] border border-[#B08A3C]/20">
+                          <Image
+                            src={cat.image_url || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=200"}
+                            alt={cat.name}
+                            fill
+                            sizes="40px"
+                            className="object-cover"
+                          />
                         </div>
-                        <ChevronRight size={16} className="text-[#6B625D]/50" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-[#292524] truncate">{cat.name}</p>
+                          <p className="text-[10px] text-[#6B625D] font-light line-clamp-1">{cat.desc}</p>
+                        </div>
+                        <ChevronRight size={16} className="text-[#6B625D]/50 shrink-0" />
                       </Link>
                     ))}
 
