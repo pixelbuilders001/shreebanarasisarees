@@ -216,6 +216,71 @@ export async function fetchProducts(): Promise<Product[]> {
 }
 
 /**
+ * Execute Full-Text Search on Supabase inventory using search_vector.
+ */
+export async function searchProductsAdvancedDb(params: {
+  query?: string;
+  category?: string;
+  fabric?: string;
+  color?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  status?: string;
+}): Promise<Product[]> {
+  try {
+    let q = supabase
+      .from('inventory')
+      .select(PUBLIC_INVENTORY_SELECT)
+      .eq('status', params.status || 'active');
+
+    // Supabase Full-Text Search on search_vector
+    if (params.query && params.query.trim()) {
+      const cleanQuery = params.query.trim().replace(/[^a-zA-Z0-9\s]/g, ' ');
+      if (cleanQuery) {
+        q = q.textSearch('search_vector', cleanQuery, {
+          config: 'english',
+          type: 'websearch',
+        });
+      }
+    }
+
+    if (params.category && params.category !== 'All') {
+      q = q.ilike('category', `%${params.category}%`);
+    }
+
+    if (params.fabric) {
+      q = q.ilike('fabric', `%${params.fabric}%`);
+    }
+
+    if (params.color) {
+      q = q.ilike('color', `%${params.color}%`);
+    }
+
+    if (params.minPrice !== undefined) {
+      q = q.gte('selling_price', params.minPrice);
+    }
+
+    if (params.maxPrice !== undefined) {
+      q = q.lte('selling_price', params.maxPrice);
+    }
+
+    const { data, error } = await q;
+
+    if (error) {
+      console.error('Error executing Supabase full-text search:', error);
+      // Fallback to fetchProducts if search_vector column is not populated yet
+      return fetchProducts();
+    }
+
+    const dbItems = (data || []) as DbInventory[];
+    return dbItems.map(mapDbProductToProduct);
+  } catch (err) {
+    console.error('Exception in searchProductsAdvancedDb:', err);
+    return fetchProducts();
+  }
+}
+
+/**
  * Fetch a single product by its slug.
  */
 export async function fetchProductBySlug(slug: string): Promise<Product | null> {

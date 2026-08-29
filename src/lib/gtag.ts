@@ -1,4 +1,4 @@
-export const GA_MEASUREMENT_ID = "G-K01N6ZDTKH";
+export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-K01N6ZDTKH";
 
 declare global {
   interface Window {

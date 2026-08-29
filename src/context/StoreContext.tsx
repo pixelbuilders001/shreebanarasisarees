@@ -22,6 +22,7 @@ import {
   removeFromDbWishlist
 } from '../data/supabase';
 import { trackAddToCart, trackRemoveFromCart, trackAddToWishlist } from '../lib/gtag';
+import { parseSearchQuery, scoreProducts } from '../lib/searchEngine';
 
 export interface CartItem {
   product: Product;
@@ -843,18 +844,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCustomRequests((prev) => [newRequest, ...prev]);
   };
 
-  // Search logic
+  // Advanced search logic
   const getSearchResults = () => {
     if (!searchQuery.trim()) return [];
-    const query = searchQuery.toLowerCase().trim();
-    return products.filter(p => 
-      p.name.toLowerCase().includes(query) ||
-      p.fabric.toLowerCase().includes(query) ||
-      p.color.toLowerCase().includes(query) ||
-      p.category.toLowerCase().includes(query) ||
-      p.occasion.toLowerCase().includes(query) ||
-      p.sku.toLowerCase().includes(query)
-    );
+    const detectedFilters = parseSearchQuery(searchQuery);
+    return scoreProducts(products, searchQuery, detectedFilters);
   };
 
   const addRecentSearch = (query: string) => {
