@@ -128,20 +128,28 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </Link>
 
           {/* Rating */}
-          <div className="flex items-center gap-1">
-            <span className="flex items-center gap-0.5">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  size={10}
-                  className={i < Math.round(product.rating) ? 'fill-gold text-gold' : 'text-dark-brown/15'}
-                />
-              ))}
-            </span>
-            <span className="text-[10px] sm:text-[11px] font-semibold text-dark-brown/60">
-              {product.rating}
-              <span className="text-dark-brown/40"> ({product.reviewsCount})</span>
-            </span>
+          <div className="flex items-center gap-1 min-h-[16px]">
+            {product.reviewsCount > 0 ? (
+              <>
+                <span className="flex items-center gap-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      size={10}
+                      className={i < Math.round(product.rating) ? 'fill-gold text-gold' : 'text-dark-brown/15'}
+                    />
+                  ))}
+                </span>
+                <span className="text-[10px] sm:text-[11px] font-semibold text-dark-brown/60">
+                  {product.rating}
+                  <span className="text-dark-brown/40"> ({product.reviewsCount})</span>
+                </span>
+              </>
+            ) : (
+              <span className="text-[10px] sm:text-[11px] text-dark-brown/40 font-medium italic">
+                No reviews yet
+              </span>
+            )}
           </div>
 
           {/* Price and Stock Row */}
@@ -337,18 +345,26 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
 
               {/* Rating */}
               <div className="flex items-center gap-1.5 mt-2">
-                <span className="flex items-center gap-0.5">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      size={12}
-                      className={i < Math.round(product.rating) ? 'fill-gold text-gold' : 'text-dark-brown/20'}
-                    />
-                  ))}
-                </span>
-                <span className="text-[10px] text-dark-brown/50 font-medium">
-                  {product.rating} ({product.reviewsCount} reviews)
-                </span>
+                {product.reviewsCount > 0 ? (
+                  <>
+                    <span className="flex items-center gap-0.5">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          size={12}
+                          className={i < Math.round(product.rating) ? 'fill-gold text-gold' : 'text-dark-brown/20'}
+                        />
+                      ))}
+                    </span>
+                    <span className="text-[10px] text-dark-brown/50 font-medium">
+                      {product.rating} ({product.reviewsCount} {product.reviewsCount === 1 ? 'review' : 'reviews'})
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-[10px] text-dark-brown/40 font-medium italic">
+                    No reviews yet
+                  </span>
+                )}
               </div>
 
               {/* Price */}

@@ -13,9 +13,12 @@ import {
   Package,
   X,
   Star,
-  AlertCircle
+  AlertCircle,
+  Smartphone,
+  Download
 } from 'lucide-react';
 import { supabase } from '../../data/supabase';
+import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 
 function getStatusDisplay(status: string): string {
   switch (status?.toLowerCase()) {
@@ -56,6 +59,27 @@ function AccountContent() {
   const [itemToCancel, setItemToCancel] = useState<string | null>(null);
   const [cancelType, setCancelType] = useState<'order' | 'item'>('order');
   const [cancelStatus, setCancelStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  // PWA install state
+  const isPwaInstalled = useIsPwaInstalled();
+
+  const handlePwaInstall = async () => {
+    const promptEvent = typeof window !== 'undefined' ? (window as any).deferredPwaPrompt : null;
+    if (promptEvent) {
+      try {
+        await promptEvent.prompt();
+        const { outcome } = await promptEvent.userChoice;
+        if (outcome === 'accepted') {
+          (window as any).deferredPwaPrompt = null;
+          markPwaAsInstalled();
+        }
+      } catch (err) {
+        console.error('PWA install error:', err);
+      }
+    } else {
+      alert('To install our app:\n1. Tap the Share icon in your browser\n2. Select "Add to Home Screen"');
+    }
+  };
 
   // Review states
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -317,6 +341,33 @@ function AccountContent() {
 
   return (
     <div className="w-full space-y-6 animate-fadeIn">
+      {/* PWA Download App Banner for Mobile Account Page */}
+      {!isPwaInstalled && (
+        <div className="sm:hidden bg-gradient-to-r from-[#6B1725] via-[#52111C] to-[#292524] text-[#FAF7F0] p-4 rounded-2xl border border-[#B08A3C]/40 shadow-lg flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-[#FAF7F0]/10 border border-[#B08A3C]/30 flex items-center justify-center flex-shrink-0 text-[#D4B870]">
+              <Smartphone size={20} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-serif font-bold text-xs text-[#FAF7F0] truncate flex items-center gap-1.5">
+                Shree Banarasi App
+                <span className="text-[9px] bg-[#B08A3C] text-[#292524] font-sans font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider">Fast</span>
+              </h3>
+              <p className="text-[10px] text-[#FAF7F0]/80 font-light truncate mt-0.5">
+                Real-time order tracking & updates
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handlePwaInstall}
+            className="flex-shrink-0 px-3 py-1.5 bg-gradient-to-r from-[#B08A3C] to-[#D4B870] hover:from-[#D4B870] hover:to-[#B08A3C] text-[#292524] rounded-xl text-xs font-serif font-bold tracking-wide uppercase transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-1"
+          >
+            <Download size={13} />
+            <span>Install</span>
+          </button>
+        </div>
+      )}
+
       {/* 1. VIEW ACTIVE ORDER DETAIL */}
       {selectedOrderId && activeOrder ? (
         <div className="bg-white p-4 sm:p-6 rounded-2xl border border-cream shadow-sm space-y-6">

@@ -60,10 +60,59 @@ export function getProductSlug(name: string, id: string): string {
   return `${cleanedName}-${id.toLowerCase()}`;
 }
 
+export interface RatingSummary {
+  rating: number;
+  reviewsCount: number;
+}
+
+/**
+ * Fetch rating averages and review counts for all products directly from the database table `product_reviews`.
+ */
+export async function fetchProductRatingsMap(): Promise<Record<string, RatingSummary>> {
+  try {
+    const { data, error } = await supabase
+      .from('product_reviews')
+      .select('product_id, rating')
+      .or('status.eq.approved,status.is.null');
+
+    if (error || !data) {
+      return {};
+    }
+
+    const map: Record<string, { total: number; count: number }> = {};
+    data.forEach((row: any) => {
+      if (!row.product_id || !row.rating) return;
+      const pid = String(row.product_id);
+      if (!map[pid]) map[pid] = { total: 0, count: 0 };
+      map[pid].total += Number(row.rating);
+      map[pid].count += 1;
+    });
+
+    const result: Record<string, RatingSummary> = {};
+    Object.keys(map).forEach((pid) => {
+      const item = map[pid];
+      if (item.count > 0) {
+        result[pid] = {
+          rating: Number((item.total / item.count).toFixed(1)),
+          reviewsCount: item.count,
+        };
+      }
+    });
+
+    return result;
+  } catch (err) {
+    console.error('Error fetching product ratings map:', err);
+    return {};
+  }
+}
+
 /**
  * Maps Supabase inventory item to the app's Product format.
  */
-export function mapDbProductToProduct(item: DbInventory): Product {
+export function mapDbProductToProduct(
+  item: DbInventory,
+  ratingMap?: Record<string, RatingSummary>
+): Product {
   // Sort images: primary first, then by sort_order from Supabase inventory_images table
   let imageUrls: string[] = [];
   if (item.inventory_images && item.inventory_images.length > 0) {
@@ -101,10 +150,12 @@ export function mapDbProductToProduct(item: DbInventory): Product {
     occasion = 'Gift';
   }
 
-  // Derive stable values based on string seed
   const idHash = item.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const rating = Number((4.3 + (idHash % 8) / 10).toFixed(1)); // 4.3 to 5.0
-  const reviewsCount = 6 + (idHash % 25); // 6 to 30
+
+  // Rating dynamically fetched from product_reviews table in Supabase
+  const dbRating = ratingMap ? ratingMap[item.id] : undefined;
+  const rating = dbRating ? dbRating.rating : 0;
+  const reviewsCount = dbRating ? dbRating.reviewsCount : 0;
 
   // Category mapping normalization
   let categoryNormalized = (item.category || 'Banarasi').trim();
@@ -151,11 +202,14 @@ export function mapDbProductToProduct(item: DbInventory): Product {
 export async function fetchDesignVariants(designCode?: string | null): Promise<Product[]> {
   if (!designCode || !designCode.trim()) return [];
   try {
-    const { data, error } = await supabase
-      .from('inventory')
-      .select(PUBLIC_INVENTORY_SELECT)
-      .eq('status', 'active')
-      .eq('design_code', designCode.trim().toUpperCase());
+    const [{ data, error }, ratingMap] = await Promise.all([
+      supabase
+        .from('inventory')
+        .select(PUBLIC_INVENTORY_SELECT)
+        .eq('status', 'active')
+        .eq('design_code', designCode.trim().toUpperCase()),
+      fetchProductRatingsMap()
+    ]);
 
     if (error) {
       console.error('Error fetching design variants:', error);
@@ -163,7 +217,7 @@ export async function fetchDesignVariants(designCode?: string | null): Promise<P
     }
 
     const dbItems = (data || []) as DbInventory[];
-    return dbItems.map(mapDbProductToProduct);
+    return dbItems.map(item => mapDbProductToProduct(item, ratingMap));
   } catch (err) {
     console.error('Exception in fetchDesignVariants:', err);
     return [];
@@ -197,10 +251,13 @@ export async function fetchCategories(): Promise<DbCategory[]> {
  */
 export async function fetchProducts(): Promise<Product[]> {
   try {
-    const { data, error } = await supabase
-      .from('inventory')
-      .select(PUBLIC_INVENTORY_SELECT)
-      .eq('status', 'active');
+    const [{ data, error }, ratingMap] = await Promise.all([
+      supabase
+        .from('inventory')
+        .select(PUBLIC_INVENTORY_SELECT)
+        .eq('status', 'active'),
+      fetchProductRatingsMap()
+    ]);
 
     if (error) {
       console.error('Error fetching products:', error);
@@ -208,7 +265,7 @@ export async function fetchProducts(): Promise<Product[]> {
     }
 
     const dbItems = (data || []) as DbInventory[];
-    return dbItems.map(mapDbProductToProduct);
+    return dbItems.map(item => mapDbProductToProduct(item, ratingMap));
   } catch (err) {
     console.error('Exception in fetchProducts:', err);
     return [];
@@ -264,7 +321,10 @@ export async function searchProductsAdvancedDb(params: {
       q = q.lte('selling_price', params.maxPrice);
     }
 
-    const { data, error } = await q;
+    const [{ data, error }, ratingMap] = await Promise.all([
+      q,
+      fetchProductRatingsMap()
+    ]);
 
     if (error) {
       console.error('Error executing Supabase full-text search:', error);
@@ -273,7 +333,7 @@ export async function searchProductsAdvancedDb(params: {
     }
 
     const dbItems = (data || []) as DbInventory[];
-    return dbItems.map(mapDbProductToProduct);
+    return dbItems.map(item => mapDbProductToProduct(item, ratingMap));
   } catch (err) {
     console.error('Exception in searchProductsAdvancedDb:', err);
     return fetchProducts();
@@ -289,14 +349,17 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
     const parts = slug.split('-');
     if (parts.length > 1) {
       const idCandidate = parts[parts.length - 1];
-      const { data, error } = await supabase
-        .from('inventory')
-        .select(PUBLIC_INVENTORY_SELECT)
-        .eq('id', idCandidate)
-        .single();
+      const [{ data, error }, ratingMap] = await Promise.all([
+        supabase
+          .from('inventory')
+          .select(PUBLIC_INVENTORY_SELECT)
+          .eq('id', idCandidate)
+          .single(),
+        fetchProductRatingsMap()
+      ]);
 
       if (!error && data) {
-        const product = mapDbProductToProduct(data as DbInventory);
+        const product = mapDbProductToProduct(data as DbInventory, ratingMap);
         // Double check slug matches
         if (product.slug === slug) {
           return product;
@@ -732,8 +795,8 @@ export async function fetchDbOrders(userId: string): Promise<Order[]> {
           price: Number(item.unit_price),
           images: [NO_IMAGE_PLACEHOLDER],
           stock: 0,
-          rating: 5,
-          reviewsCount: 1,
+          rating: 0,
+          reviewsCount: 0,
           length: '5.5 meters',
           blousePiece: '0.8 meters',
           work: '',
@@ -1470,11 +1533,14 @@ export async function fetchCampaignProducts(campaignId: string): Promise<Product
       return [];
     }
 
-    const { data: inventoryData, error: invError } = await supabase
-      .from('inventory')
-      .select(PUBLIC_INVENTORY_SELECT)
-      .in('id', inventoryIds)
-      .eq('status', 'active');
+    const [{ data: inventoryData, error: invError }, ratingMap] = await Promise.all([
+      supabase
+        .from('inventory')
+        .select(PUBLIC_INVENTORY_SELECT)
+        .in('id', inventoryIds)
+        .eq('status', 'active'),
+      fetchProductRatingsMap()
+    ]);
 
     if (invError || !inventoryData) {
       console.error('Error fetching inventory for campaign:', invError);
@@ -1482,7 +1548,7 @@ export async function fetchCampaignProducts(campaignId: string): Promise<Product
     }
 
     const dbItems = inventoryData as DbInventory[];
-    return dbItems.map(mapDbProductToProduct);
+    return dbItems.map(item => mapDbProductToProduct(item, ratingMap));
   } catch (err) {
     console.error('Exception in fetchCampaignProducts:', err);
     return [];
@@ -1510,20 +1576,23 @@ export async function fetchSimilarProducts(
 ): Promise<Product[]> {
   try {
     // Fetch a broader pool: same category, active, with images
-    const { data, error } = await supabase
-      .from('inventory')
-      .select(PUBLIC_INVENTORY_SELECT)
-      .eq('status', 'active')
-      .ilike('category', `%${currentProduct.category}%`)
-      .neq('id', currentProduct.id)
-      .limit(60); // fetch enough to score & rank
+    const [{ data, error }, ratingMap] = await Promise.all([
+      supabase
+        .from('inventory')
+        .select(PUBLIC_INVENTORY_SELECT)
+        .eq('status', 'active')
+        .ilike('category', `%${currentProduct.category}%`)
+        .neq('id', currentProduct.id)
+        .limit(60),
+      fetchProductRatingsMap()
+    ]);
 
     if (error || !data) {
       console.error('Error fetching similar products:', error);
       return [];
     }
 
-    const pool = (data as DbInventory[]).map(mapDbProductToProduct);
+    const pool = (data as DbInventory[]).map(item => mapDbProductToProduct(item, ratingMap));
 
     // Score each product for similarity
     const scored = pool.map((p) => {
@@ -1592,11 +1661,14 @@ export async function fetchProductsByIds(ids: string[]): Promise<Product[]> {
   if (validIds.length === 0) return [];
 
   try {
-    const { data, error } = await supabase
-      .from('inventory')
-      .select(PUBLIC_INVENTORY_SELECT)
-      .in('id', validIds)
-      .eq('status', 'active');
+    const [{ data, error }, ratingMap] = await Promise.all([
+      supabase
+        .from('inventory')
+        .select(PUBLIC_INVENTORY_SELECT)
+        .in('id', validIds)
+        .eq('status', 'active'),
+      fetchProductRatingsMap()
+    ]);
 
     if (error) {
       console.error('Error in fetchProductsByIds:', error);
@@ -1604,7 +1676,7 @@ export async function fetchProductsByIds(ids: string[]): Promise<Product[]> {
     }
 
     const dbItems = (data || []) as DbInventory[];
-    const productMap = new Map(dbItems.map((item) => [item.id, mapDbProductToProduct(item)]));
+    const productMap = new Map(dbItems.map((item) => [item.id, mapDbProductToProduct(item, ratingMap)]));
 
     // Return in caller-specified order, skipping missing/inactive entries
     return validIds.reduce<Product[]>((acc, id) => {
