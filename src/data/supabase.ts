@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Product, PRODUCTS } from './products';
+import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzqlsawxvvyvsstyzzff.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -76,7 +77,7 @@ export function mapDbProductToProduct(item: DbInventory): Product {
 
   // Fallback image if none exist
   if (imageUrls.length === 0) {
-    imageUrls = ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=800"];
+    imageUrls = [NO_IMAGE_PLACEHOLDER];
   }
 
   const mrpVal = item.mrp ? Number(item.mrp) : Number(item.selling_price);
@@ -664,7 +665,7 @@ export async function fetchDbOrders(userId: string): Promise<Order[]> {
           color: '',
           occasion: 'Festive',
           price: Number(item.unit_price),
-          images: ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=800"],
+          images: [NO_IMAGE_PLACEHOLDER],
           stock: 0,
           rating: 5,
           reviewsCount: 1,
@@ -1628,7 +1629,7 @@ export async function fetchOrderDetailsForReview(orderIdOrNumber: string): Promi
         fabric: snap.fabric || 'Silk',
         color: snap.color || '',
         price: Number(item.unit_price || snap.price || 0),
-        image: snap.images?.[0] || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=600&q=80",
+        image: snap.images?.[0] || NO_IMAGE_PLACEHOLDER,
         quantity: item.quantity || 1,
         existingReview: existingReviewObj ? {
           id: existingReviewObj.id,

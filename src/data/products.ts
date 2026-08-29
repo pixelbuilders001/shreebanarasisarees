@@ -1,3 +1,4 @@
+import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 export interface Product {
   id: string;
   sku: string;
@@ -41,9 +42,9 @@ export const PRODUCTS: Product[] = [
     salePrice: 3499,
     stock: 5,
     images: [
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER,
+      NO_IMAGE_PLACEHOLDER,
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: true,
     newArrival: true,
@@ -70,8 +71,8 @@ export const PRODUCTS: Product[] = [
     salePrice: 3299,
     stock: 3,
     images: [
-      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1610030469668-93535c17b6b3?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER,
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: true,
     newArrival: true,
@@ -98,8 +99,8 @@ export const PRODUCTS: Product[] = [
     salePrice: 5499,
     stock: 2,
     images: [
-      "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER,
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: false,
@@ -126,8 +127,8 @@ export const PRODUCTS: Product[] = [
     salePrice: 4299,
     stock: 4,
     images: [
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER,
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: true,
     newArrival: false,
@@ -154,8 +155,8 @@ export const PRODUCTS: Product[] = [
     salePrice: 4299,
     stock: 2,
     images: [
-      "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER,
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: true,
@@ -182,8 +183,8 @@ export const PRODUCTS: Product[] = [
     salePrice: 4799,
     stock: 3,
     images: [
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER,
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: true,
     newArrival: true,
@@ -212,8 +213,8 @@ export const PRODUCTS: Product[] = [
     salePrice: 2199,
     stock: 8,
     images: [
-      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1610030469668-93535c17b6b3?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER,
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: true,
     newArrival: false,
@@ -240,7 +241,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 2499,
     stock: 4,
     images: [
-      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: true,
@@ -267,7 +268,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 2299,
     stock: 6,
     images: [
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: true,
@@ -294,7 +295,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 2399,
     stock: 5,
     images: [
-      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: true,
     newArrival: false,
@@ -321,8 +322,8 @@ export const PRODUCTS: Product[] = [
     salePrice: 3899,
     stock: 2,
     images: [
-      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1610030469668-93535c17b6b3?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER,
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: false,
@@ -349,7 +350,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 1899,
     stock: 7,
     images: [
-      "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: true,
@@ -378,8 +379,8 @@ export const PRODUCTS: Product[] = [
     salePrice: 1899,
     stock: 5,
     images: [
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER,
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: true,
     newArrival: false,
@@ -406,7 +407,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 2999,
     stock: 3,
     images: [
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: true,
     newArrival: true,
@@ -433,7 +434,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 1999,
     stock: 6,
     images: [
-      "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: false,
@@ -460,7 +461,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 2899,
     stock: 4,
     images: [
-      "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: true,
@@ -487,7 +488,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 999,
     stock: 12,
     images: [
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: false,
@@ -516,8 +517,8 @@ export const PRODUCTS: Product[] = [
     salePrice: 2299,
     stock: 6,
     images: [
-      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1610030469668-93535c17b6b3?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER,
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: true,
     newArrival: true,
@@ -544,7 +545,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 1999,
     stock: 4,
     images: [
-      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: true,
@@ -571,7 +572,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 2299,
     stock: 5,
     images: [
-      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: true,
     newArrival: false,
@@ -598,7 +599,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 2199,
     stock: 2,
     images: [
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: true,
@@ -625,7 +626,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 1499,
     stock: 7,
     images: [
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: false,
@@ -654,8 +655,8 @@ export const PRODUCTS: Product[] = [
     salePrice: 2799,
     stock: 4,
     images: [
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER,
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: true,
     newArrival: false,
@@ -682,7 +683,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 2599,
     stock: 3,
     images: [
-      "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: true,
     newArrival: true,
@@ -709,7 +710,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 2999,
     stock: 2,
     images: [
-      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: false,
@@ -736,7 +737,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 1999,
     stock: 6,
     images: [
-      "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: true,
@@ -763,7 +764,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 2499,
     stock: 4,
     images: [
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: false,
@@ -792,8 +793,8 @@ export const PRODUCTS: Product[] = [
     salePrice: 9999,
     stock: 1, // Only 1 left!
     images: [
-      "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER,
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: true,
     newArrival: false,
@@ -820,7 +821,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 11999,
     stock: 2,
     images: [
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: true,
     newArrival: true,
@@ -847,7 +848,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 999, // Budget offer starting from ₹999!
     stock: 15,
     images: [
-      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: false,
@@ -874,7 +875,7 @@ export const PRODUCTS: Product[] = [
     salePrice: 999, // Starting ₹999
     stock: 20,
     images: [
-      "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=800"
+      NO_IMAGE_PLACEHOLDER
     ],
     featured: false,
     newArrival: false,

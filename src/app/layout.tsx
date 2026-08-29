@@ -115,8 +115,6 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://vzqlsawxvvyvsstyzzff.supabase.co" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://vzqlsawxvvyvsstyzzff.supabase.co" />
-        <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://images.unsplash.com" />
       </head>
       <body className="font-sans antialiased text-[#292524] bg-[#FAF7F0] min-h-screen flex flex-col justify-between">
         <GoogleAnalytics />

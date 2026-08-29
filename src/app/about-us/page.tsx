@@ -5,6 +5,7 @@ import { Header } from '../../components/Header';
 import { Footer } from '../../components/Footer';
 import { StoreInfo } from '../../components/StoreInfo';
 import { MapPin, Clock, Phone, ShieldCheck, Heart, Sparkles, Scissors, Landmark } from 'lucide-react';
+import { NO_IMAGE_PLACEHOLDER } from '../../lib/placeholder';
 
 export const metadata: Metadata = {
   title: "Shree Banarasi Sarees | Saree Shop in Samastipur, Bihar",
@@ -66,7 +67,7 @@ export default function AboutUs() {
         <section className="relative bg-maroon-dark py-20 px-4 text-center border-b border-gold/30">
           <div className="absolute inset-0 bg-black/45 z-10" />
           <img
-            src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=1200"
+            src={NO_IMAGE_PLACEHOLDER}
             alt="Inside Shree Banarasi Sarees Showroom"
             className="absolute inset-0 w-full h-full object-cover object-center opacity-65"
           />
@@ -156,7 +157,7 @@ export default function AboutUs() {
             <div className="lg:col-span-5 relative">
               <div className="aspect-[4/5] rounded-2xl overflow-hidden border border-cream shadow-md bg-white p-2">
                 <img
-                  src="https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600"
+                  src={NO_IMAGE_PLACEHOLDER}
                   alt="Traditional Saree Collections in Samastipur Store"
                   className="w-full h-full object-cover object-center rounded-xl"
                 />

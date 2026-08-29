@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Star, MessageSquarePlus, X } from 'lucide-react';
+import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 
 interface Testimonial {
   name: string;
@@ -17,21 +18,21 @@ const INITIAL_TESTIMONIALS: Testimonial[] = [
     rating: 5,
     text: "Beautiful collection of Banarasi sarees! The fabric quality is absolutely premium, and the gold zari work has an authentic shine. Very helpful staff who guided me on video call.",
     location: "Patna, Bihar",
-    avatar: "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=150"
+    avatar: NO_IMAGE_PLACEHOLDER
   },
   {
     name: "Neelam Sharma",
     rating: 5,
     text: "Found the perfect pastel Chanderi silk saree for my sister's wedding reception. The custom matching blouse piece is of excellent length. Extremely satisfied!",
     location: "Samastipur, Bihar",
-    avatar: "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=150"
+    avatar: NO_IMAGE_PLACEHOLDER
   },
   {
     name: "Radhika Raje",
     rating: 4,
     text: "Very affordable prices. I ordered two daily wear cotton sarees and one Lucknowi Chikankari. The georgette fabric is very soft and lightweight. Highly recommended.",
     location: "Darbhanga, Bihar",
-    avatar: "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=150"
+    avatar: NO_IMAGE_PLACEHOLDER
   }
 ];
 
@@ -55,7 +56,7 @@ export const TestimonialSection: React.FC = () => {
       rating,
       text,
       location: location || "India",
-      avatar: "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=150"
+      avatar: NO_IMAGE_PLACEHOLDER
     };
 
     setTestimonials([newReview, ...testimonials]);

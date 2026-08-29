@@ -13,47 +13,8 @@ interface CategoryItem {
   link: string;
 }
 
-const DEFAULT_CATEGORIES: CategoryItem[] = [
-  {
-    name: "Banarasi Silk",
-    subtitle: "Pure Katan & Zari Jaals",
-    image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600&h=750",
-    link: "/sarees?category=Banarasi+Sarees"
-  },
-  {
-    name: "Chikankari",
-    subtitle: "Lucknowi Hand Embroidery",
-    image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=600&h=750",
-    link: "/sarees?category=Chikankari+Sarees"
-  },
-  {
-    name: "Bandhani",
-    subtitle: "Kutch Tie & Dye Crafts",
-    image: "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=600&h=750",
-    link: "/sarees?category=Bandhani+Sarees"
-  },
-  {
-    name: "Organza",
-    subtitle: "Ethereal Glass Weaves",
-    image: "https://images.unsplash.com/photo-1610030469668-93535c17b6b3?auto=format&fit=crop&q=80&w=600&h=750",
-    link: "/sarees?category=Organza+Sarees"
-  },
-  {
-    name: "Chanderi",
-    subtitle: "Lightweight Cotton Silk",
-    image: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=600&h=750",
-    link: "/sarees?category=Chanderi+Sarees"
-  },
-  {
-    name: "Bridal Wear",
-    subtitle: "Grand Wedding Trousseau",
-    image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600&h=750",
-    link: "/sarees?category=Bridal+Collection"
-  }
-];
-
 export const CategoryCard: React.FC = () => {
-  const { categories } = useStore();
+  const { categories, isCategoriesLoading } = useStore();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scrollLeft = () => {
@@ -68,14 +29,12 @@ export const CategoryCard: React.FC = () => {
     }
   };
 
-  const displayCategories = categories && categories.length > 0
-    ? categories.map(c => ({
-        name: c.name,
-        subtitle: c.description || "Handcrafted Heritage",
-        image: c.image_url || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600&h=750",
-        link: c.slug ? `/sarees/${c.slug}` : `/sarees?category=${encodeURIComponent(c.name)}`
-      }))
-    : DEFAULT_CATEGORIES;
+  const displayCategories: CategoryItem[] = categories.map(c => ({
+    name: c.name,
+    subtitle: c.description || "Handcrafted Heritage",
+    image: c.image_url || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23292524'/%3E%3C/svg%3E",
+    link: c.slug ? `/sarees/${c.slug}` : `/sarees?category=${encodeURIComponent(c.name)}`
+  }));
 
   return (
     <section className="pt-10 pb-6 sm:pt-14 sm:pb-8 bg-[#FAF7F0] border-b border-[#B08A3C]/15">
@@ -124,18 +83,47 @@ export const CategoryCard: React.FC = () => {
           ref={scrollRef}
           className="flex gap-3.5 sm:gap-5 overflow-x-auto no-scrollbar pb-4 scroll-smooth snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0"
         >
-          {displayCategories.map((category, idx) => (
-            <CategoryTile
-              key={idx}
-              category={category}
-              className="w-[170px] sm:w-[210px] lg:w-[220px] flex-shrink-0 snap-start"
-            />
-          ))}
+          {isCategoriesLoading ? (
+            Array.from({ length: 6 }).map((_, idx) => (
+              <CategorySkeletonTile
+                key={idx}
+                className="w-[170px] sm:w-[210px] lg:w-[220px] flex-shrink-0 snap-start"
+              />
+            ))
+          ) : displayCategories.length > 0 ? (
+            displayCategories.map((category, idx) => (
+              <CategoryTile
+                key={idx}
+                category={category}
+                className="w-[170px] sm:w-[210px] lg:w-[220px] flex-shrink-0 snap-start"
+              />
+            ))
+          ) : (
+            Array.from({ length: 6 }).map((_, idx) => (
+              <CategorySkeletonTile
+                key={idx}
+                className="w-[170px] sm:w-[210px] lg:w-[220px] flex-shrink-0 snap-start"
+              />
+            ))
+          )}
         </div>
       </div>
     </section>
   );
 };
+
+const CategorySkeletonTile: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <div
+    className={`relative rounded-2xl overflow-hidden aspect-[3/4] bg-stone-200 border border-[#B08A3C]/20 shadow-sm animate-pulse ${className}`}
+  >
+    <div className="absolute inset-0 bg-gradient-to-t from-[#292524]/60 via-stone-300/30 to-stone-200/40" />
+    <div className="absolute bottom-0 left-0 right-0 p-3.5 sm:p-4 space-y-2">
+      <div className="h-4 sm:h-5 bg-white/40 rounded-md w-3/4" />
+      <div className="h-3 bg-white/25 rounded-md w-1/2" />
+      <div className="h-2.5 bg-[#B08A3C]/50 rounded-md w-1/3 mt-2" />
+    </div>
+  </div>
+);
 
 interface CategoryTileProps {
   category: CategoryItem;

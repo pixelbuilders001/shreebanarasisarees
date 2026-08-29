@@ -11,6 +11,8 @@ export interface BlogPost {
   category: string;
 }
 
+import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
+
 export const BLOG_POSTS: BlogPost[] = [
   {
     id: "blog-001",
@@ -21,7 +23,7 @@ export const BLOG_POSTS: BlogPost[] = [
     publishedAt: "2026-08-01",
     author: "Shree Saree Expert Team",
     readTime: "6 min read",
-    image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=800",
+    image: NO_IMAGE_PLACEHOLDER,
     content: `
       <p>Planning a wedding in Bihar is an grand, joyous affair, and at the heart of every wedding preparation is the search for the perfect bridal saree. For generations, families in the Samastipur district have traveled to nearby cities like Patna or even Varanasi to find wedding ensembles. However, in recent years, Samastipur has emerged as a premier textile hub in its own right.</p>
 
@@ -85,7 +87,7 @@ export const BLOG_POSTS: BlogPost[] = [
     publishedAt: "2026-08-05",
     author: "Shree Weaving Master",
     readTime: "5 min read",
-    image: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=800",
+    image: NO_IMAGE_PLACEHOLDER,
     content: `
       <p>A pure, handwoven Banarasi silk saree is more than just six yards of fabric—it is an heirloom piece, a work of art, and a family treasure passed down through generations. Unfortunately, the rise of industrial powerlooms has flooded markets with cheap synthetic replicas sold under the name of 'Pure Banarasi Silk'. These copycats use polyester yarns and cheap chemical metallic wires, copying the look but completely lacking the durability, soft touch, and value of real silk.</p>
 
@@ -135,7 +137,7 @@ export const BLOG_POSTS: BlogPost[] = [
     publishedAt: "2026-08-08",
     author: "Shree Bridal Stylist Team",
     readTime: "5 min read",
-    image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=800",
+    image: NO_IMAGE_PLACEHOLDER,
     content: `
       <p>Building a bridal trousseau is one of the most exciting aspects of wedding preparations. A trousseau is not just a wardrobe for the post-wedding weeks—it is a collection of memories, a representation of your heritage, and the foundation of your family heirloom wardrobe. In a country with such diverse textile traditions, selecting the right variety of sarees is key.</p>
 

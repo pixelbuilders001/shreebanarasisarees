@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Heart, ShoppingBag, Eye, X, Star, Scissors, Bell } from 'lucide-react';
 import { Product } from '../data/products';
 import { useStore } from '../context/StoreContext';
+import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 
 interface ProductCardProps {
   product: Product;
@@ -15,6 +16,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { cart, addToCart, updateCartQuantity, toggleWishlist, isInWishlist, showToast } = useStore();
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const activeWishlist = isInWishlist(product.id);
   const cartItem = cart.find(item => item.product.id === product.id);
   const quantityInCart = cartItem ? cartItem.quantity : 0;
@@ -37,13 +39,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       <div className={`relative w-full aspect-[3/4] overflow-hidden border-b border-gold/10 ${imageLoaded ? 'bg-cream/20' : 'bg-cream animate-pulse'}`}>
         <Link href={`/product/${product.slug}`} className="block w-full h-full">
           <Image
-            src={product.images[0]}
+            src={imageError || !product.images?.[0] ? NO_IMAGE_PLACEHOLDER : product.images[0]}
             alt={product.name}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 300px"
             className={`w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out ${product.stock === 0 ? 'grayscale opacity-60' : ''}`}
             loading="lazy"
             onLoad={() => setImageLoaded(true)}
+            onError={() => {
+              setImageError(true);
+              setImageLoaded(true);
+            }}
           />
         </Link>
 
@@ -251,6 +257,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
   const [qty, setQty] = useState(1);
   const [imgIndex, setImgIndex] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   // Lock body scroll while the modal is open
   useEffect(() => {
@@ -296,10 +303,14 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
             {/* Product Images */}
             <div className={`relative aspect-[3/4] sm:aspect-auto sm:min-h-[440px] ${imageLoaded ? 'bg-cream/20' : 'bg-cream animate-pulse'}`}>
               <img
-                src={product.images[imgIndex] || product.images[0]}
+                src={imageError || !product.images?.[imgIndex] ? NO_IMAGE_PLACEHOLDER : (product.images[imgIndex] || product.images[0])}
                 alt={product.name}
                 className="w-full h-full object-cover"
                 onLoad={() => setImageLoaded(true)}
+                onError={() => {
+                  setImageError(true);
+                  setImageLoaded(true);
+                }}
               />
               {product.images.length > 1 && (
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10">

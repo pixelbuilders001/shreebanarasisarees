@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { fetchActiveHeroBanners, DbHeroBanner } from '../data/supabase';
+import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 
 // High-resolution authentic Indian saree model hero images
 const DEFAULT_HERO_SLIDES = [
@@ -13,7 +14,7 @@ const DEFAULT_HERO_SLIDES = [
     title: "Timeless Sarees. Rooted in Tradition.",
     subtitle: "Discover elegant Banarasi, silk and handcrafted sarees for weddings, festivities and every beautiful occasion.",
     eyebrow: "HERITAGE WEAVES FROM SAMASTIPUR",
-    image_url: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=1600",
+    image_url: "/hero_banner_1.png",
     button_text: "SHOP SAREES",
     button_link: "/sarees",
     secondary_text: "EXPLORE BANARASI",
@@ -24,7 +25,7 @@ const DEFAULT_HERO_SLIDES = [
     title: "Royal Banarasi Silk Edit",
     subtitle: "Intricate gold zari jaals, rich Katan silk drapes, and heirloom designs woven with master craftsmanship.",
     eyebrow: "BRIDAL & FESTIVE SPECIALS",
-    image_url: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=1600",
+    image_url: "/hero_banner_2.png",
     button_text: "EXPLORE BRIDAL COLLECTION",
     button_link: "/sarees?category=Bridal+Collection",
     secondary_text: "VIEW ALL SILKS",
@@ -32,10 +33,21 @@ const DEFAULT_HERO_SLIDES = [
   },
   {
     id: "hero-slide-3",
+    title: "Crafted for Special Celebrations",
+    subtitle: "Magnificent bridal weaves and opulent grand drapes handcrafted for lifetime memories.",
+    eyebrow: "HERITAGE LEHENGA & SILKS",
+    image_url: "/hero_banner_3.png",
+    button_text: "SHOP CELEBRATION WEAVES",
+    button_link: "/sarees?category=Festive+Sarees",
+    secondary_text: "EXPLORE KATAN SILK",
+    secondary_link: "/sarees?category=Katan+Silk"
+  },
+  {
+    id: "hero-slide-4",
     title: "Lightweight Organza & Chanderi",
     subtitle: "Breathable, ethereal drapes with subtle metallic borders — ideal for day functions, summer weddings & gifting.",
     eyebrow: "CONTEMPORARY ELEGANCE",
-    image_url: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=1600",
+    image_url: "/hero_banner_4.png",
     button_text: "SHOP ORGANZA & CHANDERI",
     button_link: "/sarees?category=Organza+Sarees",
     secondary_text: "SHOP UNDER ₹1,999",
@@ -150,7 +162,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
               className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${isActive ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
                 }`}
             >
-              {/* Full Width Mobile App Style Banner Image */}
+              {/* Full Width Hero Image with baked-in banner visuals */}
               <Image
                 src={slide.image_url}
                 alt={slide.title || "Shree Banarasi Sarees Banner"}
@@ -191,8 +203,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
                 key={idx}
                 onClick={() => setCurrentSlide(idx)}
                 className={`h-2 rounded-full transition-all duration-400 ${idx === currentSlide
-                    ? 'w-8 bg-[#B08A3C]'
-                    : 'w-2 bg-white/40 hover:bg-white/70'
+                  ? 'w-8 bg-[#B08A3C]'
+                  : 'w-2 bg-white/40 hover:bg-white/70'
                   }`}
                 aria-label={`Go to slide ${idx + 1}`}
               />

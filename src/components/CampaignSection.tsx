@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase, DbCampaign, fetchActiveCampaigns } from '../data/supabase';
+import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 
 interface CampaignSectionProps {
   slot: 'top' | 'middle' | 'bottom';
@@ -126,7 +127,7 @@ export const CampaignSection: React.FC<CampaignSectionProps> = ({ slot, initialC
             <source media="(max-width: 640px)" srcSet={campaign.mobile_banner_url} />
           )}
           <img
-            src={campaign.desktop_banner_url || campaign.mobile_banner_url || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=1200"}
+            src={campaign.desktop_banner_url || campaign.mobile_banner_url || NO_IMAGE_PLACEHOLDER}
             alt={campaign.name || campaign.title || "Active Campaign Banner"}
             className="w-full h-auto sm:aspect-[1024/331] object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.015]"
           />

@@ -15,6 +15,7 @@ import { ArrowLeft, ArrowRight, ShieldCheck, PackageCheck, Truck, CreditCard, Ba
 import { DbCampaign, DbHeroBanner } from '../data/supabase';
 import { ProductCardSkeleton } from './ProductCardSkeleton';
 import { useRecentlyViewed } from '../utils/useRecentlyViewed';
+import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 
 // Dynamically imported below-the-fold components
 const TestimonialSection = dynamic(() => import('./TestimonialSection').then(m => m.TestimonialSection), {
@@ -139,28 +140,28 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
                   title: "Wedding & Bridal",
                   description: "Heavy Banarasi Katan silks with rich gold zari",
                   occasion: "Wedding",
-                  image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600&h=750",
+                  image: "/occasions/wedding_bridal.png",
                   badge: "Bridal Trousseau"
                 },
                 {
                   title: "Festive Celebrations",
                   description: "Vibrant Bandhanis, Chikankaris & festive colors",
                   occasion: "Festive",
-                  image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=600&h=750",
+                  image: "/occasions/festive_celebrations.png",
                   badge: "Diwali & Pooja"
                 },
                 {
                   title: "Party & Evenings",
                   description: "Ethereal organzas & sequined georgettes",
                   occasion: "Party",
-                  image: "https://images.unsplash.com/photo-1610030469668-93535c17b6b3?auto=format&fit=crop&q=80&w=600&h=750",
+                  image: "/occasions/party_evenings.png",
                   badge: "Contemporary"
                 },
                 {
                   title: "Everyday & Office",
                   description: "Breathable chanderi cottons & lightweight weaves",
                   occasion: "Daily Wear",
-                  image: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=600&h=750",
+                  image: "/occasions/everyday_office.png",
                   badge: "Comfort Wear"
                 }
               ].map((card, idx) => (
@@ -211,7 +212,7 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
             {/* Left Image Composition */}
             <div className="relative rounded-2xl overflow-hidden aspect-[4/3] sm:aspect-[16/10] border border-[#B08A3C]/40 shadow-2xl group">
               <Image
-                src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=1000"
+                src="/occasions/crafted_for_celebrations.png"
                 alt="Crafted for Celebrations - Shree Banarasi Sarees"
                 fill
                 sizes="(max-width: 768px) 100vw, 600px"
@@ -226,12 +227,12 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
 
             {/* Right Editorial Copy */}
             <div className="space-y-4 sm:space-y-6 text-center md:text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#B08A3C]/20 border border-[#B08A3C]/40">
+              {/* <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#B08A3C]/20 border border-[#B08A3C]/40">
                 <Sparkles size={14} className="text-[#B08A3C]" />
                 <span className="text-[10px] sm:text-xs font-bold text-[#D4B870] tracking-[0.2em] uppercase font-sans">
                   HERITAGE CRAFTSMANSHIP
                 </span>
-              </div>
+              </div> */}
 
               <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-wide leading-tight">
                 Crafted for Celebrations

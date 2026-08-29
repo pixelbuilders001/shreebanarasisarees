@@ -1,36 +1,37 @@
 "use client";
 
 import React from 'react';
+import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 
 const INSTA_POSTS = [
   {
     id: 1,
-    image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=400",
+    image: NO_IMAGE_PLACEHOLDER,
     likes: "2.4k"
   },
   {
     id: 2,
-    image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=400",
+    image: NO_IMAGE_PLACEHOLDER,
     likes: "1.8k"
   },
   {
     id: 3,
-    image: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&q=80&w=400",
+    image: NO_IMAGE_PLACEHOLDER,
     likes: "3.1k"
   },
   {
     id: 4,
-    image: "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&q=80&w=400",
+    image: NO_IMAGE_PLACEHOLDER,
     likes: "1.2k"
   },
   {
     id: 5,
-    image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=400",
+    image: NO_IMAGE_PLACEHOLDER,
     likes: "4.5k"
   },
   {
     id: 6,
-    image: "https://images.unsplash.com/photo-1610030469668-93535c17b6b3?auto=format&fit=crop&q=80&w=400",
+    image: NO_IMAGE_PLACEHOLDER,
     likes: "2.2k"
   }
 ];

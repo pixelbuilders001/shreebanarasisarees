@@ -1,0 +1,4 @@
+/**
+ * Brand-aligned SVG placeholder for missing images.
+ */
+export const NO_IMAGE_PLACEHOLDER = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750"><rect width="600" height="750" fill="%23FAF7F0"/><rect x="2" y="2" width="596" height="746" fill="none" stroke="%23B08A3C" stroke-width="2" stroke-opacity="0.3"/><g transform="translate(300,340)" text-anchor="middle"><path d="M-30,-20 L30,-20 L40,20 L-40,20 Z" fill="none" stroke="%236B1725" stroke-width="2" opacity="0.6"/><path d="M-15,-20 Q0,-40 15,-20" fill="none" stroke="%23B08A3C" stroke-width="2" opacity="0.8"/><text y="70" font-family="Georgia, serif" font-size="18" font-weight="bold" fill="%23292524" letter-spacing="1.5">SHREE BANARSI</text><text y="92" font-family="sans-serif" font-size="11" fill="%23B08A3C" letter-spacing="2">NO IMAGE AVAILABLE</text></g></svg>`;

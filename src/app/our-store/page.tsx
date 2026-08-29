@@ -5,6 +5,7 @@ import { Header } from '../../components/Header';
 import { Footer } from '../../components/Footer';
 import { StoreInfo } from '../../components/StoreInfo';
 import { MapPin, Clock, Phone, Navigation, MessageCircle, Star, Sparkles } from 'lucide-react';
+import { NO_IMAGE_PLACEHOLDER } from '../../lib/placeholder';
 
 export const metadata: Metadata = {
   title: "Our Showroom in Samastipur, Bihar | Shree Banarasi Sarees",
@@ -172,7 +173,7 @@ export default function OurStorePage() {
             <div className="lg:col-span-6">
               <div className="aspect-[4/3] rounded-2xl overflow-hidden border border-cream shadow-md bg-white p-2">
                 <img 
-                  src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=800" 
+                  src={NO_IMAGE_PLACEHOLDER} 
                   alt="Our Showroom Display" 
                   className="w-full h-full object-cover object-center rounded-xl"
                 />

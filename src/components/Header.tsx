@@ -30,6 +30,7 @@ import { useStore } from '../context/StoreContext';
 import { AnnouncementBar } from './AnnouncementBar';
 import { AdvancedSearchBar } from './AdvancedSearchBar';
 import { AuthModal } from './AuthModal';
+import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 
 export const Header: React.FC = () => {
   return <HeaderInner />;
@@ -403,7 +404,7 @@ const HeaderInner: React.FC = () => {
                       {/* Small Category Image Thumbnail */}
                       <div className="relative w-11 h-11 rounded-lg overflow-hidden shrink-0 bg-[#292524] border border-[#B08A3C]/30 group-hover:border-white/50 transition-colors">
                         <Image
-                          src={cat.image_url || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=200"}
+                          src={cat.image_url || NO_IMAGE_PLACEHOLDER}
                           alt={cat.name}
                           fill
                           sizes="44px"
@@ -744,7 +745,7 @@ const HeaderInner: React.FC = () => {
                       >
                         <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-[#292524] border border-[#B08A3C]/20">
                           <Image
-                            src={cat.image_url || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=200"}
+                            src={cat.image_url || NO_IMAGE_PLACEHOLDER}
                             alt={cat.name}
                             fill
                             sizes="40px"

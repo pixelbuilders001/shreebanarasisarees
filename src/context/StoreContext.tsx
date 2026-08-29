@@ -84,6 +84,7 @@ export interface Order {
 interface StoreContextType {
   products: Product[];
   categories: DbCategory[];
+  isCategoriesLoading: boolean;
   cart: CartItem[];
   wishlist: Product[];
   orders: Order[];
@@ -208,6 +209,7 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>(PRODUCTS);
   const [categories, setCategories] = useState<DbCategory[]>([]);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState<boolean>(true);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -397,6 +399,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (dbCategories && dbCategories.length > 0) {
         setCategories(dbCategories);
       }
+      setIsCategoriesLoading(false);
+    }).catch(err => {
+      console.error('Error fetching categories:', err);
+      setIsCategoriesLoading(false);
     });
 
     // Subscribe to Supabase authentication state changes
@@ -1081,6 +1087,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <StoreContext.Provider value={{
       products,
       categories,
+      isCategoriesLoading,
       cart,
       wishlist,
       orders,
