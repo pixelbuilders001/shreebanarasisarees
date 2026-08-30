@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sbs-pwa-cache-v7';
+const CACHE_NAME = 'sbs-pwa-cache-v8';
 
 // Core assets to cache immediately on installation
 const PRECACHE_ASSETS = [
@@ -42,14 +42,29 @@ self.addEventListener('activate', (event) => {
 // Fetch Event - Handle cache first or network falling back to offline page
 self.addEventListener('fetch', (event) => {
   const request = event.request;
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch (e) {
+    return;
+  }
 
-  // Only handle GET requests and skip API, Supabase, and Next.js internal /_next/ static/HMR assets
-  if (
-    request.method !== 'GET' ||
-    request.url.includes('/api/') ||
-    request.url.includes('supabase.co') ||
-    request.url.includes('/_next/')
-  ) {
+  // Only handle GET requests
+  if (request.method !== 'GET') {
+    return;
+  }
+
+  // Skip all third-party domain requests (Google Analytics, GTM, Clarity, Supabase, Firebase, Cashfree, etc.)
+  // Only intercept same-origin requests or Google Fonts
+  const isSameOrigin = url.origin === self.location.origin;
+  const isGoogleFont = url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com');
+
+  if (!isSameOrigin && !isGoogleFont) {
+    return;
+  }
+
+  // Skip API routes and Next.js internal /_next/ static/HMR assets
+  if (url.pathname.includes('/api/') || url.pathname.includes('/_next/')) {
     return;
   }
 

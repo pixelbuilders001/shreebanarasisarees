@@ -28,6 +28,9 @@ export default function GoogleAnalytics() {
       <Script
         strategy="afterInteractive"
         src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+        onError={(e) => {
+          console.warn("[Google Analytics] Script failed to load (possibly blocked by client browser or extension):", e);
+        }}
       />
       <Script
         id="google-analytics"
@@ -36,6 +39,7 @@ export default function GoogleAnalytics() {
           __html: `
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
+            window.gtag = gtag;
             gtag('js', new Date());
             gtag('config', '${GA_MEASUREMENT_ID}', {
               page_path: window.location.pathname,

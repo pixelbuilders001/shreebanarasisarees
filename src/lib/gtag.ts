@@ -9,16 +9,26 @@ declare global {
 
 // Track Page Navigation View
 export const pageview = (url: string) => {
-  if (!GA_MEASUREMENT_ID || typeof window === "undefined" || !window.gtag) return;
-  window.gtag("config", GA_MEASUREMENT_ID, {
-    page_path: url,
-  });
+  if (!GA_MEASUREMENT_ID || typeof window === "undefined") return;
+  if (typeof window.gtag === "function") {
+    window.gtag("config", GA_MEASUREMENT_ID, {
+      page_path: url,
+    });
+  } else {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(["config", GA_MEASUREMENT_ID, { page_path: url }]);
+  }
 };
 
 // Generic Event Tracker
 export const event = (action: string, params?: Record<string, any>) => {
-  if (!GA_MEASUREMENT_ID || typeof window === "undefined" || !window.gtag) return;
-  window.gtag("event", action, params);
+  if (!GA_MEASUREMENT_ID || typeof window === "undefined") return;
+  if (typeof window.gtag === "function") {
+    window.gtag("event", action, params);
+  } else {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(["event", action, params]);
+  }
 };
 
 // -------------------------------------------------------------
