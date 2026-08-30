@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Star, MessageSquarePlus, X } from 'lucide-react';
 import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 
@@ -39,10 +39,21 @@ const INITIAL_TESTIMONIALS: Testimonial[] = [
 export const TestimonialSection: React.FC = () => {
   const [testimonials, setTestimonials] = useState<Testimonial[]>(INITIAL_TESTIMONIALS);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeMobileIdx, setActiveMobileIdx] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   const [name, setName] = useState('');
   const [rating, setRating] = useState(5);
   const [text, setText] = useState('');
   const [location, setLocation] = useState('');
+
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, clientWidth } = scrollRef.current;
+      const index = Math.round(scrollLeft / (clientWidth * 0.8));
+      setActiveMobileIdx(Math.min(index, testimonials.length - 1));
+    }
+  };
 
   const handleSubmitReview = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,27 +81,85 @@ export const TestimonialSection: React.FC = () => {
   };
 
   return (
-    <section className="py-16 px-4 bg-white border-b border-cream">
+    <section className="py-10 sm:py-16 px-4 bg-white border-b border-cream">
       <div className="max-w-7xl mx-auto">
         
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-10 gap-4">
-          <div className="text-center sm:text-left">
-            <h2 className="font-serif text-2xl sm:text-3xl font-extrabold tracking-wide text-dark-brown">
+        <div className="flex flex-row justify-between items-center mb-6 sm:mb-10 gap-2">
+          <div className="text-left">
+            <h2 className="font-serif text-xl sm:text-3xl font-extrabold tracking-wide text-dark-brown">
               What Our Customers Say
             </h2>
-            <p className="text-sm text-gold font-bold mt-1.5">★★★★★ 4.8/5</p>
+            <p className="text-xs sm:text-sm text-gold font-bold mt-1">★★★★★ 4.8/5</p>
           </div>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="py-2.5 px-5 bg-white border border-maroon text-maroon hover:bg-maroon hover:text-white rounded font-serif font-bold text-xs tracking-wider uppercase transition-all flex items-center gap-1.5 shadow-sm"
+            className="py-2 px-3 sm:py-2.5 sm:px-5 bg-white border border-maroon text-maroon hover:bg-maroon hover:text-white rounded font-serif font-bold text-[10px] sm:text-xs tracking-wider uppercase transition-all flex items-center gap-1 sm:gap-1.5 shadow-xs shrink-0"
           >
-            <MessageSquarePlus size={15} />
-            Write a Review
+            <MessageSquarePlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span>Write Review</span>
           </button>
         </div>
 
-        {/* Testimonials Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+        {/* Mobile View: Swipeable Compact Cards Horizontal Carousel (md:hidden) */}
+        <div className="block md:hidden">
+          <div 
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-3 scrollbar-none -mx-4 px-4"
+          >
+            {testimonials.map((review, idx) => (
+              <div 
+                key={idx}
+                className="w-[85vw] max-w-[310px] shrink-0 snap-center bg-cream/20 p-4 rounded-xl border border-cream/50 shadow-xs flex flex-col justify-between"
+              >
+                <div>
+                  {/* Rating stars */}
+                  <div className="flex items-center gap-1 mb-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Star 
+                        key={i} 
+                        size={13} 
+                        className={i < review.rating ? "text-gold fill-gold" : "text-dark-brown/20"} 
+                      />
+                    ))}
+                  </div>
+                  {/* Review Text */}
+                  <p className="text-xs text-dark-brown/85 leading-relaxed italic mb-3 line-clamp-3">
+                    "{review.text}"
+                  </p>
+                </div>
+
+                {/* Reviewer Meta */}
+                <div className="flex items-center gap-2.5 pt-2.5 border-t border-cream/40">
+                  <img
+                    src={review.avatar}
+                    alt={review.name}
+                    className="w-8 h-8 rounded-full object-cover border border-gold/30 bg-cream shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <h4 className="font-serif font-bold text-dark-brown text-xs truncate">{review.name}</h4>
+                    <p className="text-[9px] text-dark-brown/50 font-medium truncate">{review.location}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Dots Indicator for Mobile */}
+          <div className="flex items-center justify-center gap-1.5 mt-2">
+            {testimonials.map((_, i) => (
+              <div
+                key={i}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  activeMobileIdx === i ? 'w-5 bg-gold' : 'w-1.5 bg-cream-dark/40'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop View: Original 3-Column Grid (hidden md:grid) */}
+        <div className="hidden md:grid md:grid-cols-3 gap-6 sm:gap-8">
           {testimonials.map((review, idx) => (
             <div 
               key={idx}

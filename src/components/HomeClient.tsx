@@ -378,24 +378,45 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 sm:gap-4">
               {[
-                { name: "Banarasi Silk", query: "Banarasi Silk", count: "Pure Katan" },
-                { name: "Chanderi", query: "Chanderi Silk", count: "Cotton Silk" },
-                { name: "Bandhani", query: "Silk", count: "Tie & Dye" },
-                { name: "Organza", query: "Organza", count: "Glass Weave" },
-                { name: "Chikankari", query: "Georgette", count: "Lucknowi Handwork" },
-                { name: "Pure Cotton", query: "Cotton", count: "Daily Comfort" }
+                { name: "Banarasi Silk", query: "Banarasi Silk", tag: "Pure Katan", image: "/fabrics/banarasi_silk.png" },
+                { name: "Chanderi", query: "Chanderi Silk", tag: "Cotton Silk", image: "/fabrics/chanderi_silk.png" },
+                { name: "Bandhani", query: "Silk", tag: "Tie & Dye", image: "/fabrics/bandhani_silk.png" },
+                { name: "Organza", query: "Organza", tag: "Glass Weave", image: "/fabrics/organza_silk.png" },
+                { name: "Chikankari", query: "Georgette", tag: "Lucknowi Work", image: "/fabrics/chikankari_fabric.png" },
+                { name: "Pure Cotton", query: "Cotton", tag: "Daily Comfort", image: "/fabrics/pure_cotton.png" }
               ].map((fab, idx) => (
                 <Link
                   key={idx}
                   href={`/sarees?fabric=${encodeURIComponent(fab.query)}`}
-                  className="group p-4 bg-[#FAF7F0] rounded-xl border border-[#B08A3C]/20 hover:border-[#6B1725] hover:bg-[#6B1725] text-center transition-all duration-300 shadow-sm"
+                  className="group relative h-28 sm:h-56 rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl border border-[#B08A3C]/30 hover:border-[#D4B870] transition-all duration-500 block"
                 >
-                  <h3 className="font-serif font-bold text-sm sm:text-base text-[#292524] group-hover:text-[#FAF7F0] transition-colors">
-                    {fab.name}
-                  </h3>
-                  <span className="text-[10px] text-[#6B625D] group-hover:text-[#D4B870] font-light block mt-1 transition-colors">
-                    {fab.count}
-                  </span>
+                  {/* Fabric Background Image */}
+                  <Image
+                    src={fab.image}
+                    alt={fab.name}
+                    fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 16vw"
+                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+                  />
+
+                  {/* Gradient Overlay for Text Readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10 group-hover:from-black/90 group-hover:via-black/45 transition-all duration-500" />
+
+                  {/* Subtle Inner Gold Border on Hover */}
+                  <div className="absolute inset-1.5 sm:inset-2 border border-[#D4B870]/0 group-hover:border-[#D4B870]/60 rounded-lg sm:rounded-xl transition-all duration-500 pointer-events-none z-10" />
+
+                  {/* Text Overlay (Bottom Aligned) */}
+                  <div className="absolute inset-x-0 bottom-0 p-2 sm:p-4 z-20 flex flex-col justify-end text-left">
+                    <span className="text-[8px] sm:text-[10px] font-bold text-[#D4B870] uppercase tracking-widest font-sans mb-0.5 block">
+                      {fab.tag}
+                    </span>
+                    <h3 className="font-serif font-bold text-xs sm:text-base text-white group-hover:text-[#FAF7F0] transition-colors leading-tight">
+                      {fab.name}
+                    </h3>
+                    <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-white/80 group-hover:text-white mt-1.5 transition-colors">
+                      Explore <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+                    </span>
+                  </div>
                 </Link>
               ))}
             </div>
@@ -403,45 +424,44 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
         </section>
 
         {/* 12. Trust & Service Benefits */}
-        <section className="py-14 sm:py-18 px-4 bg-[#FAF7F0] border-b border-[#B08A3C]/15">
+        <section className="py-8 sm:py-14 px-4 bg-[#FAF7F0] border-b border-[#B08A3C]/15">
           <div className="max-w-7xl mx-auto">
-            <div className="text-center max-w-xl mx-auto mb-10">
-              <h2 className="font-serif text-2xl sm:text-3xl font-extrabold text-[#292524] tracking-wide">
+            <div className="text-center max-w-xl mx-auto mb-6 sm:mb-8">
+              <span className="text-[10px] sm:text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-1">
+                PEACE OF MIND
+              </span>
+              <h2 className="font-serif text-xl sm:text-3xl font-extrabold text-[#292524] tracking-wide">
                 Why Shop With Us
               </h2>
-              <div className="w-12 h-0.5 bg-[#6B1725] mx-auto mt-2" />
+              <div className="w-10 h-0.5 bg-[#6B1725] mx-auto mt-1.5" />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
-              <div className="bg-white p-5 rounded-2xl border border-[#B08A3C]/15 text-center space-y-2.5 shadow-sm">
-                <ShieldCheck size={28} className="text-[#6B1725] mx-auto" />
-                <h3 className="font-serif font-bold text-sm text-[#292524]">Quality Checked</h3>
-                <p className="text-xs text-[#6B625D] font-light leading-relaxed">Every saree is inspected by hand before packing.</p>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl border border-[#B08A3C]/15 text-center space-y-2.5 shadow-sm">
-                <PackageCheck size={28} className="text-[#6B1725] mx-auto" />
-                <h3 className="font-serif font-bold text-sm text-[#292524]">Secure Packaging</h3>
-                <p className="text-xs text-[#6B625D] font-light leading-relaxed">Packed carefully to ensure safe delivery.</p>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl border border-[#B08A3C]/15 text-center space-y-2.5 shadow-sm">
-                <Truck size={28} className="text-[#6B1725] mx-auto" />
-                <h3 className="font-serif font-bold text-sm text-[#292524]">Pan-India Delivery</h3>
-                <p className="text-xs text-[#6B625D] font-light leading-relaxed">Reliable shipping to pincodes across India.</p>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl border border-[#B08A3C]/15 text-center space-y-2.5 shadow-sm">
-                <CreditCard size={28} className="text-[#6B1725] mx-auto" />
-                <h3 className="font-serif font-bold text-sm text-[#292524]">Secure Payments</h3>
-                <p className="text-xs text-[#6B625D] font-light leading-relaxed">UPI, Cards &amp; Net Banking with SSL encryption.</p>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl border border-[#B08A3C]/15 text-center space-y-2.5 shadow-sm">
-                <Banknote size={28} className="text-[#6B1725] mx-auto" />
-                <h3 className="font-serif font-bold text-sm text-[#292524]">COD Available</h3>
-                <p className="text-xs text-[#6B625D] font-light leading-relaxed">Pay conveniently at your doorstep.</p>
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
+              {[
+                { icon: ShieldCheck, title: "Quality Checked", desc: "Inspected by hand" },
+                { icon: PackageCheck, title: "Secure Packaging", desc: "Safe delivery guaranteed" },
+                { icon: Truck, title: "Pan-India Shipping", desc: "All pincodes covered" },
+                { icon: CreditCard, title: "100% Safe Payments", desc: "Encrypted UPI & Cards" },
+                { icon: Banknote, title: "COD Available", desc: "Pay at your doorstep" }
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  className={`bg-white p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-[#B08A3C]/20 hover:border-[#6B1725] transition-all duration-300 flex items-center sm:flex-col sm:text-center gap-2.5 sm:gap-3 shadow-xs hover:shadow-md ${idx === 4 ? "col-span-2 sm:col-span-1" : ""
+                    }`}
+                >
+                  <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-full bg-[#FAF7F0] border border-[#B08A3C]/25 text-[#6B1725] flex items-center justify-center shrink-0">
+                    <item.icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                  <div className="text-left sm:text-center min-w-0">
+                    <h3 className="font-serif font-bold text-xs sm:text-sm text-[#292524] truncate">
+                      {item.title}
+                    </h3>
+                    <p className="text-[10px] sm:text-xs text-[#6B625D] font-light leading-tight mt-0.5">
+                      {item.desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -453,29 +473,42 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
         <DeliveryAnimationSection />
 
         {/* 14. WhatsApp Personal Assistance Section */}
-        <section className="my-12 sm:my-16 max-w-7xl mx-auto px-4">
-          <div className="bg-gradient-to-r from-[#292524] via-[#3a2e2b] to-[#292524] rounded-2xl p-6 sm:p-10 border border-[#B08A3C]/30 text-[#FAF7F0] flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
-            <div className="space-y-2 text-center md:text-left max-w-xl">
-              <span className="text-[10px] sm:text-xs font-bold text-[#D4B870] uppercase tracking-[0.2em] font-serif block">
-                PERSONALIZED SHOPPING ASSISTANCE
-              </span>
-              <h2 className="font-serif text-2xl sm:text-3xl font-extrabold text-[#FAF7F0]">
+        <section className="my-8 sm:my-14 max-w-6xl mx-auto px-4">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#FAF7F0] via-[#F7F2E6] to-[#FAF7F0] p-6 sm:p-8 border border-[#B08A3C]/35 shadow-md flex flex-col md:flex-row items-center justify-between gap-6">
+
+            {/* Background Accent Blur */}
+            <div className="absolute -top-10 -right-10 w-64 h-64 bg-[#B08A3C]/10 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="space-y-2 text-center md:text-left max-w-xl relative z-10">
+              {/* <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#6B1725]/10 border border-[#6B1725]/20 text-[#6B1725] text-[10px] font-bold uppercase tracking-widest font-sans mb-1">
+                <Sparkles size={12} className="text-[#B08A3C]" /> PERSONAL SHOPPING CONCIERGE
+              </div> */}
+              <h2 className="font-serif text-xl sm:text-3xl font-extrabold text-[#292524] tracking-wide">
                 Need help choosing your saree?
               </h2>
-              <p className="text-xs sm:text-sm text-[#FAF7F0]/80 font-light leading-relaxed">
-                Tell us your preferred colour, occasion and budget — our saree experts in Samastipur will help you find the right one via WhatsApp live preview.
+              <p className="text-xs sm:text-sm text-[#6B625D] font-light leading-relaxed">
+                Tell us your preferred color, occasion, and budget — our saree experts in Samastipur will help you pick the perfect one via WhatsApp live preview.
               </p>
+
+              {/* Quick Trust Badges */}
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-1 pt-2 text-[11px] font-medium text-[#6B1725]">
+                <span className="flex items-center gap-1">✓ Live Video Call</span>
+                <span className="flex items-center gap-1">✓ Blouse Matching</span>
+                <span className="flex items-center gap-1">✓ Fast Response</span>
+              </div>
             </div>
 
-            <a
-              href="https://wa.me/916203909946?text=Hi%20Shree%20Banarasi%20Sarees,%20I%20need%20help%20choosing%20a%20saree"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="py-3.5 px-8 bg-[#2EBE5D] hover:bg-[#25A650] text-white rounded-xl font-serif font-bold text-xs sm:text-sm tracking-wider uppercase transition-all shadow-md flex items-center gap-2 flex-shrink-0 active:scale-95"
-            >
-              <MessageCircle size={18} className="fill-current" />
-              CHAT ON WHATSAPP
-            </a>
+            <div className="relative z-10 flex flex-col sm:flex-row items-center gap-3 shrink-0">
+              <a
+                href="https://wa.me/916203909946?text=Hi%20Shree%20Banarasi%20Sarees,%20I%20need%20help%20choosing%20a%20saree"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-3 px-6 bg-[#2EBE5D] hover:bg-[#25A650] text-white rounded-xl font-serif font-bold text-xs sm:text-sm tracking-wider uppercase transition-all shadow-md flex items-center gap-2.5 active:scale-95"
+              >
+                <MessageCircle size={18} className="fill-current" />
+                <span>Chat on WhatsApp</span>
+              </a>
+            </div>
           </div>
         </section>
 
