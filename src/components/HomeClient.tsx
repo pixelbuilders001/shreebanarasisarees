@@ -6,6 +6,8 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { Header } from './Header';
 import { HeroSection } from './HeroSection';
+import { DeliveryMarquee } from './DeliveryMarquee';
+import { DeliveryAnimationSection } from './DeliveryAnimationSection';
 import { CategoryCard } from './CategoryCard';
 import { CampaignSection } from './CampaignSection';
 import { ProductCard } from './ProductCard';
@@ -71,10 +73,12 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
         {/* 1. Hero Section */}
         <HeroSection initialBanners={heroBanners} />
 
-
+        {/* Delivery & Trust Information Infinite Marquee */}
+        <DeliveryMarquee />
 
         {/* 3. Shop by Category */}
         <CategoryCard />
+
         {/* 2. Top Campaign Banner (if active) */}
         <CampaignSection slot="top" initialCampaign={activeCampaigns[0] || null} />
 
@@ -444,6 +448,9 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
 
         {/* 13. Customer Reviews */}
         <TestimonialSection />
+
+        {/* Delivery Animation Visual Section */}
+        <DeliveryAnimationSection />
 
         {/* 14. WhatsApp Personal Assistance Section */}
         <section className="my-12 sm:my-16 max-w-7xl mx-auto px-4">

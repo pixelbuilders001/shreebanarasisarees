@@ -42,9 +42,9 @@ export const CategoryCard: React.FC = () => {
         {/* Section Header */}
         <div className="flex items-end justify-between mb-6 sm:mb-8 gap-2">
           <div>
-            <span className="text-[10px] sm:text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-0.5 sm:mb-1">
+            {/* <span className="text-[10px] sm:text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-0.5 sm:mb-1">
               CURATED COLLECTIONS
-            </span>
+            </span> */}
             <h2 className="font-serif text-xl sm:text-4xl font-extrabold text-[#292524] tracking-wide">
               Shop by Category
             </h2>
