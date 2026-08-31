@@ -48,8 +48,7 @@ export const FABRIC_SYNONYMS: Record<string, string> = {
   georgette: 'Georgette',
   organza: 'Organza',
   chanderi: 'Chanderi Silk', chandari: 'Chanderi Silk',
-  'banarasi silk': 'Banarasi Silk',
-  katan: 'Banarasi Silk', kataan: 'Banarasi Silk',
+  katan: 'Silk', kataan: 'Silk',
   chiffon: 'Chiffon',
   net: 'Net', netting: 'Net',
   linen: 'Linen',
@@ -59,7 +58,6 @@ export const FABRIC_SYNONYMS: Record<string, string> = {
   crepe: 'Crepe',
   tanchui: 'Tanchui Silk', tanchoi: 'Tanchui Silk', 'tanchui silk': 'Tanchui Silk',
   tissue: 'Tissue Silk', 'tissue silk': 'Tissue Silk',
-  bandhej: 'Bandhani Silk', 'bandhej silk': 'Bandhej Silk',
 };
 
 export const OCCASION_SYNONYMS: Record<string, string> = {
@@ -77,9 +75,10 @@ export const OCCASION_SYNONYMS: Record<string, string> = {
 };
 
 export const CATEGORY_SYNONYMS: Record<string, string> = {
-  banarasi: 'Banarasi', banaras: 'Banarasi', benares: 'Banarasi', varanasi: 'Banarasi',
+  'banarasi silk': 'Banarasi', 'banarasi silk sarees': 'Banarasi', 'banarasi sarees': 'Banarasi', 'banarasi saree': 'Banarasi',
+  banarasi: 'Banarasi', banaras: 'Banarasi', benares: 'Banarasi', varanasi: 'Banarasi', 'banarasi katan': 'Banarasi', 'banarasi satin': 'Banarasi', 'tissue banarasi': 'Banarasi',
   chikankari: 'Chikankari', chikan: 'Chikankari', lucknowi: 'Chikankari', lucknow: 'Chikankari', 'chickan-kari': 'Chikankari', 'chickan kari': 'Chikankari',
-  bandhani: 'Bandhani', bandhej: 'Bandhani', bandhan: 'Bandhani', 'bandhani silk': 'Bandhani Silk', 'assamese bandhej': 'Assamese Bandhej',
+  bandhani: 'Bandhani', bandhej: 'Bandhani', bandhan: 'Bandhani', 'bandhani silk': 'Bandhani', 'assamese bandhej': 'Assamese Bandhej',
   organza: 'Organza',
   chanderi: 'Chanderi', chandari: 'Chanderi',
   'bridal collection': 'Bridal', bridal: 'Bridal',
@@ -222,10 +221,10 @@ export function parseSearchQuery(query: string): DetectedFilters {
     }
   };
 
+  multiWordMatch(CATEGORY_SYNONYMS, result.categories);
   multiWordMatch(COLOR_SYNONYMS, result.colors);
   multiWordMatch(FABRIC_SYNONYMS, result.fabrics);
   multiWordMatch(OCCASION_SYNONYMS, result.occasions);
-  multiWordMatch(CATEGORY_SYNONYMS, result.categories);
 
   // ── 4. Token-by-token matching ──
   const tokens = working.split(/\s+/).filter(Boolean);
@@ -329,15 +328,11 @@ export function scoreProducts(
     }
 
     if (filters.fabrics.length > 0) {
-      const fabStr = product.fabric.toLowerCase();
-      const catStr = product.category.toLowerCase();
-      const nameStr = product.name.toLowerCase();
-      const combinedFab = `${fabStr} ${catStr} ${nameStr}`;
+      const fabStr = product.fabric.toLowerCase().trim();
 
       const match = filters.fabrics.some(f => {
         const fl = f.toLowerCase().trim();
-        return combinedFab.includes(fl) || fl.includes(fabStr) ||
-          fuzzyMatch(fl, [fabStr, catStr]) !== null;
+        return fabStr === fl || fabStr.includes(fl) || (fl.includes(fabStr) && fabStr !== 'silk');
       });
       if (!match) continue;
     }
@@ -352,31 +347,22 @@ export function scoreProducts(
     }
 
     if (filters.categories.length > 0) {
-      const catStr = product.category.toLowerCase();
-      const fabStr = product.fabric.toLowerCase();
-      const colorStr = product.color.toLowerCase();
-      const nameStr = product.name.toLowerCase();
-      const descStr = (product.description || '').toLowerCase();
-      const combinedText = `${catStr} ${fabStr} ${colorStr} ${nameStr} ${descStr}`;
+      const catNorm = product.category.toLowerCase().replace(/[^a-z0-9]/g, '');
 
       const match = filters.categories.some(cat => {
-        const rawCl = cat.toLowerCase().trim();
-        const cl = rawCl.replace(/-/g, ' ');
+        const selNorm = cat.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-        // Direct phrase or substring match across category, fabric, color, or name
-        if (catStr.includes(cl) || cl.includes(catStr) ||
-            fabStr.includes(cl) || cl.includes(fabStr) ||
-            colorStr.includes(cl) || cl.includes(colorStr) ||
-            nameStr.includes(cl) ||
-            fuzzyMatch(cl, [catStr, fabStr, colorStr]) !== null) {
+        if (catNorm === selNorm || catNorm.includes(selNorm) || selNorm.includes(catNorm)) {
           return true;
         }
 
-        // Tokenized multi-word match (e.g. "tanchui white" -> checks for "tanchui" AND "white")
-        const tokens = cl.split(/\s+/).filter(t => t.length >= 2);
-        if (tokens.length > 1) {
-          const allTokensMatch = tokens.every(tok => combinedText.includes(tok));
-          if (allTokensMatch) return true;
+        const knownCategories = ['banarasi', 'chikankari', 'chikan', 'bandhani', 'bandhej', 'organza', 'chanderi', 'bridal', 'kanjivaram'];
+        const selKeyword = knownCategories.find(k => selNorm.includes(k));
+        const catKeyword = knownCategories.find(k => catNorm.includes(k));
+
+        if (selKeyword && catKeyword) {
+          const root = (k: string) => (k === 'chikan' ? 'chikankari' : k === 'bandhej' ? 'bandhani' : k);
+          return root(selKeyword) === root(catKeyword);
         }
 
         return false;

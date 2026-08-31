@@ -189,24 +189,20 @@ export const SareesClient: React.FC<SareesClientProps> = ({
     filteredProducts = allProducts.filter(product => {
       // 1. Category Filter
       if (selectedCategory !== 'All') {
-        const selLower = selectedCategory.toLowerCase().trim();
-        const catLower = product.category.toLowerCase();
-        const fabLower = product.fabric.toLowerCase();
-        const colorLower = product.color.toLowerCase();
-        const nameLower = product.name.toLowerCase();
-        const combinedText = `${catLower} ${fabLower} ${colorLower} ${nameLower}`;
+        const normalizeCat = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const selNorm = normalizeCat(selectedCategory);
+        const catNorm = normalizeCat(product.category);
 
-        let isMatch = catLower === selLower ||
-                      catLower.includes(selLower) ||
-                      selLower.includes(catLower) ||
-                      fabLower.includes(selLower) ||
-                      colorLower.includes(selLower) ||
-                      nameLower.includes(selLower);
+        let isMatch = catNorm === selNorm || catNorm.includes(selNorm) || selNorm.includes(catNorm);
 
         if (!isMatch) {
-          const tokens = selLower.replace(/-/g, ' ').split(/\s+/).filter(t => t.length >= 2);
-          if (tokens.length > 1) {
-            isMatch = tokens.every(tok => combinedText.includes(tok));
+          const knownCategories = ['banarasi', 'chikankari', 'chikan', 'bandhani', 'bandhej', 'organza', 'chanderi', 'bridal', 'kanjivaram'];
+          const selKeyword = knownCategories.find(k => selNorm.includes(k));
+          const catKeyword = knownCategories.find(k => catNorm.includes(k));
+
+          if (selKeyword && catKeyword) {
+            const root = (k: string) => (k === 'chikan' ? 'chikankari' : k === 'bandhej' ? 'bandhani' : k);
+            isMatch = root(selKeyword) === root(catKeyword);
           }
         }
 
