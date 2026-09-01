@@ -8,7 +8,7 @@ const LOADER_ICONS = [
   "/loader%20icons/loader_5.png"
 ];
 
-export default function Loading() {
+export const IconMarqueeLoader: React.FC = () => {
   const marqueeList = [...LOADER_ICONS, ...LOADER_ICONS, ...LOADER_ICONS, ...LOADER_ICONS];
 
   return (
@@ -50,4 +50,6 @@ export default function Loading() {
       <div className="relative z-10 mt-3 sm:mt-4 w-36 sm:w-60 h-[2px] rounded-full bg-gradient-to-r from-transparent via-[#B08A3C]/70 to-transparent shadow-xs" />
     </div>
   );
-}
+};
+
+export default IconMarqueeLoader;

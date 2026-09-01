@@ -30,6 +30,7 @@ import {
 import { checkDeliveryServiceability, createCashfreeOrder, getProductSlug } from '../../data/supabase';
 import { load } from '@cashfreepayments/cashfree-js';
 import { trackBeginCheckout, trackPurchase } from '../../lib/gtag';
+import { IconMarqueeLoader } from '../../components/IconMarqueeLoader';
 
 const FREE_SHIPPING_THRESHOLD = 999;
 const STANDARD_SHIPPING_FEE = 99;
@@ -502,6 +503,13 @@ function CheckoutContent() {
   const ctaText = paymentMethod === 'Cash on Delivery'
     ? `PLACE COD ORDER — ₹${grandTotal.toLocaleString('en-IN')}`
     : `PAY ₹${grandTotal.toLocaleString('en-IN')}`;
+
+  // ==========================================
+  // 0. HYDRATION LOADER VIEW
+  // ==========================================
+  if (!isHydrated) {
+    return <IconMarqueeLoader />;
+  }
 
   // ==========================================
   // 1. ORDER CONFIRMATION / SUCCESS VIEW
@@ -1347,11 +1355,7 @@ function CheckoutContent() {
 
 export default function CheckoutPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#FAF7F0] flex items-center justify-center font-serif text-[#6B1725] text-lg animate-pulse">
-        Loading Checkout...
-      </div>
-    }>
+    <Suspense fallback={<IconMarqueeLoader />}>
       <CheckoutContent />
     </Suspense>
   );

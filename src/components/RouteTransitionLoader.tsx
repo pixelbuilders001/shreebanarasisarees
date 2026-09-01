@@ -3,6 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 
+const LOADER_ICONS = [
+  "/loader%20icons/loader_1.png",
+  "/loader%20icons/loader_2.png",
+  "/loader%20icons/loader_3.png",
+  "/loader%20icons/loader_4.png",
+  "/loader%20icons/loader_5.png"
+];
+
 export default function RouteTransitionLoader() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -100,7 +108,10 @@ export default function RouteTransitionLoader() {
             targetUrl.origin === currentUrl.origin &&
             (targetUrl.pathname !== currentUrl.pathname || targetUrl.search !== currentUrl.search)
           ) {
-            setTimeout(() => setIsLoading(true), 0);
+            setTimeout(() => {
+              setIsLoading(true);
+              setIsVisible(true);
+            }, 0);
           }
         } catch (e) { }
       }
@@ -117,7 +128,10 @@ export default function RouteTransitionLoader() {
             targetUrl.origin === currentUrl.origin &&
             (targetUrl.pathname !== currentUrl.pathname || targetUrl.search !== currentUrl.search)
           ) {
-            setTimeout(() => setIsLoading(true), 0);
+            setTimeout(() => {
+              setIsLoading(true);
+              setIsVisible(true);
+            }, 0);
           }
         } catch (e) { }
       }
@@ -141,35 +155,47 @@ export default function RouteTransitionLoader() {
 
   if (!isVisible && !isLoading) return null;
 
+  // Duplicate 5 icons for seamless loop
+  const marqueeList = [...LOADER_ICONS, ...LOADER_ICONS, ...LOADER_ICONS, ...LOADER_ICONS];
+
   return (
     <div
-      className={`fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-[#FFF9F0]/80 backdrop-blur-md transition-all duration-300 ease-in-out select-none ${isLoading ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-105 pointer-events-none'
+      className={`fixed inset-0 z-[99999] w-screen h-screen overflow-hidden flex flex-col items-center justify-center select-none px-4 transition-all duration-300 ease-in-out bg-[#FAF7F0]/70 backdrop-blur-xl transform-gpu ${isLoading ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-105 pointer-events-none'
         }`}
+      style={{
+        WebkitBackdropFilter: 'blur(24px) brightness(0.97)',
+        backdropFilter: 'blur(24px) brightness(0.97)'
+      }}
     >
-      {/* Brand Icon / Logo Loader with gold & maroon animation */}
-      <div className="relative flex items-center justify-center mb-5">
-        {/* Outer glowing gold pulse ring */}
-        <div className="absolute w-24 h-24 sm:w-28 sm:h-28 rounded-full border border-[#C9A45C]/40 animate-ping opacity-75" />
+      {/* 1. Brand Logo Above PNG Icons Track */}
+      <div className="relative z-10 mb-5 sm:mb-7">
+        <img
+          src="/brand_logo.webp"
+          alt="Shree Banarasi Sarees Logo"
+          className="h-12 sm:h-16 md:h-20 w-auto object-contain"
+        />
+      </div>
 
-        {/* Inner spinning border */}
-        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-transparent border-t-[#801F32] border-r-[#C9A45C] animate-spin" />
-
-        {/* Center brand logo */}
-        <div className="absolute w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#FFF9F0] border-2 border-[#C9A45C]/40 flex items-center justify-center shadow-lg overflow-hidden p-1">
-          <img
-            src="/brand_logo.webp"
-            alt="Shree Banarasi Sarees Logo"
-            className="w-full h-full object-contain rounded-full"
-          />
+      {/* 2. Ultra-Smooth Hardware-Accelerated Marquee Track */}
+      <div className="relative z-10 w-full max-w-lg sm:max-w-2xl md:max-w-3xl mx-auto overflow-hidden py-3 sm:py-5 transform-gpu">
+        <div className="flex items-center gap-6 sm:gap-10 md:gap-14 animate-marquee-loader w-max transform-gpu">
+          {marqueeList.map((src, idx) => (
+            <div
+              key={idx}
+              className="shrink-0 flex items-center justify-center transform-gpu"
+            >
+              <img
+                src={src}
+                alt="Loader Icon"
+                className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 object-contain transform-gpu"
+              />
+            </div>
+          ))}
         </div>
       </div>
 
-
-
-      {/* Premium Loading Progress Bar */}
-      {/* <div className="w-36 sm:w-44 h-[2.5px] bg-[#F7EEDF] rounded-full mt-5 overflow-hidden relative shadow-inner">
-        <div className="absolute top-0 bottom-0 left-0 w-full bg-gradient-to-r from-[#801F32] via-[#C9A45C] to-[#801F32] animate-loading-progress" />
-      </div> */}
+      {/* 3. Sleek Gold Zari Thread Pulse Accent Line */}
+      <div className="relative z-10 mt-3 sm:mt-4 w-36 sm:w-60 h-[2px] rounded-full bg-gradient-to-r from-transparent via-[#B08A3C]/70 to-transparent shadow-xs" />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { Footer } from '../../components/Footer';
 import { ProductCard } from '../../components/ProductCard';
 import { useStore } from '../../context/StoreContext';
 import { Heart, ShoppingBag } from 'lucide-react';
+import { IconMarqueeLoader } from '../../components/IconMarqueeLoader';
 
 function WishlistContent() {
   const { wishlist } = useStore();
@@ -65,7 +66,7 @@ function WishlistContent() {
 
 export default function WishlistPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#FFF9F0] flex items-center justify-center font-serif text-maroon text-xl animate-pulse">Loading Wishlist...</div>}>
+    <Suspense fallback={<IconMarqueeLoader />}>
       <WishlistContent />
     </Suspense>
   );
