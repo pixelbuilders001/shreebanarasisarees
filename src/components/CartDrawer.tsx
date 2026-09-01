@@ -150,7 +150,7 @@ export const CartDrawer: React.FC = () => {
 
   // WhatsApp Chat Launcher
   const handleWhatsAppHelp = () => {
-    const phone = "9191620390946";
+    const phone = "+916203909946";
     const msg = encodeURIComponent("Hi Shree Banarasi Sarees, I need help with my cart.");
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
   };
@@ -168,7 +168,7 @@ export const CartDrawer: React.FC = () => {
       {/* Drawer Container */}
       <div className="absolute inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
         <div className="w-screen max-w-md bg-[#FFF9F0] border-l border-[#B08A3C]/25 flex flex-col shadow-2xl animate-slide-in overflow-hidden">
-          
+
           {/* Header */}
           <div className="px-4 py-3.5 bg-white border-b border-[#B08A3C]/20 flex items-center justify-between shrink-0">
             <h2 className="text-base font-serif font-extrabold text-[#292524] flex items-center gap-2">
@@ -255,9 +255,8 @@ export const CartDrawer: React.FC = () => {
                   </div>
                   <div className="h-1.5 rounded-full bg-[#FAF7F0] overflow-hidden border border-[#B08A3C]/15">
                     <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        isFreeShipping ? 'bg-emerald-600' : 'bg-gradient-to-r from-[#6B1725] to-[#B08A3C]'
-                      }`}
+                      className={`h-full rounded-full transition-all duration-500 ${isFreeShipping ? 'bg-emerald-600' : 'bg-gradient-to-r from-[#6B1725] to-[#B08A3C]'
+                        }`}
                       style={{ width: `${freeShippingProgress}%` }}
                     />
                   </div>

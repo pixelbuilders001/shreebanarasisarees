@@ -744,7 +744,7 @@ const HeaderInner: React.FC = () => {
                       Need help choosing a saree?
                     </p>
                     <a
-                      href="https://wa.me/916203909946"
+                      href="https://wa.me/+916203909946"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full py-2.5 px-3 bg-[#2EBE5D] hover:bg-[#25A650] text-white rounded-xl font-serif font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all"

@@ -38,7 +38,7 @@ export const AnnouncementBar: React.FC = () => {
     {
       icon: MessageCircle,
       text: "Help on WhatsApp",
-      href: "https://wa.me/916203909946",
+      href: "https://wa.me/+916203909946",
       isExternal: true
     },
   ];
@@ -126,11 +126,10 @@ export const AnnouncementBar: React.FC = () => {
         <div className="sm:hidden flex items-center justify-between w-full gap-2">
           <div className="flex-1 min-w-0 overflow-hidden h-5 flex items-center relative">
             <div
-              className={`w-full transition-all duration-350 ease-out transform ${
-                isAnimating
+              className={`w-full transition-all duration-350 ease-out transform ${isAnimating
                   ? '-translate-y-2 opacity-0'
                   : 'translate-y-0 opacity-100'
-              }`}
+                }`}
             >
               <div className="inline-flex items-center gap-1.5 max-w-full">
                 <CurrentMobileIcon size={13} className="text-[#D4B870] shrink-0" />

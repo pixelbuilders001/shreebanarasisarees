@@ -488,13 +488,13 @@ function CheckoutContent() {
 
   // WhatsApp Support Launcher
   const handleWhatsAppHelp = () => {
-    const phone = "9191620390946";
+    const phone = "+916203909946";
     const msg = encodeURIComponent(`Hi Shree Banarasi Sarees, I need help with my checkout. Name: ${fullName || 'Customer'}.`);
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
   };
 
   const handleWhatsAppPostOrderHelp = (orderId: string) => {
-    const phone = "9191620390946";
+    const phone = "+916203909946";
     const msg = encodeURIComponent(`Hi, I just placed order #${orderId} and need assistance.`);
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
   };
@@ -959,8 +959,8 @@ function CheckoutContent() {
                   <div
                     onClick={() => setDeliveryMethod('Home Delivery')}
                     className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${deliveryMethod === 'Home Delivery'
-                        ? 'border-[#6B1725] bg-[#6B1725]/[0.03]'
-                        : 'border-[#B08A3C]/20 bg-white hover:border-[#B08A3C]/40'
+                      ? 'border-[#6B1725] bg-[#6B1725]/[0.03]'
+                      : 'border-[#B08A3C]/20 bg-white hover:border-[#B08A3C]/40'
                       }`}
                   >
                     <span className={`w-4 h-4 rounded-full border-2 mt-0.5 flex-shrink-0 ${deliveryMethod === 'Home Delivery' ? 'border-[#6B1725] bg-[#6B1725]' : 'border-[#6B625D]/30 bg-white'
@@ -977,8 +977,8 @@ function CheckoutContent() {
                   <div
                     onClick={() => setDeliveryMethod('Store Pickup')}
                     className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${deliveryMethod === 'Store Pickup'
-                        ? 'border-[#6B1725] bg-[#6B1725]/[0.03]'
-                        : 'border-[#B08A3C]/20 bg-white hover:border-[#B08A3C]/40'
+                      ? 'border-[#6B1725] bg-[#6B1725]/[0.03]'
+                      : 'border-[#B08A3C]/20 bg-white hover:border-[#B08A3C]/40'
                       }`}
                   >
                     <span className={`w-4 h-4 rounded-full border-2 mt-0.5 flex-shrink-0 ${deliveryMethod === 'Store Pickup' ? 'border-[#6B1725] bg-[#6B1725]' : 'border-[#6B625D]/30 bg-white'

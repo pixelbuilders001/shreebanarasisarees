@@ -392,7 +392,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
   // WhatsApp Message Generator prefilled with current saree details
   const handleWhatsAppInquiry = () => {
-    const whatsappNumber = "91620390946";
+    const whatsappNumber = "+916203909946";
     const textMessage = `Namaste Shree Banarasi Sarees! 🌸
 I am interested in buying this saree from your store:
 

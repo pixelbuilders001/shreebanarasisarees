@@ -500,7 +500,7 @@ export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [
 
             <div className="relative z-10 flex flex-col sm:flex-row items-center gap-3 shrink-0">
               <a
-                href="https://wa.me/916203909946?text=Hi%20Shree%20Banarasi%20Sarees,%20I%20need%20help%20choosing%20a%20saree"
+                href="https://wa.me/+916203909946?text=Hi%20Shree%20Banarasi%20Sarees,%20I%20need%20help%20choosing%20a%20saree"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="py-3 px-6 bg-[#2EBE5D] hover:bg-[#25A650] text-white rounded-xl font-serif font-bold text-xs sm:text-sm tracking-wider uppercase transition-all shadow-md flex items-center gap-2.5 active:scale-95"

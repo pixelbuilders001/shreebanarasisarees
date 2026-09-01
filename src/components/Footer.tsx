@@ -36,10 +36,10 @@ export const Footer: React.FC = () => {
   return (
     <footer className="bg-[#52111C] text-[#FAF7F0] pt-14 pb-28 lg:pb-12 border-t border-[#B08A3C]/30 select-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* ── DESKTOP FOOTER GRID (Hidden on mobile for accordions) ── */}
         <div className="hidden md:grid grid-cols-5 gap-8 lg:gap-10 pb-12 border-b border-[#B08A3C]/15">
-          
+
           {/* Brand Info & Socials (Col 1 - wider) */}
           <div className="col-span-1 space-y-4">
             <Link href="/" className="flex items-center gap-3 group">
@@ -85,7 +85,7 @@ export const Footer: React.FC = () => {
                 </svg>
               </a>
               <a
-                href="https://wa.me/916203909946"
+                href="https://wa.me/+916203909946"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 rounded-full bg-[#FAF7F0]/10 hover:bg-[#25D366] hover:text-white flex items-center justify-center transition-all duration-200"
@@ -171,7 +171,7 @@ export const Footer: React.FC = () => {
 
         {/* ── MOBILE COLLAPSIBLE FOOTER (Shown on mobile screens < md) ── */}
         <div className="md:hidden space-y-2 pb-8 border-b border-[#B08A3C]/15">
-          
+
           {/* Mobile Brand Info */}
           <div className="space-y-3 pb-4">
             <Link href="/" className="flex items-center gap-3">
@@ -340,7 +340,7 @@ export const Footer: React.FC = () => {
         {/* ── TRUST STRIP ── */}
         <div className="py-8 my-4 border-b border-[#B08A3C]/15">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            
+
             <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-[#FAF7F0]/5 border border-[#B08A3C]/10">
               <ShieldCheck size={20} className="text-[#B08A3C]" />
               <span className="text-xs font-serif font-bold text-[#FAF7F0]">Secure Payments</span>
