@@ -222,6 +222,19 @@ Deno.serve(async (req) => {
     const maxDistanceKm = 20.0;
 
     // ------------------------------------------
+    // OPERATING HOURS & CUTOFF CHECK (9 AM - 8 PM IST)
+    // ------------------------------------------
+
+    const istHourString = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Kolkata",
+      hour: "numeric",
+      hour12: false,
+    }).format(new Date());
+
+    const istHour = parseInt(istHourString, 10);
+    const isStoreClosed = istHour >= 20 || istHour < 9;
+
+    // ------------------------------------------
     // ELIGIBILITY (Under 20 km = Express)
     // ------------------------------------------
 
@@ -232,9 +245,15 @@ Deno.serve(async (req) => {
     // ------------------------------------------
 
     let message = "";
+    let storeClosedMessage = "";
 
     if (isExpress) {
-      message = `🚀 Express delivery available! Estimated delivery in about ${totalEtaMinutes} minutes.`;
+      if (isStoreClosed) {
+        message = "🌙 Express delivery closed for today. Order tomorrow after 9 AM!";
+        storeClosedMessage = "Express 20-min delivery is closed after 8:00 PM. Please order tomorrow after 9:00 AM for fast delivery!";
+      } else {
+        message = `🚀 Express delivery available! Estimated delivery in about ${totalEtaMinutes} minutes.`;
+      }
     } else {
       message = `📦 Standard delivery available! Estimated delivery in 3–5 Business Days.`;
     }
@@ -247,8 +266,10 @@ Deno.serve(async (req) => {
       success: true,
 
       eligible: isExpress,
-      is20MinDelivery: isExpress,
+      is20MinDelivery: isExpress && !isStoreClosed,
       isExpress,
+      isStoreClosed,
+      storeClosedMessage,
 
       message,
 
@@ -274,7 +295,11 @@ Deno.serve(async (req) => {
         minutes: totalEtaMinutes,
         packingBufferMinutes,
         deliveryBufferMinutes,
-        formattedDelivery: isExpress ? `~${totalEtaMinutes} mins` : "3–5 Business Days",
+        formattedDelivery: isExpress
+          ? isStoreClosed
+            ? "Order tomorrow after 9 AM"
+            : `~${totalEtaMinutes} mins`
+          : "3–5 Business Days",
       },
 
       serviceArea: {
@@ -282,7 +307,6 @@ Deno.serve(async (req) => {
         state: serviceableState,
       },
     });
-  } catch (error) {
     console.error(
       "calculate-delivery error:",
       error,

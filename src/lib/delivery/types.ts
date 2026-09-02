@@ -10,6 +10,8 @@ export interface DeliveryCheckResult {
   deliveryBufferMinutes: number;
   customerEtaMinutes: number;
   is20MinDelivery: boolean;
+  isStoreClosed?: boolean;
+  storeClosedMessage?: string;
   eta?: { minutes: number };
   district?: string;
   state?: string;

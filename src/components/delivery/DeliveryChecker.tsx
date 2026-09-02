@@ -1,9 +1,25 @@
 import React, { useState } from 'react';
-import { MapPin, Navigation, Clock, CheckCircle2, AlertCircle, RefreshCw, PackageX, Sparkles, ChevronDown, Plus } from 'lucide-react';
+import { MapPin, Navigation, Clock, CheckCircle2, AlertCircle, RefreshCw, PackageX, Sparkles, ChevronDown, Plus, Moon } from 'lucide-react';
 import { useCustomerLocation } from '../../hooks/useCustomerLocation';
 import { ExpressRiderIcon, StandardTruckIcon } from './DeliveryIcons';
 import { useStore } from '../../context/StoreContext';
 import { AddNewAddressModal } from './AddNewAddressModal';
+
+// Helper to check if current time in IST is after 8:00 PM (20:00) or before 9:00 AM (09:00)
+const isAfter8PMCutoff = (): boolean => {
+  try {
+    const istHourString = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Kolkata',
+      hour: 'numeric',
+      hour12: false,
+    }).format(new Date());
+    const hour = parseInt(istHourString, 10);
+    return hour >= 20 || hour < 9;
+  } catch {
+    const localHour = new Date().getHours();
+    return localHour >= 20 || localHour < 9;
+  }
+};
 
 interface DeliveryCheckerProps {
   initialPincode?: string;
@@ -299,30 +315,60 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
             </div>
           ) : (result.is20MinDelivery || (result.distanceKm && result.distanceKm <= 20) || (result as any).eligible) ? (
 
-            /* UNDER 20 KM: EXPRESS DELIVERY AVAILABLE */
-            <div className="p-4 bg-emerald-50/90 border border-emerald-300 rounded-xl text-xs space-y-2.5 text-emerald-950 shadow-xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5 font-extrabold text-emerald-800 text-sm font-serif">
-                  <ExpressRiderIcon className="w-10 h-10 flex-shrink-0" />
-                  <span>Express Delivery Available</span>
+            (result.isStoreClosed || isAfter8PMCutoff()) ? (
+              /* UNDER 20 KM BUT AFTER 8 PM: EXPRESS DELIVERY CLOSED */
+              <div className="p-4 bg-amber-50/95 border border-amber-300 rounded-xl text-xs space-y-2.5 text-amber-950 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 font-extrabold text-amber-900 text-sm font-serif">
+                    <Moon className="w-5 h-5 flex-shrink-0 text-amber-700" />
+                    <span>Express Delivery Closed Today</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                    Order After 9 AM
+                  </span>
                 </div>
-                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                  ✓ Available
-                </span>
-              </div>
 
-              <div className="space-y-1 text-xs text-emerald-900 pt-2 border-t border-emerald-200/80">
-                <div className="flex items-center gap-2 font-extrabold text-emerald-950 text-xs">
-                  <Clock size={15} className="text-emerald-700 flex-shrink-0" />
-                  <span>Estimated arrival: ~{result.customerEtaMinutes || result.eta?.minutes || 20} minutes</span>
-                </div>
-                <div className="text-[10px] text-emerald-700 font-medium">
-                  {result.source === 'gps'
-                    ? 'Based on your current location'
-                    : `Verified for pincode ${result.pincode}`}
+                <div className="space-y-1 text-xs text-amber-900 pt-2 border-t border-amber-200">
+                  <div className="flex items-center gap-2 font-extrabold text-amber-950 text-xs">
+                    <Clock size={15} className="text-amber-700 flex-shrink-0" />
+                    <span>Order tomorrow after 9:00 AM for 20-min delivery</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 font-medium leading-relaxed pt-0.5">
+                    Our 20-minute express delivery operates between 9:00 AM and 8:00 PM.
+                  </p>
+                  <div className="text-[10px] text-amber-700 font-medium">
+                    {result.source === 'gps'
+                      ? 'Based on your current location'
+                      : `Verified for pincode ${result.pincode}`}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              /* UNDER 20 KM & DURING OPERATING HOURS: EXPRESS DELIVERY AVAILABLE */
+              <div className="p-4 bg-emerald-50/90 border border-emerald-300 rounded-xl text-xs space-y-2.5 text-emerald-950 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 font-extrabold text-emerald-800 text-sm font-serif">
+                    <ExpressRiderIcon className="w-10 h-10 flex-shrink-0" />
+                    <span>Express Delivery Available</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                    ✓ Available
+                  </span>
+                </div>
+
+                <div className="space-y-1 text-xs text-emerald-900 pt-2 border-t border-emerald-200/80">
+                  <div className="flex items-center gap-2 font-extrabold text-emerald-950 text-xs">
+                    <Clock size={15} className="text-emerald-700 flex-shrink-0" />
+                    <span>Estimated arrival: ~{result.customerEtaMinutes || result.eta?.minutes || 20} minutes</span>
+                  </div>
+                  <div className="text-[10px] text-emerald-700 font-medium">
+                    {result.source === 'gps'
+                      ? 'Based on your current location'
+                      : `Verified for pincode ${result.pincode}`}
+                  </div>
+                </div>
+              </div>
+            )
           ) : (
 
             /* ABOVE 20 KM: STANDARD DELIVERY (3-5 DAYS) */
