@@ -14,8 +14,8 @@ export const MobileBottomNav: React.FC = () => {
   const wishlistCount = wishlist.length;
   const userAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || userProfile?.avatar_url;
 
-  // Hide mobile bottom nav on checkout or payment pages to keep checkout distraction-free
-  if (pathname.startsWith('/checkout') || pathname.startsWith('/payment')) {
+  // Hide mobile bottom nav on checkout, payment, or receipt pages to keep UI clean and distraction-free
+  if (pathname.startsWith('/checkout') || pathname.startsWith('/payment') || pathname.startsWith('/receipt')) {
     return null;
   }
 
