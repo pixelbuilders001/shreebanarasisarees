@@ -120,7 +120,7 @@ export default function ReceiptPage() {
                     invoice_number, created_at, payment_mode, total_amount, discount_amount, discount_percentage,
                     is_gst_applied, gst_rate, taxable_amount, cgst_rate, cgst_amount, sgst_rate, sgst_amount, igst_rate, igst_amount, total_gst,
                     customers ( name, mobile ),
-                    sale_items ( quantity, selling_price, inventory ( saree_name, mrp, selling_price ) )
+                    sale_items ( quantity, selling_price, storefront_products ( saree_name, mrp, selling_price ) )
                 `)
                 .eq('invoice_number', invoiceNumber)
                 .maybeSingle();
@@ -148,10 +148,10 @@ export default function ReceiptPage() {
                     .map((i: any) => {
                         const qty = Number(i.quantity);
                         const price = Number(i.selling_price);
-                        const mrpVal = Number(i.inventory?.mrp || i.inventory?.price || price);
+                        const mrpVal = Number(i.storefront_products?.mrp || i.storefront_products?.price || price);
                         const isRet = qty < 0 || price < 0;
                         return {
-                            sareeName: i.inventory?.saree_name || 'Item',
+                            sareeName: i.storefront_products?.saree_name || 'Item',
                             quantity: Math.abs(qty),
                             mrp: Math.abs(mrpVal),
                             sellingPrice: isRet ? -Math.abs(price) : Math.abs(price),
@@ -299,7 +299,7 @@ export default function ReceiptPage() {
             `}</style>
 
             <div style={{ minHeight: '100vh', background: '#f3f4f6', padding: '32px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                
+
                 {/* PWA App Install Banner with Popping Animation */}
                 {!isInstalled && (
                     <div className="no-print sm:hidden" style={{ width: '100%', maxWidth: '760px', marginBottom: '20px' }}>

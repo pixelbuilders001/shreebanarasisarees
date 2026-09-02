@@ -68,7 +68,7 @@ serve(async (req) => {
     let serverSubtotal = 0;
     if (items && items.length > 0) {
       const { data: inventory } = await supabase
-        .from("inventory")
+        .from("storefront_products")
         .select("id, selling_price")
         .in("id", items.map((i: any) => i.inventory_id));
 

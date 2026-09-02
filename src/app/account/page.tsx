@@ -3,8 +3,8 @@
 import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useStore } from '../../context/StoreContext';
-import { 
-  ShoppingBag, 
+import {
+  ShoppingBag,
   ArrowLeft,
   AlertTriangle,
   CheckCircle2,
@@ -46,8 +46,8 @@ function getStatusDisplay(status: string): string {
 }
 
 function AccountContent() {
-  const { 
-    orders, 
+  const {
+    orders,
     cancelOrder,
     cancelOrderItem
   } = useStore();
@@ -126,7 +126,7 @@ function AccountContent() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-      
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzqlsawxvvyvsstyzzff.supabase.co'}/functions/v1/verify-review`, {
         method: 'POST',
         headers: {
@@ -180,7 +180,7 @@ function AccountContent() {
   const handleCancelOrder = async (productId?: string) => {
     if (!activeOrder) return;
     setOrderToCancel(activeOrder.orderId);
-    
+
     if (productId && activeOrder.items.length > 1) {
       setItemToCancel(productId);
       setCancelType('item');
@@ -188,7 +188,7 @@ function AccountContent() {
       setItemToCancel(null);
       setCancelType('order');
     }
-    
+
     setCancelStatus('idle');
     setShowCancelModal(true);
   };
@@ -227,9 +227,9 @@ function AccountContent() {
   const targetItemObj = activeOrder?.items.find(item => item.product.id === itemToCancel);
   const targetItemName = targetItemObj?.product.name || '';
 
-  const isCancellable = activeOrder && 
-    activeOrder.orderStatus !== 'Out for Delivery' && 
-    activeOrder.orderStatus !== 'Delivered' && 
+  const isCancellable = activeOrder &&
+    activeOrder.orderStatus !== 'Out for Delivery' &&
+    activeOrder.orderStatus !== 'Delivered' &&
     activeOrder.orderStatus !== 'Cancelled';
 
   // Responsive Timeline component
@@ -278,8 +278,8 @@ function AccountContent() {
         {/* Horizontal Timeline for Desktop */}
         <div className="hidden md:flex items-center justify-between relative w-full pt-4 pb-2">
           <div className="absolute top-[28px] left-[6%] right-[6%] h-[2px] bg-cream z-0" />
-          <div 
-            className="absolute top-[28px] left-[6%] h-[2px] bg-maroon z-0 transition-all duration-500" 
+          <div
+            className="absolute top-[28px] left-[6%] h-[2px] bg-maroon z-0 transition-all duration-500"
             style={{ width: `${activeIndex >= 0 ? (activeIndex / (steps.length - 1)) * 88 : 0}%` }}
           />
 
@@ -287,16 +287,14 @@ function AccountContent() {
             const isCompleted = idx <= activeIndex;
             return (
               <div key={step} className="flex flex-col items-center flex-1 relative z-10 text-center">
-                <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-xs transition-all duration-300 ${
-                  isCompleted 
-                    ? 'bg-maroon border-maroon text-[#FFF9F0] shadow-sm' 
+                <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-xs transition-all duration-300 ${isCompleted
+                    ? 'bg-maroon border-maroon text-[#FFF9F0] shadow-sm'
                     : 'bg-white border-cream text-dark-brown/40'
-                }`}>
+                  }`}>
                   {isCompleted ? '✓' : idx + 1}
                 </div>
-                <span className={`text-[10px] font-bold mt-2 transition-colors duration-300 max-w-[85px] leading-tight ${
-                  isCompleted ? 'text-maroon' : 'text-dark-brown/45'
-                }`}>
+                <span className={`text-[10px] font-bold mt-2 transition-colors duration-300 max-w-[85px] leading-tight ${isCompleted ? 'text-maroon' : 'text-dark-brown/45'
+                  }`}>
                   {step}
                 </span>
               </div>
@@ -311,23 +309,20 @@ function AccountContent() {
             return (
               <div key={step} className="flex gap-4 relative">
                 {idx < steps.length - 1 && (
-                  <div className={`absolute left-[11px] top-6 bottom-[-16px] w-[2px] ${
-                    idx < activeIndex ? 'bg-maroon' : 'bg-cream'
-                  }`} />
+                  <div className={`absolute left-[11px] top-6 bottom-[-16px] w-[2px] ${idx < activeIndex ? 'bg-maroon' : 'bg-cream'
+                    }`} />
                 )}
 
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold z-10 ${
-                  isCompleted 
-                    ? 'bg-maroon border-maroon text-[#FFF9F0]' 
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold z-10 ${isCompleted
+                    ? 'bg-maroon border-maroon text-[#FFF9F0]'
                     : 'bg-white border-cream text-dark-brown/45'
-                }`}>
+                  }`}>
                   {isCompleted ? '✓' : idx + 1}
                 </div>
 
                 <div className="flex-grow pb-1">
-                  <span className={`text-xs font-serif font-bold ${
-                    isCompleted ? 'text-maroon' : 'text-dark-brown/50'
-                  }`}>
+                  <span className={`text-xs font-serif font-bold ${isCompleted ? 'text-maroon' : 'text-dark-brown/50'
+                    }`}>
                     {step}
                   </span>
                 </div>
@@ -402,13 +397,12 @@ function AccountContent() {
             </div>
             <div>
               <p className="text-dark-brown/40 uppercase font-bold text-[9px] tracking-wider">Status</p>
-              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold mt-1 uppercase tracking-wider border ${
-                activeOrder.orderStatus === 'Delivered'
+              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold mt-1 uppercase tracking-wider border ${activeOrder.orderStatus === 'Delivered'
                   ? 'bg-emerald-50 text-emerald-800 border-emerald-150'
                   : activeOrder.orderStatus === 'Cancelled'
-                  ? 'bg-red-50 text-red-800 border-red-150'
-                  : 'bg-green-50 text-green-800 border-green-150'
-              }`}>
+                    ? 'bg-red-50 text-red-800 border-red-150'
+                    : 'bg-green-50 text-green-800 border-green-150'
+                }`}>
                 {activeOrder.orderStatus}
               </span>
             </div>
@@ -453,10 +447,10 @@ function AccountContent() {
               {activeOrder.items.map((item: any) => (
                 <div key={item.product.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 border border-cream/50 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex gap-4 items-center flex-grow">
-                    <img 
-                      src={item.product.images[0]} 
-                      alt={item.product.name} 
-                      className="w-14 aspect-[3/4] object-cover rounded-lg bg-cream flex-shrink-0 border border-cream/50" 
+                    <img
+                      src={item.product.images[0]}
+                      alt={item.product.name}
+                      className="w-14 aspect-[3/4] object-cover rounded-lg bg-cream flex-shrink-0 border border-cream/50"
                     />
                     <div className="flex-grow flex flex-col justify-center">
                       <h4 className="font-serif text-sm font-bold text-dark-brown leading-snug">{item.product.name}</h4>
@@ -508,7 +502,7 @@ function AccountContent() {
               {orders.map((order) => {
                 const totalItemsCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
                 return (
-                  <div 
+                  <div
                     key={order.orderId}
                     className="bg-white border border-cream rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-5"
                   >
@@ -560,15 +554,14 @@ function AccountContent() {
                           ₹{order.total.toLocaleString('en-IN')}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center gap-3">
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
-                          order.orderStatus === 'Delivered'
+                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${order.orderStatus === 'Delivered'
                             ? 'bg-emerald-50 text-emerald-800 border-emerald-150'
                             : order.orderStatus === 'Cancelled'
-                            ? 'bg-red-50 text-red-800 border-red-150'
-                            : 'bg-green-50 text-green-800 border-green-150'
-                        }`}>
+                              ? 'bg-red-50 text-red-800 border-red-150'
+                              : 'bg-green-50 text-green-800 border-green-150'
+                          }`}>
                           {order.orderStatus}
                         </span>
 
@@ -613,7 +606,7 @@ function AccountContent() {
                     <p className="text-[9px] text-dark-brown/40 font-bold uppercase tracking-wider mt-0.5">Order ID: {orderToCancel}</p>
                   </div>
                 </div>
-                
+
                 <p className="text-xs text-dark-brown/70 leading-relaxed font-medium">
                   {cancelType === 'item' ? (
                     <>Are you sure you want to cancel <strong className="text-maroon font-bold font-serif">{targetItemName}</strong> from this order? The order total will be updated automatically.</>
@@ -621,7 +614,7 @@ function AccountContent() {
                     <>Are you sure you want to cancel this entire order? This action cannot be undone, and your reserved premium items will be returned to store inventory.</>
                   )}
                 </p>
-                
+
                 <div className="flex justify-end gap-2.5 pt-1">
                   <button
                     onClick={() => {
@@ -718,15 +711,15 @@ function AccountContent() {
       {/* Review Modal */}
       {isReviewModalOpen && reviewProduct && (
         <div className="fixed inset-0 z-55 flex items-center justify-center p-4 animate-fadeIn">
-          <div 
-            className="absolute inset-0 bg-[#2D211D]/60 backdrop-blur-sm" 
+          <div
+            className="absolute inset-0 bg-[#2D211D]/60 backdrop-blur-sm"
             onClick={() => {
               if (!submittingReview) {
                 setIsReviewModalOpen(false);
                 setReviewProduct(null);
                 setFormError(null);
               }
-            }} 
+            }}
           />
 
           <div className="bg-[#FFF9F0] border border-[#C9A45C]/35 shadow-2xl rounded-2xl w-full max-w-lg overflow-hidden z-10 relative animate-scaleIn p-6 sm:p-8 space-y-6">

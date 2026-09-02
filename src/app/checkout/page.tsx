@@ -258,14 +258,15 @@ function CheckoutContent() {
       setDeliveryInfo(res);
       setCheckedPincode(cleanPin);
 
-      if (res && res.success && !res.isOutsideServiceArea) {
-        if (res.is20MinDelivery) {
-          setPincodeSuccessMsg(`🚀 20-Minute Express Delivery available for PIN ${cleanPin}! (Approx. ${res.distanceKm} km away)`);
+      if (res && (res.success || res.serviceable) && !res.isOutsideServiceArea && res.serviceable !== false) {
+        if (res.is20MinDelivery || res.isExpress) {
+          const etaMins = res.customerEtaMinutes || res.eta?.minutes || 20;
+          setPincodeSuccessMsg(`🚀 Express Delivery available for PIN ${cleanPin}! (Approx. ${etaMins} mins)`);
         } else {
-          setPincodeSuccessMsg(`✓ Standard delivery available for PIN ${cleanPin} (${res.distanceKm ? `Approx. ${res.distanceKm} km` : '3–5 business days'})`);
+          setPincodeSuccessMsg(`✓ Standard delivery available for PIN ${cleanPin} (3–5 business days)`);
         }
       } else {
-        setErrorMsg(res?.error || "We currently don't deliver to this location.");
+        setErrorMsg(res?.error || res?.message || "We currently don't deliver to this location.");
       }
     } catch (err) {
       console.error(err);
@@ -397,8 +398,8 @@ function CheckoutContent() {
         setErrorMsg('Please enter a valid 6-digit Indian PIN code.');
         return;
       }
-      if (deliveryInfo && !deliveryInfo.serviceable) {
-        setErrorMsg('Delivery is not available at the selected location.');
+      if (deliveryInfo && (deliveryInfo.success === false || deliveryInfo.isOutsideServiceArea || deliveryInfo.serviceable === false)) {
+        setErrorMsg(deliveryInfo.error || deliveryInfo.message || 'Delivery is not available at the selected location.');
         return;
       }
     }

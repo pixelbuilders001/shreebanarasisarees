@@ -26,13 +26,13 @@ export interface DbInventory {
   color: string;
   selling_price: number;
   stock: number;
-  rack_no: string | null;
-  barcode: string | null;
+  // rack_no: string | null;
+  // barcode: string | null;
   status: string;
-  created_at: string;
+  // created_at: string;
   sku: string | null;
   design_code?: string | null;
-  hsn_code?: string | null;
+  // hsn_code?: string | null;
   description: string | null;
   mrp: number | null;
   discount_amount: number | null;
@@ -47,7 +47,7 @@ export interface DbInventory {
 /**
  * Public fields to select from the inventory table. Excludes confidential vendor pricing (purchase_price).
  */
-export const PUBLIC_INVENTORY_SELECT = 'id, saree_name, category, fabric, color, selling_price, stock, rack_no, barcode, status, created_at, sku, design_code, hsn_code, description, mrp, discount_amount, discount_percentage, inventory_images(image_url, is_primary, sort_order)';
+export const PUBLIC_INVENTORY_SELECT = 'id, saree_name, category, fabric, color, selling_price, stock, status, sku, design_code, description, mrp, discount_amount, discount_percentage, inventory_images(image_url, is_primary, sort_order)';
 
 /**
  * Stable slug generator for database products.
@@ -131,7 +131,7 @@ export function mapDbProductToProduct(
 
   const mrpVal = item.mrp ? Number(item.mrp) : Number(item.selling_price);
   const sellingPrice = Number(item.selling_price);
-  
+
   // Saree parameters defaults / overrides
   const descLower = (item.description || '').toLowerCase();
   const nameLower = item.saree_name.toLowerCase();
@@ -204,7 +204,7 @@ export async function fetchDesignVariants(designCode?: string | null): Promise<P
   try {
     const [{ data, error }, ratingMap] = await Promise.all([
       supabase
-        .from('inventory')
+        .from('storefront_products')
         .select(PUBLIC_INVENTORY_SELECT)
         .eq('status', 'active')
         .eq('design_code', designCode.trim().toUpperCase()),
@@ -253,7 +253,7 @@ export async function fetchProducts(): Promise<Product[]> {
   try {
     const [{ data, error }, ratingMap] = await Promise.all([
       supabase
-        .from('inventory')
+        .from('storefront_products')
         .select(PUBLIC_INVENTORY_SELECT)
         .eq('status', 'active'),
       fetchProductRatingsMap()
@@ -286,7 +286,7 @@ export async function searchProductsAdvancedDb(params: {
 }): Promise<Product[]> {
   try {
     let q = supabase
-      .from('inventory')
+      .from('storefront_products')
       .select(PUBLIC_INVENTORY_SELECT)
       .eq('status', params.status || 'active');
 
@@ -351,7 +351,7 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
       const idCandidate = parts[parts.length - 1];
       const [{ data, error }, ratingMap] = await Promise.all([
         supabase
-          .from('inventory')
+          .from('storefront_products')
           .select(PUBLIC_INVENTORY_SELECT)
           .eq('id', idCandidate)
           .single(),
@@ -601,7 +601,7 @@ export async function createDbOrder(orderData: {
 
     // Fetch authoritative prices + stock from the inventory table
     const { data: dbInventory, error: inventoryError } = await supabase
-      .from('inventory')
+      .from('storefront_products')
       .select('id, selling_price, stock')
       .in('id', orderData.items.map(item => item.product.id));
 
@@ -672,7 +672,7 @@ export async function createDbOrder(orderData: {
         inventory_id: item.product.id,
         product_name: item.product.name,
         sku: item.product.sku || null,
-        barcode: null,
+        // barcode: null,
         quantity: item.quantity,
         unit_price: unitPrice,
         total_price: totalPrice,
@@ -885,7 +885,12 @@ export async function fetchDbOrders(userId: string): Promise<Order[]> {
 
 export interface DeliveryCheckResult {
   success: boolean;
-  serviceable: boolean;
+  serviceable?: boolean;
+  isOutsideServiceArea?: boolean;
+  error?: string;
+  is20MinDelivery?: boolean;
+  isExpress?: boolean;
+  customerEtaMinutes?: number;
   distance_km?: number;
   estimated_drive_minutes?: number;
   delivery_type?: 'express' | 'same_day' | 'standard' | null;
@@ -1535,7 +1540,7 @@ export async function fetchCampaignProducts(campaignId: string): Promise<Product
 
     const [{ data: inventoryData, error: invError }, ratingMap] = await Promise.all([
       supabase
-        .from('inventory')
+        .from('storefront_products')
         .select(PUBLIC_INVENTORY_SELECT)
         .in('id', inventoryIds)
         .eq('status', 'active'),
@@ -1578,7 +1583,7 @@ export async function fetchSimilarProducts(
     // Fetch a broader pool: same category, active, with images
     const [{ data, error }, ratingMap] = await Promise.all([
       supabase
-        .from('inventory')
+        .from('storefront_products')
         .select(PUBLIC_INVENTORY_SELECT)
         .eq('status', 'active')
         .ilike('category', `%${currentProduct.category}%`)
@@ -1663,7 +1668,7 @@ export async function fetchProductsByIds(ids: string[]): Promise<Product[]> {
   try {
     const [{ data, error }, ratingMap] = await Promise.all([
       supabase
-        .from('inventory')
+        .from('storefront_products')
         .select(PUBLIC_INVENTORY_SELECT)
         .in('id', validIds)
         .eq('status', 'active'),
@@ -1726,7 +1731,7 @@ export async function fetchOrderDetailsForReview(orderIdOrNumber: string): Promi
 
   try {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target);
-    
+
     let query = supabase.from('orders').select('*, order_items(*)');
     if (isUuid) {
       query = query.eq('id', target);
@@ -1756,7 +1761,7 @@ export async function fetchOrderDetailsForReview(orderIdOrNumber: string): Promi
     const items: OrderReviewItem[] = (orderRow.order_items || []).map((item: any) => {
       const snap = item.product_snapshot || {};
       const prodId = item.inventory_id || snap.id || '';
-      
+
       const existingReviewObj = reviewsList.find((r: any) => r.product_id === prodId || (snap.id && r.product_id === snap.id));
 
       return {
