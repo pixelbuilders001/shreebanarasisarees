@@ -263,7 +263,7 @@ function CheckoutContent() {
           const etaMins = res.customerEtaMinutes || res.eta?.minutes || 20;
           setPincodeSuccessMsg(`🚀 Express Delivery available for PIN ${cleanPin}! (Approx. ${etaMins} mins)`);
         } else {
-          setPincodeSuccessMsg(`✓ Standard delivery available for PIN ${cleanPin} (3–5 business days)`);
+          setPincodeSuccessMsg(`✓ Standard delivery is available for PIN ${cleanPin} (3–5 business days)`);
         }
       } else {
         setErrorMsg(res?.error || res?.message || "We currently don't deliver to this location.");
@@ -795,9 +795,8 @@ function CheckoutContent() {
                       <button
                         type="button"
                         onClick={handleAddNewAddressSelect}
-                        className={`text-[11px] font-serif font-bold text-[#6B1725] hover:underline flex items-center gap-0.5 cursor-pointer ${
-                          selectedAddressId === 'new' ? 'underline' : ''
-                        }`}
+                        className={`text-[11px] font-serif font-bold text-[#6B1725] hover:underline flex items-center gap-0.5 cursor-pointer ${selectedAddressId === 'new' ? 'underline' : ''
+                          }`}
                       >
                         <Plus size={12} /> Add New Address
                       </button>
