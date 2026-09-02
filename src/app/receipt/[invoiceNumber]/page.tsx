@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { Loader2, Printer, AlertTriangle, Smartphone, Sparkles, Download } from 'lucide-react';
 import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
+import { decodeReceiptData } from '@/lib/receiptUtils';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzqlsawxvvyvsstyzzff.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -110,6 +111,17 @@ export default function ReceiptPage() {
     }, [autoPrint, receipt]);
 
     useEffect(() => {
+        // 1. Check for encoded zero-API payload parameter in URL (?d=... or ?data=...)
+        const encodedPayload = searchParams?.get('d') || searchParams?.get('data');
+        if (encodedPayload) {
+            const decoded = decodeReceiptData(encodedPayload);
+            if (decoded) {
+                setReceipt(decoded);
+                setLoading(false);
+                return;
+            }
+        }
+
         if (!invoiceNumber) return;
         (async () => {
             setLoading(true);
