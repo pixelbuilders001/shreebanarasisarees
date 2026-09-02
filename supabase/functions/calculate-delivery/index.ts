@@ -249,8 +249,8 @@ Deno.serve(async (req) => {
 
     if (isExpress) {
       if (isStoreClosed) {
-        message = "🌙 Express delivery closed for today. Order tomorrow after 9 AM!";
-        storeClosedMessage = "Express 20-min delivery is closed after 8:00 PM. Please order tomorrow after 9:00 AM for fast delivery!";
+        message = "🌙 Order tonight for Next-Morning Express Delivery (by 10:00 AM)!";
+        storeClosedMessage = "Place your order tonight! Priority express delivery will arrive first thing tomorrow morning by 10:00 AM.";
       } else {
         message = `🚀 Express delivery available! Estimated delivery in about ${totalEtaMinutes} minutes.`;
       }
@@ -297,7 +297,7 @@ Deno.serve(async (req) => {
         deliveryBufferMinutes,
         formattedDelivery: isExpress
           ? isStoreClosed
-            ? "Order tomorrow after 9 AM"
+            ? "Tomorrow Morning (by 10:00 AM)"
             : `~${totalEtaMinutes} mins`
           : "3–5 Business Days",
       },

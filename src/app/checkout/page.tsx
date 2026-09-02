@@ -260,8 +260,12 @@ function CheckoutContent() {
 
       if (res && (res.success || res.serviceable) && !res.isOutsideServiceArea && res.serviceable !== false) {
         if (res.is20MinDelivery || res.isExpress) {
-          const etaMins = res.customerEtaMinutes || res.eta?.minutes || 20;
-          setPincodeSuccessMsg(`🚀 Express Delivery available for PIN ${cleanPin}! (Approx. ${etaMins} mins)`);
+          if (res.isStoreClosed) {
+            setPincodeSuccessMsg(`🌙 Next-Morning Delivery available for PIN ${cleanPin}! (Tomorrow by 10:00 AM)`);
+          } else {
+            const etaMins = res.customerEtaMinutes || res.eta?.minutes || 20;
+            setPincodeSuccessMsg(`🚀 Express Delivery available for PIN ${cleanPin}! (Approx. ${etaMins} mins)`);
+          }
         } else {
           setPincodeSuccessMsg(`✓ Standard delivery is available for PIN ${cleanPin} (3–5 business days)`);
         }

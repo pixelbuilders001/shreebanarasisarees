@@ -316,27 +316,27 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
           ) : (result.is20MinDelivery || (result.distanceKm && result.distanceKm <= 20) || (result as any).eligible) ? (
 
             (result.isStoreClosed || isAfter8PMCutoff()) ? (
-              /* UNDER 20 KM BUT AFTER 8 PM: EXPRESS DELIVERY CLOSED */
-              <div className="p-4 bg-amber-50/95 border border-amber-300 rounded-xl text-xs space-y-2.5 text-amber-950 shadow-xs">
+              /* UNDER 20 KM BUT AFTER 8 PM: NEXT-MORNING EXPRESS DELIVERY */
+              <div className="p-4 bg-emerald-50/90 border border-emerald-300 rounded-xl text-xs space-y-2.5 text-emerald-950 shadow-xs">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5 font-extrabold text-amber-900 text-sm font-serif">
-                    <Moon className="w-5 h-5 flex-shrink-0 text-amber-700" />
-                    <span>Express Delivery Closed Today</span>
+                  <div className="flex items-center gap-2.5 font-extrabold text-emerald-800 text-sm font-serif">
+                    <ExpressRiderIcon className="w-10 h-10 flex-shrink-0" />
+                    <span>Next-Morning Delivery Available</span>
                   </div>
-                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
-                    Order After 9 AM
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 font-serif">
+                    ✓ Tomorrow Morning
                   </span>
                 </div>
 
-                <div className="space-y-1 text-xs text-amber-900 pt-2 border-t border-amber-200">
-                  <div className="flex items-center gap-2 font-extrabold text-amber-950 text-xs">
-                    <Clock size={15} className="text-amber-700 flex-shrink-0" />
-                    <span>Order tomorrow after 9:00 AM for 20-min delivery</span>
+                <div className="space-y-1 text-xs text-emerald-900 pt-2 border-t border-emerald-200/80">
+                  <div className="flex items-center gap-2 font-extrabold text-emerald-950 text-xs">
+                    <Clock size={15} className="text-emerald-700 flex-shrink-0" />
+                    <span>Estimated arrival: Tomorrow Morning (by 10:00 AM)</span>
                   </div>
-                  <p className="text-[11px] text-amber-800 font-medium leading-relaxed pt-0.5">
-                    Our 20-minute express delivery operates between 9:00 AM and 8:00 PM.
+                  <p className="text-[11px] text-emerald-800 font-medium leading-relaxed pt-0.5">
+                    🌙 Place your order tonight! Priority express delivery will arrive first thing tomorrow morning by 10:00 AM.
                   </p>
-                  <div className="text-[10px] text-amber-700 font-medium">
+                  <div className="text-[10px] text-emerald-700 font-medium">
                     {result.source === 'gps'
                       ? 'Based on your current location'
                       : `Verified for pincode ${result.pincode}`}
