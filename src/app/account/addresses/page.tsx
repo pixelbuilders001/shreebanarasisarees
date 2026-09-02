@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { useStore } from '../../../context/StoreContext';
-import { MapPin, Plus, Trash2, Edit2, CheckCircle2 } from 'lucide-react';
+import { MapPin, Plus, Trash2, Edit2, CheckCircle2, Loader2 } from 'lucide-react';
+import { fetchPincodeDetails } from '../../../lib/pincodeLookup';
 
 export default function AddressesPage() {
   const { 
@@ -29,6 +30,21 @@ export default function AddressesPage() {
   const [isDefault, setIsDefault] = useState(false);
   const [formError, setFormError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isFetchingPincode, setIsFetchingPincode] = useState(false);
+
+  const handlePincodeChange = async (val: string) => {
+    const cleanPin = val.replace(/\D/g, '').slice(0, 6);
+    setPincode(cleanPin);
+    if (cleanPin.length === 6) {
+      setIsFetchingPincode(true);
+      const details = await fetchPincodeDetails(cleanPin);
+      if (details && details.success) {
+        if (details.city) setCity(details.city);
+        if (details.state) setStateName(details.state);
+      }
+      setIsFetchingPincode(false);
+    }
+  };
 
   const handleAddNewClick = () => {
     setEditAddressId(null);
@@ -251,15 +267,20 @@ export default function AddressesPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-dark-brown/70 uppercase tracking-wider mb-1">
-                PIN Code *
+              <label className="block text-xs font-bold text-dark-brown/70 uppercase tracking-wider mb-1 flex items-center justify-between">
+                <span>PIN Code *</span>
+                {isFetchingPincode && (
+                  <span className="text-[10px] text-maroon flex items-center gap-1 font-normal font-sans">
+                    <Loader2 size={10} className="animate-spin" /> Fetching location...
+                  </span>
+                )}
               </label>
               <input
                 type="tel"
                 value={pincode}
-                onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={(e) => handlePincodeChange(e.target.value)}
                 placeholder="221001"
-                className="w-full border border-cream rounded px-3 py-2 text-xs text-dark-brown focus:outline-none focus:border-gold"
+                className="w-full border border-cream rounded px-3 py-2 text-xs text-dark-brown focus:outline-none focus:border-gold font-mono"
               />
             </div>
           </div>

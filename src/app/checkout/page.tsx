@@ -27,10 +27,11 @@ import {
   User,
   ExternalLink
 } from 'lucide-react';
-import { checkDeliveryServiceability, createCashfreeOrder, getProductSlug } from '../../data/supabase';
+import { checkDeliveryServiceability, createCashfreeOrder, getProductSlug, supabase } from '../../data/supabase';
 import { load } from '@cashfreepayments/cashfree-js';
 import { trackBeginCheckout, trackPurchase } from '../../lib/gtag';
 import { IconMarqueeLoader } from '../../components/IconMarqueeLoader';
+import { fetchPincodeDetails } from '../../lib/pincodeLookup';
 
 const FREE_SHIPPING_THRESHOLD = 999;
 const STANDARD_SHIPPING_FEE = 99;
@@ -144,23 +145,30 @@ function CheckoutContent() {
     }
   }, [checkedPincode, pinCode]);
 
-  // Auto-prefill default address for logged-in user
+  // Auto-prefill selected or default address for logged-in user
   useEffect(() => {
     if (shippingAddresses && shippingAddresses.length > 0 && !hasPrefilled && !fullName && !address) {
-      const defaultAddr = shippingAddresses.find(a => a.is_default) || shippingAddresses[0];
-      if (defaultAddr) {
-        setFullName(defaultAddr.full_name || '');
-        setMobileNumber(defaultAddr.phone || '');
-        setAddress(defaultAddr.address_line1 + (defaultAddr.address_line2 ? ', ' + defaultAddr.address_line2 : ''));
-        setLandmark(defaultAddr.landmark || '');
-        setCity(defaultAddr.city || '');
-        if (defaultAddr.state) {
-          setState(defaultAddr.state);
+      const savedSelectedId = typeof window !== 'undefined' ? sessionStorage.getItem('selected_delivery_address_id') : null;
+      let targetAddr = null;
+      if (savedSelectedId) {
+        targetAddr = shippingAddresses.find(a => a.id === savedSelectedId);
+      }
+      if (!targetAddr) {
+        targetAddr = shippingAddresses.find(a => a.is_default) || shippingAddresses[0];
+      }
+      if (targetAddr) {
+        setFullName(targetAddr.full_name || '');
+        setMobileNumber(targetAddr.phone || '');
+        setAddress(targetAddr.address_line1 + (targetAddr.address_line2 ? ', ' + targetAddr.address_line2 : ''));
+        setLandmark(targetAddr.landmark || '');
+        setCity(targetAddr.city || '');
+        if (targetAddr.state) {
+          setState(targetAddr.state);
         }
-        setPinCode(defaultAddr.pincode || '');
-        handleCheckPincode(defaultAddr.pincode);
+        setPinCode(targetAddr.pincode || '');
+        handleCheckPincode(targetAddr.pincode);
         setHasPrefilled(true);
-        setSelectedAddressId(defaultAddr.id);
+        setSelectedAddressId(targetAddr.id);
       }
     }
   }, [shippingAddresses, hasPrefilled, fullName, address]);
@@ -223,11 +231,11 @@ function CheckoutContent() {
     }
   }, [subtotal]);
 
-  // Handle PIN Code Validation
+  // Handle PIN Code Validation via calculate-delivery Edge Function
   const handleCheckPincode = async (targetPincode: string) => {
     const cleanPin = targetPincode.replace(/\D/g, '').slice(0, 6);
-    if (cleanPin.length !== 6) {
-      setErrorMsg("Please enter a valid 6-digit Indian PIN code.");
+    if (!/^[1-9][0-9]{5}$/.test(cleanPin)) {
+      setErrorMsg("Please enter a valid 6-digit pincode.");
       setPincodeSuccessMsg(null);
       return;
     }
@@ -237,14 +245,27 @@ function CheckoutContent() {
     setPincodeSuccessMsg(null);
 
     try {
-      const res = await checkDeliveryServiceability({ pincode: cleanPin });
+      const { data, error } = await supabase.functions.invoke('calculate-delivery', {
+        body: { source: 'pincode', pincode: cleanPin }
+      });
+
+      let res = data;
+      if (error || !res) {
+        // Fallback to legacy database serviceability helper if function un-deployed locally
+        res = await checkDeliveryServiceability({ pincode: cleanPin });
+      }
+
       setDeliveryInfo(res);
       setCheckedPincode(cleanPin);
 
-      if (res.success && res.serviceable) {
-        setPincodeSuccessMsg(`✓ Delivery available to PIN ${cleanPin} (3–5 business days)`);
+      if (res && res.success && !res.isOutsideServiceArea) {
+        if (res.is20MinDelivery) {
+          setPincodeSuccessMsg(`🚀 20-Minute Express Delivery available for PIN ${cleanPin}! (Approx. ${res.distanceKm} km away)`);
+        } else {
+          setPincodeSuccessMsg(`✓ Standard delivery available for PIN ${cleanPin} (${res.distanceKm ? `Approx. ${res.distanceKm} km` : '3–5 business days'})`);
+        }
       } else {
-        setErrorMsg("Delivery is not available at this PIN code.");
+        setErrorMsg(res?.error || "We currently don't deliver to this location.");
       }
     } catch (err) {
       console.error(err);
@@ -254,10 +275,18 @@ function CheckoutContent() {
     }
   };
 
-  const handlePinCodeChange = (val: string) => {
+  const handlePinCodeChange = async (val: string) => {
     const sanitized = val.replace(/\D/g, '').slice(0, 6);
     setPinCode(sanitized);
-    if (sanitized.length !== 6) {
+    if (sanitized.length === 6) {
+      // Auto fetch city & state details
+      fetchPincodeDetails(sanitized).then((details) => {
+        if (details && details.success) {
+          if (details.city) setCity(details.city);
+          if (details.state) setState(details.state);
+        }
+      });
+    } else {
       setPincodeSuccessMsg(null);
       if (sanitized !== checkedPincode) {
         setDeliveryInfo(null);
@@ -277,6 +306,10 @@ function CheckoutContent() {
       setState(addr.state);
     }
     setPinCode(addr.pincode || '');
+    if (typeof window !== 'undefined') {
+      if (addr.id) sessionStorage.setItem('selected_delivery_address_id', addr.id);
+      if (addr.pincode) sessionStorage.setItem('selected_delivery_pincode', addr.pincode);
+    }
     handleCheckPincode(addr.pincode);
   };
 
@@ -751,42 +784,63 @@ function CheckoutContent() {
                   </h2>
                 </div>
 
-                {/* Saved Address Cards if user logged in */}
+                {/* Saved Address Dropdown if user logged in */}
                 {shippingAddresses && shippingAddresses.length > 0 && (
-                  <div className="space-y-1.5">
-                    <span className="text-[11px] font-serif font-bold text-[#6B625D]">Select Saved Address:</span>
-                    {shippingAddresses.map((addr) => {
-                      const isSelected = selectedAddressId === addr.id;
-                      return (
-                        <div
-                          key={addr.id}
-                          onClick={() => handleSelectAddress(addr)}
-                          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${isSelected ? 'border-[#6B1725] bg-[#6B1725]/[0.03]' : 'border-[#B08A3C]/20 bg-white hover:border-[#B08A3C]/40'
-                            }`}
-                        >
-                          <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${isSelected ? 'border-[#6B1725] bg-[#6B1725]' : 'border-[#6B625D]/30 bg-white'
-                            }`} />
-                          <div className="flex-grow min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold font-serif text-[#292524]">{addr.full_name}</span>
-                              <span className="text-[9px] font-bold text-[#B08A3C] uppercase px-1.5 py-0.5 bg-[#FFF9F0] rounded">{addr.address_label || 'Home'}</span>
-                            </div>
-                            <p className="text-[10px] text-[#6B625D] truncate mt-0.5">
-                              {addr.address_line1}, {addr.city}, {addr.state} – {addr.pincode}
-                            </p>
-                          </div>
-                          {isSelected && <span className="text-[#6B1725] text-xs font-bold">✓</span>}
-                        </div>
-                      );
-                    })}
-
-                    <div
-                      onClick={handleAddNewAddressSelect}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed cursor-pointer transition-all ${selectedAddressId === 'new' ? 'border-[#6B1725] text-[#6B1725] bg-[#6B1725]/[0.03]' : 'border-[#B08A3C]/30 text-[#6B625D] hover:text-[#6B1725]'
+                  <div className="space-y-1.5 pb-2 border-b border-[#F3ECE0]">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="checkout-saved-address-select" className="text-[11px] font-serif font-bold text-[#6B625D] uppercase tracking-wider">
+                        Select Saved Shipping Address:
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleAddNewAddressSelect}
+                        className={`text-[11px] font-serif font-bold text-[#6B1725] hover:underline flex items-center gap-0.5 cursor-pointer ${
+                          selectedAddressId === 'new' ? 'underline' : ''
                         }`}
-                    >
-                      <Plus size={13} />
-                      <span className="text-xs font-serif font-bold">+ Add New Address</span>
+                      >
+                        <Plus size={12} /> Add New Address
+                      </button>
+                    </div>
+
+                    <div className="relative">
+                      <select
+                        id="checkout-saved-address-select"
+                        value={selectedAddressId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === 'new') {
+                            handleAddNewAddressSelect();
+                          } else if (val) {
+                            const addr = shippingAddresses.find(a => a.id === val);
+                            if (addr) {
+                              handleSelectAddress(addr);
+                            }
+                          }
+                        }}
+                        className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] focus:ring-1 focus:ring-[#6B1725] text-xs text-[#292524] rounded-xl px-3.5 py-2.5 outline-none font-sans font-medium transition-all cursor-pointer appearance-none pr-8 text-ellipsis overflow-hidden shadow-xs"
+                      >
+                        <option value="">-- Select a saved shipping address --</option>
+                        {shippingAddresses.map((addr: any, index: number) => {
+                          const defaultPrefix = addr.is_default ? '★ DEFAULT ' : '';
+                          const label = addr.address_label ? `[${defaultPrefix}${addr.address_label.toUpperCase()}]` : '[SAVED]';
+                          const nameStr = addr.full_name ? `${addr.full_name}, ` : '';
+                          const line1 = addr.address_line1 || '';
+                          const line2 = addr.address_line2 ? `, ${addr.address_line2}` : '';
+                          const cityState = `${addr.city ? `, ${addr.city}` : ''}${addr.state ? `, ${addr.state}` : ''}`;
+                          const pinStr = addr.pincode ? ` (${addr.pincode})` : '';
+                          const fullAddressText = `${label} ${nameStr}${line1}${line2}${cityState}${pinStr}`;
+
+                          return (
+                            <option key={addr.id || index} value={addr.id}>
+                              {fullAddressText}
+                            </option>
+                          );
+                        })}
+                        <option value="new">+ Enter New Address Manually</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#6B1725]">
+                        <ChevronDown size={14} />
+                      </div>
                     </div>
                   </div>
                 )}
