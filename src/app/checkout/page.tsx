@@ -260,8 +260,9 @@ function CheckoutContent() {
 
       if (res && (res.success || res.serviceable) && !res.isOutsideServiceArea && res.serviceable !== false) {
         if (res.is20MinDelivery || res.isExpress) {
-          if (res.isStoreClosed) {
-            setPincodeSuccessMsg(`🌙 Next-Morning Delivery available for PIN ${cleanPin}! (Tomorrow by 10:00 AM)`);
+          if (res.isStoreClosed || res.isAfterMidnight || res.isAfter8PM) {
+            const timeLabel = res.isAfterMidnight ? 'Today by 10:00 AM' : 'Tomorrow by 10:00 AM';
+            setPincodeSuccessMsg(`⚡ Express Delivery available for PIN ${cleanPin}! (${timeLabel})`);
           } else {
             const etaMins = res.customerEtaMinutes || res.eta?.minutes || 20;
             setPincodeSuccessMsg(`🚀 Express Delivery available for PIN ${cleanPin}! (Approx. ${etaMins} mins)`);

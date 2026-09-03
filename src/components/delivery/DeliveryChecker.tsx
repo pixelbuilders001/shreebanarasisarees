@@ -5,20 +5,57 @@ import { ExpressRiderIcon, StandardTruckIcon } from './DeliveryIcons';
 import { useStore } from '../../context/StoreContext';
 import { AddNewAddressModal } from './AddNewAddressModal';
 
-// Helper to check if current time in IST is after 8:00 PM (20:00) or before 9:00 AM (09:00)
-const isAfter8PMCutoff = (): boolean => {
+// Helper to check current IST operating hours window:
+// - 9 AM to 8 PM (09:00 - 19:59): Normal 20-min express flow
+// - 8 PM to 12 AM (20:00 - 23:59): Tomorrow Morning (by 10:00 AM)
+// - 12 AM to 9 AM (00:00 - 08:59): Today Morning (by 10:00 AM)
+const getExpressTimingStatus = (result?: any) => {
+  let hour = 12;
   try {
     const istHourString = new Intl.DateTimeFormat('en-US', {
       timeZone: 'Asia/Kolkata',
       hour: 'numeric',
       hour12: false,
     }).format(new Date());
-    const hour = parseInt(istHourString, 10);
-    return hour >= 20 || hour < 9;
+    hour = parseInt(istHourString, 10);
   } catch {
-    const localHour = new Date().getHours();
-    return localHour >= 20 || localHour < 9;
+    hour = new Date().getHours();
   }
+
+  const isAfterMidnight = result?.isAfterMidnight ?? (hour < 9);
+  const isAfter8PM = result?.isAfter8PM ?? (hour >= 20);
+  const isNormalHours = !(isAfterMidnight || isAfter8PM);
+
+  if (isNormalHours) {
+    return {
+      isNormalHours: true,
+      isAfterMidnight: false,
+      isAfter8PM: false,
+      timingText: '',
+      badgeText: '',
+      descText: ''
+    };
+  }
+
+  if (isAfterMidnight) {
+    return {
+      isNormalHours: false,
+      isAfterMidnight: true,
+      isAfter8PM: false,
+      timingText: 'Today Morning (by 10:00 AM)',
+      badgeText: '✓ Today Morning',
+      descText: '☀️ Place your order now! Priority express delivery will arrive this morning by 10:00 AM.'
+    };
+  }
+
+  return {
+    isNormalHours: false,
+    isAfterMidnight: false,
+    isAfter8PM: true,
+    timingText: 'Tomorrow Morning (by 10:00 AM)',
+    badgeText: '✓ Tomorrow Morning',
+    descText: '🌙 Place your order tonight! Priority express delivery will arrive tomorrow morning by 10:00 AM.'
+  };
 };
 
 interface DeliveryCheckerProps {
@@ -314,61 +351,68 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
               </p>
             </div>
           ) : (result.is20MinDelivery || (result.distanceKm && result.distanceKm <= 20) || (result as any).eligible) ? (
+            (() => {
+              const timing = getExpressTimingStatus(result);
 
-            (result.isStoreClosed || isAfter8PMCutoff()) ? (
-              /* UNDER 20 KM BUT AFTER 8 PM: NEXT-MORNING EXPRESS DELIVERY */
-              <div className="p-4 bg-emerald-50/90 border border-emerald-300 rounded-xl text-xs space-y-2.5 text-emerald-950 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5 font-extrabold text-emerald-800 text-sm font-serif">
-                    <ExpressRiderIcon className="w-10 h-10 flex-shrink-0" />
-                    <span>Next-Morning Delivery Available</span>
-                  </div>
-                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 font-serif">
-                    ✓ Tomorrow Morning
-                  </span>
-                </div>
+              if (!timing.isNormalHours) {
+                return (
+                  /* UNDER 20 KM BUT OUTSIDE DAYTIME OPERATING HOURS */
+                  <div className="p-4 bg-emerald-50/90 border border-emerald-300 rounded-xl text-xs space-y-2.5 text-emerald-950 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5 font-extrabold text-emerald-800 text-sm font-serif">
+                        <ExpressRiderIcon className="w-10 h-10 flex-shrink-0" />
+                        <span>Express Delivery Available</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 font-serif">
+                        {timing.badgeText}
+                      </span>
+                    </div>
 
-                <div className="space-y-1 text-xs text-emerald-900 pt-2 border-t border-emerald-200/80">
-                  <div className="flex items-center gap-2 font-extrabold text-emerald-950 text-xs">
-                    <Clock size={15} className="text-emerald-700 flex-shrink-0" />
-                    <span>Estimated arrival: Tomorrow Morning (by 10:00 AM)</span>
+                    <div className="space-y-1 text-xs text-emerald-900 pt-2 border-t border-emerald-200/80">
+                      <div className="flex items-center gap-2 font-extrabold text-emerald-950 text-xs">
+                        <Clock size={15} className="text-emerald-700 flex-shrink-0" />
+                        <span>Estimated arrival: {timing.timingText}</span>
+                      </div>
+                      <p className="text-[11px] text-emerald-800 font-medium leading-relaxed pt-0.5">
+                        {timing.descText}
+                      </p>
+                      <div className="text-[10px] text-emerald-700 font-medium">
+                        {result.source === 'gps'
+                          ? 'Based on your current location'
+                          : `Verified for pincode ${result.pincode}`}
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-emerald-800 font-medium leading-relaxed pt-0.5">
-                    🌙 Place your order tonight! Priority express delivery will arrive first thing tomorrow morning by 10:00 AM.
-                  </p>
-                  <div className="text-[10px] text-emerald-700 font-medium">
-                    {result.source === 'gps'
-                      ? 'Based on your current location'
-                      : `Verified for pincode ${result.pincode}`}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* UNDER 20 KM & DURING OPERATING HOURS: EXPRESS DELIVERY AVAILABLE */
-              <div className="p-4 bg-emerald-50/90 border border-emerald-300 rounded-xl text-xs space-y-2.5 text-emerald-950 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5 font-extrabold text-emerald-800 text-sm font-serif">
-                    <ExpressRiderIcon className="w-10 h-10 flex-shrink-0" />
-                    <span>Express Delivery Available</span>
-                  </div>
-                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                    ✓ Available
-                  </span>
-                </div>
+                );
+              }
 
-                <div className="space-y-1 text-xs text-emerald-900 pt-2 border-t border-emerald-200/80">
-                  <div className="flex items-center gap-2 font-extrabold text-emerald-950 text-xs">
-                    <Clock size={15} className="text-emerald-700 flex-shrink-0" />
-                    <span>Estimated arrival: ~{result.customerEtaMinutes || result.eta?.minutes || 20} minutes</span>
+              return (
+                /* UNDER 20 KM & DURING OPERATING HOURS: EXPRESS DELIVERY AVAILABLE */
+                <div className="p-4 bg-emerald-50/90 border border-emerald-300 rounded-xl text-xs space-y-2.5 text-emerald-950 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 font-extrabold text-emerald-800 text-sm font-serif">
+                      <ExpressRiderIcon className="w-10 h-10 flex-shrink-0" />
+                      <span>Express Delivery Available</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                      ✓ Available
+                    </span>
                   </div>
-                  <div className="text-[10px] text-emerald-700 font-medium">
-                    {result.source === 'gps'
-                      ? 'Based on your current location'
-                      : `Verified for pincode ${result.pincode}`}
+
+                  <div className="space-y-1 text-xs text-emerald-900 pt-2 border-t border-emerald-200/80">
+                    <div className="flex items-center gap-2 font-extrabold text-emerald-950 text-xs">
+                      <Clock size={15} className="text-emerald-700 flex-shrink-0" />
+                      <span>Estimated arrival: ~{result.customerEtaMinutes || result.eta?.minutes || 20} minutes</span>
+                    </div>
+                    <div className="text-[10px] text-emerald-700 font-medium">
+                      {result.source === 'gps'
+                        ? 'Based on your current location'
+                        : `Verified for pincode ${result.pincode}`}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
+              );
+            })()
           ) : (
 
             /* ABOVE 20 KM: STANDARD DELIVERY (3-5 DAYS) */

@@ -222,7 +222,10 @@ Deno.serve(async (req) => {
     const maxDistanceKm = 20.0;
 
     // ------------------------------------------
-    // OPERATING HOURS & CUTOFF CHECK (9 AM - 8 PM IST)
+    // OPERATING HOURS & CUTOFF CHECK (IST)
+    // - 9 AM to 8 PM (09:00 - 19:59): Normal 20-min express flow
+    // - 8 PM to 12 AM (20:00 - 23:59): Tomorrow Morning (by 10:00 AM)
+    // - 12 AM to 9 AM (00:00 - 08:59): Today Morning (by 10:00 AM)
     // ------------------------------------------
 
     const istHourString = new Intl.DateTimeFormat("en-US", {
@@ -232,7 +235,10 @@ Deno.serve(async (req) => {
     }).format(new Date());
 
     const istHour = parseInt(istHourString, 10);
-    const isStoreClosed = istHour >= 20 || istHour < 9;
+    const isNormalHours = istHour >= 9 && istHour < 20;
+    const isAfterMidnight = istHour < 9;
+    const isAfter8PM = istHour >= 20;
+    const isStoreClosed = !isNormalHours;
 
     // ------------------------------------------
     // ELIGIBILITY (Under 20 km = Express)
@@ -241,21 +247,30 @@ Deno.serve(async (req) => {
     const isExpress = distanceKm <= maxDistanceKm;
 
     // ------------------------------------------
-    // CUSTOMER MESSAGE
+    // CUSTOMER MESSAGE & FORMATTED DELIVERY
     // ------------------------------------------
 
     let message = "";
     let storeClosedMessage = "";
+    let formattedDelivery = "";
 
     if (isExpress) {
-      if (isStoreClosed) {
+      if (isNormalHours) {
+        message = `🚀 Express delivery available! Estimated delivery in about ${totalEtaMinutes} minutes.`;
+        formattedDelivery = `~${totalEtaMinutes} mins`;
+      } else if (isAfterMidnight) {
+        message = "☀️ Order now for Today Morning Express Delivery (by 10:00 AM)!";
+        storeClosedMessage = "Place your order now! Priority express delivery will arrive this morning by 10:00 AM.";
+        formattedDelivery = "Today Morning (by 10:00 AM)";
+      } else {
+        // isAfter8PM (20:00 to 23:59)
         message = "🌙 Order tonight for Next-Morning Express Delivery (by 10:00 AM)!";
         storeClosedMessage = "Place your order tonight! Priority express delivery will arrive first thing tomorrow morning by 10:00 AM.";
-      } else {
-        message = `🚀 Express delivery available! Estimated delivery in about ${totalEtaMinutes} minutes.`;
+        formattedDelivery = "Tomorrow Morning (by 10:00 AM)";
       }
     } else {
       message = `📦 Standard delivery available! Estimated delivery in 3–5 Business Days.`;
+      formattedDelivery = "3–5 Business Days";
     }
 
     // ------------------------------------------
@@ -266,9 +281,11 @@ Deno.serve(async (req) => {
       success: true,
 
       eligible: isExpress,
-      is20MinDelivery: isExpress && !isStoreClosed,
+      is20MinDelivery: isExpress && isNormalHours,
       isExpress,
       isStoreClosed,
+      isAfterMidnight,
+      isAfter8PM,
       storeClosedMessage,
 
       message,
@@ -295,11 +312,7 @@ Deno.serve(async (req) => {
         minutes: totalEtaMinutes,
         packingBufferMinutes,
         deliveryBufferMinutes,
-        formattedDelivery: isExpress
-          ? isStoreClosed
-            ? "Tomorrow Morning (by 10:00 AM)"
-            : `~${totalEtaMinutes} mins`
-          : "3–5 Business Days",
+        formattedDelivery,
       },
 
       serviceArea: {

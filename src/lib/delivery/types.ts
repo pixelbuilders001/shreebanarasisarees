@@ -11,6 +11,8 @@ export interface DeliveryCheckResult {
   customerEtaMinutes: number;
   is20MinDelivery: boolean;
   isStoreClosed?: boolean;
+  isAfterMidnight?: boolean;
+  isAfter8PM?: boolean;
   storeClosedMessage?: string;
   eta?: { minutes: number };
   district?: string;
