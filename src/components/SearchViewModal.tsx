@@ -119,13 +119,14 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
           setDetectedFilters(null);
           return;
         }
-        const filters = parseSearchQuery(value);
+        const dynamicCatNames = (categories || []).map(c => c.name);
+        const filters = parseSearchQuery(value, dynamicCatNames);
         setDetectedFilters(filters);
-        const suggs = generateSuggestions(value, products as Product[]);
+        const suggs = generateSuggestions(value, products as Product[], dynamicCatNames);
         setSuggestions(suggs);
       }, 150);
     },
-    [products]
+    [products, categories]
   );
 
   const handleInputChange = (val: string) => {
@@ -139,7 +140,8 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
     if (!q) return;
 
     addRecentSearch(q);
-    const filters = parseSearchQuery(q);
+    const dynamicCatNames = (categories || []).map(c => c.name);
+    const filters = parseSearchQuery(q, dynamicCatNames);
     router.push(buildSearchUrl(q, filters));
     onClose();
   };
@@ -149,9 +151,9 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
     handleSearchSubmit(undefined, term);
   };
 
-  const handleWeaveClick = (fabricName: string) => {
-    addRecentSearch(fabricName);
-    router.push(`/sarees?fabric=${encodeURIComponent(fabricName)}`);
+  const handleWeaveClick = (catName: string) => {
+    addRecentSearch(catName);
+    router.push(`/sarees?category=${encodeURIComponent(catName)}`);
     onClose();
   };
 
@@ -160,7 +162,14 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
     if (sugg.type === 'product' && sugg.product) {
       router.push(`/product/${sugg.product.slug}`);
     } else {
-      const filters = parseSearchQuery(sugg.value);
+      const dynamicCatNames = (categories || []).map(c => c.name);
+      const filters = parseSearchQuery(sugg.value, dynamicCatNames);
+      if (sugg.type === 'category') {
+        const catVal = sugg.value.replace(/ Sarees$/i, '');
+        if (!filters.categories.includes(catVal)) {
+          filters.categories.push(catVal);
+        }
+      }
       router.push(buildSearchUrl(sugg.value, filters));
     }
     onClose();
@@ -314,10 +323,10 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
                 </div>
               </div>
 
-              {/* ── SECTION 3: BROWSE WEAVES WITH DYNAMIC CATEGORIES ── */}
+              {/* ── SECTION 3: BROWSE CATEGORIES & WEAVES ── */}
               <div className="mt-8">
                 <span className="text-[11px] font-sans font-bold tracking-widest text-[#7A6E65] uppercase mb-4 block">
-                  BROWSE WEAVES
+                  BROWSE CATEGORIES &amp; WEAVES
                 </span>
                 <div className="grid grid-cols-4 md:grid-cols-8 gap-y-6 gap-x-3 text-center">
                   {(categories && categories.length > 0

@@ -79,15 +79,17 @@ export const CATEGORY_SYNONYMS: Record<string, string> = {
   banarasi: 'Banarasi', banaras: 'Banarasi', benares: 'Banarasi', varanasi: 'Banarasi', 'banarasi katan': 'Banarasi', 'banarasi satin': 'Banarasi', 'tissue banarasi': 'Banarasi',
   chikankari: 'Chikankari', chikan: 'Chikankari', lucknowi: 'Chikankari', lucknow: 'Chikankari', 'chickan-kari': 'Chikankari', 'chickan kari': 'Chikankari',
   bandhani: 'Bandhani', bandhej: 'Bandhani', bandhan: 'Bandhani', 'bandhani silk': 'Bandhani', 'assamese bandhej': 'Assamese Bandhej',
-  organza: 'Organza',
-  chanderi: 'Chanderi', chandari: 'Chanderi',
-  'bridal collection': 'Bridal', bridal: 'Bridal',
+  organza: 'Organza', 'organza silk': 'Organza',
+  chanderi: 'Chanderi', chandari: 'Chanderi', 'chanderi silk': 'Chanderi',
+  'bridal collection': 'Bridal', bridal: 'Bridal', bride: 'Bridal',
   tanchui: 'Tanchui Silk', tanchoi: 'Tanchui Silk', 'tanchui white': 'Tanchui White', 'tanchui-white': 'Tanchui White',
   katan: 'Katan Silk', 'katan silk': 'Katan Silk', 'katan-silk': 'Katan Silk',
   'raw silk ada': 'Raw Silk Ada', 'raw-silk-ada': 'Raw Silk Ada',
   shikargarh: 'Shikargarh',
-  'wedding wear': 'Wedding Wear',
+  rangkaat: 'Rangkaat',
+  'wedding wear': 'Bridal',
   'party wear': 'Party Wear',
+  tissue: 'Tissue Silk',
 };
 
 // ─── Price Pattern Detection ─────────────────────────────────────────────────
@@ -178,7 +180,7 @@ function fuzzyMatch(token: string, candidates: string[], maxEdits = 2): string |
 
 // ─── Main Query Parser ────────────────────────────────────────────────────────
 
-export function parseSearchQuery(query: string): DetectedFilters {
+export function parseSearchQuery(query: string, dynamicCategories: string[] = []): DetectedFilters {
   const result: DetectedFilters = {
     colors: [],
     fabrics: [],
@@ -206,6 +208,15 @@ export function parseSearchQuery(query: string): DetectedFilters {
     working = working.replace(skuMatch[0], ' ').replace(/\s+/g, ' ').trim();
   }
 
+  // Build dynamic category synonym map if dynamicCategories provided
+  const categoryMap: Record<string, string> = { ...CATEGORY_SYNONYMS };
+  for (const cat of dynamicCategories) {
+    if (cat && cat !== 'All' && cat !== 'Offers') {
+      const lower = cat.toLowerCase();
+      if (!categoryMap[lower]) categoryMap[lower] = cat;
+    }
+  }
+
   // ── 3. Multi-word synonyms (longest match first) ──
   const multiWordMatch = (synonymMap: Record<string, string>, bucket: string[]) => {
     const keys = Object.keys(synonymMap)
@@ -221,7 +232,7 @@ export function parseSearchQuery(query: string): DetectedFilters {
     }
   };
 
-  multiWordMatch(CATEGORY_SYNONYMS, result.categories);
+  multiWordMatch(categoryMap, result.categories);
   multiWordMatch(COLOR_SYNONYMS, result.colors);
   multiWordMatch(FABRIC_SYNONYMS, result.fabrics);
   multiWordMatch(OCCASION_SYNONYMS, result.occasions);
@@ -254,8 +265,8 @@ export function parseSearchQuery(query: string): DetectedFilters {
       if (!result.occasions.includes(val)) result.occasions.push(val);
       consumed = true;
     }
-    if (!consumed && CATEGORY_SYNONYMS[ltoken]) {
-      const val = CATEGORY_SYNONYMS[ltoken];
+    if (!consumed && categoryMap[ltoken]) {
+      const val = categoryMap[ltoken];
       if (!result.categories.includes(val)) result.categories.push(val);
       consumed = true;
     }
@@ -274,8 +285,8 @@ export function parseSearchQuery(query: string): DetectedFilters {
         if (fo) { const v = OCCASION_SYNONYMS[fo]; if (!result.occasions.includes(v)) result.occasions.push(v); consumed = true; }
       }
       if (!consumed) {
-        const fcat = fuzzyMatch(ltoken, Object.keys(CATEGORY_SYNONYMS));
-        if (fcat) { const v = CATEGORY_SYNONYMS[fcat]; if (!result.categories.includes(v)) result.categories.push(v); consumed = true; }
+        const fcat = fuzzyMatch(ltoken, Object.keys(categoryMap));
+        if (fcat) { const v = categoryMap[fcat]; if (!result.categories.includes(v)) result.categories.push(v); consumed = true; }
       }
     }
 
@@ -348,17 +359,22 @@ export function scoreProducts(
 
     if (filters.categories.length > 0) {
       const catNorm = product.category.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const fabNorm = product.fabric.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const nameNorm = product.name.toLowerCase().replace(/[^a-z0-9]/g, '');
 
       const match = filters.categories.some(cat => {
         const selNorm = cat.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-        if (catNorm === selNorm || catNorm.includes(selNorm) || selNorm.includes(catNorm)) {
+        if (
+          catNorm === selNorm || catNorm.includes(selNorm) || selNorm.includes(catNorm) ||
+          fabNorm.includes(selNorm) || nameNorm.includes(selNorm)
+        ) {
           return true;
         }
 
-        const knownCategories = ['banarasi', 'chikankari', 'chikan', 'bandhani', 'bandhej', 'organza', 'chanderi', 'bridal', 'kanjivaram'];
+        const knownCategories = ['banarasi', 'chikankari', 'chikan', 'bandhani', 'bandhej', 'organza', 'chanderi', 'bridal', 'kanjivaram', 'katan', 'tanchui', 'tissue', 'shikargarh', 'rangkaat'];
         const selKeyword = knownCategories.find(k => selNorm.includes(k));
-        const catKeyword = knownCategories.find(k => catNorm.includes(k));
+        const catKeyword = knownCategories.find(k => catNorm.includes(k) || fabNorm.includes(k) || nameNorm.includes(k));
 
         if (selKeyword && catKeyword) {
           const root = (k: string) => (k === 'chikan' ? 'chikankari' : k === 'bandhej' ? 'bandhani' : k);
@@ -455,7 +471,7 @@ export interface SearchSuggestion {
   icon?: string;
 }
 
-export function generateSuggestions(query: string, products: Product[]): SearchSuggestion[] {
+export function generateSuggestions(query: string, products: Product[], dynamicCategories: string[] = []): SearchSuggestion[] {
   if (!query.trim()) return [];
   const q = query.toLowerCase().trim();
 
@@ -470,11 +486,11 @@ export function generateSuggestions(query: string, products: Product[]): SearchS
   };
 
   // 1. Parse the query to detect what filters are present
-  const filters = parseSearchQuery(query);
+  const filters = parseSearchQuery(query, dynamicCategories);
 
   // 2. Detected filter suggestions (show at top with smart labels)
   if (filters.categories.length > 0) {
-    filters.categories.forEach(cat => addSugg({ type: 'category', label: `${cat} Sarees`, value: query, icon: '🏷️' }));
+    filters.categories.forEach(cat => addSugg({ type: 'category', label: `${cat} Sarees`, value: cat, icon: '🏷️' }));
   }
   if (filters.fabrics.length > 0) {
     filters.fabrics.forEach(fab => addSugg({ type: 'fabric', label: `${fab} Sarees`, value: query, icon: '✨' }));
@@ -504,9 +520,9 @@ export function generateSuggestions(query: string, products: Product[]): SearchS
     addSugg({ type: 'product', label: p.name, value: p.name, product: p });
   }
 
-  // 4. Category, fabric, color suggestions from product data
-  const allCats = Array.from(new Set(products.map(p => p.category)));
-  for (const cat of allCats) {
+  // 4. Category, fabric, color suggestions from product & dynamic category data
+  const allCatNames = Array.from(new Set([...products.map(p => p.category), ...dynamicCategories])).filter(c => c && c !== 'All' && c !== 'Offers');
+  for (const cat of allCatNames) {
     if (cat.toLowerCase().includes(q)) {
       addSugg({ type: 'category', label: `${cat} Sarees`, value: cat, icon: '🏷️' });
     }

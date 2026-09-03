@@ -135,7 +135,13 @@ export const SareesClient: React.FC<SareesClientProps> = ({
 
   // Sync state if server props change (navigation)
   useEffect(() => {
-    setSelectedCategory(initialCategory);
+    if (urlCategory) {
+      setSelectedCategory(urlCategory);
+    } else if (initialCategory) {
+      setSelectedCategory(initialCategory);
+    } else {
+      setSelectedCategory('All');
+    }
     setSelectedOccasions(initialOccasion !== 'All' ? [initialOccasion] : []);
     
     const priceParam = searchParams.get('priceRange');
@@ -143,7 +149,18 @@ export const SareesClient: React.FC<SareesClientProps> = ({
 
     const expressParam = searchParams.get('express');
     if (expressParam === 'true') setIs20MinOnly(true);
-  }, [initialCategory, initialOccasion, searchParams]);
+  }, [initialCategory, initialOccasion, searchParams, urlCategory]);
+
+  const handleCategoryClick = (cat: string) => {
+    setSelectedCategory(cat);
+    const params = new URLSearchParams(searchParams.toString());
+    if (cat === 'All') {
+      params.delete('category');
+    } else {
+      params.set('category', cat);
+    }
+    router.push(`/sarees?${params.toString()}`);
+  };
 
   // Helper: remove a filter chip and re-push URL
   const removeFilterChip = (type: keyof DetectedFilters, value?: string) => {
@@ -358,14 +375,14 @@ export const SareesClient: React.FC<SareesClientProps> = ({
             return (
               <button
                 key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                onClick={() => handleCategoryClick(cat)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-sans transition-all text-left cursor-pointer ${
                   isSelected
                     ? 'bg-[#FAF6EE] text-[#6B1725] font-bold border border-[#E5DEC9]'
                     : 'text-[#292524] hover:bg-[#FAF7F0]'
                 }`}
               >
-                <span>{cat} Sarees</span>
+                <span>{cat === 'All' ? 'All Sarees' : `${cat} Sarees`}</span>
                 {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-[#6B1725]" />}
               </button>
             );
@@ -747,6 +764,33 @@ export const SareesClient: React.FC<SareesClientProps> = ({
 
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto p-5 space-y-6">
+
+              {/* 1. CATEGORY SECTION */}
+              <div>
+                <span className="text-[11px] font-sans font-bold tracking-widest text-[#B08A3C] uppercase mb-3 block">
+                  CATEGORY
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {categoriesList.map((cat) => {
+                    const isSelected = selectedCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => {
+                          handleCategoryClick(cat);
+                        }}
+                        className={`rounded-full px-4 py-2 text-xs font-sans font-medium border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#6B1725] text-white border-[#6B1725] shadow-2xs'
+                            : 'bg-white text-[#292524] border-[#E5DEC9] hover:border-[#6B1725]'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
               {/* 2. WEAVE SECTION */}
               <div>
