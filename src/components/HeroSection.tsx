@@ -169,6 +169,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
                 src={slide.image_url}
                 alt={slide.title || "Shree Banarasi Sarees Banner"}
                 fill
+                unoptimized
                 priority={index === 0}
                 sizes="100vw"
                 className="object-cover object-center w-full h-full transform scale-[1.01] transition-transform duration-7000 ease-linear"
