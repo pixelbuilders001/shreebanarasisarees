@@ -33,6 +33,7 @@ import { useStore } from '../context/StoreContext';
 import { AnnouncementBar } from './AnnouncementBar';
 import { AdvancedSearchBar } from './AdvancedSearchBar';
 import { AuthModal } from './AuthModal';
+import { DeliveryPincodeBar } from './DeliveryPincodeBar';
 import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 
 export const Header: React.FC = () => {
@@ -180,7 +181,7 @@ const HeaderInner: React.FC = () => {
 
   return (
     <>
-      {/* 1. ANNOUNCEMENT BAR */}
+      {/* 1. TOP ANNOUNCEMENT STRIP (SAMASTIPUR DELIVERY, STORE, WHATSAPP, TRACK ORDER) */}
       <AnnouncementBar />
 
       {/* 2. MAIN HEADER (STICKY ON DESKTOP & MOBILE) */}
@@ -382,6 +383,11 @@ const HeaderInner: React.FC = () => {
 
               </div>
 
+            </div>
+
+            {/* MOBILE PINCODE DELIVERY BAR MATCHING IMAGE 2 */}
+            <div className="w-full -mx-4 font-sans font-medium" style={{ width: 'calc(100% + 2rem)' }}>
+              <DeliveryPincodeBar />
             </div>
 
             {/* MOBILE SEARCH BAR (ALWAYS VISIBLE IN MOBILE HEADER) */}

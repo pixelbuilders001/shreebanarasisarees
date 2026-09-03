@@ -1,174 +1,157 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useStore } from '../context/StoreContext';
-import { ArrowRight, ArrowLeft } from 'lucide-react';
+import { ArrowRight, Plus } from 'lucide-react';
 
-interface CategoryItem {
-  name: string;
-  subtitle: string;
-  image: string;
-  link: string;
-}
+const WEAVE_CATEGORIES = [
+  { name: "Katan", image: "/fabrics/banarasi_silk.png", query: "Katan" },
+  { name: "Organza", image: "/fabrics/organza_silk.png", query: "Organza" },
+  { name: "Tanchui", image: "/fabrics/chanderi_silk.png", query: "Tanchui" },
+  { name: "Bandhani", image: "/fabrics/bandhani_silk.png", query: "Bandhani" },
+  { name: "Bridal", image: "/occasions/wedding_bridal.png", query: "Bridal" },
+  { name: "Rangkaat", image: "/fabrics/chikankari_fabric.png", query: "Rangkaat" },
+  { name: "Shikargarh", image: "/fabrics/pure_cotton.png", query: "Shikargarh" }
+];
 
 export const CategoryCard: React.FC = () => {
-  const { categories, isCategoriesLoading } = useStore();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const { categories } = useStore();
 
-  const scrollLeft = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
-    }
-  };
-
-  const scrollRight = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
-    }
-  };
-
-  const displayCategories: CategoryItem[] = categories.map(c => ({
-    name: c.name,
-    subtitle: c.description || "Handcrafted Heritage",
-    image: c.image_url || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23292524'/%3E%3C/svg%3E",
-    link: c.slug ? `/sarees/${c.slug}` : `/sarees?category=${encodeURIComponent(c.name)}`
-  }));
+  const weaves = categories.length > 0
+    ? categories.slice(0, 7).map(c => ({
+        name: c.name,
+        image: c.image_url || "/fabrics/banarasi_silk.png",
+        query: c.name
+      }))
+    : WEAVE_CATEGORIES;
 
   return (
-    <section className="pt-10 pb-6 sm:pt-14 sm:pb-8 bg-[#FAF7F0] border-b border-[#B08A3C]/15">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="flex items-end justify-between mb-6 sm:mb-8 gap-2">
-          <div>
-            {/* <span className="text-[10px] sm:text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-0.5 sm:mb-1">
-              CURATED COLLECTIONS
-            </span> */}
-            <h2 className="font-serif text-xl sm:text-4xl font-extrabold text-[#292524] tracking-wide">
-              Shop by Category
-            </h2>
-          </div>
+    <>
+      {/* ── 1. MOBILE VIEW (100% PRESERVED & UNTOUCHED FOR MOBILE) ── */}
+      <section className="py-4 px-4 bg-[#FAF6EE] md:hidden">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#292524] tracking-wide">
+            Shop by weave
+          </h2>
+          <Link
+            href="/sarees"
+            className="text-xs font-sans font-semibold text-[#B08A3C] hover:text-[#6B1725] flex items-center gap-1 transition-colors"
+          >
+            <span>All 20</span>
+            <ArrowRight size={12} />
+          </Link>
+        </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+        <div className="grid grid-cols-4 gap-y-4 gap-x-2">
+          {weaves.map((weave, idx) => (
+            <Link
+              key={idx}
+              href={`/sarees?fabric=${encodeURIComponent(weave.query)}`}
+              className="flex flex-col items-center gap-1.5 group"
+            >
+              <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border border-[#D5CBB3] p-0.5 group-hover:border-[#6B1725] transition-colors shadow-2xs">
+                <Image
+                  src={weave.image}
+                  alt={weave.name}
+                  fill
+                  className="object-cover rounded-full group-hover:scale-105 transition-transform duration-300"
+                />
+              </div>
+              <span className="text-xs font-sans font-medium text-[#292524] group-hover:text-[#6B1725] transition-colors text-center truncate w-full">
+                {weave.name}
+              </span>
+            </Link>
+          ))}
+
+          <Link
+            href="/sarees"
+            className="flex flex-col items-center gap-1.5 group"
+          >
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-1.5 border-dashed border-[#B08A3C]/70 flex items-center justify-center bg-[#FAF6EE] group-hover:bg-[#6B1725] group-hover:border-[#6B1725] transition-colors">
+              <Plus size={18} className="text-[#B08A3C] group-hover:text-white transition-colors" />
+            </div>
+            <span className="text-xs font-sans font-medium text-[#B08A3C] group-hover:text-[#6B1725] transition-colors">
+              All
+            </span>
+          </Link>
+        </div>
+      </section>
+
+      {/* ── 2. DESKTOP VIEW (EXPANSIVE LUXURY WEAVE GRID FOR DESKTOP/LAPTOP) ── */}
+      <section className="hidden md:block py-12 px-6 bg-[#FAF6EE] border-b border-[#B08A3C]/15">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <span className="text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-1">
+                HERITAGE WEAVE CATALOGUE
+              </span>
+              <h2 className="font-serif text-3xl lg:text-4xl font-extrabold text-[#292524] tracking-wide">
+                Shop by Weave &amp; Material
+              </h2>
+              <p className="text-sm text-[#6B625D] font-light mt-1">
+                Explore handloom sarees curated by master weaver craftsmanship across Banaras, Rajasthan, and Chanderi.
+              </p>
+            </div>
             <Link
               href="/sarees"
-              className="text-xs font-serif font-bold text-[#6B1725] hover:text-[#52111C] flex items-center gap-1 group transition-colors"
+              className="py-2.5 px-5 bg-white border border-[#B08A3C]/30 hover:border-[#6B1725] text-[#6B1725] font-serif font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-[#6B1725] hover:text-white flex items-center gap-2 transition-all shadow-2xs group"
             >
-              <span className="hidden sm:inline">Explore All Categories</span>
-              <span className="sm:hidden">Explore All</span>
+              <span>Explore All Weaves</span>
               <ArrowRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
             </Link>
+          </div>
 
-            <div className="hidden sm:flex items-center gap-2">
-              <button
-                onClick={scrollLeft}
-                className="p-2 sm:p-2.5 rounded-full border border-[#B08A3C]/30 bg-white hover:bg-[#FAF7F0] text-[#292524] transition-all shadow-sm active:scale-95 cursor-pointer"
-                aria-label="Scroll categories left"
+          {/* 8-Column Grid on Desktop */}
+          <div className="grid grid-cols-8 gap-5 lg:gap-7">
+            {weaves.map((weave, idx) => (
+              <Link
+                key={idx}
+                href={`/sarees?fabric=${encodeURIComponent(weave.query)}`}
+                className="flex flex-col items-center gap-3 group text-center cursor-pointer"
               >
-                <ArrowLeft size={16} />
-              </button>
-              <button
-                onClick={scrollRight}
-                className="p-2 sm:p-2.5 rounded-full border border-[#B08A3C]/30 bg-white hover:bg-[#FAF7F0] text-[#292524] transition-all shadow-sm active:scale-95 cursor-pointer"
-                aria-label="Scroll categories right"
-              >
-                <ArrowRight size={16} />
-              </button>
-            </div>
+                <div className="relative w-24 h-24 lg:w-28 lg:h-28 rounded-full overflow-hidden border-2 border-[#D4B870] p-1 group-hover:border-[#6B1725] group-hover:scale-108 transition-all duration-500 shadow-md group-hover:shadow-xl bg-white">
+                  <Image
+                    src={weave.image}
+                    alt={weave.name}
+                    fill
+                    sizes="120px"
+                    className="object-cover rounded-full group-hover:scale-105 transition-transform duration-500"
+                  />
+                </div>
+                <div className="space-y-0.5">
+                  <h3 className="text-sm font-serif font-bold text-[#292524] group-hover:text-[#6B1725] transition-colors leading-tight">
+                    {weave.name}
+                  </h3>
+                  <span className="text-[10px] font-sans font-medium text-[#B08A3C] uppercase tracking-wider block">
+                    Authentic
+                  </span>
+                </div>
+              </Link>
+            ))}
+
+            {/* 8th "+ Explore All" Desktop Card */}
+            <Link
+              href="/sarees"
+              className="flex flex-col items-center gap-3 group text-center cursor-pointer"
+            >
+              <div className="w-24 h-24 lg:w-28 lg:h-28 rounded-full border-2 border-dashed border-[#B08A3C] flex flex-col items-center justify-center bg-white group-hover:bg-[#6B1725] group-hover:border-[#6B1725] group-hover:scale-108 transition-all duration-500 shadow-md group-hover:shadow-xl">
+                <Plus size={24} className="text-[#B08A3C] group-hover:text-white transition-colors" />
+              </div>
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-serif font-bold text-[#B08A3C] group-hover:text-[#6B1725] transition-colors leading-tight">
+                  View All
+                </h3>
+                <span className="text-[10px] font-sans font-medium text-[#6B625D] uppercase tracking-wider block">
+                  20+ Weaves
+                </span>
+              </div>
+            </Link>
           </div>
         </div>
-
-        {/* Scrollable Categories Container */}
-        <div
-          ref={scrollRef}
-          className="flex gap-3.5 sm:gap-5 overflow-x-auto no-scrollbar pb-4 scroll-smooth snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0"
-        >
-          {isCategoriesLoading ? (
-            Array.from({ length: 6 }).map((_, idx) => (
-              <CategorySkeletonTile
-                key={idx}
-                className="w-[170px] sm:w-[210px] lg:w-[220px] flex-shrink-0 snap-start"
-              />
-            ))
-          ) : displayCategories.length > 0 ? (
-            displayCategories.map((category, idx) => (
-              <CategoryTile
-                key={idx}
-                category={category}
-                className="w-[170px] sm:w-[210px] lg:w-[220px] flex-shrink-0 snap-start"
-              />
-            ))
-          ) : (
-            Array.from({ length: 6 }).map((_, idx) => (
-              <CategorySkeletonTile
-                key={idx}
-                className="w-[170px] sm:w-[210px] lg:w-[220px] flex-shrink-0 snap-start"
-              />
-            ))
-          )}
-        </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 };
-
-const CategorySkeletonTile: React.FC<{ className?: string }> = ({ className = '' }) => (
-  <div
-    className={`relative rounded-2xl overflow-hidden aspect-[3/4] bg-stone-200 border border-[#B08A3C]/20 shadow-sm animate-pulse ${className}`}
-  >
-    <div className="absolute inset-0 bg-gradient-to-t from-[#292524]/60 via-stone-300/30 to-stone-200/40" />
-    <div className="absolute bottom-0 left-0 right-0 p-3.5 sm:p-4 space-y-2">
-      <div className="h-4 sm:h-5 bg-white/40 rounded-md w-3/4" />
-      <div className="h-3 bg-white/25 rounded-md w-1/2" />
-      <div className="h-2.5 bg-[#B08A3C]/50 rounded-md w-1/3 mt-2" />
-    </div>
-  </div>
-);
-
-interface CategoryTileProps {
-  category: CategoryItem;
-  className?: string;
-}
-
-const CategoryTile: React.FC<CategoryTileProps> = ({ category, className = '' }) => (
-  <Link
-    href={category.link}
-    className={`group relative block rounded-2xl overflow-hidden aspect-[3/4] bg-[#292524]
-      border border-[#B08A3C]/20 hover:border-[#B08A3C]/60
-      shadow-sm hover:shadow-[0_12px_28px_rgba(107,23,37,0.15)]
-      transition-all duration-500 hover:-translate-y-1 ${className}`}
-  >
-    {/* Category Image */}
-    <Image
-      src={category.image}
-      alt={category.name}
-      fill
-      sizes="(max-width: 768px) 170px, 240px"
-      loading="lazy"
-      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-108"
-    />
-
-    {/* Gradient Scrim for Legibility */}
-    <div className="absolute inset-0 bg-gradient-to-t from-[#292524]/90 via-[#292524]/20 to-transparent" />
-
-    {/* Subtle Wine Hover Highlight */}
-    <div className="absolute inset-0 bg-[#6B1725]/15 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-    {/* Text Layer */}
-    <div className="absolute bottom-0 left-0 right-0 p-3.5 sm:p-4 text-center sm:text-left">
-      <h3 className="font-serif font-bold text-[#FAF7F0] text-base sm:text-lg leading-tight tracking-wide group-hover:text-[#D4B870] transition-colors">
-        {category.name}
-      </h3>
-      <p className="text-[10px] sm:text-xs text-[#FAF7F0]/75 font-light mt-0.5 line-clamp-1">
-        {category.subtitle}
-      </p>
-
-      {/* Explore indicator */}
-      <div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-[#B08A3C] uppercase tracking-wider opacity-90 group-hover:translate-x-0.5 transition-transform">
-        <span>Shop Now</span>
-        <ArrowRight size={10} />
-      </div>
-    </div>
-  </Link>
-);

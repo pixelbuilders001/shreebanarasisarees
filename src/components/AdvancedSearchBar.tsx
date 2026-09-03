@@ -13,6 +13,7 @@ import {
   type DetectedFilters,
 } from '../lib/searchEngine';
 import { Product } from '../data/products';
+import { SearchViewModal } from './SearchViewModal';
 
 interface AdvancedSearchBarProps {
   variant?: 'header' | 'mobile-overlay';
@@ -180,192 +181,58 @@ export const AdvancedSearchBar: React.FC<AdvancedSearchBarProps> = ({
       : recentSearches.length > 0
   );
 
-  return (
-    <div ref={containerRef} className="relative w-full">
-      <form onSubmit={handleSubmit} autoComplete="off">
-        {/* ── Input Row ── */}
-        <div className={`
-          relative flex items-center bg-white border rounded-full transition-all duration-200
-          ${isFocused
-            ? 'border-[#C9A45C] ring-2 ring-[#C9A45C]/20 shadow-md'
-            : 'border-[#C9A45C]/40 shadow-sm hover:border-[#C9A45C]/70'
-          }
-        `}>
-          <Search size={16} className="absolute left-4 text-dark-brown/40 pointer-events-none" />
-          <input
-            ref={inputRef}
-            type="text"
-            value={searchQuery}
-            onChange={e => handleQueryChange(e.target.value)}
-            onFocus={() => {
-              setIsFocused(true);
-              // Re-generate suggestions when focused with existing text
-              if (searchQuery.trim()) processQuery(searchQuery);
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder="Search sarees, fabrics, colours..."
-            className="w-full bg-transparent text-sm text-dark-brown placeholder-dark-brown/35 rounded-full py-2.5 pl-10 pr-20 outline-none font-medium"
-            spellCheck={false}
-          />
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-          {/* Clear */}
-          {searchQuery && (
+  return (
+    <>
+      <div ref={containerRef} className="relative w-full">
+        <form onSubmit={(e) => { e.preventDefault(); setIsModalOpen(true); }} autoComplete="off">
+          {/* ── Input Row ── */}
+          <div
+            onClick={() => setIsModalOpen(true)}
+            className={`
+              relative flex items-center bg-[#FAF6EE] border rounded-full transition-all duration-200 cursor-pointer
+              ${isFocused
+                ? 'border-[#6B1725] ring-2 ring-[#6B1725]/10 shadow-md'
+                : 'border-[#E5DEC9] shadow-2xs hover:border-[#6B1725]/60'
+              }
+            `}
+          >
+            <Search size={16} className="absolute left-4 text-[#292524]/50 pointer-events-none" />
+            <input
+              ref={inputRef}
+              type="text"
+              readOnly
+              value={searchQuery}
+              onClick={() => setIsModalOpen(true)}
+              onFocus={() => setIsModalOpen(true)}
+              placeholder="Search Katan, Organza, Bridal..."
+              className="w-full bg-transparent text-sm text-[#292524] placeholder-[#7A6E65] rounded-full py-2.5 pl-10 pr-12 outline-none font-sans font-medium cursor-pointer"
+              spellCheck={false}
+            />
+
+            {/* Mic */}
             <button
               type="button"
-              onClick={clearQuery}
-              className="absolute right-11 p-1 text-dark-brown/40 hover:text-maroon transition-colors"
-              aria-label="Clear search"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsModalOpen(true);
+              }}
+              className="absolute right-3.5 p-1.5 rounded-full text-[#7A6E65] hover:text-[#6B1725] transition-colors"
+              title="Voice search"
+              aria-label="Voice search"
             >
-              <X size={14} />
+              <Mic size={15} />
             </button>
-          )}
-
-          {/* Mic */}
-          <button
-            type="button"
-            onClick={() => {
-              if (isListening) {
-                recognitionRef.current?.stop();
-              } else if (recognitionRef.current) {
-                try { recognitionRef.current.start(); } catch (_) {}
-              } else {
-                // no voice support
-              }
-            }}
-            className={`absolute right-3.5 p-1.5 rounded-full transition-all duration-200 ${
-              isListening
-                ? 'text-maroon bg-maroon/10 animate-pulse'
-                : 'text-dark-brown/40 hover:text-maroon hover:bg-cream/60'
-            }`}
-            title={isListening ? 'Listening…' : 'Voice search'}
-            aria-label="Voice search"
-          >
-            <Mic size={15} />
-          </button>
-        </div>
-
-        {/* ── Dropdown ── */}
-        {showDropdown && (
-          <div className="absolute left-0 right-0 top-full pt-1.5 z-[60]">
-            <div className="bg-white border border-[#C9A45C]/25 rounded-xl shadow-2xl overflow-hidden">
-
-              {/* ── No query: Recent searches ── */}
-              {!searchQuery.trim() && recentSearches.length > 0 && (
-                <div className="p-3 border-b border-cream">
-                  <div className="flex justify-between items-center text-[10px] font-bold text-dark-brown/45 uppercase tracking-wider mb-2">
-                    <span className="flex items-center gap-1"><Clock size={10} /> Recent</span>
-                    <button type="button" onClick={clearRecentSearches} className="text-maroon hover:underline">Clear</button>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {recentSearches.map((s, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => handleRecentClick(s)}
-                        className="bg-cream/50 hover:bg-cream text-dark-brown/80 text-[11px] font-medium px-2.5 py-1 rounded-full border border-cream/80 transition-colors"
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* ── With query: filter pills ── */}
-              {searchQuery.trim() && hasDetectedFilters && (
-                <div className="px-3 pt-2.5 pb-2 border-b border-cream/60">
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Sparkles size={10} className="text-gold" />
-                    <span className="text-[9px] font-bold text-dark-brown/45 uppercase tracking-wider">Detected Filters</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {detectedFilters!.categories.map(cat => (
-                      <span key={cat} className="inline-flex items-center gap-1 bg-maroon/10 text-maroon text-[11px] font-semibold px-2 py-0.5 rounded-full border border-maroon/15">
-                        <Tag size={9} /> {cat}
-                      </span>
-                    ))}
-                    {detectedFilters!.fabrics.map(fab => (
-                      <span key={fab} className="inline-flex items-center gap-1 bg-gold/10 text-dark-brown text-[11px] font-semibold px-2 py-0.5 rounded-full border border-gold/20">
-                        ✨ {fab}
-                      </span>
-                    ))}
-                    {detectedFilters!.colors.map(col => (
-                      <span key={col} className="inline-flex items-center gap-1 bg-cream text-dark-brown text-[11px] font-semibold px-2 py-0.5 rounded-full border border-cream">
-                        🎨 {col}
-                      </span>
-                    ))}
-                    {detectedFilters!.occasions.map(occ => (
-                      <span key={occ} className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-green-100">
-                        🎉 {occ}
-                      </span>
-                    ))}
-                    {detectedFilters!.price && (
-                      <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-blue-100">
-                        💰 {formatPriceFilter(detectedFilters!.price)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* ── With query: product/category suggestions ── */}
-              {searchQuery.trim() && (
-                <div className="py-1">
-                  {suggestions.length > 0 ? (
-                    <>
-                      {suggestions.slice(0, 6).map((sugg, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => handleSuggestionClick(sugg)}
-                          className={`w-full text-left px-3.5 py-2 flex items-center gap-3 transition-colors ${
-                            activeSuggestionIndex === idx ? 'bg-cream/60' : 'hover:bg-cream/35'
-                          }`}
-                        >
-                          {sugg.type === 'product' && sugg.product ? (
-                            <>
-                              <img
-                                src={sugg.product.images[0]}
-                                alt={sugg.product.name}
-                                className="w-8 aspect-[3/4] object-cover rounded bg-cream flex-shrink-0"
-                              />
-                              <div className="min-w-0 flex-1">
-                                <div className="text-xs font-serif font-bold text-dark-brown truncate">{sugg.product.name}</div>
-                                <div className="text-[10px] text-dark-brown/50">
-                                  {sugg.product.fabric} · {sugg.product.color} ·{' '}
-                                  ₹{(sugg.product.salePrice ?? sugg.product.price).toLocaleString('en-IN')}
-                                </div>
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-sm leading-none flex-shrink-0">{sugg.icon || '🔍'}</span>
-                              <span className="text-xs font-semibold text-dark-brown flex-1">{sugg.label}</span>
-                            </>
-                          )}
-                          <ChevronRight size={12} className="ml-auto text-dark-brown/30 flex-shrink-0" />
-                        </button>
-                      ))}
-                    </>
-                  ) : (
-                    <div className="px-3.5 py-2.5 text-xs text-dark-brown/45 italic">
-                      No direct matches — press Enter to search all products
-                    </div>
-                  )}
-                  {/* "Search all" footer */}
-                  <button
-                    type="submit"
-                    className="w-full text-left px-3.5 py-2.5 flex items-center gap-2 text-maroon font-bold text-xs hover:bg-cream/35 transition-colors border-t border-cream/60"
-                  >
-                    <Search size={12} />
-                    Search all results for &quot;{searchQuery.trim()}&quot;
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
-        )}
-      </form>
-    </div>
+        </form>
+      </div>
+
+      {/* Full Screen Advance Search View Modal matching exact UX mockup */}
+      <SearchViewModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
+    </>
   );
 };

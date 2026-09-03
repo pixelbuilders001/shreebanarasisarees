@@ -77,7 +77,7 @@ export const AnnouncementBar: React.FC = () => {
   const CurrentMobileIcon = currentMobileItem.icon;
 
   return (
-    <div className="bg-[#52111C] text-[#FAF7F0] text-[11px] sm:text-xs py-1.5 px-3 border-b border-[#B08A3C]/25 select-none z-50 relative font-sans font-medium tracking-wide">
+    <div className="hidden md:block bg-[#52111C] text-[#FAF7F0] text-xs py-1.5 px-3 border-b border-[#B08A3C]/25 select-none z-50 relative font-sans font-medium tracking-wide">
       <div className="max-w-7xl mx-auto flex items-center justify-center">
 
         {/* ── DESKTOP VIEW (UNIFORM ICONS & TYPOGRAPHY) ── */}

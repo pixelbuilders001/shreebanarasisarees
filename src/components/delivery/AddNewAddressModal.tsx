@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, MapPin, Loader2, Sparkles } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { fetchPincodeDetails } from '../../lib/pincodeLookup';
@@ -13,6 +14,7 @@ interface AddNewAddressModalProps {
 
 export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAddressModalProps) {
   const { user, saveShippingAddress, setIsAuthModalOpen, showToast } = useStore();
+  const [mounted, setMounted] = useState(false);
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -28,6 +30,10 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
   const [isFetchingPincode, setIsFetchingPincode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState('');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -101,8 +107,8 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+  const modalContent = (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
       <div className="bg-white border border-[#B08A3C]/40 rounded-2xl max-w-lg w-full p-5 sm:p-6 text-[#292524] shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
         
         {/* Header */}
@@ -114,7 +120,7 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-full text-[#6B625D] hover:bg-[#FAF7F0] hover:text-[#292524] transition-colors"
+            className="p-1 rounded-full text-[#6B625D] hover:bg-[#FAF7F0] hover:text-[#292524] transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -272,14 +278,14 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl border border-[#B08A3C]/40 text-xs font-serif font-bold text-[#6B625D] hover:bg-[#FAF7F0]"
+              className="flex-1 py-2.5 rounded-xl border border-[#B08A3C]/40 text-xs font-serif font-bold text-[#6B625D] hover:bg-[#FAF7F0] cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 py-2.5 rounded-xl bg-[#6B1725] hover:bg-[#52111C] text-white text-xs font-serif font-bold tracking-wider shadow-sm disabled:opacity-50 flex items-center justify-center gap-1.5"
+              className="flex-1 py-2.5 rounded-xl bg-[#6B1725] hover:bg-[#52111C] text-white text-xs font-serif font-bold tracking-wider shadow-sm disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
             >
               {isSaving ? (
                 <>
@@ -295,4 +301,6 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
       </div>
     </div>
   );
+
+  return mounted ? createPortal(modalContent, document.body) : null;
 }

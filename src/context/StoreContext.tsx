@@ -105,6 +105,7 @@ interface StoreContextType {
   getSearchResults: () => Product[];
   recentSearches: string[];
   addRecentSearch: (query: string) => void;
+  removeRecentSearch: (query: string) => void;
   clearRecentSearches: () => void;
   userPhone: string | null;
   loginUser: (phone: string) => void;
@@ -859,6 +860,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   };
 
+  const removeRecentSearch = (query: string) => {
+    setRecentSearches((prev) => prev.filter(s => s !== query));
+  };
+
   const clearRecentSearches = () => setRecentSearches([]);
 
   // Auth sync helper
@@ -1101,6 +1106,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       getSearchResults,
       recentSearches,
       addRecentSearch,
+      removeRecentSearch,
       clearRecentSearches,
       userPhone,
       loginUser,

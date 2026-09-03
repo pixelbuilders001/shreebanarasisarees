@@ -1,11 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Noto+Serif+Devanagari:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-serif: "Cormorant Garamond", var(--font-serif), Georgia, serif;
-  --font-cormorant: "Cormorant Garamond", Georgia, serif;
+  --font-serif: var(--font-serif), "Playfair Display", Georgia, serif;
+  --font-cormorant: var(--font-serif), "Playfair Display", Georgia, serif;
   --font-devanagari: "Noto Serif Devanagari", serif;
-  --font-sans: "Inter", var(--font-sans), sans-serif;
+  --font-sans: "Plus Jakarta Sans", var(--font-sans), "Outfit", "Inter", sans-serif;
+  --font-outfit: "Outfit", sans-serif;
   
   --color-maroon: #6B1725;
   --color-maroon-dark: #52111C;

@@ -73,40 +73,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           Quick View
         </button>
 
-        {/* Badges Column (Top Left) */}
-        <div className="absolute top-1.5 left-1.5 flex flex-col gap-0.5 z-10">
-          {product.stock === 0 && (
-            <span className="bg-red-700 text-ivory text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-sm tracking-wider uppercase shadow-sm font-serif">
-              SOLD OUT
-            </span>
-          )}
-          {product.newArrival && (
-            <span className="bg-maroon text-ivory text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-sm tracking-wider uppercase shadow-sm border border-gold/15 font-serif">
-              JUST IN
-            </span>
-          )}
-          {discountPercent > 0 && (
-            <span className="bg-gold text-dark-brown text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-sm tracking-wider uppercase shadow-sm font-serif">
-              {discountPercent}% OFF
-            </span>
-          )}
-          {product.bestseller && (
-            <span className="bg-dark-brown text-ivory text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-sm tracking-wider uppercase shadow-sm border border-gold/20 font-serif">
-              BESTSELLER
-            </span>
-          )}
-        </div>
 
-        {/* Wishlist Button (Top Right) */}
+
+
+
+        {/* Wishlist Floating Button (Top Right Corner) */}
         <button
           onClick={() => toggleWishlist(product)}
-          className="absolute top-1.5 right-1.5 p-1 rounded-full bg-[#FFF9F0]/80 backdrop-blur-sm border border-gold/20 shadow-sm hover:bg-[#FFF9F0] text-dark-brown hover:scale-110 transition-all z-10"
+          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-xs shadow-md hover:scale-108 transition-all z-10 flex items-center justify-center border border-[#E5DEC9]/50"
           aria-label="Add to Wishlist"
         >
           <Heart
-            size={13}
+            size={16}
             className={`transition-colors duration-200 ${
-              activeWishlist ? 'fill-maroon text-maroon' : 'text-dark-brown/70'
+              activeWishlist ? 'fill-[#6B1725] text-[#6B1725]' : 'text-[#292524]'
             }`}
           />
         </button>
@@ -115,14 +95,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       {/* Info Area */}
       <div className="p-1.5 sm:p-2 flex-grow flex flex-col justify-between">
         <div className="space-y-1.5">
-          {/* Category / Fabric Subtitle */}
-          <span className="text-[10px] sm:text-[11px] font-sans font-bold text-gold uppercase tracking-widest block">
-            {product.fabric} &bull; {product.color}
+          {/* Category / Fabric Subtitle matching Design Screenshot */}
+          <span className="text-[10px] sm:text-[11px] font-serif font-semibold text-[#B08A3C] uppercase tracking-widest block">
+            {product.fabric ? `${product.fabric.toUpperCase()}` : 'BANARASI'}
           </span>
 
-          {/* Product Title */}
+          {/* Product Title matching Design Screenshot */}
           <Link href={`/product/${product.slug}`} className="block group-hover:text-maroon transition-colors">
-            <h3 className="font-serif text-xs sm:text-sm font-extrabold text-dark-brown line-clamp-1 leading-tight">
+            <h3 className="font-sans text-xs sm:text-sm font-medium text-[#292524] line-clamp-2 leading-snug">
               {product.name}
             </h3>
           </Link>
@@ -152,31 +132,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             )}
           </div>
 
-          {/* Price and Stock Row */}
+          {/* Price and Discount Row matching Design Screenshot */}
           <div className="flex items-center justify-between pt-0.5">
-            <div className="flex items-baseline gap-1.5">
-              <span className="font-serif text-sm sm:text-base font-extrabold text-maroon">
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              <span className="font-sans text-base sm:text-lg font-bold text-[#292524]">
                 ₹{(product.salePrice ?? product.price).toLocaleString('en-IN')}
               </span>
               {product.salePrice && (
-                <span className="text-[10px] sm:text-[11px] text-dark-brown/40 line-through">
-                  ₹{product.price.toLocaleString('en-IN')}
-                </span>
+                <>
+                  <span className="text-xs text-[#7A6E65] line-through">
+                    ₹{product.price.toLocaleString('en-IN')}
+                  </span>
+                  <span className="text-xs font-bold text-[#6B1725]">
+                    {discountPercent}% off
+                  </span>
+                </>
               )}
             </div>
-
-            {product.stock === 0 ? (
-              <span className="text-red-600 text-[10px] sm:text-[11px] font-bold">Out of Stock</span>
-            ) : product.stock <= 3 ? (
-              <span className="text-amber-700 text-[10px] sm:text-[11px] font-semibold animate-pulse">
-                Only {product.stock} Left!
-              </span>
-            ) : (
-              <span className="text-green-700 text-[10px] sm:text-[11px] font-medium flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-600 inline-block"></span>
-                In Stock
-              </span>
-            )}
           </div>
 
           {/* Blouse Piece Signal */}

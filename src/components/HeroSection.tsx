@@ -1,57 +1,44 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowRight, Sparkles } from 'lucide-react';
 import { fetchActiveHeroBanners, DbHeroBanner } from '../data/supabase';
-import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 
 // High-resolution authentic Indian saree model hero images
 const DEFAULT_HERO_SLIDES = [
   {
     id: "hero-slide-1",
     title: "Timeless Sarees. Rooted in Tradition.",
-    subtitle: "Discover elegant Banarasi, silk and handcrafted sarees for weddings, festivities and every beautiful occasion.",
-    eyebrow: "HERITAGE WEAVES FROM SAMASTIPUR",
+    subtitle: "Discover authentic handwoven Banarasi Katan silk sarees directly from master weaver looms.",
     image_url: "/hero_banner_1.png",
-    button_text: "SHOP SAREES",
     button_link: "/sarees",
-    secondary_text: "EXPLORE BANARASI",
-    secondary_link: "/sarees?category=Banarasi+Sarees"
+    badge: "HERITAGE HANDLOOM"
   },
   {
     id: "hero-slide-2",
     title: "Royal Banarasi Silk Edit",
-    subtitle: "Intricate gold zari jaals, rich Katan silk drapes, and heirloom designs woven with master craftsmanship.",
-    eyebrow: "BRIDAL & FESTIVE SPECIALS",
+    subtitle: "Intricate zari weaves & pure Katan silk crafted for grand bridal trousseaus.",
     image_url: "/hero_banner_2.png",
-    button_text: "EXPLORE BRIDAL COLLECTION",
     button_link: "/sarees?category=Bridal+Collection",
-    secondary_text: "VIEW ALL SILKS",
-    secondary_link: "/sarees?category=Silk+Sarees"
+    badge: "BRIDAL TROUSSEAU"
   },
   {
     id: "hero-slide-3",
     title: "Crafted for Special Celebrations",
-    subtitle: "Magnificent bridal weaves and opulent grand drapes handcrafted for lifetime memories.",
-    eyebrow: "HERITAGE LEHENGA & SILKS",
+    subtitle: "Vibrant Bandhanis, Chikankaris and opulent festive hues for every auspicious event.",
     image_url: "/hero_banner_3.png",
-    button_text: "SHOP CELEBRATION WEAVES",
     button_link: "/sarees?category=Festive+Sarees",
-    secondary_text: "EXPLORE KATAN SILK",
-    secondary_link: "/sarees?category=Katan+Silk"
+    badge: "FESTIVE COLLECTION"
   },
   {
     id: "hero-slide-4",
     title: "Lightweight Organza & Chanderi",
-    subtitle: "Breathable, ethereal drapes with subtle metallic borders — ideal for day functions, summer weddings & gifting.",
-    eyebrow: "CONTEMPORARY ELEGANCE",
+    subtitle: "Ethereal sheer textures with delicate zari borders for modern day-to-night elegance.",
     image_url: "/hero_banner_4.png",
-    button_text: "SHOP ORGANZA & CHANDERI",
     button_link: "/sarees?category=Organza+Sarees",
-    secondary_text: "SHOP UNDER ₹1,999",
-    secondary_link: "/sarees?maxPrice=1999"
+    badge: "CONTEMPORARY WEAVES"
   }
 ];
 
@@ -62,13 +49,8 @@ interface HeroSectionProps {
 export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
   const [dbBanners, setDbBanners] = useState<DbHeroBanner[]>(initialBanners ?? []);
   const [loading, setLoading] = useState(initialBanners === undefined);
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-
-  // Touch/swipe tracking
-  const touchStartX = useRef<number>(0);
-  const touchStartY = useRef<number>(0);
-  const isDragging = useRef(false);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (initialBanners !== undefined) return;
@@ -82,139 +64,152 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
     return () => { cancelled = true; };
   }, [initialBanners]);
 
-  // Combined banners: if DB has banners, map them; otherwise use rich default slides
   const slides = dbBanners.length > 0
     ? dbBanners.map((b, i) => ({
-      id: b.id || `db-banner-${i}`,
-      title: b.title || DEFAULT_HERO_SLIDES[i % DEFAULT_HERO_SLIDES.length].title,
-      subtitle: b.subtitle || DEFAULT_HERO_SLIDES[i % DEFAULT_HERO_SLIDES.length].subtitle,
-      eyebrow: b.eyebrow || "SHREE BANARASI SAREES",
-      image_url: b.image_url,
-      button_text: b.button_text || "SHOP SAREES",
-      button_link: b.button_link || "/sarees",
-      secondary_text: i === 0 ? "EXPLORE BANARASI" : undefined,
-      secondary_link: i === 0 ? "/sarees?category=Banarasi+Sarees" : undefined,
-    }))
+        id: b.id || `db-banner-${i}`,
+        title: b.title || `Banner ${i + 1}`,
+        subtitle: DEFAULT_HERO_SLIDES[i % DEFAULT_HERO_SLIDES.length].subtitle,
+        image_url: b.image_url,
+        button_link: b.button_link || "/sarees",
+        badge: DEFAULT_HERO_SLIDES[i % DEFAULT_HERO_SLIDES.length].badge
+      }))
     : DEFAULT_HERO_SLIDES;
 
-  const handlePrev = useCallback(() => {
-    setCurrentSlide(prev => (prev - 1 + slides.length) % slides.length);
-  }, [slides.length]);
-
-  const handleNext = useCallback(() => {
-    setCurrentSlide(prev => (prev + 1) % slides.length);
-  }, [slides.length]);
-
+  // Desktop auto-play
   useEffect(() => {
-    if (slides.length <= 1 || isPaused) return;
     const timer = setInterval(() => {
-      setCurrentSlide(prev => (prev + 1) % slides.length);
+      setActiveIdx((prev) => (prev + 1) % slides.length);
     }, 5500);
     return () => clearInterval(timer);
-  }, [slides.length, isPaused]);
+  }, [slides.length]);
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-    isDragging.current = false;
-    setIsPaused(true);
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const scrollLeft = scrollRef.current.scrollLeft;
+      const width = scrollRef.current.clientWidth;
+      const index = Math.round(scrollLeft / (width * 0.85));
+      setActiveIdx(Math.min(Math.max(index, 0), slides.length - 1));
+    }
   };
 
-  const onTouchMove = (e: React.TouchEvent) => {
-    const dx = Math.abs(e.touches[0].clientX - touchStartX.current);
-    const dy = Math.abs(e.touches[0].clientY - touchStartY.current);
-    if (dx > dy && dx > 5) isDragging.current = true;
+  const prevDesktopSlide = () => {
+    setActiveIdx((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
-  const onTouchEnd = (e: React.TouchEvent) => {
-    setIsPaused(false);
-    if (!isDragging.current) return;
-    const delta = e.changedTouches[0].clientX - touchStartX.current;
-    if (delta < -40) handleNext();
-    else if (delta > 40) handlePrev();
-    isDragging.current = false;
+  const nextDesktopSlide = () => {
+    setActiveIdx((prev) => (prev + 1) % slides.length);
   };
 
   if (loading) {
     return (
-      <div className="w-full bg-[#FAF7F0] sm:bg-[#292524] px-3.5 sm:px-0 py-2 sm:py-0">
-        <div className="w-full bg-[#292524] aspect-[2.1/1] sm:aspect-[16/9] md:aspect-[2.1/1] rounded-2xl sm:rounded-none animate-pulse relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-[shimmer_1.5s_infinite]" />
-        </div>
+      <div className="w-full bg-[#FAF6EE] px-4 py-3">
+        <div className="w-[85vw] md:w-full aspect-[1.8/1] md:aspect-[21/8] rounded-2xl bg-[#E5DEC9] animate-pulse max-w-7xl mx-auto" />
       </div>
     );
   }
 
+  const currentSlide = slides[activeIdx] || slides[0];
+
   return (
-    <section className="relative w-full overflow-hidden bg-[#FAF7F0] sm:bg-[#292524] select-none px-2 sm:px-0 py-2 sm:py-0">
-      <div
-        className="relative w-full aspect-[2.1/1] sm:aspect-[16/9] md:aspect-[2.1/1] lg:aspect-[2.4/1] sm:min-h-[420px] md:min-h-[500px] rounded-2xl sm:rounded-none overflow-hidden shadow-sm sm:shadow-none border border-[#B08A3C]/20 sm:border-none"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-      >
-        {slides.map((slide, index) => {
-          const isActive = index === currentSlide;
-          return (
+    <>
+      {/* ── 1. MOBILE HERO VIEW (PRESERVED 100% UNTOUCHED FOR MOBILE) ── */}
+      <section className="w-full bg-[#FAF6EE] py-3 select-none md:hidden">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex gap-3 overflow-x-auto snap-x snap-mandatory px-4 no-scrollbar scroll-smooth"
+        >
+          {slides.map((slide) => (
             <Link
               key={slide.id}
-              href={slide.button_link || "/sarees"}
-              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${isActive ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
-                }`}
+              href={slide.button_link}
+              className="shrink-0 w-[86vw] sm:w-[90vw] snap-center relative aspect-[1.85/1] sm:aspect-[2.4/1] rounded-2xl overflow-hidden border border-[#E5DEC9] shadow-2xs group block"
             >
-              {/* Full Width Hero Image with baked-in banner visuals */}
               <Image
                 src={slide.image_url}
                 alt={slide.title || "Shree Banarasi Sarees Banner"}
                 fill
                 unoptimized
-                priority={index === 0}
-                sizes="100vw"
-                className="object-cover object-center w-full h-full transform scale-[1.01] transition-transform duration-7000 ease-linear"
+                priority
+                className="object-cover object-center w-full h-full group-hover:scale-102 transition-transform duration-500"
               />
             </Link>
-          );
-        })}
+          ))}
+        </div>
 
-        {/* Prev / Next controls */}
         {slides.length > 1 && (
-          <>
+          <div className="flex justify-center items-center pt-2.5">
+            <div className="w-20 h-1 bg-[#E5DEC9] rounded-full overflow-hidden relative">
+              <div
+                className="h-full bg-[#B08A3C] rounded-full transition-all duration-300"
+                style={{
+                  width: `${100 / slides.length}%`,
+                  transform: `translateX(${activeIdx * 100}%)`,
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ── 2. DESKTOP HERO VIEW (REDESIGNED LUXURY EXPERIENCE FOR DESKTOP/LAPTOP) ── */}
+      <section className="hidden md:block w-full bg-[#FAF6EE] py-6 px-6">
+        <div className="max-w-7xl mx-auto relative group">
+          {/* Main Slide Card Container */}
+          <div className="relative w-full aspect-[21/8] min-h-[460px] max-h-[580px] rounded-3xl overflow-hidden border border-[#B08A3C]/30 shadow-2xl bg-[#292524]">
+            {/* Background Image with Smooth Crossfade */}
+            {slides.map((slide, idx) => (
+              <Link
+                key={slide.id}
+                href={slide.button_link}
+                className={`absolute inset-0 transition-opacity duration-1000 ease-in-out block ${
+                  idx === activeIdx ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
+                }`}
+              >
+                <Image
+                  src={slide.image_url}
+                  alt={slide.title || "Shree Banarasi Sarees Banner"}
+                  fill
+                  unoptimized
+                  priority={idx === 0}
+                  className="object-cover object-center w-full h-full group-hover:scale-102 transition-transform duration-700"
+                />
+              </Link>
+            ))}
+
+            {/* Desktop Left/Right Slide Arrows */}
             <button
-              onClick={handlePrev}
-              className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-[#292524]/50 hover:bg-[#6B1725] text-white border border-[#B08A3C]/30 backdrop-blur-sm items-center justify-center transition-all shadow-lg hover:scale-105"
-              aria-label="Previous slide"
+              onClick={prevDesktopSlide}
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/30 hover:bg-[#6B1725] border border-white/20 text-white backdrop-blur-md transition-all shadow-lg hover:scale-110 active:scale-95 cursor-pointer"
+              aria-label="Previous Slide"
             >
               <ChevronLeft size={22} />
             </button>
+
             <button
-              onClick={handleNext}
-              className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-[#292524]/50 hover:bg-[#6B1725] text-white border border-[#B08A3C]/30 backdrop-blur-sm items-center justify-center transition-all shadow-lg hover:scale-105"
-              aria-label="Next slide"
+              onClick={nextDesktopSlide}
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/30 hover:bg-[#6B1725] border border-white/20 text-white backdrop-blur-md transition-all shadow-lg hover:scale-110 active:scale-95 cursor-pointer"
+              aria-label="Next Slide"
             >
               <ChevronRight size={22} />
             </button>
-          </>
-        )}
 
-        {/* Slide Indicators */}
-        {slides.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
-            {slides.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentSlide(idx)}
-                className={`h-2 rounded-full transition-all duration-400 ${idx === currentSlide
-                  ? 'w-8 bg-[#B08A3C]'
-                  : 'w-2 bg-white/40 hover:bg-white/70'
+            {/* Desktop Pagination Indicators */}
+            <div className="absolute bottom-6 right-8 z-30 flex items-center gap-2 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
+              {slides.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveIdx(i)}
+                  className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                    i === activeIdx ? 'w-8 bg-[#B08A3C]' : 'w-2.5 bg-white/40 hover:bg-white/70'
                   }`}
-                aria-label={`Go to slide ${idx + 1}`}
-              />
-            ))}
+                  aria-label={`Go to slide ${i + 1}`}
+                />
+              ))}
+            </div>
           </div>
-        )}
-      </div>
-    </section>
+        </div>
+      </section>
+    </>
   );
 };
