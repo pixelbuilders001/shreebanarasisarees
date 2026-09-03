@@ -321,12 +321,25 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
                 </span>
                 <div className="grid grid-cols-4 md:grid-cols-8 gap-y-6 gap-x-3 text-center">
                   {(categories && categories.length > 0
-                    ? categories.slice(0, 8).map(c => ({
-                        name: c.name,
-                        image: c.image_url || '/fabrics/banarasi_silk.png',
-                        query: c.name,
-                      }))
-                    : DEFAULT_WEAVES
+                    ? categories.slice(0, 8).map(c => {
+                        const matchedProduct = products?.find(
+                          p => p.category.toLowerCase() === c.name.toLowerCase() ||
+                               p.fabric.toLowerCase().includes(c.name.toLowerCase())
+                        );
+                        return {
+                          name: c.name,
+                          image: c.image_url || matchedProduct?.images?.[0] || '',
+                          query: c.name,
+                        };
+                      })
+                    : Array.from(new Set((products || []).map(p => p.category))).slice(0, 8).map(catName => {
+                        const prod = products?.find(p => p.category === catName);
+                        return {
+                          name: catName,
+                          image: prod?.images?.[0] || '',
+                          query: catName,
+                        };
+                      })
                   ).map((weave, idx) => (
                     <button
                       key={idx}
@@ -334,12 +347,18 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
                       className="flex flex-col items-center gap-2 group cursor-pointer"
                     >
                       <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-[#D4B870] p-0.5 group-hover:border-[#6B1725] group-hover:scale-105 transition-all shadow-2xs bg-white">
-                        <Image
-                          src={weave.image}
-                          alt={weave.name}
-                          fill
-                          className="object-cover rounded-full"
-                        />
+                        {weave.image ? (
+                          <Image
+                            src={weave.image}
+                            alt={weave.name}
+                            fill
+                            className="object-cover rounded-full"
+                          />
+                        ) : (
+                          <div className="w-full h-full rounded-full bg-[#FAF6EE] flex items-center justify-center text-[10px] font-bold text-[#6B1725]">
+                            {weave.name.slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
                       </div>
                       <span className="text-xs font-sans font-medium text-[#292524] group-hover:text-[#6B1725] transition-colors truncate w-full">
                         {weave.name}

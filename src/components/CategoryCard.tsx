@@ -1,31 +1,55 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useStore } from '../context/StoreContext';
 import { ArrowRight, Plus } from 'lucide-react';
 
-const WEAVE_CATEGORIES = [
-  { name: "Katan", image: "/fabrics/banarasi_silk.png", query: "Katan" },
-  { name: "Organza", image: "/fabrics/organza_silk.png", query: "Organza" },
-  { name: "Tanchui", image: "/fabrics/chanderi_silk.png", query: "Tanchui" },
-  { name: "Bandhani", image: "/fabrics/bandhani_silk.png", query: "Bandhani" },
-  { name: "Bridal", image: "/occasions/wedding_bridal.png", query: "Bridal" },
-  { name: "Rangkaat", image: "/fabrics/chikankari_fabric.png", query: "Rangkaat" },
-  { name: "Shikargarh", image: "/fabrics/pure_cotton.png", query: "Shikargarh" }
-];
-
 export const CategoryCard: React.FC = () => {
-  const { categories } = useStore();
+  const { categories, products } = useStore();
 
-  const weaves = categories.length > 0
-    ? categories.slice(0, 7).map(c => ({
-        name: c.name,
-        image: c.image_url || "/fabrics/banarasi_silk.png",
-        query: c.name
-      }))
-    : WEAVE_CATEGORIES;
+  // Dynamically derive category cards using ONLY real API data (category image_url or product images)
+  const weaves = useMemo(() => {
+    if (categories && categories.length > 0) {
+      return categories.map((c) => {
+        // Find matching API product image if c.image_url is not set in DB
+        const matchedProduct = products?.find(
+          (p) =>
+            p.category.toLowerCase() === c.name.toLowerCase() ||
+            p.fabric.toLowerCase().includes(c.name.toLowerCase()) ||
+            p.name.toLowerCase().includes(c.name.toLowerCase())
+        );
+
+        const imageUrl = c.image_url || matchedProduct?.images?.[0] || '';
+
+        return {
+          id: c.id,
+          name: c.name,
+          image: imageUrl,
+          query: c.slug || c.name,
+        };
+      });
+    }
+
+    // Fallback: Group categories dynamically from loaded API products
+    if (products && products.length > 0) {
+      const uniqueCatNames = Array.from(new Set(products.map((p) => p.category))).filter(Boolean);
+      return uniqueCatNames.map((catName) => {
+        const prod = products.find((p) => p.category === catName);
+        return {
+          id: catName,
+          name: catName,
+          image: prod?.images?.[0] || '',
+          query: catName,
+        };
+      });
+    }
+
+    return [];
+  }, [categories, products]);
+
+  if (weaves.length === 0) return null;
 
   return (
     <>
@@ -39,25 +63,32 @@ export const CategoryCard: React.FC = () => {
             href="/sarees"
             className="text-xs font-sans font-semibold text-[#B08A3C] hover:text-[#6B1725] flex items-center gap-1 transition-colors"
           >
-            <span>All 20</span>
+            <span>All {weaves.length}</span>
             <ArrowRight size={12} />
           </Link>
         </div>
 
         <div className="grid grid-cols-4 gap-y-4 gap-x-2">
-          {weaves.map((weave, idx) => (
+          {weaves.slice(0, 7).map((weave) => (
             <Link
-              key={idx}
-              href={`/sarees?fabric=${encodeURIComponent(weave.query)}`}
+              key={weave.id}
+              href={`/sarees?category=${encodeURIComponent(weave.query)}`}
               className="flex flex-col items-center gap-1.5 group"
             >
-              <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border border-[#D5CBB3] p-0.5 group-hover:border-[#6B1725] transition-colors shadow-2xs">
-                <Image
-                  src={weave.image}
-                  alt={weave.name}
-                  fill
-                  className="object-cover rounded-full group-hover:scale-105 transition-transform duration-300"
-                />
+              <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border border-[#D5CBB3] p-0.5 group-hover:border-[#6B1725] transition-colors shadow-2xs bg-white">
+                {weave.image ? (
+                  <Image
+                    src={weave.image}
+                    alt={weave.name}
+                    fill
+                    sizes="80px"
+                    className="object-cover rounded-full group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-[#FAF6EE] flex items-center justify-center text-[10px] font-bold text-[#6B1725]">
+                    {weave.name.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
               </div>
               <span className="text-xs font-sans font-medium text-[#292524] group-hover:text-[#6B1725] transition-colors text-center truncate w-full">
                 {weave.name}
@@ -104,22 +135,28 @@ export const CategoryCard: React.FC = () => {
             </Link>
           </div>
 
-          {/* 8-Column Grid on Desktop */}
-          <div className="grid grid-cols-8 gap-5 lg:gap-7">
-            {weaves.map((weave, idx) => (
+          {/* Desktop Responsive Grid */}
+          <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-5 lg:gap-7">
+            {weaves.slice(0, 7).map((weave) => (
               <Link
-                key={idx}
-                href={`/sarees?fabric=${encodeURIComponent(weave.query)}`}
+                key={weave.id}
+                href={`/sarees?category=${encodeURIComponent(weave.query)}`}
                 className="flex flex-col items-center gap-3 group text-center cursor-pointer"
               >
                 <div className="relative w-24 h-24 lg:w-28 lg:h-28 rounded-full overflow-hidden border-2 border-[#D4B870] p-1 group-hover:border-[#6B1725] group-hover:scale-108 transition-all duration-500 shadow-md group-hover:shadow-xl bg-white">
-                  <Image
-                    src={weave.image}
-                    alt={weave.name}
-                    fill
-                    sizes="120px"
-                    className="object-cover rounded-full group-hover:scale-105 transition-transform duration-500"
-                  />
+                  {weave.image ? (
+                    <Image
+                      src={weave.image}
+                      alt={weave.name}
+                      fill
+                      sizes="120px"
+                      className="object-cover rounded-full group-hover:scale-105 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full rounded-full bg-[#FAF6EE] flex items-center justify-center text-xs font-bold text-[#6B1725]">
+                      {weave.name}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-0.5">
                   <h3 className="text-sm font-serif font-bold text-[#292524] group-hover:text-[#6B1725] transition-colors leading-tight">
@@ -132,7 +169,7 @@ export const CategoryCard: React.FC = () => {
               </Link>
             ))}
 
-            {/* 8th "+ Explore All" Desktop Card */}
+            {/* "+ Explore All" Desktop Card */}
             <Link
               href="/sarees"
               className="flex flex-col items-center gap-3 group text-center cursor-pointer"
@@ -145,7 +182,7 @@ export const CategoryCard: React.FC = () => {
                   View All
                 </h3>
                 <span className="text-[10px] font-sans font-medium text-[#6B625D] uppercase tracking-wider block">
-                  20+ Weaves
+                  All Collections
                 </span>
               </div>
             </Link>
