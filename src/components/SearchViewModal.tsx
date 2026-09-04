@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
@@ -21,29 +21,12 @@ interface SearchViewModalProps {
   onClose: () => void;
 }
 
-const TRENDING_CHIPS = [
-  { label: 'Bridal silk', query: 'Bridal silk' },
-  { label: 'Organza', query: 'Organza' },
-  { label: 'Under ₹3,000', query: 'under 3000' },
-  { label: '20-min delivery', query: '20 min delivery' },
-  { label: 'Tanchui', query: 'Tanchui' },
-];
-
-const DEFAULT_WEAVES = [
-  { name: 'Katan', image: '/fabrics/banarasi_silk.png', query: 'Katan' },
-  { name: 'Organza', image: '/fabrics/organza_silk.png', query: 'Organza' },
-  { name: 'Tanchui', image: '/fabrics/chanderi_silk.png', query: 'Tanchui' },
-  { name: 'Bandhani', image: '/fabrics/bandhani_silk.png', query: 'Bandhani' },
-  { name: 'Bridal', image: '/occasions/wedding_bridal.png', query: 'Bridal' },
-  { name: 'Rangkaat', image: '/fabrics/chikankari_fabric.png', query: 'Rangkaat' },
-  { name: 'Shikargarh', image: '/fabrics/pure_cotton.png', query: 'Shikargarh' },
-];
-
 export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClose }) => {
   const router = useRouter();
   const {
     products,
     categories,
+    isCategoriesLoading,
     searchQuery,
     setSearchQuery,
     recentSearches,
@@ -63,15 +46,70 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
     setMounted(true);
   }, []);
 
-  // Set default initial recent searches if empty
-  useEffect(() => {
-    if (recentSearches.length === 0) {
-      addRecentSearch('banarasi katan');
-      addRecentSearch('organza under 3000');
-      addRecentSearch('bridal maroon');
+  // Dynamic browse categories derived from DB categories & products API
+  const dynamicBrowseCategories = useMemo(() => {
+    if (categories && categories.length > 0) {
+      return categories.map(c => {
+        const matchedProduct = products?.find(
+          p => p.category.toLowerCase() === c.name.toLowerCase() ||
+            p.fabric.toLowerCase().includes(c.name.toLowerCase())
+        );
+        return {
+          name: c.name,
+          image: c.image_url || matchedProduct?.images?.[0] || '',
+          query: c.name,
+        };
+      });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+
+    if (products && products.length > 0) {
+      const uniqueCats = Array.from(new Set(products.map(p => p.category)));
+      return uniqueCats.map(catName => {
+        const prod = products.find(p => p.category === catName);
+        return {
+          name: catName,
+          image: prod?.images?.[0] || '',
+          query: catName,
+        };
+      });
+    }
+
+    return [];
+  }, [categories, products]);
+
+  // Dynamic trending search chips derived from API categories and products
+  const trendingChips = useMemo(() => {
+    const chips: { label: string; query: string }[] = [];
+    if (categories && categories.length > 0) {
+      categories.slice(0, 4).forEach(c => {
+        chips.push({ label: `${c.name} Sarees`, query: c.name });
+      });
+    } else if (products && products.length > 0) {
+      const uniqueCats = Array.from(new Set(products.map(p => p.category)));
+      uniqueCats.slice(0, 4).forEach(cat => {
+        chips.push({ label: `${cat} Sarees`, query: cat });
+      });
+    }
+    chips.push({ label: 'Under ₹3,000', query: 'under 3000' });
+    chips.push({ label: '20-min delivery', query: '20 min delivery' });
+    return chips;
+  }, [categories, products]);
+
+  // Display at most 8 category slots; if more than 8, show top 7 categories and 1 "Explore All" card
+  const displayedCategories = useMemo(() => {
+    if (dynamicBrowseCategories.length > 8) {
+      return [
+        ...dynamicBrowseCategories.slice(0, 7).map(item => ({ ...item, isExploreAll: false })),
+        {
+          name: 'Explore All',
+          image: '',
+          query: 'EXPLORE_ALL',
+          isExploreAll: true,
+        },
+      ];
+    }
+    return dynamicBrowseCategories.map(item => ({ ...item, isExploreAll: false }));
+  }, [dynamicBrowseCategories]);
 
   // Focus input when modal opens & handle Escape key
   useEffect(() => {
@@ -152,6 +190,11 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
   };
 
   const handleWeaveClick = (catName: string) => {
+    if (catName === 'EXPLORE_ALL') {
+      router.push('/sarees');
+      onClose();
+      return;
+    }
     addRecentSearch(catName);
     router.push(`/sarees?category=${encodeURIComponent(catName)}`);
     onClose();
@@ -190,7 +233,7 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
     <div className="fixed inset-0 z-[100] bg-[#FAF7F0] md:bg-black/60 md:backdrop-blur-sm overflow-y-auto flex flex-col md:items-center md:justify-start md:p-4 md:pt-16 animate-fadeIn">
       {/* ── MODAL CONTAINER (Full-screen on Mobile / Centered Floating Card on Desktop) ── */}
       <div className="w-full h-full md:h-auto md:max-w-4xl bg-[#FAF7F0] md:border md:border-[#B08A3C]/40 md:rounded-3xl md:shadow-2xl overflow-hidden flex flex-col md:max-h-[85vh]">
-        
+
         {/* ── 1. SEARCH HEADER BAR ── */}
         <div className="sticky top-0 z-20 bg-[#FAF7F0] px-4 md:px-6 py-3.5 border-b border-[#E5DEC9] flex items-center gap-3 shadow-2xs">
           {/* Mobile Chevron Back Arrow */}
@@ -239,12 +282,11 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
                   if (isListening) {
                     recognitionRef.current?.stop();
                   } else if (recognitionRef.current) {
-                    try { recognitionRef.current.start(); } catch (_) {}
+                    try { recognitionRef.current.start(); } catch (_) { }
                   }
                 }}
-                className={`absolute right-3.5 p-1 rounded-full transition-colors cursor-pointer ${
-                  isListening ? 'text-[#6B1725] animate-pulse' : 'text-[#7A6E65] hover:text-[#292524]'
-                }`}
+                className={`absolute right-3.5 p-1 rounded-full transition-colors cursor-pointer ${isListening ? 'text-[#6B1725] animate-pulse' : 'text-[#7A6E65] hover:text-[#292524]'
+                  }`}
                 title={isListening ? 'Listening...' : 'Voice Search'}
               >
                 <Mic size={18} />
@@ -305,76 +347,96 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
               )}
 
               {/* ── SECTION 2: TRENDING IN SAMASTIPUR ── */}
-              <div className="mt-6">
-                <div className="flex items-center gap-1.5 text-[11px] font-sans font-bold tracking-widest text-[#7A6E65] uppercase mb-3">
-                  <TrendingUp size={15} className="text-[#B08A3C]" />
-                  <span>TRENDING IN SAMASTIPUR</span>
+              {trendingChips.length > 0 && (
+                <div className="mt-6">
+                  <div className="flex items-center gap-1.5 text-[11px] font-sans font-bold tracking-widest text-[#7A6E65] uppercase mb-3">
+                    <TrendingUp size={15} className="text-[#B08A3C]" />
+                    <span>TRENDING IN SAMASTIPUR</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2.5">
+                    {trendingChips.map((chip, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleChipClick(chip.query)}
+                        className="px-4 py-2 bg-white border border-[#E5DEC9] rounded-full text-xs font-sans font-medium text-[#292524] hover:border-[#6B1725] hover:text-[#6B1725] hover:shadow-2xs transition-all cursor-pointer"
+                      >
+                        {chip.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2.5">
-                  {TRENDING_CHIPS.map((chip, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleChipClick(chip.query)}
-                      className="px-4 py-2 bg-white border border-[#E5DEC9] rounded-full text-xs font-sans font-medium text-[#292524] hover:border-[#6B1725] hover:text-[#6B1725] hover:shadow-2xs transition-all cursor-pointer"
-                    >
-                      {chip.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              )}
 
               {/* ── SECTION 3: BROWSE CATEGORIES & WEAVES ── */}
               <div className="mt-8">
-                <span className="text-[11px] font-sans font-bold tracking-widest text-[#7A6E65] uppercase mb-4 block">
-                  BROWSE CATEGORIES &amp; WEAVES
-                </span>
-                <div className="grid grid-cols-4 md:grid-cols-8 gap-y-6 gap-x-3 text-center">
-                  {(categories && categories.length > 0
-                    ? categories.slice(0, 8).map(c => {
-                        const matchedProduct = products?.find(
-                          p => p.category.toLowerCase() === c.name.toLowerCase() ||
-                               p.fabric.toLowerCase().includes(c.name.toLowerCase())
-                        );
-                        return {
-                          name: c.name,
-                          image: c.image_url || matchedProduct?.images?.[0] || '',
-                          query: c.name,
-                        };
-                      })
-                    : Array.from(new Set((products || []).map(p => p.category))).slice(0, 8).map(catName => {
-                        const prod = products?.find(p => p.category === catName);
-                        return {
-                          name: catName,
-                          image: prod?.images?.[0] || '',
-                          query: catName,
-                        };
-                      })
-                  ).map((weave, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleWeaveClick(weave.query)}
-                      className="flex flex-col items-center gap-2 group cursor-pointer"
-                    >
-                      <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-[#D4B870] p-0.5 group-hover:border-[#6B1725] group-hover:scale-105 transition-all shadow-2xs bg-white">
-                        {weave.image ? (
-                          <Image
-                            src={weave.image}
-                            alt={weave.name}
-                            fill
-                            className="object-cover rounded-full"
-                          />
-                        ) : (
-                          <div className="w-full h-full rounded-full bg-[#FAF6EE] flex items-center justify-center text-[10px] font-bold text-[#6B1725]">
-                            {weave.name.slice(0, 2).toUpperCase()}
-                          </div>
-                        )}
-                      </div>
-                      <span className="text-xs font-sans font-medium text-[#292524] group-hover:text-[#6B1725] transition-colors truncate w-full">
-                        {weave.name}
-                      </span>
-                    </button>
-                  ))}
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-[11px] font-sans font-bold tracking-widest text-[#7A6E65] uppercase block">
+                    BROWSE CATEGORIES
+                  </span>
+                  <button
+                    onClick={() => {
+                      router.push('/sarees');
+                      onClose();
+                    }}
+                    className="text-xs font-serif font-bold text-[#6B1725] hover:underline flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <span>Explore All</span>
+                    <ChevronRight size={14} />
+                  </button>
                 </div>
+                {isCategoriesLoading ? (
+                  <div className="grid grid-cols-4 md:grid-cols-8 gap-y-6 gap-x-3 text-center animate-pulse">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <div key={i} className="flex flex-col items-center gap-2">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#E5DEC9]/40" />
+                        <div className="w-12 h-3 bg-[#E5DEC9]/40 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-4 md:grid-cols-8 gap-y-6 gap-x-3 text-center">
+                    {displayedCategories.map((item, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleWeaveClick(item.query)}
+                        className="flex flex-col items-center gap-2 group cursor-pointer"
+                      >
+                        <div
+                          className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 p-0.5 group-hover:scale-105 transition-all shadow-2xs ${item.isExploreAll
+                            ? 'border-[#6B1725] bg-[#6B1725] flex items-center justify-center text-white'
+                            : 'border-[#D4B870] group-hover:border-[#6B1725] bg-white'
+                            }`}
+                        >
+                          {item.isExploreAll ? (
+                            <div className="flex flex-col items-center justify-center">
+                              {/* <Sparkles size={18} className="text-[#D4B870] mb-0.5 animate-pulse" /> */}
+                              <span className="text-[10px] font-sans font-bold tracking-tight text-white uppercase">
+                                All
+                              </span>
+                            </div>
+                          ) : item.image ? (
+                            <Image
+                              src={item.image}
+                              alt={item.name}
+                              fill
+                              className="object-cover rounded-full"
+                            />
+                          ) : (
+                            <div className="w-full h-full rounded-full bg-[#E5DEC9] animate-pulse" />
+                          )}
+                        </div>
+                        <span
+                          className={`text-xs font-sans truncate w-full ${item.isExploreAll
+                            ? 'font-bold text-[#6B1725] group-hover:underline'
+                            : 'font-medium text-[#292524] group-hover:text-[#6B1725] transition-colors'
+                            }`}
+                        >
+                          {item.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           ) : (

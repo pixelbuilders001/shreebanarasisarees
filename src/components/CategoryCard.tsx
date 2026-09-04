@@ -7,7 +7,7 @@ import { useStore } from '../context/StoreContext';
 import { ArrowRight, Plus } from 'lucide-react';
 
 export const CategoryCard: React.FC = () => {
-  const { categories, products } = useStore();
+  const { categories, isCategoriesLoading, products } = useStore();
 
   // Dynamically derive category cards using ONLY real API data (category image_url or product images)
   const weaves = useMemo(() => {
@@ -49,11 +49,38 @@ export const CategoryCard: React.FC = () => {
     return [];
   }, [categories, products]);
 
+  if (isCategoriesLoading) {
+    return (
+      <section className="py-4 md:py-12 px-4 md:px-6 bg-[#FAF6EE] border-b border-[#B08A3C]/15 animate-pulse">
+        <div className="max-w-7xl mx-auto">
+          {/* Header Skeleton */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="space-y-2">
+              <div className="h-4 w-32 bg-[#E5DEC9] rounded-md" />
+              <div className="h-7 w-48 bg-[#E5DEC9] rounded-md" />
+            </div>
+            <div className="h-9 w-32 bg-[#E5DEC9] rounded-xl hidden md:block" />
+          </div>
+
+          {/* Circles Skeleton Grid */}
+          <div className="grid grid-cols-4 md:grid-cols-8 gap-4 md:gap-6 text-center">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex flex-col items-center gap-2">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-28 lg:h-28 rounded-full bg-[#E5DEC9]" />
+                <div className="w-14 h-3 bg-[#E5DEC9] rounded mt-1" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   if (weaves.length === 0) return null;
 
   return (
     <>
-      {/* ── 1. MOBILE VIEW (100% PRESERVED & UNTOUCHED FOR MOBILE) ── */}
+      {/* ── 1. MOBILE VIEW ── */}
       <section className="py-4 px-4 bg-[#FAF6EE] md:hidden">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#292524] tracking-wide">
@@ -85,9 +112,7 @@ export const CategoryCard: React.FC = () => {
                     className="object-cover rounded-full group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (
-                  <div className="w-full h-full rounded-full bg-[#FAF6EE] flex items-center justify-center text-[10px] font-bold text-[#6B1725]">
-                    {weave.name.slice(0, 2).toUpperCase()}
-                  </div>
+                  <div className="w-full h-full rounded-full bg-[#E5DEC9] animate-pulse" />
                 )}
               </div>
               <span className="text-xs font-sans font-medium text-[#292524] group-hover:text-[#6B1725] transition-colors text-center truncate w-full">
@@ -110,7 +135,7 @@ export const CategoryCard: React.FC = () => {
         </div>
       </section>
 
-      {/* ── 2. DESKTOP VIEW (EXPANSIVE LUXURY WEAVE GRID FOR DESKTOP/LAPTOP) ── */}
+      {/* ── 2. DESKTOP VIEW ── */}
       <section className="hidden md:block py-12 px-6 bg-[#FAF6EE] border-b border-[#B08A3C]/15">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
@@ -153,9 +178,7 @@ export const CategoryCard: React.FC = () => {
                       className="object-cover rounded-full group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
-                    <div className="w-full h-full rounded-full bg-[#FAF6EE] flex items-center justify-center text-xs font-bold text-[#6B1725]">
-                      {weave.name}
-                    </div>
+                    <div className="w-full h-full rounded-full bg-[#E5DEC9] animate-pulse" />
                   )}
                 </div>
                 <div className="space-y-0.5">

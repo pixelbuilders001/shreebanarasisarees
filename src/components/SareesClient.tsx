@@ -9,6 +9,7 @@ import { ProductCard } from './ProductCard';
 import { Product, PRODUCTS } from '../data/products';
 import { SlidersHorizontal, ArrowUpDown, X, Search, ChevronDown, Check, Zap, Tag, RefreshCw, Filter } from 'lucide-react';
 import { parseSearchQuery, scoreProducts, formatPriceFilter, type DetectedFilters } from '../lib/searchEngine';
+import { useStore } from '../context/StoreContext';
 
 const PAGE_SIZE = 24;
 const INITIAL_VISIBLE_COUNT = PAGE_SIZE;
@@ -76,8 +77,16 @@ export const SareesClient: React.FC<SareesClientProps> = ({
   allProducts = PRODUCTS,
   categoriesList = ['All', 'Banarasi', 'Chikankari', 'Bandhani', 'Organza', 'Chanderi', 'Bridal', 'Offers'],
 }) => {
+  const { categories, isCategoriesLoading } = useStore();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const effectiveCategoryList = useMemo(() => {
+    if (categories && categories.length > 0) {
+      return ['All', ...categories.map(c => c.name)];
+    }
+    return categoriesList;
+  }, [categories, categoriesList]);
 
   // Filter States
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
@@ -369,25 +378,33 @@ export const SareesClient: React.FC<SareesClientProps> = ({
         <h3 className="text-xs font-bold text-[#7A6E65] uppercase tracking-wider font-serif mb-2.5">
           Category
         </h3>
-        <div className="space-y-1">
-          {categoriesList.map((cat) => {
-            const isSelected = selectedCategory === cat;
-            return (
-              <button
-                key={cat}
-                onClick={() => handleCategoryClick(cat)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-sans transition-all text-left cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#FAF6EE] text-[#6B1725] font-bold border border-[#E5DEC9]'
-                    : 'text-[#292524] hover:bg-[#FAF7F0]'
-                }`}
-              >
-                <span>{cat === 'All' ? 'All Sarees' : `${cat} Sarees`}</span>
-                {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-[#6B1725]" />}
-              </button>
-            );
-          })}
-        </div>
+        {isCategoriesLoading ? (
+          <div className="space-y-2 animate-pulse">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-8 bg-[#E5DEC9]/40 rounded-xl w-full" />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {effectiveCategoryList.map((cat) => {
+              const isSelected = selectedCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => handleCategoryClick(cat)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-sans transition-all text-left cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#FAF6EE] text-[#6B1725] font-bold border border-[#E5DEC9]'
+                      : 'text-[#292524] hover:bg-[#FAF7F0]'
+                  }`}
+                >
+                  <span>{cat === 'All' ? 'All Sarees' : `${cat} Sarees`}</span>
+                  {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-[#6B1725]" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* 2. WEAVE / FABRIC SECTION */}
