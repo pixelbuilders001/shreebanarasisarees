@@ -419,6 +419,7 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
                               src={item.image}
                               alt={item.name}
                               fill
+                              unoptimized
                               className="object-cover rounded-full"
                             />
                           ) : (

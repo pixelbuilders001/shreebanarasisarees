@@ -108,6 +108,7 @@ export const CategoryCard: React.FC = () => {
                     src={weave.image}
                     alt={weave.name}
                     fill
+                    // unoptimized
                     sizes="80px"
                     className="object-cover rounded-full group-hover:scale-105 transition-transform duration-300"
                   />
@@ -174,6 +175,7 @@ export const CategoryCard: React.FC = () => {
                       src={weave.image}
                       alt={weave.name}
                       fill
+                      unoptimized
                       sizes="120px"
                       className="object-cover rounded-full group-hover:scale-105 transition-transform duration-500"
                     />
