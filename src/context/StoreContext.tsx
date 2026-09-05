@@ -115,6 +115,8 @@ interface StoreContextType {
   loginWithGoogle: () => Promise<void>;
   updateUserProfile: (updates: { full_name?: string | null; phone_number?: number | null }) => Promise<void>;
   shippingAddresses: any[];
+  shippingAddressesLoading: boolean;
+  shippingAddressesLoaded: boolean;
   fetchShippingAddresses: (userId: string) => Promise<void>;
   saveShippingAddress: (address: any) => Promise<void>;
   deleteShippingAddress: (id: string) => Promise<void>;
@@ -222,6 +224,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [user, setUser] = useState<any | null>(null);
   const [userProfile, setUserProfile] = useState<any | null>(null);
   const [shippingAddresses, setShippingAddresses] = useState<any[]>([]);
+  const [shippingAddressesLoading, setShippingAddressesLoading] = useState(false);
+  const [shippingAddressesLoaded, setShippingAddressesLoaded] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -499,6 +503,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setUser(null);
         setUserProfile(null);
         setShippingAddresses([]);
+        setShippingAddressesLoaded(false);
         if (prevUserId !== null || event === 'SIGNED_OUT') {
           setOrders([]);
           setCart([]);
@@ -953,16 +958,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const fetchShippingAddresses = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('shipping_addresses')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: true });
+    setShippingAddressesLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('shipping_addresses')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true });
 
-    if (error) {
-      console.error('Error fetching shipping addresses:', error);
-    } else if (data) {
-      setShippingAddresses(data);
+      if (error) {
+        console.error('Error fetching shipping addresses:', error);
+      } else if (data) {
+        setShippingAddresses(data);
+      }
+    } finally {
+      setShippingAddressesLoading(false);
+      setShippingAddressesLoaded(true);
     }
   };
 
@@ -1116,6 +1127,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       loginWithGoogle,
       updateUserProfile,
       shippingAddresses,
+      shippingAddressesLoading,
+      shippingAddressesLoaded,
       fetchShippingAddresses,
       saveShippingAddress,
       deleteShippingAddress,

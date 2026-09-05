@@ -31,13 +31,17 @@ import {
   Banknote,
   Smartphone,
   Loader2,
-  X
+  X,
+  Clock
 } from 'lucide-react';
 import { checkDeliveryServiceability, createCashfreeOrder, getProductSlug, supabase } from '../../data/supabase';
 import { load } from '@cashfreepayments/cashfree-js';
 import { trackBeginCheckout, trackPurchase } from '../../lib/gtag';
 import { IconMarqueeLoader } from '../../components/IconMarqueeLoader';
 import { fetchPincodeDetails } from '../../lib/pincodeLookup';
+import { AddNewAddressModal } from '../../components/delivery/AddNewAddressModal';
+import { ExpressRiderIcon, StandardTruckIcon } from '../../components/delivery/DeliveryIcons';
+import { CheckoutSkeleton } from '../../components/CheckoutSkeleton';
 
 const FREE_SHIPPING_THRESHOLD = 999;
 const STANDARD_SHIPPING_FEE = 99;
@@ -57,6 +61,59 @@ const INDIAN_STATES = [
   "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh",
   "Uttarakhand", "West Bengal", "Delhi"
 ];
+
+// Helper to check current IST operating hours window (mirrors DeliveryChecker on the PDP):
+// - 9 AM to 8 PM: Normal 20-min express flow
+// - 8 PM to 12 AM: Tomorrow Morning (by 10:00 AM)
+// - 12 AM to 9 AM: Today Morning (by 10:00 AM)
+const getExpressTimingStatus = (result?: any) => {
+  let hour = 12;
+  try {
+    const istHourString = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Kolkata',
+      hour: 'numeric',
+      hour12: false,
+    }).format(new Date());
+    hour = parseInt(istHourString, 10);
+  } catch {
+    hour = new Date().getHours();
+  }
+
+  const isAfterMidnight = result?.isAfterMidnight ?? (hour < 9);
+  const isAfter8PM = result?.isAfter8PM ?? (hour >= 20);
+  const isNormalHours = !(isAfterMidnight || isAfter8PM);
+
+  if (isNormalHours) {
+    return {
+      isNormalHours: true,
+      isAfterMidnight: false,
+      isAfter8PM: false,
+      timingText: '',
+      badgeText: '',
+      descText: ''
+    };
+  }
+
+  if (isAfterMidnight) {
+    return {
+      isNormalHours: false,
+      isAfterMidnight: true,
+      isAfter8PM: false,
+      timingText: 'Today Morning (by 10:00 AM)',
+      badgeText: '✓ Today Morning',
+      descText: 'Priority express delivery will arrive this morning by 10:00 AM.'
+    };
+  }
+
+  return {
+    isNormalHours: false,
+    isAfterMidnight: false,
+    isAfter8PM: true,
+    timingText: 'Tomorrow Morning (by 10:00 AM)',
+    badgeText: '✓ Tomorrow Morning',
+    descText: 'Priority express delivery will arrive tomorrow morning by 10:00 AM.'
+  };
+};
 
 function CheckoutContent() {
   const router = useRouter();
@@ -79,6 +136,8 @@ function CheckoutContent() {
     checkedPincode,
     setCheckedPincode,
     shippingAddresses,
+    shippingAddressesLoading,
+    shippingAddressesLoaded,
     saveShippingAddress,
     user,
     userProfile,
@@ -111,6 +170,7 @@ function CheckoutContent() {
   const [pinCode, setPinCode] = useState(checkedPincode || '');
   const [landmark, setLandmark] = useState('');
   const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [isAddAddressModalOpen, setIsAddAddressModalOpen] = useState(false);
 
   // Delivery & Payment selection
   const [deliveryMethod, setDeliveryMethod] = useState<'Home Delivery' | 'Store Pickup'>('Home Delivery');
@@ -336,16 +396,26 @@ function CheckoutContent() {
   };
 
   const handleAddNewAddressSelect = () => {
+    setIsAddAddressModalOpen(true);
+  };
+
+  const handleNewAddressSaved = (savedAddr: any) => {
+    if (!savedAddr) return;
     setSelectedAddressId('new');
-    setFullName('');
-    setAddress('');
-    setLandmark('');
-    setCity('');
-    setState('Bihar');
-    setPinCode('');
+    setFullName(savedAddr.full_name || '');
+    setMobileNumber(savedAddr.phone || '');
+    setAddress((savedAddr.address_line1 || '') + (savedAddr.address_line2 ? ', ' + savedAddr.address_line2 : ''));
+    setLandmark(savedAddr.landmark || '');
+    setCity(savedAddr.city || '');
+    if (savedAddr.state) {
+      setState(savedAddr.state);
+    }
+    setPinCode(savedAddr.pincode || '');
     setDeliveryInfo(null);
-    setCheckedPincode('');
     setPincodeSuccessMsg(null);
+    if (savedAddr.pincode) {
+      handleCheckPincode(savedAddr.pincode);
+    }
   };
 
   // Apply Coupon
@@ -564,6 +634,13 @@ function CheckoutContent() {
   // ==========================================
   if (!isHydrated) {
     return <IconMarqueeLoader />;
+  }
+
+  // ==========================================
+  // 0b. FULL-PAGE SKELETON WHILE BACKEND DATA LOADS
+  // ==========================================
+  if (isHydrated && user && cart.length > 0 && !shippingAddressesLoaded) {
+    return <CheckoutSkeleton />;
   }
 
   // ==========================================
@@ -826,7 +903,29 @@ function CheckoutContent() {
                 </button>
               </div>
 
-              {shippingAddresses && shippingAddresses.length > 0 ? (
+              {shippingAddressesLoading && (!shippingAddresses || shippingAddresses.length === 0) ? (
+                <div className="flex gap-3 overflow-hidden pb-1.5 pt-0.5 animate-pulse" aria-hidden="true">
+                  {[0, 1, 2].map((n) => (
+                    <div
+                      key={n}
+                      className="snap-start w-[240px] sm:w-[260px] shrink-0 bg-white rounded-xl border border-[#E5DEC9] p-3 flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-1.5 mb-2">
+                          <div className="w-24 h-3 bg-stone-200 rounded-md" />
+                          <div className="w-4 h-4 rounded-full border border-[#E5DEC9]" />
+                        </div>
+                        <div className="w-full h-2.5 bg-stone-200 rounded-md mb-1.5" />
+                        <div className="w-4/5 h-2.5 bg-stone-200 rounded-md mb-1.5" />
+                        <div className="w-1/2 h-2.5 bg-stone-200 rounded-md" />
+                      </div>
+                      <div className="mt-3 pt-2 border-t border-[#F3ECE0] flex items-center justify-end">
+                        <div className="w-10 h-2.5 bg-stone-200 rounded-md" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : shippingAddresses && shippingAddresses.length > 0 ? (
                 <div className="flex gap-3 overflow-x-auto pb-1.5 pt-0.5 scrollbar-none snap-x snap-mandatory">
                   {shippingAddresses.map((addr: any) => {
                     const isSelected = selectedAddressId === addr.id;
@@ -935,29 +1034,115 @@ function CheckoutContent() {
               )}
             </div>
 
-            {/* 4. SELECTED DELIVERY METHOD CARD */}
-            <div className="bg-white rounded-2xl border border-[#6B1725] p-4 flex items-start justify-between shadow-2xs">
-              <div className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-[#6B1725]/10 flex items-center justify-center text-[#6B1725] shrink-0 mt-0.5">
-                  <Zap size={16} className="fill-[#6B1725]" />
+            {/* 4. DELIVERY MODE RESULT CARD (dynamic based on pincode check) */}
+            {loadingPincode ? (
+              <div className="bg-white rounded-2xl border border-[#E5DEC9] p-4 flex items-start justify-between shadow-2xs animate-pulse" aria-hidden="true">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className="w-7 h-7 rounded-full bg-stone-200 shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-2 pt-0.5">
+                    <div className="w-40 sm:w-52 h-3.5 bg-stone-200 rounded-md" />
+                    <div className="w-56 sm:w-72 h-2.5 bg-stone-200 rounded-md" />
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-sans font-bold text-xs sm:text-sm text-[#292524]">
-                    {deliveryInfo?.is20MinDelivery || !pinCode || pinCode.startsWith('848')
-                      ? '20-minute hand delivery'
-                      : 'Express Delivery (3–5 Days)'}
-                  </h4>
-                  <p className="text-[11px] sm:text-xs text-[#7A6E65] mt-0.5">
-                    {deliveryInfo?.is20MinDelivery || !pinCode || pinCode.startsWith('848')
-                      ? 'Arriving by 6:45 pm today · our own rider, not a courier'
-                      : 'Tracked express courier · packed with care'}
-                  </p>
+                <div className="w-10 h-3.5 bg-stone-200 rounded-md shrink-0" />
+              </div>
+            ) : deliveryInfo && (deliveryInfo.success === false || deliveryInfo.isOutsideServiceArea || deliveryInfo.serviceable === false) ? (
+              /* DELIVERY NOT AVAILABLE */
+              <div className="bg-stone-50 border border-stone-200 rounded-2xl p-4 text-xs space-y-1.5 text-stone-700 shadow-2xs">
+                <div className="flex items-center gap-2 font-extrabold text-stone-800 font-serif">
+                  <AlertCircle size={16} className="text-stone-600" />
+                  <span>Delivery Not Available</span>
+                </div>
+                <p className="text-[#6B625D] text-[11px]">
+                  {deliveryInfo?.error || deliveryInfo?.message || "We currently don't deliver to this location."}
+                </p>
+              </div>
+            ) : deliveryInfo && (deliveryInfo.is20MinDelivery || (deliveryInfo.distanceKm && deliveryInfo.distanceKm <= 20) || deliveryInfo.eligible || deliveryInfo.isExpress) ? (
+              (() => {
+                const timing = getExpressTimingStatus(deliveryInfo);
+                const isExpressNow = timing.isNormalHours;
+                return (
+                  <div className="rounded-2xl p-4 text-xs space-y-2.5 shadow-xs bg-emerald-50/90 border border-emerald-300 text-emerald-950">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5 font-extrabold text-emerald-800 text-sm font-serif">
+                        <ExpressRiderIcon className="w-10 h-10 flex-shrink-0" />
+                        <span>{isExpressNow ? '20-Min Express Delivery' : 'Express Delivery Available'}</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 font-serif whitespace-nowrap">
+                        {isExpressNow ? '✓ Today' : timing.badgeText}
+                      </span>
+                    </div>
+                    <div className="space-y-1 text-xs text-emerald-900 pt-1.5 border-t border-emerald-200/80">
+                      {isExpressNow ? (
+                        <div className="flex items-center gap-2 font-extrabold text-emerald-950 text-xs">
+                          <Clock size={15} className="text-emerald-700 flex-shrink-0" />
+                          <span>Arriving in ~{deliveryInfo.customerEtaMinutes || deliveryInfo.eta?.minutes || 20} minutes</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 font-extrabold text-emerald-950 text-xs">
+                          <Clock size={15} className="text-emerald-700 flex-shrink-0" />
+                          <span>Estimated arrival: {timing.timingText}</span>
+                        </div>
+                      )}
+                      {!isExpressNow && (
+                        <p className="text-[11px] text-emerald-800 font-medium leading-relaxed pt-0.5">{timing.descText}</p>
+                      )}
+                      <div className="text-[10px] text-emerald-700 font-medium">
+                        {deliveryInfo?.source === 'gps'
+                          ? 'Based on your current location'
+                          : `Verified for pincode ${pinCode || deliveryInfo?.pincode}`}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()
+            ) : deliveryInfo ? (
+              /* STANDARD DELIVERY (ABOVE 20 KM) */
+              <div className="bg-[#FAF7F0] border border-[#B08A3C]/30 rounded-2xl p-4 text-xs space-y-2.5 text-[#292524] shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 font-extrabold text-[#6B1725] text-sm font-serif">
+                    <StandardTruckIcon className="w-10 h-10 flex-shrink-0" />
+                    <span>Standard Delivery</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#6B1725] bg-[#6B1725]/10 px-2.5 py-0.5 rounded-full border border-[#6B1725]/20 font-serif whitespace-nowrap">
+                    3–5 Days
+                  </span>
+                </div>
+                <div className="space-y-1 text-xs text-[#6B625D] pt-1.5 border-t border-[#B08A3C]/20">
+                  <div className="flex items-center gap-2 font-bold text-[#292524] text-xs">
+                    <Clock size={15} className="text-[#6B1725] flex-shrink-0" />
+                    <span>Estimated delivery: 3–5 Business Days</span>
+                  </div>
+                  <div className="text-[10px] text-[#6B625D] font-medium">
+                    Verified for pincode {pinCode || deliveryInfo?.pincode}
+                  </div>
                 </div>
               </div>
-              <span className="font-serif font-bold text-xs sm:text-sm text-[#292524] shrink-0">
-                {shippingFee === 0 ? 'FREE' : `₹${shippingFee}`}
-              </span>
-            </div>
+            ) : (
+              /* NO CHECK YET: DEFAULT FALLBACK CARD */
+              <div className="bg-white rounded-2xl border border-[#6B1725] p-4 flex items-start justify-between shadow-2xs">
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-full bg-[#6B1725]/10 flex items-center justify-center text-[#6B1725] shrink-0 mt-0.5">
+                    <Zap size={16} className="fill-[#6B1725]" />
+                  </div>
+                  <div>
+                    <h4 className="font-sans font-bold text-xs sm:text-sm text-[#292524]">
+                      {!pinCode || pinCode.startsWith('848')
+                        ? '20-minute hand delivery'
+                        : 'Express Delivery (3–5 Days)'}
+                    </h4>
+                    <p className="text-[11px] sm:text-xs text-[#7A6E65] mt-0.5">
+                      {!pinCode || pinCode.startsWith('848')
+                        ? 'Arriving by 6:45 pm today · our own rider, not a courier'
+                        : 'Tracked express courier · packed with care'}
+                    </p>
+                  </div>
+                </div>
+                <span className="font-serif font-bold text-xs sm:text-sm text-[#292524] shrink-0">
+                  {shippingFee === 0 ? 'FREE' : `₹${shippingFee}`}
+                </span>
+              </div>
+            )}
 
             {/* 5. PAYMENT METHOD SECTION */}
             <div className="space-y-2.5 pt-1">
@@ -1308,6 +1493,13 @@ function CheckoutContent() {
           </div>
         </div>
       )}
+
+      {/* SHARED ADD NEW ADDRESS MODAL (same as product details page) */}
+      <AddNewAddressModal
+        isOpen={isAddAddressModalOpen}
+        onClose={() => setIsAddAddressModalOpen(false)}
+        onAddressSaved={handleNewAddressSaved}
+      />
     </div>
   );
 }

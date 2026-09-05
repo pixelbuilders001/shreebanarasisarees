@@ -890,12 +890,26 @@ export interface DeliveryCheckResult {
   error?: string;
   is20MinDelivery?: boolean;
   isExpress?: boolean;
+  eligible?: boolean;
   customerEtaMinutes?: number;
   distance_km?: number;
+  distanceKm?: number;
   estimated_drive_minutes?: number;
   delivery_type?: 'express' | 'same_day' | 'standard' | null;
   delivery_charge?: number;
   message?: string;
+  source?: string;
+  pincode?: string;
+  isStoreClosed?: boolean;
+  isAfterMidnight?: boolean;
+  isAfter8PM?: boolean;
+  storeClosedMessage?: string;
+  eta?: {
+    minutes?: number;
+    formattedDelivery?: string;
+    packingBufferMinutes?: number;
+    deliveryBufferMinutes?: number;
+  };
 }
 
 export async function checkDeliveryServiceability(
