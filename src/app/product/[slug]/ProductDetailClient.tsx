@@ -26,7 +26,8 @@ import {
   Star,
   User,
   AlertCircle,
-  ShoppingBag
+  ShoppingBag,
+  Bell
 } from 'lucide-react';
 import { fetchDesignVariants, supabase } from '../../../data/supabase';
 import { RecentlyViewed } from '../../../components/RecentlyViewed';
@@ -193,6 +194,10 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isLightboxOpen, product.images]);
+
+  const handleNotifyMe = () => {
+    showToast(`We'll notify you when "${product.name}" is back in stock!`, 'info');
+  };
 
   const handleWhatsAppInquiry = () => {
     const whatsappNumber = "+916203909946";
@@ -389,6 +394,16 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                 </div>
               </div>
 
+              {/* Mobile Out of Stock Badge */}
+              {product.stock === 0 && (
+                <div className="absolute top-20 inset-x-0 flex items-center justify-center z-10 pointer-events-none">
+                  <div className="bg-[#292524]/85 backdrop-blur-md text-white text-xs font-bold font-serif px-4 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 animate-fadeIn">
+                    <Bell size={13} />
+                    Out of Stock
+                  </div>
+                </div>
+              )}
+
               {/* Mobile Dots */}
               {product.images.length > 1 && (
                 <div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-1.5 z-10">
@@ -409,9 +424,17 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
               <img
                 src={activeImage}
                 alt={product.name}
-                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                className={`w-full h-full object-cover object-center transition-transform duration-700 ease-out ${product.stock === 0 ? 'grayscale opacity-60 group-hover:scale-105' : 'group-hover:scale-105'}`}
                 onClick={() => setIsLightboxOpen(true)}
               />
+              {product.stock === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="bg-[#292524]/85 backdrop-blur-sm text-white text-sm sm:text-base font-serif font-bold px-5 py-2.5 rounded-full shadow-lg flex items-center gap-2 animate-fadeIn">
+                    <Bell size={16} />
+                    Out of Stock
+                  </div>
+                </div>
+              )}
               <div
                 onClick={() => setIsLightboxOpen(true)}
                 className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md text-[#292524] text-xs font-bold px-3 py-2 rounded-full shadow-md flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -627,32 +650,51 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
             {/* DESKTOP INLINE PRIMARY ACTION BUTTONS (Visible on >= lg screens) */}
             <div className="hidden lg:flex flex-col gap-3 py-2">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleAddToCart}
-                  disabled={isAddingToCart}
-                  className="flex-1 bg-[#6B1725] hover:bg-[#52111C] text-white py-3.5 px-6 rounded-full font-serif font-bold text-sm shadow-md cursor-pointer transition-all flex items-center justify-center gap-2"
-                >
-                  <ShoppingBag size={18} />
-                  <span>{isAlreadyInCart ? 'Go to cart' : 'Add to Bag'}</span>
-                </button>
+              {product.stock === 0 ? (
+                <div className="space-y-3">
+                  <button
+                    onClick={handleNotifyMe}
+                    className="w-full bg-[#292524] hover:bg-black text-white py-3.5 px-6 rounded-full font-serif font-bold text-sm shadow-md cursor-pointer transition-all flex items-center justify-center gap-2"
+                  >
+                    <Bell size={18} />
+                    <span>Notify Me When Available</span>
+                  </button>
+                  <button
+                    onClick={handleWhatsAppInquiry}
+                    className="w-full bg-white border-2 border-[#6B1725] text-[#6B1725] py-3.5 px-6 rounded-full font-serif font-bold text-sm hover:bg-[#6B1725]/5 cursor-pointer transition-all flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle size={18} />
+                    <span>Enquire on WhatsApp</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={isAddingToCart}
+                    className="flex-1 bg-[#6B1725] hover:bg-[#52111C] text-white py-3.5 px-6 rounded-full font-serif font-bold text-sm shadow-md cursor-pointer transition-all flex items-center justify-center gap-2"
+                  >
+                    <ShoppingBag size={18} />
+                    <span>{isAlreadyInCart ? 'Go to cart' : 'Add to Bag'}</span>
+                  </button>
 
-                <button
-                  onClick={handleBuyNow}
-                  disabled={isBuyingNow}
-                  className="flex-1 bg-white border-2 border-[#6B1725] text-[#6B1725] py-3.5 px-6 rounded-full font-serif font-bold text-sm hover:bg-[#6B1725]/5 cursor-pointer transition-all text-center"
-                >
-                  Buy Now
-                </button>
+                  <button
+                    onClick={handleBuyNow}
+                    disabled={isBuyingNow}
+                    className="flex-1 bg-white border-2 border-[#6B1725] text-[#6B1725] py-3.5 px-6 rounded-full font-serif font-bold text-sm hover:bg-[#6B1725]/5 cursor-pointer transition-all text-center"
+                  >
+                    Buy Now
+                  </button>
 
-                <button
-                  onClick={() => toggleWishlist(product)}
-                  className="p-3.5 rounded-full border border-[#E5DEC9] text-[#292524] hover:bg-[#FAF6EE] transition-all cursor-pointer"
-                  title="Save to wishlist"
-                >
-                  <Heart size={20} className={isWishlisted ? 'fill-[#6B1725] text-[#6B1725]' : ''} />
-                </button>
-              </div>
+                  <button
+                    onClick={() => toggleWishlist(product)}
+                    className="p-3.5 rounded-full border border-[#E5DEC9] text-[#292524] hover:bg-[#FAF6EE] transition-all cursor-pointer"
+                    title="Save to wishlist"
+                  >
+                    <Heart size={20} className={isWishlisted ? 'fill-[#6B1725] text-[#6B1725]' : ''} />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* WHATSAPP DAYLIGHT VIDEO CALLOUT CARD */}
@@ -874,29 +916,47 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
           <div className="font-sans text-base font-bold text-[#292524]">
             ₹{finalPrice.toLocaleString('en-IN')}
           </div>
+{product.stock === 0 ? (
+          <span className="text-[11px] font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+            Currently Out of Stock
+          </span>
+        ) : (
           <div className="text-[11px] font-bold text-[#6B1725]">
-            Only 1 left
+            Only {product.stock} left
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleAddToCart}
-            disabled={isAddingToCart}
-            className="bg-[#6B1725] hover:bg-[#52111C] text-white py-2.5 px-5 rounded-full text-xs font-bold shadow-md cursor-pointer transition-colors"
-          >
-            {isAlreadyInCart ? 'Go to cart' : 'Go to cart'}
-          </button>
-
-          <button
-            onClick={handleBuyNow}
-            disabled={isBuyingNow}
-            className="bg-white border border-[#6B1725] text-[#6B1725] py-2.5 px-5 rounded-full text-xs font-bold hover:bg-[#6B1725]/5 cursor-pointer transition-colors"
-          >
-            Buy now
-          </button>
-        </div>
+        )}
       </div>
+
+      <div className="flex items-center gap-2">
+        {product.stock === 0 ? (
+          <button
+            onClick={handleNotifyMe}
+            className="flex-1 bg-[#292524] hover:bg-black text-white py-3 px-5 rounded-full text-xs font-bold shadow-md cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+          >
+            <Bell size={14} />
+            Notify Me
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={handleAddToCart}
+              disabled={isAddingToCart}
+              className="bg-[#6B1725] hover:bg-[#52111C] text-white py-2.5 px-5 rounded-full text-xs font-bold shadow-md cursor-pointer transition-colors"
+            >
+              {isAlreadyInCart ? 'Go to cart' : 'Add to Bag'}
+            </button>
+
+            <button
+              onClick={handleBuyNow}
+              disabled={isBuyingNow}
+              className="bg-white border border-[#6B1725] text-[#6B1725] py-2.5 px-5 rounded-full text-xs font-bold hover:bg-[#6B1725]/5 cursor-pointer transition-colors"
+            >
+              Buy now
+            </button>
+          </>
+        )}
+      </div>
+    </div>
 
       {/* WRITE A REVIEW MODAL */}
       {isReviewModalOpen && (

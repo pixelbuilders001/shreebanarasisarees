@@ -21,7 +21,7 @@ export const openPincodeSheet = () => {
   }
 };
 
-const getExpressTimingStatus = (result?: any) => {
+export const getExpressTimingStatus = (result?: any) => {
   let hour = 12;
   try {
     const istHourString = new Intl.DateTimeFormat('en-US', {
@@ -64,7 +64,11 @@ const getExpressTimingStatus = (result?: any) => {
   };
 };
 
-export const DeliveryPincodeBar: React.FC = () => {
+interface DeliveryPincodeBarProps {
+  hideBar?: boolean;
+}
+
+export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar = false }) => {
   const { user, shippingAddresses, setIsAuthModalOpen } = useStore();
   const [pincode, setPincode] = useState<string>('848101');
   const [isSheetOpen, setIsSheetOpen] = useState<boolean>(false);
@@ -316,24 +320,26 @@ export const DeliveryPincodeBar: React.FC = () => {
 
   return (
     <>
-      {/* ── 1. DARK MAROON PINCODE BAR ── */}
-      <div className="w-full bg-[#4A121A] text-[#FAF7F0] px-4 py-2 flex items-center justify-between text-xs border-t border-[#B08A3C]/20">
-        <div
-          onClick={() => { setInputPincode(pincode); checkPincode(pincode); setIsSheetOpen(true); }}
-          className="flex items-center gap-1.5 cursor-pointer hover:opacity-90 transition-opacity truncate"
-        >
-          <MapPin size={13} className="text-[#D4B870] shrink-0" />
-          <span className="font-sans font-medium text-[11px] sm:text-xs truncate">
-            Deliver to <strong className="font-bold text-white">{pincode}</strong> — {is20Min ? timingStatus.timingText : 'Standard 3-5 days delivery'}
-          </span>
+      {/* ── 1. DARK MAROON PINCODE BAR (OPTIONAL) ── */}
+      {!hideBar && (
+        <div className="w-full bg-[#4A121A] text-[#FAF7F0] px-4 py-2 flex items-center justify-between text-xs border-t border-[#B08A3C]/20">
+          <div
+            onClick={() => { setInputPincode(pincode); checkPincode(pincode); setIsSheetOpen(true); }}
+            className="flex items-center gap-1.5 cursor-pointer hover:opacity-90 transition-opacity truncate"
+          >
+            <MapPin size={13} className="text-[#D4B870] shrink-0" />
+            <span className="font-sans font-medium text-[11px] sm:text-xs truncate">
+              Deliver to <strong className="font-bold text-white">{pincode}</strong> — {is20Min ? timingStatus.timingText : 'Standard 3-5 days delivery'}
+            </span>
+          </div>
+          <button
+            onClick={() => { setInputPincode(pincode); checkPincode(pincode); setIsSheetOpen(true); }}
+            className="text-[11px] font-sans font-semibold text-[#FAF7F0] underline hover:text-[#D4B870] shrink-0 ml-2 cursor-pointer"
+          >
+            Change
+          </button>
         </div>
-        <button
-          onClick={() => { setInputPincode(pincode); checkPincode(pincode); setIsSheetOpen(true); }}
-          className="text-[11px] font-sans font-semibold text-[#FAF7F0] underline hover:text-[#D4B870] shrink-0 ml-2 cursor-pointer"
-        >
-          Change
-        </button>
-      </div>
+      )}
 
       {/* ── 2. BOTTOM SHEET DRAWER VIA PORTAL ── */}
       {mounted && sheetContent && createPortal(sheetContent, document.body)}
