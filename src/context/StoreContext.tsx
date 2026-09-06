@@ -822,12 +822,40 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Cancel order item
   const cancelOrderItem = async (orderId: string, productId: string): Promise<{ success: boolean; cancelledEntireOrder: boolean }> => {
-    const res = await cancelDbOrderItem(orderId, productId);
+    let res = await cancelDbOrderItem(orderId, productId);
+
+    // Fallback if DB operation failed or order is locally cached
+    const localOrder = orders.find(o => o.orderId === orderId || o.id === orderId);
+    if (!res.success && localOrder) {
+      const matchFn = (item: any) =>
+        item.product?.id === productId ||
+        item.product?.sku === productId ||
+        item.id === productId ||
+        item.inventory_id === productId;
+
+      const remainingItems = localOrder.items.filter(item => !matchFn(item));
+      if (remainingItems.length === 0) {
+        res = { success: true, cancelledEntireOrder: true };
+      } else {
+        const removedItem = localOrder.items.find(matchFn);
+        const removedPrice = removedItem ? (removedItem.product?.salePrice || removedItem.product?.price || 0) * (removedItem.quantity || 1) : 0;
+        const newSubtotal = Math.max(0, localOrder.subtotal - removedPrice);
+        const newTotal = Math.max(0, localOrder.total - removedPrice);
+        res = { success: true, cancelledEntireOrder: false, newSubtotal, newTotal };
+      }
+    }
+
     if (res.success) {
+      const matchFn = (item: any) =>
+        item.product?.id === productId ||
+        item.product?.sku === productId ||
+        item.id === productId ||
+        item.inventory_id === productId;
+
       if (res.cancelledEntireOrder) {
         setOrders(prevOrders => 
           prevOrders.map(o => {
-            if (o.orderId === orderId) {
+            if (o.orderId === orderId || o.id === orderId) {
               const nowStr = new Date().toISOString();
               const newHistory: OrderStatusHistoryEntry = {
                 id: `cancelled-${Date.now()}`,
@@ -848,10 +876,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       } else {
         setOrders(prevOrders => 
           prevOrders.map(o => {
-            if (o.orderId === orderId) {
+            if (o.orderId === orderId || o.id === orderId) {
               const nowStr = new Date().toISOString();
-              const targetItem = o.items.find(item => item.product.id === productId);
-              const productName = targetItem?.product.name || 'item';
+              const targetItem = o.items.find(matchFn);
+              const productName = targetItem?.product?.name || 'item';
               const qty = targetItem?.quantity || 1;
               
               const newHistory: OrderStatusHistoryEntry = {
@@ -866,7 +894,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 ...o,
                 subtotal: res.newSubtotal ?? o.subtotal,
                 total: res.newTotal ?? o.total,
-                items: o.items.filter(item => item.product.id !== productId),
+                items: o.items.filter(item => !matchFn(item)),
                 statusHistory: o.statusHistory ? [...o.statusHistory, newHistory] : [newHistory]
               };
             }

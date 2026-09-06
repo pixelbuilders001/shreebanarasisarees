@@ -627,7 +627,7 @@ function AccountContent() {
       ? (displayOrders.find(o => o.id === orderIdentifier || o.orderId === orderIdentifier) || activeOrder)
       : activeOrder;
 
-    if (!targetOrder) return;
+    if (!targetOrder || !productId) return;
 
     // Human-readable order number for UI modal copy
     const displayNum = targetOrder.orderId || targetOrder.id || '';
@@ -637,13 +637,8 @@ function AccountContent() {
     const orderUuid = targetOrder.id || null;
     setOrderUuidToCancel(orderUuid);
 
-    if (productId && displayItems.length > 1) {
-      setItemToCancel(productId);
-      setCancelType('item');
-    } else {
-      setItemToCancel(null);
-      setCancelType('order');
-    }
+    setItemToCancel(productId);
+    setCancelType('item');
 
     setCancelStatus('idle');
     setCancelErrorMessage(null);
@@ -651,118 +646,130 @@ function AccountContent() {
   };
 
   const confirmCancelOrderAction = async () => {
-    if (!orderToCancel) return;
+    if (!orderToCancel || !itemToCancel) return;
 
     setIsCancelling(true);
     setCancelErrorMessage(null);
 
     try {
-      if (cancelType === 'item' && itemToCancel) {
-        const res = await cancelOrderItem(orderToCancel, itemToCancel);
-        if (res.success) {
-          if (res.cancelledEntireOrder) {
-            setCancelType('order');
-            if (orderUuidToCancel) markOrderCancelledLocally(orderUuidToCancel);
-            if (orderToCancel) markOrderCancelledLocally(orderToCancel);
+      // 1. Resolve database UUID for order.id
+      let resolvedOrderId = orderUuidToCancel;
+      if (!resolvedOrderId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedOrderId)) {
+        if (orderToCancel) {
+          const { data: row } = await supabase
+            .from('orders')
+            .select('id')
+            .eq('order_number', orderToCancel)
+            .maybeSingle();
+          if (row?.id) {
+            resolvedOrderId = row.id;
           }
-          if (orderItemsDetails) {
-            setOrderItemsDetails(prev => prev ? prev.filter(i => (i.inventory_id !== itemToCancel && i.id !== itemToCancel)) : null);
-          }
-          setCancelStatus('success');
-          await refreshOrderStatus(orderToCancel);
-        } else {
-          setCancelErrorMessage("Could not cancel this item. Please try again.");
-          setCancelStatus('error');
         }
+      }
+
+      if (!resolvedOrderId) {
+        throw new Error("Could not find order ID");
+      }
+
+      // 2. Resolve database UUID for order_item_id
+      let resolvedOrderItemId = itemToCancel;
+      const isItemUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedOrderItemId);
+      if (!isItemUuid) {
+        const { data: itemRows } = await supabase
+          .from('order_items')
+          .select('id, inventory_id, sku')
+          .eq('order_id', resolvedOrderId);
+
+        const matched = itemRows?.find(r => r.id === itemToCancel || r.inventory_id === itemToCancel || r.sku === itemToCancel);
+        if (matched?.id) {
+          resolvedOrderItemId = matched.id;
+        }
+      }
+
+      // 3. Direct invocation of cancel-order-user Edge Function using { order_id, order_item_id }
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
+      const { data, error } = await supabase.functions.invoke("cancel-order-user", {
+        body: {
+          order_id: resolvedOrderId,
+          order_item_id: resolvedOrderItemId
+        },
+        headers
+      });
+
+      if (error || data?.error || data?.success === false) {
+        const errorMsg = data?.error || error?.message || "Failed to cancel item. Please try again.";
+        console.error("Cancel item error:", errorMsg);
+        setCancelErrorMessage(errorMsg);
+        setCancelStatus('error');
       } else {
-        // Resolve database UUID for order.id
-        let resolvedOrderId = orderUuidToCancel;
+        // 4. INSTANT OPTIMISTIC UI REFRESH
+        const isEntireOrderCancelled = !!data?.cancelledEntireOrder || data?.status === 'cancelled';
+        const targetKey = orderToCancel;
+        const targetUuid = resolvedOrderId;
 
-        // Fallback: If UUID not in state, look up by order_number from Supabase
-        if (!resolvedOrderId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedOrderId)) {
-          if (orderToCancel) {
-            const { data: row } = await supabase
-              .from('orders')
-              .select('id')
-              .eq('order_number', orderToCancel)
-              .maybeSingle();
-            if (row?.id) {
-              resolvedOrderId = row.id;
-            }
-          }
+        // Update StoreContext
+        await cancelOrderItem(targetUuid, resolvedOrderItemId);
+
+        // Update local orderItemsDetails
+        if (orderItemsDetails) {
+          setOrderItemsDetails(prev => prev ? prev.filter(i => (
+            i.id !== resolvedOrderItemId &&
+            i.id !== itemToCancel &&
+            i.inventory_id !== itemToCancel
+          )) : null);
         }
 
-        // Direct invocation of cancel-order-user Edge Function using order.id
-        const { data: { session } } = await supabase.auth.getSession();
-        const headers: Record<string, string> = {};
-        if (session?.access_token) {
-          headers.Authorization = `Bearer ${session.access_token}`;
-        }
-
-        const { data, error } = await supabase.functions.invoke("cancel-order-user", {
-          body: { order_id: resolvedOrderId || orderToCancel },
-          headers
+        // Update standaloneOrder
+        setStandaloneOrder(prev => {
+          if (!prev) return prev;
+          const remaining = prev.items.filter(it =>
+            (it as any)?.id !== resolvedOrderItemId &&
+            it.product?.id !== itemToCancel &&
+            (it as any)?.id !== itemToCancel &&
+            (it as any)?.inventory_id !== itemToCancel
+          );
+          const nowCancelled = isEntireOrderCancelled || remaining.length === 0;
+          return {
+            ...prev,
+            orderStatus: nowCancelled ? ('Cancelled' as const) : prev.orderStatus,
+            subtotal: data?.newSubtotal != null ? data.newSubtotal : prev.subtotal,
+            total: data?.newTotal != null ? data.newTotal : prev.total,
+            items: remaining
+          };
         });
 
-        if (error || data?.error || data?.success === false) {
-          const errorMsg = data?.error || error?.message || "Failed to cancel order. Please try again.";
-          console.error("Cancel order error:", errorMsg);
-          setCancelErrorMessage(errorMsg);
-          setCancelStatus('error');
-        } else {
-          // 1. INSTANT OPTIMISTIC UI REFRESH (Quick, instantaneous changes without page reload)
-          const targetKey = orderToCancel;
-          const targetUuid = resolvedOrderId;
-
-          // Update StoreContext orders
-          if (targetUuid) markOrderCancelledLocally(targetUuid);
-          if (targetKey) markOrderCancelledLocally(targetKey);
-
-          // Update local dbOrders state immediately
-          setDbOrders(prev =>
-            prev.map(o => {
-              if (o.id === targetUuid || o.orderId === targetKey || o.id === targetKey) {
-                const newHistory: OrderStatusHistoryEntry = {
-                  id: `cancelled-${Date.now()}`,
-                  orderId: o.id || o.orderId,
-                  status: 'cancelled',
-                  note: 'Order cancelled by customer',
-                  createdAt: new Date().toISOString()
-                };
-                return {
-                  ...o,
-                  orderStatus: 'Cancelled' as const,
-                  statusHistory: o.statusHistory ? [...o.statusHistory, newHistory] : [newHistory]
-                };
-              }
-              return o;
-            })
-          );
-
-          // Update standaloneOrder if currently viewing in details view
-          setStandaloneOrder(prev => {
-            if (prev && (prev.id === targetUuid || prev.orderId === targetKey || prev.id === targetKey)) {
-              const newHistory: OrderStatusHistoryEntry = {
-                id: `cancelled-${Date.now()}`,
-                orderId: prev.id || prev.orderId,
-                status: 'cancelled',
-                note: 'Order cancelled by customer',
-                createdAt: new Date().toISOString()
-              };
+        // Update local dbOrders state immediately
+        setDbOrders(prev =>
+          prev.map(o => {
+            if (o.id === targetUuid || o.orderId === targetKey || o.id === targetKey) {
+              const remaining = o.items.filter(it =>
+                (it as any)?.id !== resolvedOrderItemId &&
+                it.product?.id !== itemToCancel &&
+                (it as any)?.id !== itemToCancel &&
+                (it as any)?.inventory_id !== itemToCancel
+              );
+              const nowCancelled = isEntireOrderCancelled || remaining.length === 0;
               return {
-                ...prev,
-                orderStatus: 'Cancelled' as const,
-                statusHistory: prev.statusHistory ? [...prev.statusHistory, newHistory] : [newHistory]
+                ...o,
+                orderStatus: nowCancelled ? ('Cancelled' as const) : o.orderStatus,
+                subtotal: data?.newSubtotal != null ? data.newSubtotal : o.subtotal,
+                total: data?.newTotal != null ? data.newTotal : o.total,
+                items: remaining
               };
             }
-            return prev;
-          });
+            return o;
+          })
+        );
 
-          setCancelStatus('success');
+        setCancelStatus('success');
 
-          // 2. Fetch fresh DB records in the background to ensure consistency
-          await refreshOrderStatus(orderToCancel);
-        }
+        // Refresh fresh DB records in the background
+        await refreshOrderStatus(orderToCancel);
       }
     } catch (err: any) {
       console.error("Cancellation error:", err);
@@ -776,7 +783,14 @@ function AccountContent() {
 
   const targetItemObj = displayItems.find(item => {
     const res = resolveOrderItem(item, products);
-    return res.id === itemToCancel || (item as any)?.product?.id === itemToCancel || (item as any)?.inventory_id === itemToCancel;
+    return (
+      (item as any)?.id === itemToCancel ||
+      (item as any)?.inventory_id === itemToCancel ||
+      (item as any)?.product?.id === itemToCancel ||
+      (item as any)?.sku === itemToCancel ||
+      res.id === itemToCancel ||
+      res.sku === itemToCancel
+    );
   });
   const targetItemName = targetItemObj ? resolveOrderItem(targetItemObj, products).name : '';
 
@@ -814,6 +828,136 @@ function AccountContent() {
   if (!isHydrated || (isLoadingDbOrders && orders.length === 0 && dbOrders.length === 0)) {
     return <OrdersTabSkeleton />;
   }
+
+  // ═════════════════════════════════════════════════════════════════
+  // REUSABLE CANCEL MODAL (Rendered in both View A & View B)
+  // ═════════════════════════════════════════════════════════════════
+  const renderCancelModal = () => {
+    if (!showCancelModal) return null;
+
+    return (
+      <div className="fixed inset-0 bg-[#0c0a09]/65 backdrop-blur-xs z-55 flex items-center justify-center p-4 animate-fadeIn">
+        <div className="bg-[#FFF9F0] border border-[#B08A3C]/30 max-w-sm w-full rounded-3xl p-6 shadow-2xl relative animate-scaleIn space-y-5">
+          {cancelStatus === 'idle' && (
+            <>
+              <div className="flex items-center gap-3 border-b border-[#F3ECE0] pb-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 flex-shrink-0">
+                  <AlertTriangle size={20} />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-serif text-sm font-bold text-dark-brown">
+                    Cancel Saree
+                  </h3>
+                  <p className="text-[9px] text-dark-brown/45 font-mono font-bold uppercase tracking-wider mt-0.5 truncate">
+                    ID: {orderToCancel}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs text-dark-brown/70 leading-relaxed font-sans font-medium">
+                Are you sure you want to cancel <strong className="text-maroon font-bold font-serif">{targetItemName || 'this saree'}</strong> from this order? The total will adjust automatically.
+              </p>
+
+              <div className="flex justify-end gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCancelModal(false);
+                    setOrderToCancel(null);
+                    setOrderUuidToCancel(null);
+                    setItemToCancel(null);
+                  }}
+                  disabled={isCancelling}
+                  className="px-3.5 py-2 border border-[#F3ECE0] text-dark-brown/70 hover:bg-cream/20 rounded-xl text-[11px] font-serif font-bold uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Keep
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmCancelOrderAction}
+                  disabled={isCancelling}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[11px] font-serif font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
+                >
+                  {isCancelling ? 'Cancelling...' : 'Cancel Saree'}
+                </button>
+              </div>
+            </>
+          )}
+
+          {cancelStatus === 'success' && (
+            <>
+              <div className="flex flex-col items-center text-center py-3 space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-inner">
+                  <CheckCircle2 size={24} />
+                </div>
+                <div>
+                  <h3 className="font-serif text-base font-bold text-dark-brown">
+                    Saree Cancelled
+                  </h3>
+                  <p className="text-[9px] text-dark-brown/45 font-mono font-bold uppercase tracking-wider mt-0.5">
+                    ID: {orderToCancel}
+                  </p>
+                </div>
+                <p className="text-xs text-dark-brown/70 leading-relaxed font-sans font-medium px-2">
+                  The saree has been cancelled. Remaining items in your order remain active.
+                </p>
+              </div>
+              <div className="flex justify-center border-t border-[#F3ECE0] pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCancelModal(false);
+                    setOrderToCancel(null);
+                    setOrderUuidToCancel(null);
+                    setItemToCancel(null);
+                    setCancelStatus('idle');
+                  }}
+                  className="w-full max-w-[140px] py-2.5 bg-maroon text-[#FAF7F0] rounded-xl text-[11px] font-serif font-bold uppercase tracking-wider hover:bg-maroon-dark transition-colors cursor-pointer shadow-xs text-center"
+                >
+                  Close
+                </button>
+              </div>
+            </>
+          )}
+
+          {cancelStatus === 'error' && (
+            <>
+              <div className="flex flex-col items-center text-center py-3 space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 shadow-inner">
+                  <AlertTriangle size={24} />
+                </div>
+                <div>
+                  <h3 className="font-serif text-base font-bold text-dark-brown">Cancellation Failed</h3>
+                  <p className="text-[9px] text-dark-brown/45 font-mono font-bold uppercase tracking-wider mt-0.5">
+                    ID: {orderToCancel}
+                  </p>
+                </div>
+                <p className="text-xs text-dark-brown/70 leading-relaxed font-sans font-medium px-2">
+                  {cancelErrorMessage || 'Could not complete cancellation at this moment. Please check your connection or contact customer support.'}
+                </p>
+              </div>
+              <div className="flex justify-center border-t border-[#F3ECE0] pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCancelModal(false);
+                    setOrderToCancel(null);
+                    setOrderUuidToCancel(null);
+                    setItemToCancel(null);
+                    setCancelStatus('idle');
+                    setCancelErrorMessage(null);
+                  }}
+                  className="w-full max-w-[140px] py-2.5 bg-dark-brown text-[#FAF7F0] rounded-xl text-[11px] font-serif font-bold uppercase tracking-wider hover:bg-dark-brown/90 transition-colors cursor-pointer shadow-xs text-center"
+                >
+                  Close
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   // ═════════════════════════════════════════════════════════════════
   // VIEW A: ORDER DETAILS VIEW (Matches Image 3)
@@ -1136,10 +1280,10 @@ function AccountContent() {
                             <span>Write review</span>
                           </button>
                         )}
-                        {isCancellable && displayItems.length > 1 && (
+                        {isCancellable && (
                           <button
                             type="button"
-                            onClick={() => handleCancelOrder(activeOrder.id || activeOrder.orderId, resolved.id)}
+                            onClick={() => handleCancelOrder(activeOrder.id || activeOrder.orderId, (item as any)?.id || (item as any)?.inventory_id || resolved.id || (item as any)?.product?.id)}
                             className="text-[11px] font-semibold text-rose-700 hover:underline cursor-pointer font-sans"
                           >
                             Cancel item
@@ -1284,18 +1428,8 @@ function AccountContent() {
           <span>Need help with this order</span>
         </a>
 
-        {/* 7. CANCEL ENTIRE ORDER BUTTON (Only for placed, confirmed, and processing) */}
-        {isCancellable && (
-          <div className="text-center pt-2 pb-2">
-            <button
-              type="button"
-              onClick={() => handleCancelOrder(activeOrder.id || activeOrder.orderId)}
-              className="text-xs text-rose-700 hover:text-rose-900 font-semibold underline cursor-pointer font-sans"
-            >
-              Cancel this entire order
-            </button>
-          </div>
-        )}
+        {/* Cancel Modal (Order Details View) */}
+        {renderCancelModal()}
       </div>
     );
   }
@@ -1453,157 +1587,23 @@ function AccountContent() {
                   </div>
                 </div>
 
-                {/* Cancel Button in Order History Card (Only for placed, confirmed, and processing) */}
-                {isOrderCancellable(order.orderStatus) && (
-                  <div className="pt-2.5 mt-2 border-t border-[#F3ECE0] flex items-center justify-between">
-                    <span className="text-[11px] text-[#78716C] font-sans">
-                      Status: <strong className="text-dark-brown font-medium">{order.orderStatus}</strong>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCancelOrder(order.id || order.orderId);
-                      }}
-                      className="text-xs font-semibold text-rose-700 hover:text-rose-900 hover:underline px-2.5 py-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                    >
-                      Cancel Order
-                    </button>
-                  </div>
-                )}
+                <div className="pt-2 mt-2 border-t border-[#F3ECE0] flex items-center justify-between">
+                  <span className="text-[11px] text-[#78716C] font-sans">
+                    Status: <strong className="text-dark-brown font-medium">{order.orderStatus}</strong>
+                  </span>
+                  <span className="text-[11px] text-[#B08A3C] font-sans font-medium flex items-center gap-0.5">
+                    <span>Manage items</span>
+                    <ChevronRight size={13} />
+                  </span>
+                </div>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Cancel Modal */}
-      {showCancelModal && (
-        <div className="fixed inset-0 bg-[#0c0a09]/65 backdrop-blur-xs z-55 flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-[#FFF9F0] border border-[#B08A3C]/30 max-w-sm w-full rounded-3xl p-6 shadow-2xl relative animate-scaleIn space-y-5">
-            {cancelStatus === 'idle' && (
-              <>
-                <div className="flex items-center gap-3 border-b border-[#F3ECE0] pb-3">
-                  <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 flex-shrink-0">
-                    <AlertTriangle size={20} />
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-serif text-sm font-bold text-dark-brown">
-                      {cancelType === 'item' ? 'Cancel Saree' : 'Cancel Order'}
-                    </h3>
-                    <p className="text-[9px] text-dark-brown/45 font-mono font-bold uppercase tracking-wider mt-0.5 truncate">
-                      ID: {orderToCancel}
-                    </p>
-                  </div>
-                </div>
-
-                <p className="text-xs text-dark-brown/70 leading-relaxed font-sans font-medium">
-                  {cancelType === 'item' ? (
-                    <>Are you sure you want to cancel <strong className="text-maroon font-bold font-serif">{targetItemName}</strong> from this order? The total will adjust automatically.</>
-                  ) : (
-                    <>Are you sure you want to cancel this entire order? Reserved handloom pieces will be returned to inventory.</>
-                  )}
-                </p>
-
-                <div className="flex justify-end gap-2.5 pt-1">
-                  <button
-                    onClick={() => {
-                      setShowCancelModal(false);
-                      setOrderToCancel(null);
-                      setOrderUuidToCancel(null);
-                      setItemToCancel(null);
-                    }}
-                    disabled={isCancelling}
-                    className="px-3.5 py-2 border border-[#F3ECE0] text-dark-brown/70 hover:bg-cream/20 rounded-xl text-[11px] font-serif font-bold uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    Keep
-                  </button>
-                  <button
-                    onClick={confirmCancelOrderAction}
-                    disabled={isCancelling}
-                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[11px] font-serif font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
-                  >
-                    {isCancelling ? 'Cancelling...' : (cancelType === 'item' ? 'Cancel Item' : 'Cancel Order')}
-                  </button>
-                </div>
-              </>
-            )}
-
-            {cancelStatus === 'success' && (
-              <>
-                <div className="flex flex-col items-center text-center py-3 space-y-3">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-inner">
-                    <CheckCircle2 size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-serif text-base font-bold text-dark-brown">
-                      {cancelType === 'item' ? 'Item Cancelled' : 'Order Cancelled'}
-                    </h3>
-                    <p className="text-[9px] text-dark-brown/45 font-mono font-bold uppercase tracking-wider mt-0.5">
-                      ID: {orderToCancel}
-                    </p>
-                  </div>
-                  <p className="text-xs text-dark-brown/70 leading-relaxed font-sans font-medium px-2">
-                    {cancelType === 'item' ? (
-                      <>The saree has been cancelled. Remaining items in your order remain active.</>
-                    ) : (
-                      <>Your order has been cancelled. If any payment was made, your refund is being processed.</>
-                    )}
-                  </p>
-                </div>
-                <div className="flex justify-center border-t border-[#F3ECE0] pt-4">
-                  <button
-                    onClick={() => {
-                      setShowCancelModal(false);
-                      setOrderToCancel(null);
-                      setOrderUuidToCancel(null);
-                      setItemToCancel(null);
-                      setCancelStatus('idle');
-                    }}
-                    className="w-full max-w-[140px] py-2.5 bg-maroon text-[#FAF7F0] rounded-xl text-[11px] font-serif font-bold uppercase tracking-wider hover:bg-maroon-dark transition-colors cursor-pointer shadow-xs text-center"
-                  >
-                    Close
-                  </button>
-                </div>
-              </>
-            )}
-
-            {cancelStatus === 'error' && (
-              <>
-                <div className="flex flex-col items-center text-center py-3 space-y-3">
-                  <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 shadow-inner">
-                    <AlertTriangle size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-serif text-base font-bold text-dark-brown">Cancellation Failed</h3>
-                    <p className="text-[9px] text-dark-brown/45 font-mono font-bold uppercase tracking-wider mt-0.5">
-                      ID: {orderToCancel}
-                    </p>
-                  </div>
-                  <p className="text-xs text-dark-brown/70 leading-relaxed font-sans font-medium px-2">
-                    {cancelErrorMessage || 'Could not complete cancellation at this moment. Please check your connection or contact customer support.'}
-                  </p>
-                </div>
-                <div className="flex justify-center border-t border-[#F3ECE0] pt-4">
-                  <button
-                    onClick={() => {
-                      setShowCancelModal(false);
-                      setOrderToCancel(null);
-                      setOrderUuidToCancel(null);
-                      setItemToCancel(null);
-                      setCancelStatus('idle');
-                      setCancelErrorMessage(null);
-                    }}
-                    className="w-full max-w-[140px] py-2.5 bg-dark-brown text-[#FAF7F0] rounded-xl text-[11px] font-serif font-bold uppercase tracking-wider hover:bg-dark-brown/90 transition-colors cursor-pointer shadow-xs text-center"
-                  >
-                    Close
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Cancel Modal (Order List View) */}
+      {renderCancelModal()}
 
       {/* Review Modal */}
       {isReviewModalOpen && reviewProduct && (

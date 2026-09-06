@@ -901,6 +901,8 @@ export function mapDbOrderToOrder(orderRow: any): Order {
     };
 
     return {
+      id: item.id,
+      inventory_id: item.inventory_id,
       product,
       quantity: Number(item.quantity || 1)
     };
@@ -1523,6 +1525,49 @@ export async function cancelDbOrderItem(orderNumber: string, productId: string):
       return { success: false, cancelledEntireOrder: false };
     }
 
+    // Resolve order_item_id UUID
+    let orderItemUuid = productId;
+    const isItemUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(productId);
+    if (!isItemUuid) {
+      const { data: itemRows } = await supabase
+        .from('order_items')
+        .select('id, inventory_id, sku')
+        .eq('order_id', orderRow.id);
+      const match = itemRows?.find(r => r.id === productId || r.inventory_id === productId || r.sku === productId);
+      if (match?.id) {
+        orderItemUuid = match.id;
+      }
+    }
+
+    // 1. First attempt through cancel-order-user Edge Function (Service role bypasses RLS)
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
+      const { data: fnData, error: fnError } = await supabase.functions.invoke("cancel-order-user", {
+        body: {
+          order_id: orderRow.id,
+          order_item_id: orderItemUuid
+        },
+        headers
+      });
+
+      if (!fnError && fnData?.success) {
+        return {
+          success: true,
+          cancelledEntireOrder: !!fnData.cancelledEntireOrder,
+          newSubtotal: fnData.newSubtotal,
+          newTotal: fnData.newTotal
+        };
+      }
+    } catch (edgeErr) {
+      console.warn("Edge function cancel-order-user item cancellation attempt failed, falling back to direct DB:", edgeErr);
+    }
+
+    // 2. Direct DB fallback
     const { data: items, error: itemsFetchError } = await supabase
       .from('order_items')
       .select('*')
@@ -1538,28 +1583,33 @@ export async function cancelDbOrderItem(orderNumber: string, productId: string):
       return { success, cancelledEntireOrder: true };
     }
 
-    const targetItem = items.find(item => item.inventory_id === productId);
+    const targetItem = items.find(item => {
+      if (item.inventory_id === productId || item.id === productId || item.sku === productId) return true;
+      if (typeof item.product_snapshot === 'object' && item.product_snapshot?.id === productId) return true;
+      if (typeof item.product_snapshot === 'string' && item.product_snapshot.includes(productId)) return true;
+      return false;
+    });
+
     if (!targetItem) {
       console.error(`Item with product ID ${productId} not found in order ${orderNumber}`);
       return { success: false, cancelledEntireOrder: false };
     }
 
-    const itemTotalPrice = Number(targetItem.total_price);
+    const itemTotalPrice = Number(targetItem.total_price || (Number(targetItem.unit_price || 0) * Number(targetItem.quantity || 1)));
     const productName = targetItem.product_name;
 
     const { error: deleteError } = await supabase
       .from('order_items')
       .delete()
-      .eq('order_id', orderRow.id)
-      .eq('inventory_id', productId);
+      .eq('id', targetItem.id);
 
     if (deleteError) {
       console.error('Error deleting order item:', deleteError);
       return { success: false, cancelledEntireOrder: false };
     }
 
-    const newSubtotal = Math.max(0, Number(orderRow.subtotal) - itemTotalPrice);
-    const newTotal = Math.max(0, Number(orderRow.total_amount) - itemTotalPrice);
+    const newSubtotal = Math.max(0, Number(orderRow.subtotal || 0) - itemTotalPrice);
+    const newTotal = Math.max(0, Number(orderRow.total_amount || 0) - itemTotalPrice);
 
     const { error: updateError } = await supabase
       .from('orders')
@@ -1572,7 +1622,6 @@ export async function cancelDbOrderItem(orderNumber: string, productId: string):
 
     if (updateError) {
       console.error('Error updating order totals:', updateError);
-      return { success: false, cancelledEntireOrder: false };
     }
 
     const { error: historyError } = await supabase
@@ -1580,7 +1629,7 @@ export async function cancelDbOrderItem(orderNumber: string, productId: string):
       .insert({
         order_id: orderRow.id,
         status: 'item_cancelled',
-        note: `Cancelled "${productName}" (Qty ${targetItem.quantity}) from order`
+        note: `Cancelled "${productName}" (Qty ${targetItem.quantity || 1}) from order`
       });
 
     if (historyError) {

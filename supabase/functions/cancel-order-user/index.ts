@@ -87,43 +87,98 @@ serve(async (req) => {
       );
     }
 
-    // 2. Update order status to 'cancelled' (Service Role bypasses RLS)
-    const { error: updateErr } = await supabase
-      .from("orders")
-      .update({
-        order_status: "cancelled",
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", order.id);
-
-    if (updateErr) {
-      console.error("Failed to update order status:", updateErr);
+    // Strict payload: require order_item_id
+    const order_item_id = body.order_item_id || body.item_id;
+    if (!order_item_id || typeof order_item_id !== "string") {
       return new Response(
-        JSON.stringify({ error: "Failed to update order status: " + updateErr.message }),
+        JSON.stringify({ error: "Missing required field: order_item_id. Only item-by-item cancellation is supported." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 2. Fetch items belonging to this order
+    const { data: orderItems, error: itemsErr } = await supabase
+      .from("order_items")
+      .select("*")
+      .eq("order_id", order.id);
+
+    if (itemsErr || !orderItems || orderItems.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Could not fetch items for order" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // 3. Record status history entry
-    const { error: historyErr } = await supabase
+    // Find the specific item to cancel
+    const targetItem = orderItems.find((item: any) => {
+      if (item.id === order_item_id) return true;
+      if (item.inventory_id === order_item_id) return true;
+      if (item.sku === order_item_id) return true;
+      if (typeof item.product_snapshot === "object" && item.product_snapshot?.id === order_item_id) return true;
+      return false;
+    });
+
+    if (!targetItem) {
+      return new Response(
+        JSON.stringify({ error: `Item ${order_item_id} not found in order ${order.order_number}` }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Delete the item from order_items
+    const { error: deleteItemErr } = await supabase
+      .from("order_items")
+      .delete()
+      .eq("id", targetItem.id);
+
+    if (deleteItemErr) {
+      console.error("Failed to delete order item:", deleteItemErr);
+      return new Response(
+        JSON.stringify({ error: "Failed to cancel item: " + deleteItemErr.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // If this was the last remaining item, also update order status to cancelled
+    const remainingCount = orderItems.length - 1;
+    const isEntireOrderCancelled = remainingCount <= 0;
+
+    // Recalculate totals
+    const itemPrice = Number(targetItem.total_price || (Number(targetItem.unit_price || 0) * Number(targetItem.quantity || 1)));
+    const newSubtotal = Math.max(0, Number(order.subtotal || 0) - itemPrice);
+    const newTotal = Math.max(0, Number(order.total_amount || 0) - itemPrice);
+
+    await supabase
+      .from("orders")
+      .update({
+        subtotal: newSubtotal,
+        total_amount: newTotal,
+        order_status: isEntireOrderCancelled ? "cancelled" : order.order_status,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", order.id);
+
+    // Record status history
+    await supabase
       .from("order_status_history")
       .insert({
         order_id: order.id,
-        status: "cancelled",
-        note: body.note || body.reason || "Order cancelled by customer"
+        status: isEntireOrderCancelled ? "cancelled" : "item_cancelled",
+        note: isEntireOrderCancelled
+          ? `Cancelled "${targetItem.product_name}" (all items cancelled; order cancelled)`
+          : `Cancelled "${targetItem.product_name}" from order`
       });
-
-    if (historyErr) {
-      console.warn("Could not insert order status history entry:", historyErr);
-    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Order cancelled successfully",
+        cancelledEntireOrder: isEntireOrderCancelled,
+        newSubtotal,
+        newTotal,
+        message: `Cancelled "${targetItem.product_name}" successfully`,
         order_id: order.order_number,
         id: order.id,
-        status: "cancelled"
+        status: isEntireOrderCancelled ? "cancelled" : order.order_status
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
