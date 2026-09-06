@@ -706,6 +706,7 @@ export async function createDbOrder(orderData: {
     }
 
     const finalOrder: Order = {
+      id: orderIdUuid,
       orderId: orderNumber,
       customer: orderData.customer,
       items: orderData.items,
@@ -762,50 +763,163 @@ export async function fetchDbOrders(userId: string): Promise<Order[]> {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (ordersError || !ordersData) {
-      console.error('Error fetching orders:', ordersError);
+    if (ordersError || !ordersData || ordersData.length === 0) {
+      if (ordersError) console.error('Error fetching orders:', ordersError);
       return [];
     }
 
-    const resolvedOrders: Order[] = [];
+    const orderIds = ordersData.map((o: any) => o.id);
 
-    for (const orderRow of ordersData) {
-      const { data: itemsData, error: itemsError } = await supabase
+    // 1. Fetch all order items and status histories in parallel
+    const [itemsResult, historyResult] = await Promise.all([
+      supabase
         .from('order_items')
         .select('*')
-        .eq('order_id', orderRow.id);
+        .in('order_id', orderIds),
+      supabase
+        .from('order_status_history')
+        .select('*')
+        .in('order_id', orderIds)
+        .order('created_at', { ascending: true })
+    ]);
 
-      if (itemsError || !itemsData) {
-        console.error(`Error fetching items for order ${orderRow.id}:`, itemsError);
-        continue;
+    const allItems = itemsResult.data || [];
+    const allHistory = historyResult.data || [];
+
+    // Group items and history by order_id
+    const itemsByOrderId: Record<string, any[]> = {};
+    const historyByOrderId: Record<string, OrderStatusHistoryEntry[]> = {};
+
+    allItems.forEach((it: any) => {
+      if (!itemsByOrderId[it.order_id]) itemsByOrderId[it.order_id] = [];
+      itemsByOrderId[it.order_id].push(it);
+    });
+
+    allHistory.forEach((h: any) => {
+      if (!historyByOrderId[h.order_id]) historyByOrderId[h.order_id] = [];
+      historyByOrderId[h.order_id].push({
+        id: h.id,
+        orderId: h.order_id,
+        status: h.status,
+        note: h.note,
+        createdAt: h.created_at
+      });
+    });
+
+    // 2. Collect all inventory IDs across all order items
+    const inventoryIds = Array.from(
+      new Set(
+        allItems
+          .map((i: any) => i.inventory_id)
+          .filter(Boolean)
+      )
+    );
+
+    // 3. Hydrate product catalog data from storefront_products (SECURITY DEFINER view) and inventory_images
+    const storefrontProductMap: Record<string, any> = {};
+    const inventoryImageMap: Record<string, string[]> = {};
+
+    if (inventoryIds.length > 0) {
+      try {
+        const [sfRes, imgRes] = await Promise.all([
+          supabase
+            .from('storefront_products')
+            .select('id, saree_name, category, fabric, color, selling_price, mrp, sku, description')
+            .in('id', inventoryIds),
+          supabase
+            .from('inventory_images')
+            .select('inventory_id, image_url, is_primary, sort_order')
+            .in('inventory_id', inventoryIds)
+        ]);
+
+        if (sfRes.data && sfRes.data.length > 0) {
+          sfRes.data.forEach((prod: any) => {
+            storefrontProductMap[prod.id] = prod;
+          });
+        }
+
+        if (imgRes.data && imgRes.data.length > 0) {
+          const sortedImgs = [...imgRes.data].sort((a, b) => {
+            if (a.is_primary && !b.is_primary) return -1;
+            if (!a.is_primary && b.is_primary) return 1;
+            return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+          });
+          sortedImgs.forEach((img: any) => {
+            if (!inventoryImageMap[img.inventory_id]) {
+              inventoryImageMap[img.inventory_id] = [];
+            }
+            inventoryImageMap[img.inventory_id].push(img.image_url);
+          });
+        }
+      } catch (e) {
+        console.warn('Could not load storefront products or images for orders:', e);
       }
+    }
 
-      const items = itemsData.map(item => {
-        const productSnapshot = item.product_snapshot as any;
-        const product: Product = productSnapshot || {
-          id: item.inventory_id,
-          sku: item.sku || '',
-          name: item.product_name,
-          slug: getProductSlug(item.product_name, item.inventory_id),
-          description: '',
-          category: 'Banarasi',
-          fabric: '',
-          color: '',
-          occasion: 'Festive',
-          price: Number(item.unit_price),
-          images: [NO_IMAGE_PLACEHOLDER],
-          stock: 0,
-          rating: 0,
-          reviewsCount: 0,
-          length: '5.5 meters',
-          blousePiece: '0.8 meters',
-          work: '',
-          care: ''
+    // 4. Map each order and hydrate items
+    const resolvedOrders: Order[] = ordersData.map((orderRow: any) => {
+      const orderItems = itemsByOrderId[orderRow.id] || [];
+
+      const items = orderItems.map((item: any) => {
+        let productSnapshot = item.product_snapshot as any;
+        if (typeof productSnapshot === 'string') {
+          try {
+            productSnapshot = JSON.parse(productSnapshot);
+          } catch (e) {
+            productSnapshot = null;
+          }
+        }
+
+        const sfProduct = item.inventory_id ? storefrontProductMap[item.inventory_id] : null;
+
+        const invImages = item.inventory_id && inventoryImageMap[item.inventory_id]?.length
+          ? inventoryImageMap[item.inventory_id]
+          : [];
+
+        const snapshotImages = Array.isArray(productSnapshot?.images)
+          ? productSnapshot.images.filter((img: string) => img && !img.includes('NO_IMAGE_AVAILABLE'))
+          : productSnapshot?.image
+            ? [productSnapshot.image]
+            : [];
+
+        const resolvedImages = snapshotImages.length > 0
+          ? snapshotImages
+          : invImages.length > 0
+            ? invImages
+            : [NO_IMAGE_PLACEHOLDER];
+
+        const productName = 
+          productSnapshot?.name || 
+          productSnapshot?.saree_name || 
+          sfProduct?.saree_name ||
+          item.product_name || 
+          'Pure Silk Banarasi Saree';
+
+        const product: Product = {
+          id: item.inventory_id || productSnapshot?.id || sfProduct?.id || '',
+          sku: item.sku || productSnapshot?.sku || sfProduct?.sku || (item.inventory_id ? `SBS-${item.inventory_id}` : 'SBS-SAREE'),
+          name: productName,
+          slug: getProductSlug(productName, item.inventory_id || 'item'),
+          description: productSnapshot?.description || sfProduct?.description || '',
+          category: productSnapshot?.category || sfProduct?.category || 'Banarasi',
+          fabric: productSnapshot?.fabric || sfProduct?.fabric || 'Silk',
+          color: productSnapshot?.color || sfProduct?.color || '',
+          occasion: productSnapshot?.occasion || 'Festive',
+          price: Number(item.unit_price || productSnapshot?.price || sfProduct?.selling_price || 0),
+          salePrice: productSnapshot?.salePrice ? Number(productSnapshot.salePrice) : (sfProduct?.mrp ? Number(sfProduct.selling_price) : undefined),
+          images: resolvedImages,
+          stock: productSnapshot?.stock || 0,
+          rating: productSnapshot?.rating || 0,
+          reviewsCount: productSnapshot?.reviewsCount || 0,
+          length: productSnapshot?.length || '5.5 meters',
+          blousePiece: productSnapshot?.blousePiece || '0.8 meters',
+          work: productSnapshot?.work || '',
+          care: productSnapshot?.care || ''
         };
 
         return {
           product,
-          quantity: item.quantity
+          quantity: Number(item.quantity || 1)
         };
       });
 
@@ -830,51 +944,45 @@ export async function fetchDbOrders(userId: string): Promise<Order[]> {
         paymentMethod = 'Cash on Delivery';
       }
 
-      // Fetch status history from supabase
-      const { data: historyData, error: historyError } = await supabase
-        .from('order_status_history')
-        .select('*')
-        .eq('order_id', orderRow.id)
-        .order('created_at', { ascending: true });
-
-      const statusHistory: OrderStatusHistoryEntry[] = [];
-      if (historyData && !historyError) {
-        historyData.forEach((h: any) => {
-          statusHistory.push({
-            id: h.id,
-            orderId: h.order_id,
-            status: h.status,
-            note: h.note,
-            createdAt: h.created_at
-          });
-        });
-      }
-
-      if (statusHistory.length === 0) {
-        statusHistory.push({
+      const statusHistory = historyByOrderId[orderRow.id] || [
+        {
           id: 'initial',
           orderId: orderRow.id,
           status: orderRow.order_status || 'placed',
           note: 'Order placed successfully by customer on storefront',
           createdAt: orderRow.created_at
-        });
-      }
+        }
+      ];
 
-      resolvedOrders.push({
+      return {
+        id: orderRow.id,
         orderId: orderRow.order_number,
-        customer: orderRow.shipping_address as any,
+        customer: {
+          name: orderRow.customer_name || (orderRow.shipping_address as any)?.name || '',
+          phone: orderRow.customer_phone || (orderRow.shipping_address as any)?.phone || '',
+          email: orderRow.customer_email || (orderRow.shipping_address as any)?.email || '',
+          address: (orderRow.shipping_address as any)?.address || '',
+          city: (orderRow.shipping_address as any)?.city || '',
+          state: (orderRow.shipping_address as any)?.state || '',
+          pinCode: (orderRow.shipping_address as any)?.pinCode || (orderRow.shipping_address as any)?.pincode || '',
+          deliveryMethod: (orderRow.shipping_address as any)?.deliveryMethod || 'Home Delivery'
+        },
         items,
-        subtotal: Number(orderRow.subtotal),
-        discount: Number(orderRow.discount),
-        shipping: Number(orderRow.shipping_fee),
-        total: Number(orderRow.total_amount),
+        subtotal: Number(orderRow.subtotal || 0),
+        discount: Number(orderRow.discount || 0),
+        shipping: Number(orderRow.shipping_fee || 0),
+        total: Number(orderRow.total_amount || 0),
         paymentMethod,
         paymentStatus,
         orderStatus,
         createdAt: orderRow.created_at,
-        statusHistory
-      });
-    }
+        statusHistory,
+        is_gift: orderRow.is_gift,
+        gift_recipient_name: orderRow.gift_recipient_name,
+        gift_message: orderRow.gift_message,
+        gift_wrap_charge: orderRow.gift_wrap_charge
+      };
+    });
 
     return resolvedOrders;
   } catch (err) {
@@ -1771,22 +1879,71 @@ export async function fetchOrderDetailsForReview(orderIdOrNumber: string): Promi
     }
 
     const reviewsList = existingReviews || [];
+    const orderItems = orderRow.order_items || [];
+    const inventoryIds = Array.from(
+      new Set(orderItems.map((i: any) => i.inventory_id).filter(Boolean))
+    );
 
-    const items: OrderReviewItem[] = (orderRow.order_items || []).map((item: any) => {
-      const snap = item.product_snapshot || {};
-      const prodId = item.inventory_id || snap.id || '';
+    let storefrontProductMap: Record<string, any> = {};
+    let inventoryImageMap: Record<string, string[]> = {};
+
+    if (inventoryIds.length > 0) {
+      try {
+        const [sfRes, imgRes] = await Promise.all([
+          supabase
+            .from('storefront_products')
+            .select('id, saree_name, category, fabric, color, selling_price, mrp, sku, description')
+            .in('id', inventoryIds),
+          supabase
+            .from('inventory_images')
+            .select('inventory_id, image_url, is_primary, sort_order')
+            .in('inventory_id', inventoryIds)
+        ]);
+
+        if (sfRes.data) {
+          sfRes.data.forEach((p: any) => { storefrontProductMap[p.id] = p; });
+        }
+        if (imgRes.data) {
+          const sortedImgs = [...imgRes.data].sort((a, b) => {
+            if (a.is_primary && !b.is_primary) return -1;
+            if (!a.is_primary && b.is_primary) return 1;
+            return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+          });
+          sortedImgs.forEach((img: any) => {
+            if (!inventoryImageMap[img.inventory_id]) inventoryImageMap[img.inventory_id] = [];
+            inventoryImageMap[img.inventory_id].push(img.image_url);
+          });
+        }
+      } catch (e) {
+        console.warn('Could not load storefront products for review order:', e);
+      }
+    }
+
+    const items: OrderReviewItem[] = orderItems.map((item: any) => {
+      let snap = item.product_snapshot || {};
+      if (typeof snap === 'string') {
+        try { snap = JSON.parse(snap); } catch (e) { snap = {}; }
+      }
+      const sfProd = item.inventory_id ? storefrontProductMap[item.inventory_id] : null;
+      const invImgs = item.inventory_id && inventoryImageMap[item.inventory_id]?.length
+        ? inventoryImageMap[item.inventory_id]
+        : [];
+      const prodId = item.inventory_id || snap.id || sfProd?.id || '';
 
       const existingReviewObj = reviewsList.find((r: any) => r.product_id === prodId || (snap.id && r.product_id === snap.id));
 
+      const snapImages = Array.isArray(snap.images) ? snap.images : snap.image ? [snap.image] : [];
+      const resolvedImage = (snapImages.find((img: string) => img && !img.includes('NO_IMAGE_AVAILABLE'))) || invImgs[0] || NO_IMAGE_PLACEHOLDER;
+
       return {
         productId: prodId,
-        sku: item.sku || snap.sku || '',
-        name: item.product_name || snap.name || 'Banarasi Saree',
-        fabric: snap.fabric || 'Silk',
-        color: snap.color || '',
-        price: Number(item.unit_price || snap.price || 0),
-        image: snap.images?.[0] || NO_IMAGE_PLACEHOLDER,
-        quantity: item.quantity || 1,
+        sku: item.sku || snap.sku || sfProd?.sku || (item.inventory_id ? `SBS-${item.inventory_id}` : 'SBS-SAREE'),
+        name: snap.name || snap.saree_name || sfProd?.saree_name || item.product_name || 'Banarasi Saree',
+        fabric: snap.fabric || sfProd?.fabric || 'Silk',
+        color: snap.color || sfProd?.color || '',
+        price: Number(item.unit_price || snap.price || sfProd?.selling_price || 0),
+        image: resolvedImage,
+        quantity: Number(item.quantity || 1),
         existingReview: existingReviewObj ? {
           id: existingReviewObj.id,
           rating: Number(existingReviewObj.rating),
@@ -1843,5 +2000,51 @@ export async function recordPwaInstall(platform?: string): Promise<boolean> {
   }
 }
 
+/**
+ * Fetch detailed order items for an order by UUID or order number
+ */
+export async function fetchOrderItems(orderId: string) {
+  if (!orderId || !orderId.trim()) return [];
+  const target = orderId.trim();
 
+  try {
+    let resolvedOrderId = target;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target);
+    if (!isUuid) {
+      const { data: orderRow } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('order_number', target)
+        .maybeSingle();
+      if (orderRow?.id) {
+        resolvedOrderId = orderRow.id;
+      }
+    }
 
+    const { data, error } = await supabase
+      .from("order_items")
+      .select(`
+        id,
+        order_id,
+        inventory_id,
+        product_name,
+        sku,
+        barcode,
+        quantity,
+        unit_price,
+        total_price,
+        product_snapshot
+      `)
+      .eq("order_id", resolvedOrderId);
+
+    if (error) {
+      console.error('Error fetching order items:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (err) {
+    console.error('Exception fetching order items:', err);
+    return [];
+  }
+}

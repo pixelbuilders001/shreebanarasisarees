@@ -1,136 +1,213 @@
 "use client";
 
-import React, { Suspense } from 'react';
+import React from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useStore } from '../../../context/StoreContext';
-import { FileText, MessageCircle, Calendar, Sparkles, AlertCircle } from 'lucide-react';
+import {
+  ChevronLeft,
+  Sparkles,
+  Calendar,
+  MessageCircle
+} from 'lucide-react';
+import { CustomizationsTabSkeleton } from '../../../components/TabSkeletons';
 
-function CustomizationsContent() {
-  const { customRequests, user } = useStore();
+function getStatusBadgeStyle(status: string): string {
+  const s = status?.toLowerCase() || '';
+  if (s === 'completed') {
+    return 'bg-emerald-50 text-emerald-800 border-emerald-200/80';
+  }
+  if (s === 'contacted') {
+    return 'bg-sky-50 text-sky-800 border-sky-200/80';
+  }
+  if (s.includes('progress')) {
+    return 'bg-purple-50 text-purple-800 border-purple-200/80';
+  }
+  // Pending / default
+  return 'bg-amber-50 text-amber-800 border-amber-200/80';
+}
 
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'pending':
-        return 'bg-amber-50 text-amber-800 border-amber-200';
-      case 'contacted':
-        return 'bg-blue-50 text-blue-800 border-blue-200';
-      case 'in progress':
-      case 'in_progress':
-        return 'bg-purple-50 text-purple-800 border-purple-200';
-      case 'completed':
-        return 'bg-emerald-50 text-emerald-800 border-emerald-200';
-      default:
-        return 'bg-cream text-dark-brown/70 border-cream';
+export default function CustomizationsPage() {
+  const router = useRouter();
+  const { customRequests, user, isHydrated, setIsAuthModalOpen } = useStore();
+
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/account');
     }
   };
 
+  // 1. Loading / Hydration skeleton state (scoped to tab content area only)
+  if (!isHydrated) {
+    return <CustomizationsTabSkeleton />;
+  }
+
+  // 2. Unauthenticated view
   if (!user) {
     return (
-      <div className="bg-white p-8 rounded-2xl border border-cream shadow-sm text-center text-xs text-dark-brown/50 italic py-16">
-        Please log in to view your customization requests.
+      <div className="bg-white rounded-xl sm:rounded-2xl p-8 border border-[#E7DFC9] text-center max-w-md mx-auto shadow-2xs space-y-4 animate-fadeIn">
+        <div className="w-14 h-14 rounded-full bg-[#FAF8F5] border border-[#D4C39D] flex items-center justify-center mx-auto text-[#6B1725]">
+          <Sparkles size={24} className="text-[#A17A32]" />
+        </div>
+        <h3 className="font-serif font-bold text-lg text-[#1C1917]">Sign in to view customizations</h3>
+        <p className="text-xs text-[#57534E] leading-relaxed font-sans">
+          Access your bespoke saree customization requests, status updates, and artisan discussions.
+        </p>
+        <button
+          type="button"
+          onClick={() => setIsAuthModalOpen(true)}
+          className="py-2.5 px-6 bg-[#601221] hover:bg-[#4E0E1A] text-white rounded-full font-sans font-medium text-xs transition-all active:scale-95 cursor-pointer shadow-xs"
+        >
+          Sign In with Google
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl space-y-6 animate-fadeIn mx-auto w-full">
-      <div className="flex justify-between items-center border-b border-cream pb-3 bg-white p-4 rounded-2xl border border-cream shadow-sm">
-        <h2 className="font-serif text-lg font-bold text-dark-brown flex items-center gap-2">
-          <FileText size={18} className="text-maroon animate-pulse" />
-          My Customizations ({customRequests.length})
+    <div className="w-full space-y-4 animate-fadeIn min-w-0">
+      {/* Section Header */}
+      <div className="flex items-center justify-between bg-white p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-[#E7DFC9] shadow-2xs">
+        <h2 className="font-serif text-base sm:text-lg font-bold text-[#1C1917] flex items-center gap-2">
+          <Sparkles size={18} className="text-[#6B1725]" />
+          <span>Bespoke Customizations ({customRequests.length})</span>
         </h2>
       </div>
+        {customRequests.length === 0 ? (
+          /* Empty State */
+          <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] py-8 text-center animate-fadeIn">
+            <div className="w-16 h-16 rounded-full border border-[#D4C39D] bg-transparent flex items-center justify-center mx-auto mb-5 shrink-0">
+              <Sparkles size={22} className="text-[#A17A32] stroke-[1.5]" />
+            </div>
+            <h2 className="font-serif text-2xl sm:text-3xl text-[#1C1917] font-normal tracking-tight mb-2.5 text-center">
+              No custom requests
+            </h2>
+            <p className="font-sans text-xs sm:text-sm text-[#57534E] max-w-[280px] mx-auto text-center leading-relaxed font-normal mb-7">
+              Have a dream saree crafted for your wedding or special occasion with our master weavers in Varanasi.
+            </p>
+            <Link
+              href="/sarees"
+              className="py-3 px-8 bg-[#601221] hover:bg-[#4E0E1A] text-white rounded-full font-sans font-medium text-sm transition-all active:scale-95 cursor-pointer shadow-xs inline-block"
+            >
+              Explore Sarees
+            </Link>
+          </div>
+        ) : (
+          /* Custom Requests List */
+          <div className="space-y-3.5 animate-fadeIn">
+            {customRequests.map((req) => {
+              const date = new Date(req.createdAt);
+              const formattedDate = !isNaN(date.getTime())
+                ? date.toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                  })
+                : 'Recently';
 
-      {customRequests.length === 0 ? (
-        <div className="bg-white p-12 rounded-2xl border border-cream shadow-sm text-center text-xs text-dark-brown/50 italic py-16 flex flex-col items-center justify-center space-y-3">
-          <Sparkles size={32} className="text-cream/80" />
-          <span>No customization requests submitted yet.</span>
-          <p className="text-[11px] text-dark-brown/40 max-w-xs leading-relaxed font-semibold">
-            Want a saree designed specifically for your special occasion? Fill out the customization form on our collections page.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {customRequests.map((req) => {
-            const date = new Date(req.createdAt);
-            const formattedDate = date.toLocaleDateString('en-IN', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric'
-            });
+              const statusStyle = getStatusBadgeStyle(req.status);
 
-            return (
-              <div 
-                key={req.id} 
-                className="bg-white border border-cream rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between gap-4"
-              >
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center border-b border-cream/40 pb-2.5">
-                    <div>
-                      <span className="font-serif font-bold text-maroon text-base">{req.sareeType}</span>
-                      <div className="flex items-center gap-1 text-[10px] text-dark-brown/40 mt-0.5">
-                        <Calendar size={11} />
+              return (
+                <div
+                  key={req.id}
+                  className="bg-white rounded-xl p-4 sm:p-5 border border-[#E7DFC9] shadow-2xs space-y-3.5 transition-all"
+                >
+                  {/* Top Row: Saree Type + Status Badge */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="font-serif font-bold text-base sm:text-lg text-[#1C1917] truncate">
+                        {req.sareeType || 'Bespoke Saree'}
+                      </h2>
+                      <div className="flex items-center gap-1.5 text-xs text-[#78716C] mt-1 font-sans">
+                        <Calendar size={13} className="text-[#A8A29E] shrink-0" />
                         <span>Submitted on {formattedDate}</span>
                       </div>
                     </div>
-                    <span className={`px-2.5 py-0.5 border rounded-full text-[9px] font-bold uppercase tracking-wider ${getStatusColor(req.status)}`}>
-                      {req.status}
+                    <span className={`px-2.5 py-0.5 border rounded-md text-[11px] font-semibold font-sans shrink-0 ${statusStyle}`}>
+                      {req.status || 'Pending'}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs font-semibold text-dark-brown/85">
-                    <div>
-                      <span className="text-[9px] text-dark-brown/45 block uppercase font-bold tracking-wider">Fabric</span>
-                      <span className="text-dark-brown leading-none">{req.fabric}</span>
+                  {/* Optional Saree Reference Image */}
+                  {req.image && (
+                    <div className="rounded-lg overflow-hidden border border-[#E7DFC9] max-h-48 bg-[#FAF8F5]">
+                      <img
+                        src={req.image}
+                        alt={req.sareeType}
+                        className="w-full h-full object-cover max-h-48"
+                      />
                     </div>
-                    <div>
-                      <span className="text-[9px] text-dark-brown/45 block uppercase font-bold tracking-wider">Color Preferred</span>
-                      <span className="text-dark-brown leading-none">{req.color}</span>
+                  )}
+
+                  <div className="border-t border-[#EFEBE4]" />
+
+                  {/* 4 Attributes Grid */}
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs">
+                    <div className="min-w-0">
+                      <span className="text-[11px] text-[#78716C] font-sans block">Fabric</span>
+                      <span className="font-medium text-[#1C1917] font-sans block truncate mt-0.5">
+                        {req.fabric || 'Pure Katan Silk'}
+                      </span>
                     </div>
-                    <div>
-                      <span className="text-[9px] text-dark-brown/45 block uppercase font-bold tracking-wider">Budget Target</span>
-                      <span className="text-maroon leading-none">{req.budget}</span>
+                    <div className="min-w-0">
+                      <span className="text-[11px] text-[#78716C] font-sans block">Color Preferred</span>
+                      <span className="font-medium text-[#1C1917] font-sans block truncate mt-0.5">
+                        {req.color || 'Custom'}
+                      </span>
                     </div>
-                    <div>
-                      <span className="text-[9px] text-dark-brown/45 block uppercase font-bold tracking-wider">Occasion</span>
-                      <span className="text-dark-brown leading-none">{req.occasion || 'Wedding / Special'}</span>
+                    <div className="min-w-0">
+                      <span className="text-[11px] text-[#78716C] font-sans block">Budget Target</span>
+                      <span className="font-semibold text-[#6B1725] font-serif block truncate mt-0.5">
+                        {req.budget || 'Flexible'}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[11px] text-[#78716C] font-sans block">Occasion</span>
+                      <span className="font-medium text-[#1C1917] font-sans block truncate mt-0.5">
+                        {req.occasion || 'Wedding / Special'}
+                      </span>
                     </div>
                   </div>
 
+                  {/* Special Instructions Note */}
                   {req.requirements && (
-                    <div className="pt-2 border-t border-cream/35">
-                      <span className="text-[9px] text-dark-brown/45 block uppercase font-bold tracking-wider">Special Requirements</span>
-                      <p className="text-[11px] text-dark-brown/70 leading-relaxed italic mt-0.5">
-                        &ldquo;{req.requirements}&rdquo;
-                      </p>
-                    </div>
+                    <>
+                      <div className="border-t border-[#EFEBE4]" />
+                      <div>
+                        <span className="text-[11px] text-[#78716C] font-sans block">Special Instructions</span>
+                        <div className="bg-[#FAF8F5] p-2.5 sm:p-3 rounded-xl border border-[#EAE2D2] mt-1">
+                          <p className="text-xs text-[#57534E] leading-relaxed font-sans italic">
+                            &ldquo;{req.requirements}&rdquo;
+                          </p>
+                        </div>
+                      </div>
+                    </>
                   )}
-                </div>
 
-                <div className="pt-3 border-t border-cream/50 flex justify-between items-center text-xs">
-                  <span className="text-[10px] text-dark-brown/40 font-mono font-bold uppercase tracking-wider">ID: {req.id}</span>
-                  <a
-                    href={`https://wa.me/+916203909946?text=${encodeURIComponent(`Hello, I am tracking my Saree Customization Request (ID: ${req.id}, Type: ${req.sareeType})`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="py-1.5 px-3 bg-[#25D366] hover:bg-[#20ba5a] text-white font-serif font-bold rounded-xl text-[10px] flex items-center gap-1.5 shadow-sm active:scale-[0.98] transition-all"
-                  >
-                    <MessageCircle size={12} className="fill-current" />
-                    Chat with Expert
-                  </a>
+                  <div className="border-t border-[#EFEBE4]" />
+
+                  {/* Footer: ID + WhatsApp Chat CTA */}
+                  <div className="flex items-center justify-between gap-3 pt-0.5">
+                    <span className="text-[11px] text-[#78716C] font-mono truncate">
+                      ID: {req.id}
+                    </span>
+                    <a
+                      href={`https://wa.me/+916203909946?text=${encodeURIComponent(`Hello, I am inquiring about my Bespoke Saree Request (ID: ${req.id}, Type: ${req.sareeType})`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-1.5 px-3.5 bg-[#25D366] hover:bg-[#20ba5a] text-white font-sans font-medium rounded-full text-xs flex items-center gap-1.5 shadow-2xs active:scale-95 transition-all shrink-0 cursor-pointer"
+                    >
+                      <MessageCircle size={13} className="fill-current" />
+                      <span>Chat with Expert</span>
+                    </a>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
     </div>
-  );
-}
-
-export default function CustomizationsPage() {
-  return (
-    <Suspense fallback={<div className="p-12 text-center text-xs text-dark-brown/50 italic animate-pulse">Loading customization requests...</div>}>
-      <CustomizationsContent />
-    </Suspense>
   );
 }

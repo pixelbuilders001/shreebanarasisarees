@@ -41,7 +41,7 @@ export const MobileBottomNav: React.FC = () => {
           }`}
         >
           <Grid size={20} className={pathname.startsWith('/sarees') ? 'text-[#6B1725] stroke-[2.5]' : ''} />
-          <span className="text-[10px] font-sans mt-1 tracking-tight">Shop</span>
+          <span className="text-[10px] font-sans mt-1 tracking-tight">Sarees</span>
         </Link>
 
         {/* Wishlist */}
@@ -60,6 +60,24 @@ export const MobileBottomNav: React.FC = () => {
             )}
           </div>
           <span className="text-[10px] font-sans mt-1 tracking-tight">Wishlist</span>
+        </Link>
+
+        {/* Cart Page */}
+        <Link
+          href="/cart"
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all relative ${
+            pathname === '/cart' ? 'text-[#6B1725] font-bold scale-105' : 'text-[#6B625D] hover:text-[#6B1725]'
+          }`}
+        >
+          <div className="relative">
+            <ShoppingBag size={20} className={pathname === '/cart' ? 'text-[#6B1725] stroke-[2.5]' : ''} />
+            {cartCount > 0 && (
+              <span className="absolute -top-1.5 -right-2 bg-[#6B1725] text-[#FAF7F0] text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[#FAF7F0]">
+                {cartCount}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] font-sans mt-1 tracking-tight">Cart</span>
         </Link>
 
         {/* Account / Profile */}
@@ -93,24 +111,6 @@ export const MobileBottomNav: React.FC = () => {
             <span className="text-[10px] font-sans mt-1 tracking-tight">Account</span>
           </button>
         )}
-
-        {/* Cart Page */}
-        <Link
-          href="/cart"
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all relative ${
-            pathname === '/cart' ? 'text-[#6B1725] font-bold scale-105' : 'text-[#6B625D] hover:text-[#6B1725]'
-          }`}
-        >
-          <div className="relative">
-            <ShoppingBag size={20} className={pathname === '/cart' ? 'text-[#6B1725] stroke-[2.5]' : ''} />
-            {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-2 bg-[#6B1725] text-[#FAF7F0] text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[#FAF7F0]">
-                {cartCount}
-              </span>
-            )}
-          </div>
-          <span className="text-[10px] font-sans mt-1 tracking-tight">Cart</span>
-        </Link>
       </div>
     </nav>
   );

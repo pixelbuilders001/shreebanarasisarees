@@ -54,6 +54,7 @@ export interface OrderStatusHistoryEntry {
 }
 
 export interface Order {
+  id?: string;
   orderId: string;
   customer: {
     name: string;

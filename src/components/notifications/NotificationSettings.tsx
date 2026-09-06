@@ -84,33 +84,33 @@ export default function NotificationSettings() {
   }
 
   return (
-    <div className="border-t border-cream/40 pt-5 mt-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h4 className="text-xs font-bold text-dark-brown/70 uppercase tracking-wider flex items-center gap-1.5">
-            <Bell size={14} className="text-maroon" />
-            Push Notifications
+    <div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="space-y-1 min-w-0 flex-1">
+          <h4 className="text-sm font-semibold text-[#1C1917] flex items-center gap-2 font-sans">
+            <Bell size={15} className="text-[#6B1725] shrink-0" />
+            <span>Push Notifications</span>
           </h4>
-          <p className="text-[11px] text-dark-brown/60 leading-relaxed font-sans max-w-md">
-            Receive order updates, new arrivals, and important notifications.
+          <p className="text-xs text-[#78716C] leading-relaxed font-sans">
+            Receive order updates, dispatch alerts, and exclusive offers directly on your device.
           </p>
         </div>
-        <div className="flex items-center min-h-[24px]">
+        <div className="flex items-center shrink-0">
           {!supported ? (
-            <span className="text-[10px] font-semibold text-red-650 bg-red-50/70 border border-red-150 rounded-lg px-2.5 py-1">
-              Push notifications aren't supported on this browser.
+            <span className="text-[11px] font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1 font-sans">
+              Not supported
             </span>
           ) : permission === 'denied' ? (
-            <span className="text-[10px] font-semibold text-red-650 bg-red-50/70 border border-red-150 rounded-lg px-2.5 py-1">
-              Notifications are blocked in your browser settings.
+            <span className="text-[11px] font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1 font-sans">
+              Blocked in browser
             </span>
           ) : (
             <button
               type="button"
               onClick={handleToggle}
               disabled={loading}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                enabled ? 'bg-maroon' : 'bg-gray-200'
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                enabled ? 'bg-[#6B1725]' : 'bg-[#E5DEC9]'
               } ${loading ? 'opacity-55 cursor-not-allowed' : ''}`}
               role="switch"
               aria-checked={enabled}

@@ -88,6 +88,11 @@ export default function RouteTransitionLoader() {
           return;
         }
 
+        // Ignore any transitions to or within /account routes
+        if (targetUrl.pathname.startsWith('/account') || currentUrl.pathname.startsWith('/account')) {
+          return;
+        }
+
         setIsLoading(true);
       } catch (err) {
         // Ignore invalid URLs
@@ -104,6 +109,13 @@ export default function RouteTransitionLoader() {
         try {
           const targetUrl = new URL(url.toString(), window.location.href);
           const currentUrl = new URL(window.location.href);
+          const isAccountTarget = targetUrl.pathname.startsWith('/account');
+          const isAccountCurrent = currentUrl.pathname.startsWith('/account') || window.location.pathname.startsWith('/account');
+
+          if (isAccountTarget || isAccountCurrent) {
+            return originalPushState.apply(this, args);
+          }
+
           if (
             targetUrl.origin === currentUrl.origin &&
             (targetUrl.pathname !== currentUrl.pathname || targetUrl.search !== currentUrl.search)
@@ -124,6 +136,13 @@ export default function RouteTransitionLoader() {
         try {
           const targetUrl = new URL(url.toString(), window.location.href);
           const currentUrl = new URL(window.location.href);
+          const isAccountTarget = targetUrl.pathname.startsWith('/account');
+          const isAccountCurrent = currentUrl.pathname.startsWith('/account') || window.location.pathname.startsWith('/account');
+
+          if (isAccountTarget || isAccountCurrent) {
+            return originalReplaceState.apply(this, args);
+          }
+
           if (
             targetUrl.origin === currentUrl.origin &&
             (targetUrl.pathname !== currentUrl.pathname || targetUrl.search !== currentUrl.search)
@@ -139,6 +158,11 @@ export default function RouteTransitionLoader() {
     };
 
     const handlePopState = () => {
+      try {
+        if (window.location.pathname.startsWith('/account')) {
+          return;
+        }
+      } catch (e) {}
       setTimeout(() => setIsLoading(true), 0);
     };
 
@@ -153,6 +177,8 @@ export default function RouteTransitionLoader() {
     };
   }, []);
 
+  // Completely disable full-page transition loader while inside /account
+  if (pathname.startsWith('/account')) return null;
   if (!isVisible && !isLoading) return null;
 
   // Duplicate 5 icons for seamless loop

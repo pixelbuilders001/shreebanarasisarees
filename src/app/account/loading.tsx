@@ -1,6 +1,6 @@
 import React from 'react';
-import IconMarqueeLoader from '../../components/IconMarqueeLoader';
+import { OrdersTabSkeleton } from '../../components/TabSkeletons';
 
 export default function Loading() {
-  return <IconMarqueeLoader />;
+  return <OrdersTabSkeleton />;
 }
