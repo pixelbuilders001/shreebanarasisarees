@@ -173,7 +173,7 @@ export default function ReceiptPage() {
                         customer_name, customer_phone, customer_email, shipping_address,
                         gift_wrap_charge,
                         order_items (
-                            id, order_id, inventory_id, product_name, sku, barcode, quantity, unit_price, total_price, product_snapshot
+                            id, order_id, inventory_id, product_name, sku, barcode, quantity, unit_price, total_price, product_snapshot, item_status
                         )
                     `);
                 if (isUuid) {
@@ -194,17 +194,18 @@ export default function ReceiptPage() {
                         }
                         const unitPrice = Number(i.unit_price || snap?.selling_price || 0);
                         const snapMrp = Number(snap?.mrp || snap?.price || 0);
-                        const sareeName = i.product_name || snap?.saree_name || snap?.name || 'Pure Silk Banarasi Saree';
+                        const rawSareeName = i.product_name || snap?.saree_name || snap?.name || 'Pure Silk Banarasi Saree';
+                        const sareeName = (i.item_status === 'cancelled') ? `[Cancelled] ${rawSareeName}` : rawSareeName;
 
                         // Fallback match in PRODUCTS catalog if MRP was not found in snapshot
                         let matchedMrp = 0;
                         const sku = i.sku || snap?.sku;
                         const invId = i.inventory_id || snap?.inventory_id || snap?.id;
-                        if (sku || invId || sareeName) {
+                        if (sku || invId || rawSareeName) {
                             const matched = PRODUCTS.find(p =>
                                 (invId && p.id === invId) ||
                                 (sku && p.sku === sku) ||
-                                (p.name.toLowerCase() === sareeName.toLowerCase())
+                                (p.name.toLowerCase() === rawSareeName.toLowerCase())
                             );
                             if (matched && matched.price > unitPrice) {
                                 matchedMrp = matched.price;

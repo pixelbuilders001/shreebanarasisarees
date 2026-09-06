@@ -25,6 +25,7 @@ export interface Product {
   care: string;
   designCode?: string;
   barcode?: string | null;
+  item_status?: string;
 }
 
 export const PRODUCTS: Product[] = [

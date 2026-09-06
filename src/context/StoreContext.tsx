@@ -25,6 +25,11 @@ import { trackAddToCart, trackRemoveFromCart, trackAddToWishlist } from '../lib/
 import { parseSearchQuery, scoreProducts } from '../lib/searchEngine';
 
 export interface CartItem {
+  id?: string;
+  inventory_id?: string;
+  item_status?: string;
+  unit_price?: number;
+  total_price?: number;
   product: Product;
   quantity: number;
 }
@@ -104,7 +109,7 @@ interface StoreContextType {
     notes?: string;
   }) => Promise<Order>;
   cancelOrder: (orderId: string) => Promise<boolean>;
-  cancelOrderItem: (orderId: string, productId: string) => Promise<{ success: boolean; cancelledEntireOrder: boolean }>;
+  cancelOrderItem: (orderId: string, productId: string) => Promise<{ success: boolean; cancelledEntireOrder: boolean; newSubtotal?: number; newTotal?: number; message?: string }>;
   markOrderCancelledLocally: (orderIdOrNumber: string) => void;
   refreshOrders: () => Promise<void>;
   addCustomRequest: (request: Omit<CustomRequest, 'id' | 'status' | 'createdAt'>) => void;
@@ -821,91 +826,82 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Cancel order item
-  const cancelOrderItem = async (orderId: string, productId: string): Promise<{ success: boolean; cancelledEntireOrder: boolean }> => {
+  const cancelOrderItem = async (orderId: string, productId: string): Promise<{ success: boolean; cancelledEntireOrder: boolean; newSubtotal?: number; newTotal?: number; message?: string }> => {
     let res = await cancelDbOrderItem(orderId, productId);
+
+    const matchFn = (item: any) =>
+      item.product?.id === productId ||
+      item.product?.sku === productId ||
+      item.id === productId ||
+      item.inventory_id === productId;
 
     // Fallback if DB operation failed or order is locally cached
     const localOrder = orders.find(o => o.orderId === orderId || o.id === orderId);
     if (!res.success && localOrder) {
-      const matchFn = (item: any) =>
-        item.product?.id === productId ||
-        item.product?.sku === productId ||
-        item.id === productId ||
-        item.inventory_id === productId;
-
-      const remainingItems = localOrder.items.filter(item => !matchFn(item));
-      if (remainingItems.length === 0) {
-        res = { success: true, cancelledEntireOrder: true };
-      } else {
-        const removedItem = localOrder.items.find(matchFn);
-        const removedPrice = removedItem ? (removedItem.product?.salePrice || removedItem.product?.price || 0) * (removedItem.quantity || 1) : 0;
-        const newSubtotal = Math.max(0, localOrder.subtotal - removedPrice);
-        const newTotal = Math.max(0, localOrder.total - removedPrice);
-        res = { success: true, cancelledEntireOrder: false, newSubtotal, newTotal };
-      }
+      const remainingActiveItems = localOrder.items.filter(item => {
+        const isCancelled = item.item_status === 'cancelled' || (item.product as any)?.item_status === 'cancelled';
+        return !isCancelled && !matchFn(item);
+      });
+      const cancelledEntireOrder = remainingActiveItems.length === 0;
+      const removedItem = localOrder.items.find(matchFn);
+      const removedPrice = removedItem ? (removedItem.product?.salePrice || removedItem.product?.price || 0) * (removedItem.quantity || 1) : 0;
+      const newSubtotal = Math.max(0, localOrder.subtotal - removedPrice);
+      const newTotal = Math.max(0, localOrder.total - removedPrice);
+      res = { success: true, cancelledEntireOrder, newSubtotal, newTotal };
     }
 
     if (res.success) {
-      const matchFn = (item: any) =>
-        item.product?.id === productId ||
-        item.product?.sku === productId ||
-        item.id === productId ||
-        item.inventory_id === productId;
+      setOrders(prevOrders => 
+        prevOrders.map(o => {
+          if (o.orderId === orderId || o.id === orderId) {
+            const nowStr = new Date().toISOString();
+            const targetItem = o.items.find(matchFn);
+            const productName = targetItem?.product?.name || 'item';
+            const qty = targetItem?.quantity || 1;
+            
+            const newHistory: OrderStatusHistoryEntry = {
+              id: `item-cancelled-${Date.now()}`,
+              orderId,
+              status: res.cancelledEntireOrder ? 'cancelled' : 'item_cancelled',
+              note: res.cancelledEntireOrder
+                ? `Cancelled "${productName}" (all items cancelled; order cancelled)`
+                : `Cancelled "${productName}" (Qty ${qty}) from order`,
+              createdAt: nowStr
+            };
 
-      if (res.cancelledEntireOrder) {
-        setOrders(prevOrders => 
-          prevOrders.map(o => {
-            if (o.orderId === orderId || o.id === orderId) {
-              const nowStr = new Date().toISOString();
-              const newHistory: OrderStatusHistoryEntry = {
-                id: `cancelled-${Date.now()}`,
-                orderId,
-                status: 'cancelled',
-                note: 'Order cancelled by customer',
-                createdAt: nowStr
-              };
-              return {
-                ...o,
-                orderStatus: 'Cancelled',
-                statusHistory: o.statusHistory ? [...o.statusHistory, newHistory] : [newHistory]
-              };
-            }
-            return o;
-          })
-        );
-      } else {
-        setOrders(prevOrders => 
-          prevOrders.map(o => {
-            if (o.orderId === orderId || o.id === orderId) {
-              const nowStr = new Date().toISOString();
-              const targetItem = o.items.find(matchFn);
-              const productName = targetItem?.product?.name || 'item';
-              const qty = targetItem?.quantity || 1;
-              
-              const newHistory: OrderStatusHistoryEntry = {
-                id: `item-cancelled-${Date.now()}`,
-                orderId,
-                status: 'item_cancelled',
-                note: `Cancelled "${productName}" (Qty ${qty}) from order`,
-                createdAt: nowStr
-              };
-              
-              return {
-                ...o,
-                subtotal: res.newSubtotal ?? o.subtotal,
-                total: res.newTotal ?? o.total,
-                items: o.items.filter(item => !matchFn(item)),
-                statusHistory: o.statusHistory ? [...o.statusHistory, newHistory] : [newHistory]
-              };
-            }
-            return o;
-          })
-        );
-      }
+            const updatedItems = o.items.map(item => {
+              if (matchFn(item)) {
+                return {
+                  ...item,
+                  item_status: 'cancelled',
+                  product: {
+                    ...item.product,
+                    item_status: 'cancelled'
+                  }
+                };
+              }
+              return item;
+            });
+
+            return {
+              ...o,
+              orderStatus: res.cancelledEntireOrder ? ('Cancelled' as const) : o.orderStatus,
+              subtotal: res.newSubtotal ?? o.subtotal,
+              total: res.newTotal ?? o.total,
+              items: updatedItems,
+              statusHistory: o.statusHistory ? [...o.statusHistory, newHistory] : [newHistory]
+            };
+          }
+          return o;
+        })
+      );
     }
     return {
       success: res.success,
-      cancelledEntireOrder: res.cancelledEntireOrder
+      cancelledEntireOrder: res.cancelledEntireOrder,
+      newSubtotal: res.newSubtotal,
+      newTotal: res.newTotal,
+      message: (res as any).message
     };
   };
 

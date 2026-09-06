@@ -187,6 +187,7 @@ interface ResolvedOrderItem {
   mrp: number;
   quantity: number;
   image: string | null;
+  item_status?: string;
 }
 
 // Safely extract item title, image, and price across all possible order item formats
@@ -199,7 +200,8 @@ function resolveOrderItem(item: any, products: any[] = []): ResolvedOrderItem {
       price: 0,
       mrp: 0,
       quantity: 1,
-      image: null
+      image: null,
+      item_status: 'active'
     };
   }
 
@@ -297,6 +299,8 @@ function resolveOrderItem(item: any, products: any[] = []): ResolvedOrderItem {
     }
   }
 
+  const item_status = item?.item_status || prod?.item_status || snap?.item_status || 'active';
+
   return {
     id: id || sku || 'item',
     sku: sku || (id ? id.slice(0, 6).toUpperCase() : 'SBS-SAREE'),
@@ -304,7 +308,8 @@ function resolveOrderItem(item: any, products: any[] = []): ResolvedOrderItem {
     price,
     mrp: mrp > 0 ? mrp : price,
     quantity: Number(item?.quantity || 1),
-    image
+    image,
+    item_status
   };
 }
 
@@ -574,7 +579,8 @@ function AccountContent() {
             quantity,
             unit_price,
             total_price,
-            product_snapshot
+            product_snapshot,
+            item_status
           `)
           .eq("order_id", orderId);
 
@@ -686,80 +692,84 @@ function AccountContent() {
         }
       }
 
-      // 3. Direct invocation of cancel-order-user Edge Function using { order_id, order_item_id }
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers: Record<string, string> = {};
-      if (session?.access_token) {
-        headers.Authorization = `Bearer ${session.access_token}`;
-      }
+      // 3. Perform cancellation via cancelOrderItem (single source of truth)
+      const res = await cancelOrderItem(resolvedOrderId, resolvedOrderItemId);
 
-      const { data, error } = await supabase.functions.invoke("cancel-order-user", {
-        body: {
-          order_id: resolvedOrderId,
-          order_item_id: resolvedOrderItemId
-        },
-        headers
-      });
-
-      if (error || data?.error || data?.success === false) {
-        const errorMsg = data?.error || error?.message || "Failed to cancel item. Please try again.";
+      if (!res.success) {
+        const errorMsg = res.message || "Failed to cancel item. Please try again.";
         console.error("Cancel item error:", errorMsg);
         setCancelErrorMessage(errorMsg);
         setCancelStatus('error');
       } else {
         // 4. INSTANT OPTIMISTIC UI REFRESH
-        const isEntireOrderCancelled = !!data?.cancelledEntireOrder || data?.status === 'cancelled';
+        const isEntireOrderCancelled = Boolean(res.cancelledEntireOrder);
         const targetKey = orderToCancel;
         const targetUuid = resolvedOrderId;
 
-        // Update StoreContext
-        await cancelOrderItem(targetUuid, resolvedOrderItemId);
-
-        // Update local orderItemsDetails
+        // Update local orderItemsDetails (preserve item, mark item_status as 'cancelled')
         if (orderItemsDetails) {
-          setOrderItemsDetails(prev => prev ? prev.filter(i => (
-            i.id !== resolvedOrderItemId &&
-            i.id !== itemToCancel &&
-            i.inventory_id !== itemToCancel
-          )) : null);
+          setOrderItemsDetails(prev => prev ? prev.map(i => {
+            if (i.id === resolvedOrderItemId || i.id === itemToCancel || i.inventory_id === itemToCancel) {
+              return { ...i, item_status: 'cancelled' };
+            }
+            return i;
+          }) : null);
         }
 
-        // Update standaloneOrder
+        // Update standaloneOrder (preserve item, mark item_status as 'cancelled')
         setStandaloneOrder(prev => {
           if (!prev) return prev;
-          const remaining = prev.items.filter(it =>
-            (it as any)?.id !== resolvedOrderItemId &&
-            it.product?.id !== itemToCancel &&
-            (it as any)?.id !== itemToCancel &&
-            (it as any)?.inventory_id !== itemToCancel
-          );
-          const nowCancelled = isEntireOrderCancelled || remaining.length === 0;
+          const updatedItems = prev.items.map(it => {
+            const isMatch = (it as any)?.id === resolvedOrderItemId ||
+              it.product?.id === itemToCancel ||
+              (it as any)?.id === itemToCancel ||
+              (it as any)?.inventory_id === itemToCancel;
+            if (isMatch) {
+              return {
+                ...it,
+                item_status: 'cancelled',
+                product: { ...it.product, item_status: 'cancelled' }
+              };
+            }
+            return it;
+          });
+          const hasActiveItems = updatedItems.some(it => (it as any).item_status !== 'cancelled');
+          const nowCancelled = isEntireOrderCancelled || !hasActiveItems;
           return {
             ...prev,
             orderStatus: nowCancelled ? ('Cancelled' as const) : prev.orderStatus,
-            subtotal: data?.newSubtotal != null ? data.newSubtotal : prev.subtotal,
-            total: data?.newTotal != null ? data.newTotal : prev.total,
-            items: remaining
+            subtotal: res?.newSubtotal != null ? res.newSubtotal : prev.subtotal,
+            total: res?.newTotal != null ? res.newTotal : prev.total,
+            items: updatedItems
           };
         });
 
-        // Update local dbOrders state immediately
+        // Update local dbOrders state immediately (preserve item, mark item_status as 'cancelled')
         setDbOrders(prev =>
           prev.map(o => {
             if (o.id === targetUuid || o.orderId === targetKey || o.id === targetKey) {
-              const remaining = o.items.filter(it =>
-                (it as any)?.id !== resolvedOrderItemId &&
-                it.product?.id !== itemToCancel &&
-                (it as any)?.id !== itemToCancel &&
-                (it as any)?.inventory_id !== itemToCancel
-              );
-              const nowCancelled = isEntireOrderCancelled || remaining.length === 0;
+              const updatedItems = o.items.map(it => {
+                const isMatch = (it as any)?.id === resolvedOrderItemId ||
+                  it.product?.id === itemToCancel ||
+                  (it as any)?.id === itemToCancel ||
+                  (it as any)?.inventory_id === itemToCancel;
+                if (isMatch) {
+                  return {
+                    ...it,
+                    item_status: 'cancelled',
+                    product: { ...it.product, item_status: 'cancelled' }
+                  };
+                }
+                return it;
+              });
+              const hasActiveItems = updatedItems.some(it => (it as any).item_status !== 'cancelled');
+              const nowCancelled = isEntireOrderCancelled || !hasActiveItems;
               return {
                 ...o,
                 orderStatus: nowCancelled ? ('Cancelled' as const) : o.orderStatus,
-                subtotal: data?.newSubtotal != null ? data.newSubtotal : o.subtotal,
-                total: data?.newTotal != null ? data.newTotal : o.total,
-                items: remaining
+                subtotal: res?.newSubtotal != null ? res.newSubtotal : o.subtotal,
+                total: res?.newTotal != null ? res.newTotal : o.total,
+                items: updatedItems
               };
             }
             return o;
@@ -1049,7 +1059,13 @@ function AccountContent() {
 
     const activeStepIndex = isCancelled ? timelineSteps.length - 1 : furthestStepIndex;
 
-    const orderTotalMrp = displayItems.reduce((acc, item) => {
+    const activeItems = displayItems.filter(item => {
+      const isItemCancelled = (item?.item_status || (item as any)?.product?.item_status) === 'cancelled';
+      return !isItemCancelled;
+    });
+    const itemsForPriceCalc = (!isCancelled && activeItems.length > 0) ? activeItems : displayItems;
+
+    const orderTotalMrp = itemsForPriceCalc.reduce((acc, item) => {
       const resolved = resolveOrderItem(item, products);
       let snap = item.product_snapshot;
       if (typeof snap === 'string') {
@@ -1060,7 +1076,7 @@ function AccountContent() {
       return acc + mrp * (resolved.quantity || 1);
     }, 0);
 
-    const orderItemsSellingTotal = displayItems.reduce((acc, item) => {
+    const orderItemsSellingTotal = itemsForPriceCalc.reduce((acc, item) => {
       const resolved = resolveOrderItem(item, products);
       const unitPrice = item.unit_price != null ? Number(item.unit_price) : resolved.price;
       return acc + unitPrice * (resolved.quantity || 1);
@@ -1074,6 +1090,7 @@ function AccountContent() {
       try {
         const items: ReceiptItem[] = displayItems.map((item: any) => {
           const resolved = resolveOrderItem(item, products);
+          const isItemCancelled = (item?.item_status || (item as any)?.product?.item_status || resolved.item_status || '').toLowerCase() === 'cancelled';
           let snap = item.product_snapshot;
           if (typeof snap === 'string') {
             try { snap = JSON.parse(snap); } catch {}
@@ -1082,7 +1099,7 @@ function AccountContent() {
           const snapMrp = Number(snap?.mrp || snap?.price || 0);
           const mrp = snapMrp > 0 ? snapMrp : (resolved.mrp > 0 ? resolved.mrp : unitPrice);
           return {
-            sareeName: resolved.name,
+            sareeName: isItemCancelled ? `[Cancelled] ${resolved.name}` : resolved.name,
             quantity: resolved.quantity || 1,
             mrp: mrp > 0 ? mrp : unitPrice,
             sellingPrice: unitPrice
@@ -1231,6 +1248,11 @@ function AccountContent() {
           <div className="flex items-center justify-between">
             <h3 className="text-[11px] font-bold text-[#78716C] uppercase tracking-wider font-sans">
               {displayItems.length} {displayItems.length === 1 ? 'SAREE' : 'SAREES'}
+              {displayItems.some(i => (i?.item_status || (i as any)?.product?.item_status) === 'cancelled') && (
+                <span className="text-[10px] font-normal text-rose-700 ml-1.5 lowercase">
+                  ({displayItems.filter(i => (i?.item_status || (i as any)?.product?.item_status) !== 'cancelled').length} active)
+                </span>
+              )}
             </h3>
             {loadingOrderItems && (
               <span className="text-[11px] text-[#B08A3C] font-sans animate-pulse">
@@ -1242,17 +1264,18 @@ function AccountContent() {
           <div className="divide-y divide-[#F3ECE0]">
             {displayItems.map((item, idx) => {
               const resolved = resolveOrderItem(item, products);
+              const isItemCancelled = (item?.item_status || (item as any)?.product?.item_status || resolved.item_status || '').toLowerCase() === 'cancelled';
               const unitPrice = item.unit_price != null ? Number(item.unit_price) : resolved.price;
               const totalPrice = item.total_price != null ? Number(item.total_price) : (unitPrice * resolved.quantity);
 
               return (
-                <div key={item.id || resolved.id || idx} className="py-3 first:pt-0 last:pb-0 flex items-start justify-between gap-3">
+                <div key={item.id || resolved.id || idx} className={`py-3 first:pt-0 last:pb-0 flex items-start justify-between gap-3 ${isItemCancelled ? 'opacity-70 bg-rose-50/20 -mx-2 px-2 rounded-lg' : ''}`}>
                   <div className="flex items-start gap-3 min-w-0 flex-1">
                     {resolved.image ? (
                       <img
                         src={resolved.image}
                         alt={resolved.name}
-                        className="w-16 h-20 object-cover rounded-xl border border-[#E7DFC9] bg-[#FAF8F5] shrink-0"
+                        className={`w-16 h-20 object-cover rounded-xl border border-[#E7DFC9] bg-[#FAF8F5] shrink-0 ${isItemCancelled ? 'grayscale-40' : ''}`}
                       />
                     ) : (
                       <div className="w-16 h-20 rounded-xl border border-[#E7DFC9] bg-[#FAF8F5] flex items-center justify-center text-[#B08A3C] shrink-0">
@@ -1261,16 +1284,23 @@ function AccountContent() {
                     )}
 
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-serif font-bold text-xs sm:text-sm text-[#1C1917] leading-snug line-clamp-2">
-                        {resolved.name}
-                      </h4>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className={`font-serif font-bold text-xs sm:text-sm leading-snug line-clamp-2 ${isItemCancelled ? 'line-through text-[#78716C]' : 'text-[#1C1917]'}`}>
+                          {resolved.name}
+                        </h4>
+                        {isItemCancelled && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 font-sans shrink-0">
+                            Cancelled
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-[#78716C] font-sans mt-1">
                         {resolved.sku} · Qty {resolved.quantity}
                       </p>
 
                       {/* Actions for individual item */}
                       <div className="flex items-center gap-3 mt-2">
-                        {isDelivered && (
+                        {isDelivered && !isItemCancelled && (
                           <button
                             type="button"
                             onClick={() => handleWriteReview({ id: resolved.id, name: resolved.name, images: resolved.image ? [resolved.image] : [] })}
@@ -1280,7 +1310,7 @@ function AccountContent() {
                             <span>Write review</span>
                           </button>
                         )}
-                        {isCancellable && (
+                        {isCancellable && !isItemCancelled && (
                           <button
                             type="button"
                             onClick={() => handleCancelOrder(activeOrder.id || activeOrder.orderId, (item as any)?.id || (item as any)?.inventory_id || resolved.id || (item as any)?.product?.id)}
@@ -1295,12 +1325,12 @@ function AccountContent() {
 
                   <div className="text-right shrink-0">
                     <div className="flex items-baseline justify-end gap-1.5">
-                      {resolved.mrp > unitPrice && (
+                      {resolved.mrp > unitPrice && !isItemCancelled && (
                         <span className="text-[11px] text-[#A8A29E] line-through font-normal font-sans">
                           ₹{(resolved.mrp * resolved.quantity).toLocaleString('en-IN')}
                         </span>
                       )}
-                      <span className="font-bold text-xs sm:text-sm text-[#1C1917] font-sans">
+                      <span className={`font-bold text-xs sm:text-sm font-sans ${isItemCancelled ? 'line-through text-[#78716C]' : 'text-[#1C1917]'}`}>
                         ₹{totalPrice.toLocaleString('en-IN')}
                       </span>
                     </div>
@@ -1309,7 +1339,7 @@ function AccountContent() {
                         ₹{unitPrice.toLocaleString('en-IN')} each
                       </span>
                     )}
-                    {resolved.mrp > unitPrice && (
+                    {resolved.mrp > unitPrice && !isItemCancelled && (
                       <span className="text-[10px] font-semibold text-emerald-700 font-sans block mt-0.5">
                         Save ₹{((resolved.mrp - unitPrice) * resolved.quantity).toLocaleString('en-IN')}
                       </span>
@@ -1494,8 +1524,8 @@ function AccountContent() {
         /* 4. Order List Cards (Image 1) */
         <div className="space-y-3.5 animate-fadeIn">
           {filteredOrders.map((order) => {
-            const firstItem = order.items?.[0];
-            const resolvedFirstItem = firstItem ? resolveOrderItem(firstItem, products) : null;
+            const activeItem = order.items?.find((i: any) => (i?.item_status || (i as any)?.product?.item_status) !== 'cancelled') || order.items?.[0];
+            const resolvedFirstItem = activeItem ? resolveOrderItem(activeItem, products) : null;
             const badge = getStatusBadge(order.orderStatus);
             const estimate = getDeliveryEstimate(order);
             const formattedDate = formatOrderDate(order.createdAt);

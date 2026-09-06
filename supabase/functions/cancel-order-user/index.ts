@@ -125,23 +125,42 @@ serve(async (req) => {
       );
     }
 
-    // Delete the item from order_items
-    const { error: deleteItemErr } = await supabase
+    // Check if item is already cancelled
+    if (targetItem.item_status === "cancelled") {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Item is already cancelled",
+          cancelledEntireOrder: false,
+          order_id: order.order_number,
+          id: order.id,
+          status: order.order_status
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Update the item_status in order_items
+    const { error: updateItemErr } = await supabase
       .from("order_items")
-      .delete()
+      .update({
+        item_status: "cancelled"
+      })
       .eq("id", targetItem.id);
 
-    if (deleteItemErr) {
-      console.error("Failed to delete order item:", deleteItemErr);
+    if (updateItemErr) {
+      console.error("Failed to update order item status:", updateItemErr);
       return new Response(
-        JSON.stringify({ error: "Failed to cancel item: " + deleteItemErr.message }),
+        JSON.stringify({ error: "Failed to cancel item: " + updateItemErr.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // If this was the last remaining item, also update order status to cancelled
-    const remainingCount = orderItems.length - 1;
-    const isEntireOrderCancelled = remainingCount <= 0;
+    // Check how many active items remain in the order
+    const remainingActiveItems = orderItems.filter((item: any) =>
+      item.id !== targetItem.id && item.item_status !== "cancelled"
+    );
+    const isEntireOrderCancelled = remainingActiveItems.length === 0;
 
     // Recalculate totals
     const itemPrice = Number(targetItem.total_price || (Number(targetItem.unit_price || 0) * Number(targetItem.quantity || 1)));
@@ -163,7 +182,7 @@ serve(async (req) => {
       .from("order_status_history")
       .insert({
         order_id: order.id,
-        status: isEntireOrderCancelled ? "cancelled" : "item_cancelled",
+        status: isEntireOrderCancelled ? "cancelled" : order.order_status,
         note: isEntireOrderCancelled
           ? `Cancelled "${targetItem.product_name}" (all items cancelled; order cancelled)`
           : `Cancelled "${targetItem.product_name}" from order`

@@ -104,6 +104,18 @@ serve(async (req) => {
       );
     }
 
+    // Also update all order items to item_status = 'cancelled'
+    const { error: itemsUpdateErr } = await supabase
+      .from("order_items")
+      .update({
+        item_status: "cancelled"
+      })
+      .eq("order_id", order.id);
+
+    if (itemsUpdateErr) {
+      console.warn("Could not update order items to cancelled:", itemsUpdateErr);
+    }
+
     // 3. Record status history entry
     const { error: historyErr } = await supabase
       .from("order_status_history")

@@ -601,7 +601,15 @@ export interface Order {
     pinCode: string;
     deliveryMethod: 'Home Delivery' | 'Store Pickup';
   };
-  items: { product: Product; quantity: number }[];
+  items: {
+    id?: string;
+    inventory_id?: string;
+    item_status?: string;
+    unit_price?: number;
+    total_price?: number;
+    product: Product;
+    quantity: number;
+  }[];
   subtotal: number;
   discount: number;
   shipping: number;
@@ -900,10 +908,18 @@ export function mapDbOrderToOrder(orderRow: any): Order {
       care: productSnapshot?.care || ''
     };
 
+    const itemStatus = item.item_status || 'active';
+
     return {
       id: item.id,
       inventory_id: item.inventory_id,
-      product,
+      item_status: itemStatus,
+      unit_price: Number(item.unit_price || 0),
+      total_price: Number(item.total_price || 0),
+      product: {
+        ...product,
+        item_status: itemStatus
+      },
       quantity: Number(item.quantity || 1)
     };
   });
@@ -920,7 +936,15 @@ export function mapDbOrderToOrder(orderRow: any): Order {
     cancelled: 'Cancelled',
     returned: 'Returned'
   };
-  const orderStatus = orderStatusMap[rawOrderStatus] || 'Order Placed';
+  let orderStatus = orderStatusMap[rawOrderStatus] || 'Order Placed';
+
+  // If order items exist and all of them are cancelled, mark orderStatus as Cancelled
+  if (items.length > 0) {
+    const allCancelled = items.every((i: any) => (i.item_status || '').toLowerCase() === 'cancelled');
+    if (allCancelled) {
+      orderStatus = 'Cancelled';
+    }
+  }
 
   let paymentStatus: Order['paymentStatus'] = 'Pending';
   const ps = (orderRow.payment_status || '').toLowerCase();
@@ -1474,22 +1498,33 @@ export async function cancelDbOrder(orderIdentifier: string): Promise<boolean> {
       headers.Authorization = `Bearer ${session.access_token}`;
     }
 
-    const { data, error } = await supabase.functions.invoke("cancel-order-user", {
+    // Try cancel-order Edge Function (cancels entire order with service role)
+    const { data, error } = await supabase.functions.invoke("cancel-order", {
       body: { order_id },
       headers
     });
 
-    if (error) {
-      console.error('Error invoking cancel-order-user Edge Function:', error);
-      return false;
+    if (!error && data?.success !== false) {
+      return true;
     }
 
-    if (data?.error || data?.success === false) {
-      console.error('cancel-order-user Edge Function returned error:', data?.error);
-      return false;
-    }
+    // Direct DB fallback
+    await supabase
+      .from('orders')
+      .update({
+        order_status: 'cancelled',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', order_id);
 
-    return Boolean(data?.success ?? true);
+    await supabase
+      .from('order_items')
+      .update({
+        item_status: 'cancelled'
+      })
+      .eq('order_id', order_id);
+
+    return true;
   } catch (err) {
     console.error('Exception in cancelDbOrder:', err);
     return false;
@@ -1578,11 +1613,6 @@ export async function cancelDbOrderItem(orderNumber: string, productId: string):
       return { success: false, cancelledEntireOrder: false };
     }
 
-    if (items.length <= 1) {
-      const success = await cancelDbOrder(orderRow.id);
-      return { success, cancelledEntireOrder: true };
-    }
-
     const targetItem = items.find(item => {
       if (item.inventory_id === productId || item.id === productId || item.sku === productId) return true;
       if (typeof item.product_snapshot === 'object' && item.product_snapshot?.id === productId) return true;
@@ -1595,18 +1625,28 @@ export async function cancelDbOrderItem(orderNumber: string, productId: string):
       return { success: false, cancelledEntireOrder: false };
     }
 
-    const itemTotalPrice = Number(targetItem.total_price || (Number(targetItem.unit_price || 0) * Number(targetItem.quantity || 1)));
-    const productName = targetItem.product_name;
+    // Check if item is already cancelled
+    if (targetItem.item_status === 'cancelled') {
+      return { success: true, cancelledEntireOrder: false };
+    }
 
-    const { error: deleteError } = await supabase
+    // Update item_status to cancelled in order_items table (NEVER delete)
+    const { error: updateItemError } = await supabase
       .from('order_items')
-      .delete()
+      .update({ item_status: 'cancelled' })
       .eq('id', targetItem.id);
 
-    if (deleteError) {
-      console.error('Error deleting order item:', deleteError);
+    if (updateItemError) {
+      console.error('Error updating order item status:', updateItemError);
       return { success: false, cancelledEntireOrder: false };
     }
+
+    // Check how many active items remain in the order
+    const remainingActiveItems = items.filter(i => i.id !== targetItem.id && i.item_status !== 'cancelled');
+    const isEntireOrderCancelled = remainingActiveItems.length === 0;
+
+    const itemTotalPrice = Number(targetItem.total_price || (Number(targetItem.unit_price || 0) * Number(targetItem.quantity || 1)));
+    const productName = targetItem.product_name;
 
     const newSubtotal = Math.max(0, Number(orderRow.subtotal || 0) - itemTotalPrice);
     const newTotal = Math.max(0, Number(orderRow.total_amount || 0) - itemTotalPrice);
@@ -1616,6 +1656,7 @@ export async function cancelDbOrderItem(orderNumber: string, productId: string):
       .update({
         subtotal: newSubtotal,
         total_amount: newTotal,
+        order_status: isEntireOrderCancelled ? 'cancelled' : orderRow.order_status,
         updated_at: new Date().toISOString()
       })
       .eq('id', orderRow.id);
@@ -1628,8 +1669,10 @@ export async function cancelDbOrderItem(orderNumber: string, productId: string):
       .from('order_status_history')
       .insert({
         order_id: orderRow.id,
-        status: 'item_cancelled',
-        note: `Cancelled "${productName}" (Qty ${targetItem.quantity || 1}) from order`
+        status: isEntireOrderCancelled ? 'cancelled' : 'item_cancelled',
+        note: isEntireOrderCancelled
+          ? `Cancelled "${productName}" (all items cancelled; order cancelled)`
+          : `Cancelled "${productName}" (Qty ${targetItem.quantity || 1}) from order`
       });
 
     if (historyError) {
@@ -1638,7 +1681,7 @@ export async function cancelDbOrderItem(orderNumber: string, productId: string):
 
     return {
       success: true,
-      cancelledEntireOrder: false,
+      cancelledEntireOrder: isEntireOrderCancelled,
       newSubtotal,
       newTotal
     };
