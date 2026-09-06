@@ -813,27 +813,39 @@ function CheckoutContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF7F0] text-[#292524] flex flex-col font-sans pb-32">
+    <div className="min-h-screen bg-[#FAF7F0] text-[#292524] flex flex-col font-sans pb-32 lg:pb-16">
       {/* 1. TOP HEADER */}
       <header className="bg-white border-b border-[#E5DEC9] py-3.5 px-4 sticky top-0 z-30 shadow-2xs">
-        <div className="max-w-xl mx-auto flex items-center justify-between">
+        <div className="max-w-xl lg:max-w-6xl mx-auto flex items-center justify-between">
           <button
             onClick={() => router.back()}
-            className="p-1 rounded-full text-[#292524] hover:text-[#6B1725] hover:bg-[#FAF7F0] transition-colors cursor-pointer"
+            className="p-1 rounded-full text-[#292524] hover:text-[#6B1725] hover:bg-[#FAF7F0] transition-colors cursor-pointer flex items-center gap-1.5"
             aria-label="Go back"
           >
             <ChevronLeft size={22} />
+            <span className="hidden lg:inline font-sans text-xs font-semibold text-[#6B625D]">Back</span>
           </button>
-          <h1 className="font-serif font-bold text-xl sm:text-2xl text-[#292524]">
-            Checkout
-          </h1>
-          <div className="w-6" />
+
+          <div className="flex items-center gap-2.5">
+            <Link href="/" className="hidden lg:flex items-center gap-2 hover:opacity-90 transition-opacity">
+              <img src="/brand_logo.webp" alt="Shree Banarasi Sarees" className="h-8 w-auto object-contain" />
+            </Link>
+            <span className="hidden lg:inline text-[#D4C39D]">&bull;</span>
+            <h1 className="font-serif font-bold text-xl sm:text-2xl text-[#292524]">
+              Checkout
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-xs text-[#0F766E] font-medium bg-emerald-50/80 px-2.5 py-1 rounded-full border border-emerald-200/60">
+            <ShieldCheck size={15} className="text-[#0F766E]" />
+            <span className="hidden sm:inline">100% Secure Checkout</span>
+          </div>
         </div>
       </header>
 
       {/* 2. STEPPER BAR (Address -> Delivery -> Payment) */}
       <div className="bg-[#FAF7F0] border-b border-[#E5DEC9] py-3 px-4">
-        <div className="max-w-xl mx-auto flex items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm font-sans">
+        <div className="max-w-xl lg:max-w-6xl mx-auto flex items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm font-sans">
           {/* Step 1: Address */}
           <button
             type="button"
@@ -869,9 +881,9 @@ function CheckoutContent() {
       </div>
 
       {/* MAIN CONTENT AREA */}
-      <main className="max-w-xl mx-auto w-full px-4 py-4 space-y-4 flex-1">
+      <main className="max-w-xl lg:max-w-6xl mx-auto w-full px-4 py-4 lg:py-6 space-y-4 flex-1">
         {cart.length === 0 ? (
-          <div className="py-16 text-center flex flex-col items-center justify-center bg-white border border-[#E5DEC9] rounded-2xl shadow-2xs px-6">
+          <div className="py-16 text-center flex flex-col items-center justify-center bg-white border border-[#E5DEC9] rounded-2xl shadow-2xs px-6 max-w-xl mx-auto my-8">
             <div className="w-14 h-14 rounded-full bg-[#FAF7F0] border border-[#E5DEC9] flex items-center justify-center text-[#6B1725] mb-3">
               <ShoppingBag size={26} />
             </div>
@@ -883,12 +895,15 @@ function CheckoutContent() {
             </p>
             <button
               onClick={() => router.push('/sarees')}
-              className="w-full py-3 bg-[#6B1725] text-white rounded-full font-serif font-bold text-xs tracking-wider uppercase hover:bg-[#52111C] transition-all shadow-md cursor-pointer"
+              className="py-3 px-8 bg-[#6B1725] text-white rounded-full font-serif font-bold text-xs tracking-wider uppercase hover:bg-[#52111C] transition-all shadow-md cursor-pointer"
             >
               EXPLORE COLLECTIONS
             </button>
           </div>
         ) : (
+          <div className="lg:grid lg:grid-cols-12 lg:gap-8 items-start">
+            {/* LEFT COLUMN: Steps & Selections */}
+            <div className="lg:col-span-7 xl:col-span-7 space-y-4">
           <>
             {/* Error Alert */}
             {errorMsg && (
@@ -914,11 +929,11 @@ function CheckoutContent() {
               </div>
 
               {shippingAddressesLoading && (!shippingAddresses || shippingAddresses.length === 0) ? (
-                <div className="flex gap-3 overflow-hidden pb-1.5 pt-0.5 animate-pulse" aria-hidden="true">
+                <div className="flex lg:grid lg:grid-cols-2 gap-3 overflow-hidden pb-1.5 pt-0.5 animate-pulse" aria-hidden="true">
                   {[0, 1, 2].map((n) => (
                     <div
                       key={n}
-                      className="snap-start w-[240px] sm:w-[260px] shrink-0 bg-white rounded-xl border border-[#E5DEC9] p-3 flex flex-col justify-between"
+                      className="snap-start w-[240px] sm:w-[260px] lg:w-auto shrink-0 lg:shrink bg-white rounded-xl border border-[#E5DEC9] p-3 flex flex-col justify-between"
                     >
                       <div>
                         <div className="flex items-center justify-between gap-1.5 mb-2">
@@ -936,14 +951,14 @@ function CheckoutContent() {
                   ))}
                 </div>
               ) : shippingAddresses && shippingAddresses.length > 0 ? (
-                <div className="flex gap-3 overflow-x-auto pb-1.5 pt-0.5 scrollbar-none snap-x snap-mandatory">
+                <div className="flex lg:grid lg:grid-cols-2 gap-3 overflow-x-auto lg:overflow-visible pb-1.5 pt-0.5 scrollbar-none snap-x snap-mandatory">
                   {shippingAddresses.map((addr: any) => {
                     const isSelected = selectedAddressId === addr.id;
                     return (
                       <div
                         key={addr.id}
                         onClick={() => handleSelectAddress(addr)}
-                        className={`snap-start w-[240px] sm:w-[260px] shrink-0 bg-white rounded-xl border p-3 cursor-pointer transition-all flex flex-col justify-between relative ${
+                        className={`snap-start w-[240px] sm:w-[260px] lg:w-auto shrink-0 lg:shrink bg-white rounded-xl border p-3 cursor-pointer transition-all flex flex-col justify-between relative ${
                           isSelected
                             ? 'border-2 border-[#6B1725] bg-[#6B1725]/[0.02] shadow-2xs'
                             : 'border-[#E5DEC9] hover:border-[#B08A3C]/50'
@@ -996,10 +1011,10 @@ function CheckoutContent() {
                     );
                   })}
 
-                  {/* Add New Address Card in Horizontal Scroll */}
+                  {/* Add New Address Card in Grid / Horizontal Scroll */}
                   <div
                     onClick={handleAddNewAddressSelect}
-                    className="snap-start w-[160px] shrink-0 bg-[#FFF9F0] rounded-xl border-2 border-dashed border-[#B08A3C]/40 p-3 cursor-pointer hover:border-[#6B1725] transition-all flex flex-col items-center justify-center text-center gap-1.5 min-h-[110px]"
+                    className="snap-start w-[160px] lg:w-auto shrink-0 lg:shrink bg-[#FFF9F0] rounded-xl border-2 border-dashed border-[#B08A3C]/40 p-3 cursor-pointer hover:border-[#6B1725] transition-all flex flex-col items-center justify-center text-center gap-1.5 min-h-[110px]"
                   >
                     <div className="w-7 h-7 rounded-full bg-[#6B1725]/10 flex items-center justify-center text-[#6B1725]">
                       <Plus size={16} />
@@ -1258,8 +1273,8 @@ function CheckoutContent() {
               </p>
             </div>
 
-            {/* 6. ORDER SUMMARY CARD */}
-            <div className="bg-white rounded-2xl border border-[#E5DEC9] p-4 space-y-3 shadow-2xs">
+            {/* 6. ORDER SUMMARY CARD (Mobile only) */}
+            <div className="lg:hidden bg-white rounded-2xl border border-[#E5DEC9] p-4 space-y-3 shadow-2xs">
               <span className="text-[10px] font-sans font-bold text-[#B08A3C] uppercase tracking-wider block">
                 ORDER &middot; {cart.reduce((sum, item) => sum + item.quantity, 0)} SAREE{cart.reduce((sum, item) => sum + item.quantity, 0) > 1 ? 'S' : ''}
               </span>
@@ -1304,12 +1319,215 @@ function CheckoutContent() {
               </div>
             </div>
           </>
-        )}
-      </main>
+        </div>
 
-      {/* 7. STICKY BOTTOM CHECKOUT ACTION BAR */}
-      {cart.length > 0 && !isOrdered && (
-        <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E5DEC9] px-4 py-3.5 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+        {/* RIGHT COLUMN: Desktop Sticky Order Summary & Checkout (Visible on lg+) */}
+        <div className="hidden lg:block lg:col-span-5 xl:col-span-5">
+          <div className="sticky top-24 space-y-4">
+            {/* ORDER SUMMARY CARD */}
+            <div className="bg-white rounded-2xl border border-[#E5DEC9] p-5 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-[#F3ECE0] pb-3">
+                <span className="text-xs font-sans font-bold text-[#B08A3C] uppercase tracking-wider">
+                  ORDER SUMMARY &middot; {cart.reduce((sum, item) => sum + item.quantity, 0)} SAREE{cart.reduce((sum, item) => sum + item.quantity, 0) > 1 ? 'S' : ''}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => router.push('/cart')}
+                  className="text-xs font-semibold text-[#6B1725] hover:underline cursor-pointer"
+                >
+                  Edit Cart
+                </button>
+              </div>
+
+              {/* Cart Items List */}
+              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                {cart.map((item) => {
+                  const currentPrice = item.product.salePrice ?? item.product.price;
+                  const originalPrice = item.product.price;
+                  const hasDiscount = !!item.product.salePrice && item.product.salePrice < originalPrice;
+
+                  return (
+                    <div key={item.product.id} className="flex items-center justify-between gap-3 py-1">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-14 h-16 rounded-xl overflow-hidden bg-[#FAF7F0] shrink-0 border border-[#E5DEC9]">
+                          <img
+                            src={item.product.images[0]}
+                            alt={item.product.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[9px] font-sans font-bold text-[#B08A3C] uppercase tracking-wider block truncate">
+                            {item.product.fabric || item.product.category || 'BANARASI SILK'}
+                          </span>
+                          <h5 className="font-serif font-bold text-xs text-[#292524] line-clamp-1 leading-snug">
+                            {item.product.name}
+                          </h5>
+                          <span className="text-[11px] font-sans text-[#7A6E65] block mt-0.5">
+                            Qty: {item.quantity} &middot; Blouse piece incl.
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-serif font-bold text-sm text-[#292524]">
+                          ₹{(currentPrice * item.quantity).toLocaleString('en-IN')}
+                        </div>
+                        {hasDiscount && (
+                          <span className="text-[11px] text-[#A89F91] line-through block">
+                            ₹{(originalPrice * item.quantity).toLocaleString('en-IN')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Coupon Code Section */}
+              <div className="pt-2 border-t border-[#F3ECE0]">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      placeholder="COUPON CODE"
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                      className="w-full bg-[#FAF7F0] border border-dashed border-[#B08A3C]/60 rounded-xl px-3 py-2.5 text-xs uppercase font-sans font-medium text-[#292524] placeholder:text-[#A89F91] outline-none focus:border-[#6B1725]"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    className="px-4 py-2.5 bg-[#FAF7F0] hover:bg-[#6B1725] hover:text-white text-[#6B1725] border border-[#6B1725]/30 rounded-xl font-sans font-bold text-xs transition-colors cursor-pointer shrink-0"
+                  >
+                    Apply
+                  </button>
+                </div>
+
+                {couponError && (
+                  <p className="text-[11px] text-red-600 font-medium mt-1 px-0.5">{couponError}</p>
+                )}
+
+                {appliedCoupon && (
+                  <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <Tag size={13} className="text-emerald-700" />
+                      <span><strong>{appliedCoupon.code}</strong> applied (-₹{appliedCoupon.discountAmount.toLocaleString('en-IN')})</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="text-xs text-red-600 hover:underline font-semibold cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Price Details */}
+              <div className="space-y-2 pt-2 border-t border-[#F3ECE0] text-xs">
+                <div className="flex justify-between text-[#7A6E65]">
+                  <span>Item Total ({cart.reduce((sum, item) => sum + item.quantity, 0)})</span>
+                  <span className="font-medium text-[#292524]">₹{originalTotal.toLocaleString('en-IN')}</span>
+                </div>
+
+                {totalProductDiscount > 0 && (
+                  <div className="flex justify-between text-[#7A6E65]">
+                    <span>Product Discount</span>
+                    <span className="font-medium text-[#0F766E]">- ₹{totalProductDiscount.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+
+                {couponDiscountAmount > 0 && (
+                  <div className="flex justify-between text-[#7A6E65]">
+                    <span>Coupon Savings</span>
+                    <span className="font-medium text-[#0F766E]">- ₹{couponDiscountAmount.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between text-[#7A6E65]">
+                  <span>Delivery</span>
+                  <span className="font-medium text-[#292524]">
+                    {shippingFee === 0 ? (
+                      <span className="text-[#0F766E] font-bold">FREE</span>
+                    ) : (
+                      `₹${shippingFee}`
+                    )}
+                  </span>
+                </div>
+
+                {/* Grand Total */}
+                <div className="border-t border-[#E5DEC9] pt-3 flex justify-between items-baseline">
+                  <span className="font-serif font-extrabold text-base text-[#292524]">To Pay</span>
+                  <span className="font-serif font-extrabold text-2xl text-[#6B1725]">
+                    ₹{grandTotal.toLocaleString('en-IN')}
+                  </span>
+                </div>
+
+                {totalProductDiscount + couponDiscountAmount > 0 && (
+                  <p className="text-[11px] font-semibold text-[#0F766E] pt-0.5">
+                    🎉 You save ₹{(totalProductDiscount + couponDiscountAmount).toLocaleString('en-IN')} on this order!
+                  </p>
+                )}
+              </div>
+
+              {/* Primary Desktop Action Button */}
+              <button
+                type="button"
+                onClick={() => handlePlaceOrder()}
+                disabled={isSubmitting}
+                className="w-full py-3.5 bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-80 text-white rounded-full font-sans font-bold text-sm tracking-wider uppercase transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2 mt-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin text-white" />
+                    <span>PLACING ORDER...</span>
+                  </>
+                ) : (
+                  <span>PLACE ORDER &bull; ₹{grandTotal.toLocaleString('en-IN')}</span>
+                )}
+              </button>
+
+              <div className="text-center pt-1">
+                <p className="text-[11px] text-[#7A6E65] font-sans">
+                  {paymentMethod === 'Cash on Delivery'
+                    ? '✓ Cash on Delivery &middot; Pay at your doorstep'
+                    : '✓ 256-bit Encrypted SSL &middot; Safe & Instant'}
+                </p>
+              </div>
+            </div>
+
+            {/* TRUST & GUARANTEES BADGE CARD */}
+            <div className="bg-[#FAF7F0] border border-[#E5DEC9] rounded-2xl p-4 space-y-2.5 shadow-2xs">
+              <div className="flex items-center gap-2 text-xs font-serif font-bold text-[#6B1725]">
+                <Sparkles size={15} />
+                <span>Shree Banarasi Sarees Guarantee</span>
+              </div>
+              <ul className="text-[11px] text-[#7A6E65] space-y-1.5 font-sans leading-relaxed">
+                <li className="flex items-start gap-2">
+                  <Check size={13} className="text-[#0F766E] mt-0.5 shrink-0" />
+                  <span>100% Certified Authentic Banarasi Silk with Silk Mark guarantee</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check size={13} className="text-[#0F766E] mt-0.5 shrink-0" />
+                  <span>Open-box inspection for COD &mdash; check weave before paying</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check size={13} className="text-[#0F766E] mt-0.5 shrink-0" />
+                  <span>Direct from weavers &bull; No middlemen markup</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+  </main>
+
+  {/* 7. STICKY BOTTOM CHECKOUT ACTION BAR (Mobile & Tablet only) */}
+  {cart.length > 0 && !isOrdered && (
+    <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E5DEC9] px-4 py-3.5 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
           <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
             <div>
               <div className="font-serif font-extrabold text-xl sm:text-2xl text-[#292524]">

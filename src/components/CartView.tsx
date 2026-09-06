@@ -32,9 +32,9 @@ interface CartViewProps {
 
 const CartSkeleton: React.FC<{ isDrawer?: boolean }> = ({ isDrawer = false }) => {
   return (
-    <div className="min-h-screen bg-[#FAF7F0] flex flex-col justify-between font-sans">
+    <div className={`${isDrawer ? 'h-full overflow-hidden' : 'min-h-screen'} bg-[#FAF7F0] flex flex-col justify-between font-sans`}>
       {/* 1. TOP HEADER BAR SKELETON */}
-      <header className="bg-white border-b border-[#E5DEC9] sticky top-0 z-20 px-4 py-3.5 flex items-center justify-between shadow-2xs">
+      <header className="shrink-0 bg-white border-b border-[#E5DEC9] sticky top-0 z-20 px-4 py-3.5 flex items-center justify-between shadow-2xs">
         <div className="flex items-center gap-3">
           <div className="w-6 h-6 rounded-full bg-stone-200 animate-pulse" />
           <div className="w-24 h-6 bg-stone-200 rounded-md animate-pulse" />
@@ -43,7 +43,7 @@ const CartSkeleton: React.FC<{ isDrawer?: boolean }> = ({ isDrawer = false }) =>
       </header>
 
       {/* 2. MAIN SKELETON CONTENT */}
-      <main className="flex-1 max-w-xl mx-auto w-full p-4 space-y-4 pb-44 lg:pb-28">
+      <main className={`flex-1 ${isDrawer ? 'overflow-y-auto pb-6' : 'pb-44 lg:pb-28'} max-w-xl mx-auto w-full p-4 space-y-4`}>
         {/* Delivery Pincode Card Skeleton */}
         <div className="bg-white rounded-2xl border border-[#E5DEC9] p-3.5 sm:p-4 flex items-center justify-between shadow-2xs animate-pulse">
           <div className="flex items-center gap-2">
@@ -126,9 +126,11 @@ const CartSkeleton: React.FC<{ isDrawer?: boolean }> = ({ isDrawer = false }) =>
       </main>
 
       {/* 3. STICKY CHECKOUT BAR SKELETON */}
-      <div className={`fixed left-0 right-0 z-30 bg-white border-t border-[#E5DEC9] p-3.5 sm:p-4 shadow-md animate-pulse ${
-        isDrawer ? 'bottom-0 max-w-md sm:max-w-lg ml-auto' : 'bottom-[58px] lg:bottom-0'
-      }`}>
+      <div className={
+        isDrawer
+          ? 'shrink-0 bg-white border-t border-[#E5DEC9] p-3.5 sm:p-4 shadow-md animate-pulse z-20'
+          : 'fixed left-0 right-0 z-30 bg-white border-t border-[#E5DEC9] p-3.5 sm:p-4 shadow-md animate-pulse bottom-[58px] lg:bottom-0'
+      }>
         <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="w-24 h-6 bg-stone-200 rounded-md" />
@@ -322,9 +324,9 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
   }
 
   return (
-    <div className="min-h-full bg-[#FAF7F0] flex flex-col justify-between font-sans text-[#292524]">
+    <div className={`${isDrawer ? 'h-full overflow-hidden' : 'min-h-full justify-between'} bg-[#FAF7F0] flex flex-col font-sans text-[#292524]`}>
       {/* 1. TOP HEADER BAR */}
-      <header className="bg-white border-b border-[#E5DEC9] sticky top-0 z-20 px-4 py-3.5 flex items-center justify-between shadow-2xs">
+      <header className="shrink-0 bg-white border-b border-[#E5DEC9] sticky top-0 z-20 px-4 py-3.5 flex items-center justify-between shadow-2xs">
         <div className="flex items-center gap-3">
           <button
             onClick={handleClose}
@@ -354,7 +356,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
 
       {/* UNDO REMOVAL TOAST */}
       {undoToastVisible && removedHistory && (
-        <div className="bg-[#292524] text-[#FAF7F0] px-4 py-2.5 text-xs flex items-center justify-between sticky top-14 z-30 animate-slideDown shadow-md">
+        <div className="shrink-0 bg-[#292524] text-[#FAF7F0] px-4 py-2.5 text-xs flex items-center justify-between sticky top-14 z-30 animate-slideDown shadow-md">
           <span>Saree removed from cart.</span>
           <button
             onClick={handleUndoRemove}
@@ -367,7 +369,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
 
       {/* WISHLIST TOAST */}
       {wishlistToastMsg && (
-        <div className="bg-[#6B1725] text-white px-4 py-2.5 text-xs font-sans font-medium flex items-center justify-between sticky top-14 z-30 animate-slideDown shadow-md">
+        <div className="shrink-0 bg-[#6B1725] text-white px-4 py-2.5 text-xs font-sans font-medium flex items-center justify-between sticky top-14 z-30 animate-slideDown shadow-md">
           <span className="flex items-center gap-1.5">
             <Heart size={14} className="fill-white" />
             {wishlistToastMsg}
@@ -382,10 +384,10 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
       )}
 
       {/* 2. MAIN CONTENT AREA */}
-      <main className="flex-1 max-w-xl mx-auto w-full p-4 space-y-4 pb-44 lg:pb-28">
+      <main className={`flex-1 ${isDrawer ? 'overflow-y-auto overscroll-contain pb-6' : 'pb-44 lg:pb-28'} max-w-xl mx-auto w-full p-4 space-y-4`}>
         {cart.length === 0 ? (
           /* PIXEL-PERFECT EMPTY CART VIEW MATCHING MOCKUP */
-          <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] py-12 px-6 text-center">
+          <div className={`flex-1 flex flex-col items-center justify-center ${isDrawer ? 'py-12 my-auto' : 'min-h-[60vh] py-12'} px-6 text-center`}>
             {/* Gold Circular Outline with Tag Icon */}
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border border-[#D4C39D] bg-transparent flex items-center justify-center mx-auto mb-6 shrink-0">
               <Tag size={32} className="text-[#B08A3C] stroke-[1.5]" />
@@ -667,11 +669,11 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
       {/* 3. STICKY BOTTOM CHECKOUT BAR */}
       {cart.length > 0 && (
         <div
-          className={`fixed left-0 right-0 z-30 bg-white border-t border-[#E5DEC9] p-3.5 sm:p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] ${
+          className={
             isDrawer
-              ? 'bottom-0 max-w-md sm:max-w-lg ml-auto'
-              : 'bottom-[58px] lg:bottom-0'
-          }`}
+              ? 'shrink-0 z-20 bg-white border-t border-[#E5DEC9] p-3.5 sm:p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]'
+              : 'fixed left-0 right-0 z-30 bg-white border-t border-[#E5DEC9] p-3.5 sm:p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bottom-[58px] lg:bottom-0'
+          }
         >
           <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
             <div>

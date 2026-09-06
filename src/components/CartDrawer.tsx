@@ -7,17 +7,25 @@ import { CartView } from './CartView';
 export const CartDrawer: React.FC = () => {
   const { isCartOpen, setIsCartOpen } = useStore();
 
-  // Disable body scroll when drawer is open
+  // Disable body scroll when drawer is open and close on Escape key
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsCartOpen(false);
+      }
+    };
+
     if (isCartOpen) {
       document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
     } else {
       document.body.style.overflow = '';
     }
     return () => {
       document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isCartOpen]);
+  }, [isCartOpen, setIsCartOpen]);
 
   if (!isCartOpen) return null;
 
@@ -31,7 +39,7 @@ export const CartDrawer: React.FC = () => {
 
       {/* Drawer Container */}
       <div className="absolute inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
-        <div className="w-screen max-w-md sm:max-w-lg bg-[#FAF7F0] flex flex-col shadow-2xl animate-slide-in overflow-y-auto">
+        <div className="w-screen max-w-md sm:max-w-lg bg-[#FAF7F0] flex flex-col h-full shadow-2xl animate-slide-in overflow-hidden">
           <CartView isDrawer={true} onBack={() => setIsCartOpen(false)} />
         </div>
       </div>
