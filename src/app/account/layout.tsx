@@ -12,6 +12,7 @@ import {
   ProfileTabSkeleton, 
   CustomizationsTabSkeleton 
 } from '../../components/TabSkeletons';
+import AccountPwaStrip from '../../components/AccountPwaStrip';
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -128,6 +129,10 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
             <p className="text-[11px] text-dark-brown/45 font-sans pt-1">
               Secure authentication powered by Google
             </p>
+          </div>
+
+          <div className="w-full pt-2 lg:hidden">
+            <AccountPwaStrip />
           </div>
         </main>
         <Footer />
@@ -295,7 +300,10 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                 <OrdersTabSkeleton />
               )
             ) : (
-              children
+              <div>
+                {children}
+                <AccountPwaStrip className="mt-6" />
+              </div>
             )}
           </div>
         </div>

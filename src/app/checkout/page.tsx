@@ -502,18 +502,28 @@ function CheckoutContent() {
       ? `${address.trim()}${landmark ? `, Landmark: ${landmark.trim()}` : ''}`
       : 'Store Pickup — Samastipur Showroom';
 
+    const customerDetails = {
+      name: fullName.trim(),
+      phone: mobileNumber,
+      email: email.trim() || undefined,
+      address: fullAddress,
+      city: deliveryMethod === 'Home Delivery' ? city.trim() : 'Samastipur',
+      state: deliveryMethod === 'Home Delivery' ? state : 'Bihar',
+      pinCode: deliveryMethod === 'Home Delivery' ? pinCode : '848103',
+      deliveryMethod: deliveryMethod
+    };
+
+    const orderNotes = isGift && giftMessage.trim()
+      ? `Gift for: ${giftRecipientName.trim() || 'Recipient'}. Message: ${giftMessage.trim()}. Payment method: ${paymentMethod}`
+      : `Payment method: ${paymentMethod}`;
+
     // Execute order creation
     placeOrder({
-      customer: {
-        name: fullName.trim(),
-        phone: mobileNumber,
-        email: email.trim() || undefined,
-        address: fullAddress,
-        city: deliveryMethod === 'Home Delivery' ? city.trim() : 'Samastipur',
-        state: deliveryMethod === 'Home Delivery' ? state : 'Bihar',
-        pinCode: deliveryMethod === 'Home Delivery' ? pinCode : '848103',
-        deliveryMethod: deliveryMethod
-      },
+      customer: customerDetails,
+      customer_name: fullName.trim(),
+      customer_phone: mobileNumber,
+      shipping_address: customerDetails,
+      notes: orderNotes,
       items: cart,
       subtotal,
       discount: couponDiscountAmount,

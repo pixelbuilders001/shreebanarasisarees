@@ -5,7 +5,8 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { Loader2, Printer, AlertTriangle, Smartphone, Sparkles, Download } from 'lucide-react';
 import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
-import { decodeReceiptData } from '@/lib/receiptUtils';
+import { decodeReceiptData, ReceiptData, ReceiptItem } from '@/lib/receiptUtils';
+import { PRODUCTS } from '@/data/products';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzqlsawxvvyvsstyzzff.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -25,40 +26,6 @@ const TERMS = [
     'Dry clean only for all pure silk products.',
     'Any disputes are subject to Bihar Jurisdiction only.',
 ];
-
-interface ReceiptItem {
-    sareeName: string;
-    quantity: number;
-    mrp: number;
-    sellingPrice: number;
-}
-
-interface ReceiptData {
-    invoiceNumber: string;
-    date: string;
-    paymentMode: string;
-    customerName: string | null;
-    customerMobile: string | null;
-    items: ReceiptItem[];
-    totalAmount: number;
-    discountAmount: number;
-    discountPercentage?: number;
-    shippingFee?: number;
-    issuedVoucherCode?: string | null;
-    issuedVoucherAmount?: number | null;
-    appliedVoucherCode?: string | null;
-    appliedVoucherAmount?: number | null;
-    isGstApplied?: boolean;
-    gstRate?: number;
-    taxableAmount?: number;
-    cgstRate?: number;
-    cgstAmount?: number;
-    sgstRate?: number;
-    sgstAmount?: number;
-    igstRate?: number;
-    igstAmount?: number;
-    totalGst?: number;
-}
 
 const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
@@ -196,42 +163,86 @@ export default function ReceiptPage() {
                     totalGst: Number(data.total_gst || 0),
                 };
             } else {
-                const { data: orderData, error: orderErr } = await supabase
+                const decodedInvoice = decodeURIComponent(invoiceNumber).trim();
+                const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(decodedInvoice);
+                let query = supabase
                     .from('orders')
                     .select(`
                         id,
-                        order_number, created_at, payment_method, total_amount, discount, shipping_fee,
-                        customer_name, customer_phone,
-                        order_items ( quantity, unit_price, product_name )
-                    `)
-                    .eq('order_number', invoiceNumber)
-                    .maybeSingle();
+                        order_number, created_at, payment_method, total_amount, subtotal, discount, shipping_fee,
+                        customer_name, customer_phone, customer_email, shipping_address,
+                        gift_wrap_charge,
+                        order_items (
+                            id, order_id, inventory_id, product_name, sku, barcode, quantity, unit_price, total_price, product_snapshot
+                        )
+                    `);
+                if (isUuid) {
+                    query = query.eq('id', decodedInvoice);
+                } else {
+                    query = query.eq('order_number', decodedInvoice);
+                }
+                const { data: orderData, error: orderErr } = await query.maybeSingle();
 
                 if (orderErr) { setError('Failed to load receipt.'); setLoading(false); return; }
                 if (!orderData) { setError('Receipt not found. Please check the link.'); setLoading(false); return; }
 
                 const items: ReceiptItem[] = (orderData.order_items || [])
                     .map((i: any) => {
-                        const unitPrice = Number(i.unit_price);
-                        const mrpVal = Number(i.mrp || unitPrice);
+                        let snap = i.product_snapshot;
+                        if (typeof snap === 'string') {
+                            try { snap = JSON.parse(snap); } catch {}
+                        }
+                        const unitPrice = Number(i.unit_price || snap?.selling_price || 0);
+                        const snapMrp = Number(snap?.mrp || snap?.price || 0);
+                        const sareeName = i.product_name || snap?.saree_name || snap?.name || 'Pure Silk Banarasi Saree';
+
+                        // Fallback match in PRODUCTS catalog if MRP was not found in snapshot
+                        let matchedMrp = 0;
+                        const sku = i.sku || snap?.sku;
+                        const invId = i.inventory_id || snap?.inventory_id || snap?.id;
+                        if (sku || invId || sareeName) {
+                            const matched = PRODUCTS.find(p =>
+                                (invId && p.id === invId) ||
+                                (sku && p.sku === sku) ||
+                                (p.name.toLowerCase() === sareeName.toLowerCase())
+                            );
+                            if (matched && matched.price > unitPrice) {
+                                matchedMrp = matched.price;
+                            }
+                        }
+
+                        const mrpVal = snapMrp > unitPrice ? snapMrp : (matchedMrp > unitPrice ? matchedMrp : (snapMrp > 0 ? snapMrp : unitPrice));
+
                         return {
-                            sareeName: i.product_name || 'Item',
-                            quantity: Number(i.quantity),
+                            sareeName,
+                            quantity: Number(i.quantity || 1),
                             mrp: mrpVal,
                             sellingPrice: unitPrice,
                         };
                     });
-                console.log("ORDER DATA", orderData);
+
+                const shippingAddr = typeof orderData.shipping_address === 'object' && orderData.shipping_address ? orderData.shipping_address : {};
+                const fullAddress = [
+                    shippingAddr.address,
+                    shippingAddr.city,
+                    shippingAddr.state,
+                    shippingAddr.pinCode || shippingAddr.pincode
+                ].filter(Boolean).join(', ');
+
                 receiptData = {
-                    invoiceNumber: orderData.order_number,
+                    invoiceNumber: orderData.order_number || orderData.id,
                     date: orderData.created_at,
                     paymentMode: orderData.payment_method || 'cod',
-                    customerName: orderData.customer_name || null,
-                    customerMobile: orderData.customer_phone || null,
+                    customerName: orderData.customer_name || shippingAddr.name || null,
+                    customerMobile: orderData.customer_phone || shippingAddr.phone || null,
+                    customerAddress: fullAddress || null,
+                    customerEmail: orderData.customer_email || shippingAddr.email || null,
                     items,
-                    totalAmount: Number(orderData.total_amount),
+                    subtotal: Number(orderData.subtotal || 0),
+                    totalAmount: Number(orderData.total_amount || 0),
                     discountAmount: Number(orderData.discount || 0),
                     shippingFee: Number(orderData.shipping_fee || 0),
+                    giftWrapCharge: Number(orderData.gift_wrap_charge || 0),
                 };
             }
 
@@ -271,12 +282,18 @@ export default function ReceiptPage() {
     const totalItemDiscountPercent = totalMrp > 0 ? (totalItemDiscount / totalMrp) * 100 : 0;
     const totalItemDiscountPercentText = totalItemDiscountPercent > 0 ? ` (${parseFloat(totalItemDiscountPercent.toFixed(1))}%)` : '';
 
-    const subtotal = receipt.items.reduce((s, i) => s + i.quantity * i.sellingPrice, 0);
+    const subtotal = receipt.subtotal && receipt.subtotal > 0
+        ? receipt.subtotal
+        : receipt.items.reduce((s, i) => s + i.quantity * i.sellingPrice, 0);
+
     const billDiscount = receipt.discountAmount || 0;
     const billDiscountPercent = (receipt.discountPercentage && receipt.discountPercentage > 0)
         ? receipt.discountPercentage
         : ((subtotal > 0 && billDiscount > 0) ? (billDiscount / subtotal) * 100 : 0);
     const billDiscountPercentText = billDiscountPercent > 0 ? ` (${parseFloat(billDiscountPercent.toFixed(1))}%)` : '';
+
+    const totalSavings = totalItemDiscount + billDiscount + Number(receipt.appliedVoucherAmount || 0);
+    const totalSavingsPercent = totalMrp > 0 ? (totalSavings / totalMrp) * 100 : 0;
 
     const handlePrint = () => {
         const orig = document.title;
@@ -502,11 +519,16 @@ export default function ReceiptPage() {
                                 <span style={{ fontStyle: 'italic' }}>{dateShort}</span>
                             </div>
                         </div>
-                        {(receipt.customerName || receipt.customerMobile) && (
-                            <div style={{ lineHeight: '1.85', fontSize: '12.5px' }}>
+                        {(receipt.customerName || receipt.customerMobile || receipt.customerAddress) && (
+                            <div className="invoice-header-right" style={{ lineHeight: '1.85', fontSize: '12.5px', textAlign: 'right', maxWidth: '300px' }}>
                                 <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Bill To</div>
-                                {receipt.customerName && <div style={{ wordBreak: 'break-word' }}>{receipt.customerName}</div>}
-                                {receipt.customerMobile && <div>{receipt.customerMobile}</div>}
+                                {receipt.customerName && <div style={{ fontWeight: '600', color: '#111', wordBreak: 'break-word' }}>{receipt.customerName}</div>}
+                                {receipt.customerMobile && <div style={{ color: '#444' }}>{receipt.customerMobile}</div>}
+                                {receipt.customerAddress && (
+                                    <div style={{ color: '#555', fontSize: '11.5px', lineHeight: '1.4', marginTop: '3px', wordBreak: 'break-word' }}>
+                                        {receipt.customerAddress}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -526,10 +548,10 @@ export default function ReceiptPage() {
                             </thead>
                             <tbody>
                                 {receipt.items.map((item, idx) => {
-                                    const itemMrp = item.mrp || item.sellingPrice;
+                                    const itemMrp = item.mrp && item.mrp > 0 ? item.mrp : item.sellingPrice;
                                     const itemMrpTotal = item.quantity * itemMrp;
                                     const itemSellingTotal = item.quantity * item.sellingPrice;
-                                    const itemDisc = itemMrpTotal - itemSellingTotal;
+                                    const itemDisc = Math.max(0, itemMrpTotal - itemSellingTotal);
                                     const itemDiscPct = itemMrpTotal > 0 ? (itemDisc / itemMrpTotal) * 100 : 0;
 
                                     return (
@@ -554,31 +576,31 @@ export default function ReceiptPage() {
                     </div>
 
                     <div style={{ borderTop: '2px solid #111', paddingTop: '12px', marginTop: '4px' }}>
-                        <div className="totals-container" style={{ maxWidth: '380px', marginLeft: 'auto', width: '100%' }}>
-                            {totalItemDiscount > 0 && (
+                        <div className="totals-container" style={{ maxWidth: '400px', marginLeft: 'auto', width: '100%' }}>
+                            {totalMrp > subtotal && (
                                 <>
                                     <div className="totals-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '4px 0', borderBottom: '1px dashed #eee', fontSize: '12.5px' }}>
                                         <span style={{ color: '#555' }}>TOTAL MRP</span>
                                         <span style={{ textAlign: 'right', fontWeight: '500', whiteSpace: 'nowrap' }}>{fmtCurrency(totalMrp)}</span>
                                     </div>
                                     <div className="totals-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '4px 0', borderBottom: '1px dashed #eee', fontSize: '12.5px', color: '#b91c1c' }}>
-                                        <span>TOTAL ITEM DISCOUNT{totalItemDiscountPercentText}</span>
+                                        <span>PRODUCT DISCOUNT{totalItemDiscountPercentText}</span>
                                         <span style={{ textAlign: 'right', fontWeight: '500', whiteSpace: 'nowrap' }}>− {fmtCurrency(totalItemDiscount)}</span>
                                     </div>
                                 </>
                             )}
 
-                            {(totalItemDiscount > 0 || billDiscount > 0 || (receipt.shippingFee && receipt.shippingFee > 0)) && (
-                                <div className="totals-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '5px 0', borderBottom: '1px dashed #ccc', fontSize: '12.5px' }}>
-                                    <span style={{ fontWeight: 'bold', letterSpacing: '0.5px' }}>SUBTOTAL</span>
-                                    <span style={{ textAlign: 'right', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{fmtCurrency(subtotal)}</span>
-                                </div>
-                            )}
+                            <div className="totals-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '5px 0', borderBottom: '1px dashed #ccc', fontSize: '12.5px' }}>
+                                <span style={{ fontWeight: 'bold', letterSpacing: '0.5px' }}>
+                                    {totalMrp > subtotal ? 'SUBTOTAL (AFTER PRODUCT DISCOUNT)' : 'SUBTOTAL'}
+                                </span>
+                                <span style={{ textAlign: 'right', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{fmtCurrency(subtotal)}</span>
+                            </div>
 
                             {billDiscount > 0 && (
                                 <div className="totals-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '5px 0', borderBottom: '1px dashed #ccc', fontSize: '12.5px', color: '#b91c1c' }}>
                                     <span style={{ fontWeight: 'bold', letterSpacing: '0.5px' }}>
-                                        {totalItemDiscount > 0 ? 'INSTORE DISCOUNT' : 'DISCOUNT'}{billDiscountPercentText}
+                                        DISCOUNT{billDiscountPercentText}
                                     </span>
                                     <span style={{ textAlign: 'right', fontWeight: 'bold', whiteSpace: 'nowrap' }}>− {fmtCurrency(billDiscount)}</span>
                                 </div>
@@ -611,15 +633,22 @@ export default function ReceiptPage() {
                                 </>
                             ) : null}
 
-                            {receipt.shippingFee && receipt.shippingFee > 0 && (
+                            <div className="totals-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '5px 0', borderBottom: '1px dashed #ccc', fontSize: '12.5px' }}>
+                                <span style={{ color: '#555' }}>DELIVERY CHARGES</span>
+                                <span style={{ textAlign: 'right', fontWeight: '500', whiteSpace: 'nowrap', color: (receipt.shippingFee && receipt.shippingFee > 0) ? '#111' : '#15803d' }}>
+                                    {(receipt.shippingFee && receipt.shippingFee > 0) ? `+ ${fmtCurrency(receipt.shippingFee)}` : 'FREE'}
+                                </span>
+                            </div>
+
+                            {Boolean(receipt.giftWrapCharge && receipt.giftWrapCharge > 0) && (
                                 <div className="totals-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '5px 0', borderBottom: '1px dashed #ccc', fontSize: '12.5px' }}>
-                                    <span style={{ fontWeight: 'bold', letterSpacing: '0.5px' }}>SHIPPING FEE</span>
-                                    <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>+ {fmtCurrency(receipt.shippingFee)}</span>
+                                    <span style={{ color: '#555' }}>GIFT PACKAGING</span>
+                                    <span style={{ textAlign: 'right', fontWeight: '500', whiteSpace: 'nowrap' }}>+ {fmtCurrency(receipt.giftWrapCharge || 0)}</span>
                                 </div>
                             )}
 
                             {receipt.appliedVoucherCode && (
-                                <div className="totals-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '5px 0', borderBottom: '1px dashed #ccc', fontSize: '12.5px' }}>
+                                <div className="totals-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '5px 0', borderBottom: '1px dashed #ccc', fontSize: '12.5px', color: '#b91c1c' }}>
                                     <span style={{ fontWeight: 'bold', letterSpacing: '0.5px' }}>VOUCHER APPLIED ({receipt.appliedVoucherCode})</span>
                                     <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>− {fmtCurrency(receipt.appliedVoucherAmount || 0)}</span>
                                 </div>
@@ -633,9 +662,28 @@ export default function ReceiptPage() {
                             )}
 
                             <div className="totals-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '8px 0', borderBottom: '2px solid #111', fontSize: '13.5px' }}>
-                                <span style={{ fontWeight: 'bold', letterSpacing: '0.5px' }}>TOTAL PAYABLE</span>
-                                <span style={{ fontWeight: 'bold', textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtCurrency(receipt.totalAmount)}</span>
+                                <span style={{ fontWeight: 'bold', letterSpacing: '0.5px' }}>TOTAL AMOUNT</span>
+                                <span style={{ fontWeight: 'bold', textAlign: 'right', whiteSpace: 'nowrap', fontSize: '14px' }}>{fmtCurrency(receipt.totalAmount)}</span>
                             </div>
+
+                            {totalSavings > 0 && (
+                                <div style={{
+                                    marginTop: '8px',
+                                    padding: '7px 12px',
+                                    background: '#f0fdf4',
+                                    border: '1px solid #86efac',
+                                    borderRadius: '4px',
+                                    color: '#15803d',
+                                    fontSize: '11.5px',
+                                    fontWeight: 'bold',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
+                                }}>
+                                    <span>🎉 Total Savings</span>
+                                    <span>{fmtCurrency(totalSavings)}{totalSavingsPercent > 0 ? ` (${parseFloat(totalSavingsPercent.toFixed(1))}%)` : ''}</span>
+                                </div>
+                            )}
                         </div>
                     </div>
 

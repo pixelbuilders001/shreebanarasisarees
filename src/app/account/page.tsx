@@ -11,7 +11,6 @@ import {
   Zap,
   Truck,
   Package,
-  Phone,
   MessageCircle,
   MapPin,
   Download,
@@ -22,9 +21,10 @@ import {
   X,
   AlertCircle
 } from 'lucide-react';
-import { supabase } from '../../data/supabase';
+import { supabase, fetchDbOrderWithItems, mapDbOrderToOrder, OrderStatusHistoryEntry } from '../../data/supabase';
 import { OrdersTabSkeleton } from '../../components/TabSkeletons';
 import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
+import { generateReceiptUrl, ReceiptData, ReceiptItem } from '@/lib/receiptUtils';
 
 // Format date into "Today, 6:12 pm" or "12 Feb 2026"
 function formatOrderDate(dateString: string): string {
@@ -46,51 +46,80 @@ function formatOrderDate(dateString: string): string {
   });
 }
 
-// Map order status to badge styling matching Image 1
-function getStatusBadge(status: string) {
-  const s = status?.toLowerCase() || '';
-  if (s.includes('out') || s.includes('transit')) {
-    return {
-      label: 'Out for delivery',
-      className: 'bg-[#6B1725] text-white'
-    };
+// Canonical order status progression (matches the DB enum):
+// placed → confirmed → processing → packed → shipped → out_for_delivery → delivered
+const ORDER_STATUS_STEPS: Array<{ key: string; title: string }> = [
+  { key: 'placed', title: 'Placed' },
+  { key: 'confirmed', title: 'Confirmed' },
+  { key: 'processing', title: 'Processing' },
+  { key: 'packed', title: 'Packed' },
+  { key: 'shipped', title: 'Shipped' },
+  { key: 'out_for_delivery', title: 'Out For Delivery' },
+  { key: 'delivered', title: 'Delivered' }
+];
+
+// Normalize any raw/pretty order status onto a canonical step key
+function normalizeStatusKey(status?: string | null): string {
+  const s = (status || '').toLowerCase().trim();
+  if (!s) return '';
+  const exact = ORDER_STATUS_STEPS.find(step => step.key === s);
+  if (exact) return exact.key;
+  const byTitle = ORDER_STATUS_STEPS.find(step => step.title.toLowerCase() === s);
+  if (byTitle) return byTitle.key;
+  if (s.includes('cancel')) return 'cancelled';
+  if (s.includes('return')) return 'returned';
+  if (s.includes('deliver')) return 'delivered';
+  if (s.includes('out')) return 'out_for_delivery';
+  if (s.includes('ship')) return 'shipped';
+  if (s.includes('pack')) return 'packed';
+  if (s.includes('process')) return 'processing';
+  if (s.includes('confirm')) return 'confirmed';
+  if (s.includes('place') || s.includes('order')) return 'placed';
+  return '';
+}
+
+function getStatusStepIndex(status?: string | null): number {
+  return ORDER_STATUS_STEPS.findIndex(step => step.key === normalizeStatusKey(status));
+}
+
+// How far an order has progressed, based on its current status + status history
+function getFurthestStepIndex(
+  orderStatus?: string | null,
+  history?: Array<{ status?: string | null }>
+): number {
+  const orderIndex = getStatusStepIndex(orderStatus);
+  const historyIndexes = (history || [])
+    .map(h => getStatusStepIndex(h.status))
+    .filter(i => i >= 0);
+  if (historyIndexes.length > 0) return Math.max(orderIndex, ...historyIndexes);
+  return orderIndex >= 0 ? orderIndex : 0;
+}
+
+// Badge shows the actual status from the response (no hardcoded labels)
+function getStatusBadge(status?: string | null) {
+  const key = normalizeStatusKey(status);
+
+  if (key === 'cancelled') {
+    return { label: 'Cancelled', className: 'bg-[#FDF2F2] text-[#991B1B] border border-[#FECDCD]' };
   }
-  if (s.includes('pack')) {
-    return {
-      label: 'Packed',
-      className: 'bg-[#FAF2ED] text-[#6B1725] border border-[#F0DCD0]'
-    };
+  if (key === 'returned') {
+    return { label: 'Returned', className: 'bg-[#F5EFEB] text-[#57534E]' };
   }
-  if (s.includes('ship') || s.includes('dispatch')) {
-    return {
-      label: 'Dispatched',
-      className: 'bg-[#F0F7FF] text-[#1D4ED8] border border-[#BFDBFE]'
+
+  const step = ORDER_STATUS_STEPS.find(s => s.key === key);
+  if (step) {
+    const styleMap: Record<string, string> = {
+      placed: 'bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]',
+      confirmed: 'bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]',
+      processing: 'bg-[#F0F7FF] text-[#1D4ED8] border border-[#BFDBFE]',
+      packed: 'bg-[#FAF2ED] text-[#6B1725] border border-[#F0DCD0]',
+      shipped: 'bg-[#F0F7FF] text-[#1D4ED8] border border-[#BFDBFE]',
+      out_for_delivery: 'bg-[#6B1725] text-white border border-[#6B1725]',
+      delivered: 'bg-[#F5EFEB] text-[#44403C]'
     };
+    return { label: step.title, className: styleMap[step.key] };
   }
-  if (s.includes('confirm') || s.includes('placed') || s.includes('order') || s.includes('process')) {
-    return {
-      label: 'Confirmed',
-      className: 'bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]'
-    };
-  }
-  if (s.includes('deliver')) {
-    return {
-      label: 'Delivered',
-      className: 'bg-[#F5EFEB] text-[#44403C]'
-    };
-  }
-  if (s.includes('return')) {
-    return {
-      label: 'Returned',
-      className: 'bg-[#F5EFEB] text-[#57534E]'
-    };
-  }
-  if (s.includes('cancel')) {
-    return {
-      label: 'Cancelled',
-      className: 'bg-[#FDF2F2] text-[#991B1B] border border-[#FECDCD]'
-    };
-  }
+
   return {
     label: status || 'Order Placed',
     className: 'bg-[#F5EFEB] text-[#57534E]'
@@ -155,6 +184,7 @@ interface ResolvedOrderItem {
   sku: string;
   name: string;
   price: number;
+  mrp: number;
   quantity: number;
   image: string | null;
 }
@@ -167,6 +197,7 @@ function resolveOrderItem(item: any, products: any[] = []): ResolvedOrderItem {
       sku: 'SBS-SAREE',
       name: 'Pure Silk Banarasi Saree',
       price: 0,
+      mrp: 0,
       quantity: 1,
       image: null
     };
@@ -204,13 +235,20 @@ function resolveOrderItem(item: any, products: any[] = []): ResolvedOrderItem {
     matched?.name || 
     'Pure Silk Banarasi Saree';
 
-  // 5. Resolve price
+  // 5. Resolve price and mrp
   const price = Number(
     prod?.salePrice ?? prod?.price ?? 
     item?.unit_price ?? item?.price ?? 
-    snap?.salePrice ?? snap?.price ?? 
+    snap?.salePrice ?? snap?.selling_price ?? snap?.price ?? 
     matched?.salePrice ?? matched?.price ?? 0
   );
+
+  const snapMrp = Number(snap?.mrp || snap?.price || 0);
+  const prodMrp = Number(prod?.price || 0);
+  const matchedMrp = Number(matched?.price || 0);
+  const rawMrp = Number(item?.mrp || 0);
+  const mrpCandidate = snapMrp || prodMrp || matchedMrp || rawMrp;
+  const mrp = mrpCandidate > price ? mrpCandidate : (price > 0 ? price : 0);
 
   // 6. Resolve image
   const isValidImg = (img?: string | null): boolean => 
@@ -264,6 +302,7 @@ function resolveOrderItem(item: any, products: any[] = []): ResolvedOrderItem {
     sku: sku || (id ? id.slice(0, 6).toUpperCase() : 'SBS-SAREE'),
     name,
     price,
+    mrp: mrp > 0 ? mrp : price,
     quantity: Number(item?.quantity || 1),
     image
   };
@@ -278,6 +317,8 @@ function AccountContent() {
     products,
     cancelOrder,
     cancelOrderItem,
+    markOrderCancelledLocally,
+    refreshOrders,
     isHydrated
   } = useStore();
 
@@ -286,6 +327,43 @@ function AccountContent() {
   const [orderItemsDetails, setOrderItemsDetails] = useState<any[] | null>(null);
   const [loadingOrderItems, setLoadingOrderItems] = useState(false);
   const [standaloneOrder, setStandaloneOrder] = useState<Order | null>(null);
+  const [dbOrders, setDbOrders] = useState<Order[]>([]);
+  const [isLoadingDbOrders, setIsLoadingDbOrders] = useState<boolean>(true);
+
+  const [cancelStatus, setCancelStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [cancelErrorMessage, setCancelErrorMessage] = useState<string | null>(null);
+
+  // Helper: Only show cancel button for placed, confirmed, and processing orders
+  const isOrderCancellable = (status?: string | null): boolean => {
+    if (!status) return false;
+    const s = status.toLowerCase().trim();
+    return s === 'placed' || s === 'order placed' || s === 'confirmed' || s === 'processing';
+  };
+
+  // Directly fetch orders from Supabase with order_items and order_status_history
+  const loadAccountOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*, order_items(*), order_status_history(*)')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        setDbOrders(data.map(mapDbOrderToOrder));
+      }
+    } catch (err) {
+      console.error('Error loading orders in AccountContent:', err);
+    } finally {
+      setIsLoadingDbOrders(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAccountOrders();
+  }, []);
+
+  // Prioritize fresh database orders from Supabase, fallback to context orders
+  const displayOrders = dbOrders.length > 0 ? dbOrders : orders;
 
   // Sync with searchParams if someone navigates with ?orderId=...
   useEffect(() => {
@@ -298,9 +376,9 @@ function AccountContent() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
+  const [orderUuidToCancel, setOrderUuidToCancel] = useState<string | null>(null);
   const [itemToCancel, setItemToCancel] = useState<string | null>(null);
   const [cancelType, setCancelType] = useState<'order' | 'item'>('order');
-  const [cancelStatus, setCancelStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   // PWA install state
   const isPwaInstalled = useIsPwaInstalled();
@@ -416,17 +494,17 @@ function AccountContent() {
   };
 
   // Get active order details if one is selected
-  const activeOrder = orders.find(o => o.orderId === selectedOrderId || o.id === selectedOrderId) || standaloneOrder;
+  const activeOrder = displayOrders.find(o => o.orderId === selectedOrderId || o.id === selectedOrderId) || standaloneOrder;
   const historyList = activeOrder?.statusHistory || [];
 
-  // If activeOrder is not in `orders` array, fetch it directly
+  // If activeOrder is not in `displayOrders` array, fetch it directly
   useEffect(() => {
     if (!selectedOrderId) {
       setStandaloneOrder(null);
       return;
     }
 
-    const inList = orders.find(o => o.orderId === selectedOrderId || o.id === selectedOrderId);
+    const inList = displayOrders.find(o => o.orderId === selectedOrderId || o.id === selectedOrderId);
     if (inList) {
       setStandaloneOrder(null);
       return;
@@ -435,65 +513,9 @@ function AccountContent() {
     let isMounted = true;
     async function fetchStandaloneOrder() {
       try {
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedOrderId!);
-        let query = supabase.from('orders').select('*');
-        if (isUuid) {
-          query = query.eq('id', selectedOrderId);
-        } else {
-          query = query.eq('order_number', selectedOrderId);
-        }
-        const { data: orderRow } = await query.maybeSingle();
-        if (orderRow && isMounted) {
-          const { data: historyData } = await supabase
-            .from('order_status_history')
-            .select('*')
-            .eq('order_id', orderRow.id)
-            .order('created_at', { ascending: true });
-
-          const statusHistory = (historyData || []).map((h: any) => ({
-            id: h.id,
-            orderId: h.order_id,
-            status: h.status,
-            note: h.note,
-            createdAt: h.created_at
-          }));
-
-          let orderStatus: Order['orderStatus'] = 'Order Placed';
-          if (orderRow.order_status === 'confirmed' || orderRow.order_status === 'processing') orderStatus = 'Confirmed';
-          else if (orderRow.order_status === 'packed') orderStatus = 'Packed';
-          else if (orderRow.order_status === 'shipped') orderStatus = 'Shipped';
-          else if (orderRow.order_status === 'out_for_delivery') orderStatus = 'Out for Delivery';
-          else if (orderRow.order_status === 'delivered') orderStatus = 'Delivered';
-          else if (orderRow.order_status === 'cancelled') orderStatus = 'Cancelled';
-
-          setStandaloneOrder({
-            id: orderRow.id,
-            orderId: orderRow.order_number,
-            customer: {
-              name: orderRow.customer_name || (orderRow.shipping_address as any)?.name || '',
-              phone: orderRow.customer_phone || (orderRow.shipping_address as any)?.phone || '',
-              email: orderRow.customer_email || (orderRow.shipping_address as any)?.email || '',
-              address: (orderRow.shipping_address as any)?.address || '',
-              city: (orderRow.shipping_address as any)?.city || '',
-              state: (orderRow.shipping_address as any)?.state || '',
-              pinCode: (orderRow.shipping_address as any)?.pinCode || (orderRow.shipping_address as any)?.pincode || '',
-              deliveryMethod: (orderRow.shipping_address as any)?.deliveryMethod || 'Home Delivery'
-            },
-            items: [],
-            subtotal: Number(orderRow.subtotal || 0),
-            discount: Number(orderRow.discount || 0),
-            shipping: Number(orderRow.shipping_fee || 0),
-            total: Number(orderRow.total_amount || 0),
-            paymentMethod: orderRow.payment_method === 'cod' ? 'Cash on Delivery' : (orderRow.payment_method || 'Online Payment'),
-            paymentStatus: orderRow.payment_status === 'paid' ? 'Paid' : 'Pending',
-            orderStatus,
-            createdAt: orderRow.created_at,
-            statusHistory,
-            is_gift: orderRow.is_gift,
-            gift_recipient_name: orderRow.gift_recipient_name,
-            gift_message: orderRow.gift_message,
-            gift_wrap_charge: orderRow.gift_wrap_charge
-          });
+        const order = await fetchDbOrderWithItems(selectedOrderId!);
+        if (order && isMounted) {
+          setStandaloneOrder(order);
         }
       } catch (e) {
         console.error('Error fetching standalone order:', e);
@@ -502,7 +524,7 @@ function AccountContent() {
 
     fetchStandaloneOrder();
     return () => { isMounted = false; };
-  }, [selectedOrderId, orders]);
+  }, [selectedOrderId, orders, dbOrders]);
 
   // Fetch detailed order items using Supabase order_items query
   useEffect(() => {
@@ -516,20 +538,28 @@ function AccountContent() {
       setLoadingOrderItems(true);
       try {
         let orderId = activeOrder?.id;
+        const isCurrentIdUuid = orderId ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId) : false;
 
-        // If UUID is not directly on activeOrder, determine UUID or check if selectedOrderId is UUID
-        if (!orderId) {
-          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedOrderId!);
-          if (isUuid) {
+        // If UUID is not valid on activeOrder, determine UUID from order_number or check if selectedOrderId is UUID
+        if (!isCurrentIdUuid) {
+          const isSelectedUuid = selectedOrderId ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedOrderId) : false;
+          if (isSelectedUuid) {
             orderId = selectedOrderId!;
           } else {
+            const lookupNumber = activeOrder?.orderId || selectedOrderId!;
             const { data: orderRow } = await supabase
               .from('orders')
               .select('id')
-              .eq('order_number', selectedOrderId!)
+              .eq('order_number', lookupNumber)
               .maybeSingle();
-            orderId = orderRow?.id || selectedOrderId!;
+            orderId = orderRow?.id;
           }
+        }
+
+        // Must be a valid UUID before querying order_items.order_id
+        const isOrderUuid = orderId ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId) : false;
+        if (!isOrderUuid) {
+          return;
         }
 
         const { data, error } = await supabase
@@ -573,9 +603,39 @@ function AccountContent() {
     ? orderItemsDetails
     : (activeOrder?.items || []);
 
-  const handleCancelOrder = async (productId?: string) => {
-    if (!activeOrder) return;
-    setOrderToCancel(activeOrder.orderId);
+  const refreshOrderStatus = async (targetOrderNumber?: string) => {
+    // Re-fetch only the orders database data without reloading the entire page
+    await Promise.all([
+      loadAccountOrders(),
+      refreshOrders()
+    ]);
+    const orderIdToFetch = targetOrderNumber || selectedOrderId;
+    if (orderIdToFetch) {
+      try {
+        const refreshed = await fetchDbOrderWithItems(orderIdToFetch);
+        if (refreshed) {
+          setStandaloneOrder(refreshed);
+        }
+      } catch (err) {
+        console.error('Error refreshing order details:', err);
+      }
+    }
+  };
+
+  const handleCancelOrder = (orderIdentifier?: string, productId?: string) => {
+    const targetOrder = orderIdentifier
+      ? (displayOrders.find(o => o.id === orderIdentifier || o.orderId === orderIdentifier) || activeOrder)
+      : activeOrder;
+
+    if (!targetOrder) return;
+
+    // Human-readable order number for UI modal copy
+    const displayNum = targetOrder.orderId || targetOrder.id || '';
+    setOrderToCancel(displayNum);
+
+    // Database primary key order.id (UUID) for Edge Function payload
+    const orderUuid = targetOrder.id || null;
+    setOrderUuidToCancel(orderUuid);
 
     if (productId && displayItems.length > 1) {
       setItemToCancel(productId);
@@ -586,6 +646,7 @@ function AccountContent() {
     }
 
     setCancelStatus('idle');
+    setCancelErrorMessage(null);
     setShowCancelModal(true);
   };
 
@@ -593,30 +654,120 @@ function AccountContent() {
     if (!orderToCancel) return;
 
     setIsCancelling(true);
+    setCancelErrorMessage(null);
+
     try {
       if (cancelType === 'item' && itemToCancel) {
         const res = await cancelOrderItem(orderToCancel, itemToCancel);
         if (res.success) {
           if (res.cancelledEntireOrder) {
             setCancelType('order');
+            if (orderUuidToCancel) markOrderCancelledLocally(orderUuidToCancel);
+            if (orderToCancel) markOrderCancelledLocally(orderToCancel);
           }
           if (orderItemsDetails) {
             setOrderItemsDetails(prev => prev ? prev.filter(i => (i.inventory_id !== itemToCancel && i.id !== itemToCancel)) : null);
           }
           setCancelStatus('success');
+          await refreshOrderStatus(orderToCancel);
         } else {
+          setCancelErrorMessage("Could not cancel this item. Please try again.");
           setCancelStatus('error');
         }
       } else {
-        const success = await cancelOrder(orderToCancel);
-        if (success) {
-          setCancelStatus('success');
-        } else {
+        // Resolve database UUID for order.id
+        let resolvedOrderId = orderUuidToCancel;
+
+        // Fallback: If UUID not in state, look up by order_number from Supabase
+        if (!resolvedOrderId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedOrderId)) {
+          if (orderToCancel) {
+            const { data: row } = await supabase
+              .from('orders')
+              .select('id')
+              .eq('order_number', orderToCancel)
+              .maybeSingle();
+            if (row?.id) {
+              resolvedOrderId = row.id;
+            }
+          }
+        }
+
+        // Direct invocation of cancel-order-user Edge Function using order.id
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+          headers.Authorization = `Bearer ${session.access_token}`;
+        }
+
+        const { data, error } = await supabase.functions.invoke("cancel-order-user", {
+          body: { order_id: resolvedOrderId || orderToCancel },
+          headers
+        });
+
+        if (error || data?.error || data?.success === false) {
+          const errorMsg = data?.error || error?.message || "Failed to cancel order. Please try again.";
+          console.error("Cancel order error:", errorMsg);
+          setCancelErrorMessage(errorMsg);
           setCancelStatus('error');
+        } else {
+          // 1. INSTANT OPTIMISTIC UI REFRESH (Quick, instantaneous changes without page reload)
+          const targetKey = orderToCancel;
+          const targetUuid = resolvedOrderId;
+
+          // Update StoreContext orders
+          if (targetUuid) markOrderCancelledLocally(targetUuid);
+          if (targetKey) markOrderCancelledLocally(targetKey);
+
+          // Update local dbOrders state immediately
+          setDbOrders(prev =>
+            prev.map(o => {
+              if (o.id === targetUuid || o.orderId === targetKey || o.id === targetKey) {
+                const newHistory: OrderStatusHistoryEntry = {
+                  id: `cancelled-${Date.now()}`,
+                  orderId: o.id || o.orderId,
+                  status: 'cancelled',
+                  note: 'Order cancelled by customer',
+                  createdAt: new Date().toISOString()
+                };
+                return {
+                  ...o,
+                  orderStatus: 'Cancelled' as const,
+                  statusHistory: o.statusHistory ? [...o.statusHistory, newHistory] : [newHistory]
+                };
+              }
+              return o;
+            })
+          );
+
+          // Update standaloneOrder if currently viewing in details view
+          setStandaloneOrder(prev => {
+            if (prev && (prev.id === targetUuid || prev.orderId === targetKey || prev.id === targetKey)) {
+              const newHistory: OrderStatusHistoryEntry = {
+                id: `cancelled-${Date.now()}`,
+                orderId: prev.id || prev.orderId,
+                status: 'cancelled',
+                note: 'Order cancelled by customer',
+                createdAt: new Date().toISOString()
+              };
+              return {
+                ...prev,
+                orderStatus: 'Cancelled' as const,
+                statusHistory: prev.statusHistory ? [...prev.statusHistory, newHistory] : [newHistory]
+              };
+            }
+            return prev;
+          });
+
+          setCancelStatus('success');
+
+          // 2. Fetch fresh DB records in the background to ensure consistency
+          await refreshOrderStatus(orderToCancel);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Cancellation error:", err);
+      const errorMsg = err.message || "An unexpected error occurred during cancellation.";
+      setCancelErrorMessage(errorMsg);
       setCancelStatus('error');
     } finally {
       setIsCancelling(false);
@@ -629,15 +780,13 @@ function AccountContent() {
   });
   const targetItemName = targetItemObj ? resolveOrderItem(targetItemObj, products).name : '';
 
-  const isCancellable = activeOrder &&
-    activeOrder.orderStatus !== 'Out for Delivery' &&
-    activeOrder.orderStatus !== 'Delivered' &&
-    activeOrder.orderStatus !== 'Cancelled';
+  // Only allow cancellation if order is placed, confirmed, or processing
+  const isCancellable = isOrderCancellable(activeOrder?.orderStatus);
 
   // Filter orders
   const filteredOrders = useMemo(() => {
     if (activeFilter === 'In transit') {
-      return orders.filter(o => {
+      return displayOrders.filter(o => {
         const s = o.orderStatus?.toLowerCase() || '';
         return (
           s.includes('placed') ||
@@ -651,18 +800,18 @@ function AccountContent() {
       });
     }
     if (activeFilter === 'Delivered') {
-      return orders.filter(o => o.orderStatus?.toLowerCase().includes('deliver'));
+      return displayOrders.filter(o => o.orderStatus?.toLowerCase().includes('deliver'));
     }
     if (activeFilter === 'Returned') {
-      return orders.filter(o => {
+      return displayOrders.filter(o => {
         const s = o.orderStatus?.toLowerCase() || '';
         return s.includes('return') || s.includes('cancel');
       });
     }
-    return orders; // 'All'
-  }, [orders, activeFilter]);
+    return displayOrders; // 'All'
+  }, [displayOrders, activeFilter]);
 
-  if (!isHydrated) {
+  if (!isHydrated || (isLoadingDbOrders && orders.length === 0 && dbOrders.length === 0)) {
     return <OrdersTabSkeleton />;
   }
 
@@ -670,41 +819,160 @@ function AccountContent() {
   // VIEW A: ORDER DETAILS VIEW (Matches Image 3)
   // ═════════════════════════════════════════════════════════════════
   if (selectedOrderId && activeOrder) {
-    const isOutOfDelivery = activeOrder.orderStatus?.toLowerCase().includes('out') || activeOrder.orderStatus?.toLowerCase().includes('transit');
     const isDelivered = activeOrder.orderStatus?.toLowerCase().includes('deliver');
+    const isCancelled = activeOrder.orderStatus?.toLowerCase().includes('cancel');
     const isSamastipur = activeOrder.customer?.pinCode === '848101' || activeOrder.customer?.pinCode === '848114';
 
-    // Stepper steps
-    const s = activeOrder.orderStatus?.toLowerCase() || '';
-    const isPlaced = true;
-    const isPacked = s.includes('pack') || s.includes('ship') || s.includes('out') || s.includes('deliver');
-    const isOut = s.includes('out') || s.includes('deliver');
-    const isDeliv = s.includes('deliver');
+    // Stepper — canonical order statuses (matches DB enum):
+    // placed → confirmed → processing → packed → shipped → out_for_delivery → delivered
+    const furthestStepIndex = getFurthestStepIndex(activeOrder.orderStatus, historyList);
 
-    const timelineSteps = [
-      {
-        title: 'Order placed',
-        subtitle: formatOrderDate(activeOrder.createdAt),
-        completed: isPlaced
-      },
-      {
-        title: 'Packed at the shop',
-        subtitle: 'Checked by Rakesh ji',
-        completed: isPacked
-      },
-      {
-        title: 'Out for delivery',
-        subtitle: isSamastipur ? 'Ramesh is on the way' : 'Dispatched with priority tracking',
-        completed: isOut
-      },
-      {
-        title: 'Delivered',
-        subtitle: isDeliv ? 'Hand delivered to your doorstep' : (isSamastipur ? 'Arriving by 6:45 pm' : 'Expected in 3–5 days'),
-        completed: isDeliv
+    const stepCopy: Record<string, { current: string; done: string; future: string }> = {
+      placed: { current: 'Your order has been received', done: '', future: '' },
+      confirmed: { current: 'Verified by master weavers in Samastipur', done: 'Order confirmed', future: 'Awaiting confirmation' },
+      processing: { current: 'Being prepared at our workshop', done: 'Processing', future: 'Awaiting processing' },
+      packed: { current: 'Safely packed in our authentic fabric pouch', done: 'Packed', future: 'Not yet packed' },
+      shipped: { current: 'Dispatched with priority courier', done: 'Shipped', future: 'Not yet shipped' },
+      out_for_delivery: { current: isSamastipur ? 'Ramesh is on the way' : 'Priority courier partner is on the way', done: 'Out for delivery', future: 'Out for delivery soon' },
+      delivered: { current: 'Hand delivered to your doorstep', done: 'Delivered', future: isSamastipur ? 'Arriving by 6:45 pm' : 'Expected in 3–5 days' }
+    };
+
+    let timelineSteps: Array<{
+      title: string;
+      subtitle: string;
+      completed: boolean;
+      isCancelled?: boolean;
+    }> = [];
+
+    if (isCancelled) {
+      // Find history entries
+      const cancelHist = historyList.find(h => h.status?.toLowerCase().includes('cancel'));
+      const placedHist = historyList.find(h => h.status?.toLowerCase() === 'placed');
+      const confirmedHist = historyList.find(h => h.status?.toLowerCase() === 'confirmed');
+      const processingHist = historyList.find(h => h.status?.toLowerCase() === 'processing');
+
+      // 1. Placed
+      timelineSteps.push({
+        title: 'Order Placed',
+        subtitle: placedHist?.createdAt ? formatOrderDate(placedHist.createdAt) : formatOrderDate(activeOrder.createdAt),
+        completed: true
+      });
+
+      // 2. Confirmed (if recorded before cancellation)
+      if (confirmedHist) {
+        timelineSteps.push({
+          title: 'Confirmed',
+          subtitle: confirmedHist.createdAt ? formatOrderDate(confirmedHist.createdAt) : 'Order confirmed',
+          completed: true
+        });
       }
-    ];
 
-    const activeStepIndex = isDeliv ? 3 : isOut ? 2 : isPacked ? 1 : 0;
+      // 3. Processing (if recorded before cancellation)
+      if (processingHist) {
+        timelineSteps.push({
+          title: 'Processing',
+          subtitle: processingHist.createdAt ? formatOrderDate(processingHist.createdAt) : 'Processing at workshop',
+          completed: true
+        });
+      }
+
+      // 4. Cancelled (active final step)
+      timelineSteps.push({
+        title: 'Order Cancelled',
+        subtitle: cancelHist?.note || (cancelHist?.createdAt ? `Cancelled on ${formatOrderDate(cancelHist.createdAt)}` : 'Order cancelled by customer'),
+        completed: true,
+        isCancelled: true
+      });
+    } else {
+      timelineSteps = ORDER_STATUS_STEPS.map((step, idx) => {
+        const hist = historyList.find(h => h.status === step.key);
+        let subtitle = '';
+        if (idx <= furthestStepIndex) {
+          if (hist?.note) subtitle = hist.note;
+          else if (hist?.createdAt) subtitle = formatOrderDate(hist.createdAt);
+          else if (step.key === 'placed' && activeOrder.createdAt) subtitle = formatOrderDate(activeOrder.createdAt);
+          else subtitle = idx === furthestStepIndex ? stepCopy[step.key].current : stepCopy[step.key].done;
+        } else {
+          subtitle = stepCopy[step.key].future;
+        }
+        return {
+          title: step.title,
+          subtitle,
+          completed: idx <= furthestStepIndex
+        };
+      });
+    }
+
+    const activeStepIndex = isCancelled ? timelineSteps.length - 1 : furthestStepIndex;
+
+    const orderTotalMrp = displayItems.reduce((acc, item) => {
+      const resolved = resolveOrderItem(item, products);
+      let snap = item.product_snapshot;
+      if (typeof snap === 'string') {
+        try { snap = JSON.parse(snap); } catch {}
+      }
+      const snapMrp = Number(snap?.mrp || snap?.price || 0);
+      const mrp = snapMrp > 0 ? snapMrp : (resolved.mrp > 0 ? resolved.mrp : resolved.price);
+      return acc + mrp * (resolved.quantity || 1);
+    }, 0);
+
+    const orderItemsSellingTotal = displayItems.reduce((acc, item) => {
+      const resolved = resolveOrderItem(item, products);
+      const unitPrice = item.unit_price != null ? Number(item.unit_price) : resolved.price;
+      return acc + unitPrice * (resolved.quantity || 1);
+    }, 0) || (activeOrder.subtotal || activeOrder.total);
+
+    const productDiscount = Math.max(0, orderTotalMrp - orderItemsSellingTotal);
+    const couponDiscount = Number(activeOrder.discount || 0);
+    const totalSavings = productDiscount + couponDiscount;
+
+    const receiptDownloadUrl = (() => {
+      try {
+        const items: ReceiptItem[] = displayItems.map((item: any) => {
+          const resolved = resolveOrderItem(item, products);
+          let snap = item.product_snapshot;
+          if (typeof snap === 'string') {
+            try { snap = JSON.parse(snap); } catch {}
+          }
+          const unitPrice = item.unit_price != null ? Number(item.unit_price) : resolved.price;
+          const snapMrp = Number(snap?.mrp || snap?.price || 0);
+          const mrp = snapMrp > 0 ? snapMrp : (resolved.mrp > 0 ? resolved.mrp : unitPrice);
+          return {
+            sareeName: resolved.name,
+            quantity: resolved.quantity || 1,
+            mrp: mrp > 0 ? mrp : unitPrice,
+            sellingPrice: unitPrice
+          };
+        });
+
+        const fullAddress = [
+          activeOrder.customer?.address,
+          activeOrder.customer?.city,
+          activeOrder.customer?.state,
+          activeOrder.customer?.pinCode
+        ].filter(Boolean).join(', ');
+
+        const receiptData: ReceiptData = {
+          invoiceNumber: activeOrder.orderId,
+          date: activeOrder.createdAt,
+          paymentMode: activeOrder.paymentMethod || 'cod',
+          customerName: activeOrder.customer?.name || null,
+          customerMobile: activeOrder.customer?.phone || null,
+          customerAddress: fullAddress || null,
+          customerEmail: activeOrder.customer?.email || null,
+          items,
+          subtotal: orderItemsSellingTotal,
+          totalAmount: activeOrder.total,
+          discountAmount: activeOrder.discount || 0,
+          shippingFee: activeOrder.shipping || 0,
+          giftWrapCharge: activeOrder.gift_wrap_charge || 0
+        };
+
+        return generateReceiptUrl(receiptData);
+      } catch {
+        return `/receipt/${encodeURIComponent(activeOrder.orderId)}`;
+      }
+    })();
 
     return (
       <div className="w-full space-y-4 animate-fadeIn min-w-0">
@@ -739,88 +1007,72 @@ function AccountContent() {
           </button>
         </div>
 
-        {/* 1. Live Tracking Highlight Box */}
-        <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-[#6B1725] shadow-xs space-y-3.5">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Zap size={18} className="text-[#6B1725] stroke-[2] shrink-0" />
-              <span className="font-bold text-sm sm:text-base text-[#1C1917] font-sans">
-                {isOutOfDelivery
-                  ? (isSamastipur ? 'Arriving by 6:45 pm' : 'Arriving today')
-                  : isDelivered
-                    ? `Delivered on ${formatOrderDate(activeOrder.createdAt)}`
-                    : 'Dispatched from Varanasi'}
+        {/* Stepper Timeline Card */}
+        <div className={`rounded-xl sm:rounded-2xl p-4 sm:p-5 border shadow-2xs space-y-4 ${
+          isCancelled ? 'bg-[#FFF9F9] border-[#FECDCD]' : 'bg-white border-[#E7DFC9]'
+        }`}>
+          <div className="flex items-center justify-between">
+            <h3 className={`text-[11px] font-bold uppercase tracking-wider font-sans ${
+              isCancelled ? 'text-rose-700 flex items-center gap-1.5' : 'text-[#78716C]'
+            }`}>
+              {isCancelled && <AlertTriangle size={13} className="text-rose-600 shrink-0" />}
+              {getStatusHeadline(activeOrder.orderStatus)}
+            </h3>
+            {isCancelled && (
+              <span className="text-[10px] font-bold bg-[#FDF2F2] text-[#991B1B] px-2 py-0.5 rounded-md border border-[#FECDCD] uppercase font-sans">
+                Cancelled
               </span>
-            </div>
-            <p className="text-xs text-[#57534E] font-sans pl-6">
-              {isOutOfDelivery
-                ? (isSamastipur ? 'Ramesh is 6 minutes away · 20-min hand delivery' : 'Priority courier partner is on the way')
-                : isDelivered
-                  ? 'Hand delivered to your doorstep with Silk Mark guarantee'
-                  : 'Checked by master weavers and safely packed in authentic fabric pouch'}
-            </p>
+            )}
           </div>
-
-          <div className="flex items-center gap-3 pt-1">
-            <a
-              href="tel:+916203909946"
-              className="flex-1 py-2.5 px-4 border border-[#6B1725] text-[#6B1725] hover:bg-[#6B1725]/5 rounded-full font-sans font-medium text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Phone size={14} />
-              <span>Call</span>
-            </a>
-            <a
-              href={`https://wa.me/+916203909946?text=${encodeURIComponent(`Hi Shree Banarasi Sarees, I am inquiring about my order ${activeOrder.orderId}`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 py-2.5 px-4 bg-[#6B1725] hover:bg-[#54121D] text-white rounded-full font-sans font-medium text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-            >
-              <MessageCircle size={14} />
-              <span>Message</span>
-            </a>
-          </div>
-        </div>
-
-        {/* 2. OUT FOR DELIVERY Stepper Timeline Card */}
-        <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-[#E7DFC9] shadow-2xs space-y-4">
-          <h3 className="text-[11px] font-bold text-[#78716C] uppercase tracking-wider font-sans">
-            {getStatusHeadline(activeOrder.orderStatus)}
-          </h3>
 
           <div className="space-y-4 relative pl-1">
             {timelineSteps.map((step, idx) => {
               const isActiveStep = idx === activeStepIndex;
+              const isCancelStep = step.isCancelled;
+
               return (
                 <div key={step.title} className="flex items-start gap-3.5 relative">
                   {idx < timelineSteps.length - 1 && (
                     <div
                       className={`absolute left-[9px] top-5 bottom-[-18px] w-[2px] ${
-                        idx < activeStepIndex ? 'bg-[#6B1725]' : 'bg-[#E7DFC9]'
+                        isCancelled
+                          ? 'bg-[#FECDCD]'
+                          : idx < activeStepIndex ? 'bg-[#6B1725]' : 'bg-[#E7DFC9]'
                       }`}
                     />
                   )}
 
                   <div
                     className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 z-10 transition-all ${
-                      step.completed
-                        ? 'bg-[#6B1725] text-white shadow-2xs'
-                        : 'border border-[#D4C39D] bg-[#FAF8F5]'
+                      isCancelStep
+                        ? 'bg-rose-600 text-white shadow-2xs'
+                        : step.completed
+                          ? 'bg-[#6B1725] text-white shadow-2xs'
+                          : 'border border-[#D4C39D] bg-[#FAF8F5]'
                     }`}
                   >
-                    {step.completed && <Check size={11} className="stroke-[3]" />}
+                    {isCancelStep ? (
+                      <X size={11} className="stroke-[3]" />
+                    ) : step.completed ? (
+                      <Check size={11} className="stroke-[3]" />
+                    ) : null}
                   </div>
 
                   <div className="flex-1 min-w-0 pt-0.5">
                     <span className={`text-xs font-semibold font-sans block ${
-                      isActiveStep
-                        ? 'text-[#6B1725]'
-                        : step.completed
-                          ? 'text-[#1C1917]'
-                          : 'text-[#78716C]'
+                      isCancelStep
+                        ? 'text-rose-800'
+                        : (isActiveStep && !isCancelled)
+                          ? 'text-[#6B1725]'
+                          : step.completed
+                            ? 'text-[#1C1917]'
+                            : 'text-[#78716C]'
                     }`}>
                       {step.title}
                     </span>
-                    <p className="text-[11px] text-[#78716C] font-sans mt-0.5">
+                    <p className={`text-[11px] font-sans mt-0.5 ${
+                      isCancelStep ? 'text-rose-700/80 font-medium' : 'text-[#78716C]'
+                    }`}>
                       {step.subtitle}
                     </p>
                   </div>
@@ -846,7 +1098,6 @@ function AccountContent() {
           <div className="divide-y divide-[#F3ECE0]">
             {displayItems.map((item, idx) => {
               const resolved = resolveOrderItem(item, products);
-              const barcode = item.barcode || (item.product_snapshot as any)?.barcode;
               const unitPrice = item.unit_price != null ? Number(item.unit_price) : resolved.price;
               const totalPrice = item.total_price != null ? Number(item.total_price) : (unitPrice * resolved.quantity);
 
@@ -872,11 +1123,6 @@ function AccountContent() {
                       <p className="text-xs text-[#78716C] font-sans mt-1">
                         {resolved.sku} · Qty {resolved.quantity}
                       </p>
-                      {barcode && (
-                        <p className="text-[11px] text-[#78716C] font-mono mt-0.5">
-                          Barcode: {barcode}
-                        </p>
-                      )}
 
                       {/* Actions for individual item */}
                       <div className="flex items-center gap-3 mt-2">
@@ -893,7 +1139,7 @@ function AccountContent() {
                         {isCancellable && displayItems.length > 1 && (
                           <button
                             type="button"
-                            onClick={() => handleCancelOrder(resolved.id)}
+                            onClick={() => handleCancelOrder(activeOrder.id || activeOrder.orderId, resolved.id)}
                             className="text-[11px] font-semibold text-rose-700 hover:underline cursor-pointer font-sans"
                           >
                             Cancel item
@@ -904,12 +1150,24 @@ function AccountContent() {
                   </div>
 
                   <div className="text-right shrink-0">
-                    <span className="font-bold text-xs sm:text-sm text-[#1C1917] font-sans block">
-                      ₹{totalPrice.toLocaleString('en-IN')}
-                    </span>
+                    <div className="flex items-baseline justify-end gap-1.5">
+                      {resolved.mrp > unitPrice && (
+                        <span className="text-[11px] text-[#A8A29E] line-through font-normal font-sans">
+                          ₹{(resolved.mrp * resolved.quantity).toLocaleString('en-IN')}
+                        </span>
+                      )}
+                      <span className="font-bold text-xs sm:text-sm text-[#1C1917] font-sans">
+                        ₹{totalPrice.toLocaleString('en-IN')}
+                      </span>
+                    </div>
                     {resolved.quantity > 1 && (
-                      <span className="text-[10px] text-[#78716C] font-sans block">
+                      <span className="text-[10px] text-[#78716C] font-sans block mt-0.5">
                         ₹{unitPrice.toLocaleString('en-IN')} each
+                      </span>
+                    )}
+                    {resolved.mrp > unitPrice && (
+                      <span className="text-[10px] font-semibold text-emerald-700 font-sans block mt-0.5">
+                        Save ₹{((resolved.mrp - unitPrice) * resolved.quantity).toLocaleString('en-IN')}
                       </span>
                     )}
                   </div>
@@ -919,48 +1177,86 @@ function AccountContent() {
           </div>
         </div>
 
-        {/* 4. BILL CARD */}
+        {/* 4. BILL SUMMARY CARD */}
         <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-[#E7DFC9] shadow-2xs space-y-3">
           <h3 className="text-[11px] font-bold text-[#78716C] uppercase tracking-wider font-sans">
-            BILL
+            PRICE BREAKDOWN
           </h3>
 
           <div className="space-y-2 text-xs font-sans">
-            <div className="flex items-center justify-between text-[#57534E]">
-              <span>Items</span>
-              <span className="text-[#1C1917] font-medium">
-                ₹{(activeOrder.subtotal || activeOrder.total).toLocaleString('en-IN')}
-              </span>
-            </div>
+            {productDiscount > 0 ? (
+              <>
+                <div className="flex items-center justify-between text-[#57534E]">
+                  <span>Total MRP</span>
+                  <span className="text-[#1C1917] font-medium">
+                    ₹{orderTotalMrp.toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-emerald-700 font-medium">
+                  <span>Product Discount</span>
+                  <span>-₹{productDiscount.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex items-center justify-between text-[#57534E]">
+                  <span>Items Subtotal</span>
+                  <span className="text-[#1C1917] font-medium">
+                    ₹{orderItemsSellingTotal.toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-between text-[#57534E]">
+                <span>Items Subtotal</span>
+                <span className="text-[#1C1917] font-medium">
+                  ₹{(activeOrder.subtotal || orderItemsSellingTotal || activeOrder.total).toLocaleString('en-IN')}
+                </span>
+              </div>
+            )}
 
-            {activeOrder.discount > 0 && (
-              <div className="flex items-center justify-between text-emerald-700">
-                <span>Discount</span>
-                <span>-₹{activeOrder.discount.toLocaleString('en-IN')}</span>
+            {couponDiscount > 0 && (
+              <div className="flex items-center justify-between text-emerald-700 font-medium">
+                <span>Coupon / Order Discount</span>
+                <span>-₹{couponDiscount.toLocaleString('en-IN')}</span>
               </div>
             )}
 
             <div className="flex items-center justify-between text-[#57534E]">
-              <span>Delivery</span>
-              <span className="text-emerald-700 font-medium">Free</span>
+              <span>Delivery Fee</span>
+              {activeOrder.shipping > 0 ? (
+                <span className="text-[#1C1917] font-medium">₹{activeOrder.shipping.toLocaleString('en-IN')}</span>
+              ) : (
+                <span className="text-emerald-700 font-medium">Free</span>
+              )}
             </div>
 
+            {Boolean(activeOrder.gift_wrap_charge && activeOrder.gift_wrap_charge > 0) && (
+              <div className="flex items-center justify-between text-[#57534E]">
+                <span>Gift Packaging</span>
+                <span className="text-[#1C1917] font-medium">₹{Number(activeOrder.gift_wrap_charge || 0).toLocaleString('en-IN')}</span>
+              </div>
+            )}
+
             <div className="border-t border-[#F3ECE0] pt-2 flex items-center justify-between text-sm font-bold text-[#1C1917]">
-              <span>Total</span>
+              <span>Total Amount</span>
               <span>₹{activeOrder.total.toLocaleString('en-IN')}</span>
             </div>
+
+            {totalSavings > 0 && (
+              <div className="bg-emerald-50 text-emerald-800 border border-emerald-200/60 rounded-lg p-2.5 text-center text-xs font-semibold mt-2.5 font-sans">
+                🎉 You saved ₹{totalSavings.toLocaleString('en-IN')} on this order!
+              </div>
+            )}
           </div>
 
           <div className="border-t border-[#F3ECE0] pt-3 flex items-center justify-between">
             <Link
-              href={`/receipt/${encodeURIComponent(activeOrder.orderId)}`}
+              href={receiptDownloadUrl}
               target="_blank"
               className="text-xs font-semibold text-[#B08A3C] hover:text-[#8E6C29] transition-colors flex items-center gap-1.5 cursor-pointer font-sans"
             >
               <Download size={14} />
               <span>Download invoice</span>
             </Link>
-            <span className="text-[11px] text-[#78716C] font-sans">
+            <span className="text-[11px] text-[#78716C] font-sans font-medium uppercase tracking-wider">
               {activeOrder.paymentMethod}
             </span>
           </div>
@@ -988,12 +1284,12 @@ function AccountContent() {
           <span>Need help with this order</span>
         </a>
 
-        {/* 7. CANCEL ENTIRE ORDER BUTTON (If Cancellable) */}
+        {/* 7. CANCEL ENTIRE ORDER BUTTON (Only for placed, confirmed, and processing) */}
         {isCancellable && (
-          <div className="text-center pt-1 pb-2">
+          <div className="text-center pt-2 pb-2">
             <button
               type="button"
-              onClick={() => handleCancelOrder()}
+              onClick={() => handleCancelOrder(activeOrder.id || activeOrder.orderId)}
               className="text-xs text-rose-700 hover:text-rose-900 font-semibold underline cursor-pointer font-sans"
             >
               Cancel this entire order
@@ -1016,22 +1312,6 @@ function AccountContent() {
 
   return (
     <div className="w-full space-y-4 animate-fadeIn min-w-0">
-      {/* Section Header (Matching other tab pages) */}
-      <div className="flex items-center justify-between bg-white p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-[#E7DFC9] shadow-2xs">
-        <h2 className="font-serif text-base sm:text-lg font-bold text-[#1C1917] flex items-center gap-2">
-          <ShoppingBag size={18} className="text-[#6B1725]" />
-          <span>My Orders ({orders.length})</span>
-        </h2>
-        {orders.length > 0 && (
-          <Link
-            href="/sarees"
-            className="text-xs font-semibold text-[#6B1725] hover:text-[#4E0E1A] bg-[#FAF8F5] hover:bg-white border border-[#E5DEC9] px-3 py-1.5 rounded-lg transition-all cursor-pointer font-sans shadow-2xs"
-          >
-            Browse Sarees
-          </Link>
-        )}
-      </div>
-
       {/* 2. Filter Pills (All, In transit, Delivered, Returned) */}
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
         {filterOptions.map((filter) => {
@@ -1172,6 +1452,25 @@ function AccountContent() {
                     <ChevronRight size={18} />
                   </div>
                 </div>
+
+                {/* Cancel Button in Order History Card (Only for placed, confirmed, and processing) */}
+                {isOrderCancellable(order.orderStatus) && (
+                  <div className="pt-2.5 mt-2 border-t border-[#F3ECE0] flex items-center justify-between">
+                    <span className="text-[11px] text-[#78716C] font-sans">
+                      Status: <strong className="text-dark-brown font-medium">{order.orderStatus}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCancelOrder(order.id || order.orderId);
+                      }}
+                      className="text-xs font-semibold text-rose-700 hover:text-rose-900 hover:underline px-2.5 py-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                    >
+                      Cancel Order
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -1211,6 +1510,7 @@ function AccountContent() {
                     onClick={() => {
                       setShowCancelModal(false);
                       setOrderToCancel(null);
+                      setOrderUuidToCancel(null);
                       setItemToCancel(null);
                     }}
                     disabled={isCancelling}
@@ -1256,9 +1556,9 @@ function AccountContent() {
                     onClick={() => {
                       setShowCancelModal(false);
                       setOrderToCancel(null);
+                      setOrderUuidToCancel(null);
                       setItemToCancel(null);
                       setCancelStatus('idle');
-                      setSelectedOrderId(null);
                     }}
                     className="w-full max-w-[140px] py-2.5 bg-maroon text-[#FAF7F0] rounded-xl text-[11px] font-serif font-bold uppercase tracking-wider hover:bg-maroon-dark transition-colors cursor-pointer shadow-xs text-center"
                   >
@@ -1281,7 +1581,7 @@ function AccountContent() {
                     </p>
                   </div>
                   <p className="text-xs text-dark-brown/70 leading-relaxed font-sans font-medium px-2">
-                    Could not complete cancellation at this moment. Please check your connection or contact customer support.
+                    {cancelErrorMessage || 'Could not complete cancellation at this moment. Please check your connection or contact customer support.'}
                   </p>
                 </div>
                 <div className="flex justify-center border-t border-[#F3ECE0] pt-4">
@@ -1289,8 +1589,10 @@ function AccountContent() {
                     onClick={() => {
                       setShowCancelModal(false);
                       setOrderToCancel(null);
+                      setOrderUuidToCancel(null);
                       setItemToCancel(null);
                       setCancelStatus('idle');
+                      setCancelErrorMessage(null);
                     }}
                     className="w-full max-w-[140px] py-2.5 bg-dark-brown text-[#FAF7F0] rounded-xl text-[11px] font-serif font-bold uppercase tracking-wider hover:bg-dark-brown/90 transition-colors cursor-pointer shadow-xs text-center"
                   >

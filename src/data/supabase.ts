@@ -534,6 +534,52 @@ export async function clearDbCart(userId: string): Promise<boolean> {
   }
 }
 
+export interface DbOrder {
+  id: string;
+  order_number: string;
+  user_id: string | null;
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string | null;
+  shipping_address: any;
+  subtotal: number;
+  shipping_fee: number;
+  discount: number;
+  total_amount: number;
+  payment_method: 'cod' | string;
+  payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
+  order_status: 'placed' | 'confirmed' | 'processing' | 'packed' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'returned';
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  is_gift: boolean;
+  gift_recipient_name: string | null;
+  gift_message: string | null;
+  gift_wrap_charge: number;
+}
+
+export interface DbOrderItem {
+  id: string;
+  order_id: string;
+  inventory_id: string;
+  product_name: string;
+  sku: string | null;
+  barcode: string | null;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  product_snapshot: any | null;
+  created_at: string;
+}
+
+export interface DbOrderStatusHistory {
+  id: string;
+  order_id: string;
+  status: string;
+  note: string | null;
+  created_at: string;
+}
+
 export interface OrderStatusHistoryEntry {
   id: string;
   orderId: string;
@@ -543,6 +589,7 @@ export interface OrderStatusHistoryEntry {
 }
 
 export interface Order {
+  id?: string;
   orderId: string;
   customer: {
     name: string;
@@ -560,8 +607,8 @@ export interface Order {
   shipping: number;
   total: number;
   paymentMethod: 'UPI' | 'Cash on Delivery' | 'Online Payment';
-  paymentStatus: 'Pending' | 'Paid' | 'Failed';
-  orderStatus: 'Order Placed' | 'Confirmed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
+  paymentStatus: 'Pending' | 'Paid' | 'Failed' | 'Refunded';
+  orderStatus: 'Order Placed' | 'Confirmed' | 'Processing' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled' | 'Returned';
   createdAt: string;
   statusHistory?: OrderStatusHistoryEntry[];
   // Gift order fields
@@ -571,8 +618,12 @@ export interface Order {
   gift_wrap_charge?: number;
 }
 
-export async function createDbOrder(orderData: {
-  customer: {
+export interface CreateDbOrderParams {
+  customer_name?: string;
+  customer_phone?: string;
+  shipping_address?: any;
+  notes?: string;
+  customer?: {
     name: string;
     phone: string;
     email?: string;
@@ -582,164 +633,190 @@ export async function createDbOrder(orderData: {
     pinCode: string;
     deliveryMethod: 'Home Delivery' | 'Store Pickup';
   };
-  items: { product: Product; quantity: number }[];
-  subtotal: number;
-  discount: number;
-  shipping: number;
-  total: number;
-  paymentMethod: 'UPI' | 'Cash on Delivery' | 'Online Payment';
+  items?: { product: Product; quantity: number }[];
+  subtotal?: number;
+  discount?: number;
+  shipping?: number;
+  total?: number;
+  paymentMethod?: 'UPI' | 'Cash on Delivery' | 'Online Payment';
   is_gift?: boolean;
   gift_recipient_name?: string | null;
   gift_message?: string | null;
   gift_wrap_charge?: number;
-}, userId?: string | null): Promise<Order | null> {
+}
+
+export async function createDbOrder(orderData: CreateDbOrderParams, userId?: string | null): Promise<Order | null> {
   try {
-    const orderNumber = `SBS-ORD-${Math.floor(100000 + Math.random() * 900000)}`;
-    const shippingFee = orderData.shipping;
-    const discount = 0; // No coupon system — never trust a client-supplied discount
-    const paymentMethodMap = 'cod'; // DB constraint check enforces cod
+    const customer_name = orderData.customer_name || orderData.customer?.name || '';
+    const customer_phone = orderData.customer_phone || orderData.customer?.phone || '';
+    const shipping_address = orderData.shipping_address || orderData.customer || {};
+    const notes = orderData.notes ?? (
+      orderData.is_gift && orderData.gift_message
+        ? `Gift for ${orderData.gift_recipient_name || 'recipient'}: ${orderData.gift_message}. Payment: ${orderData.paymentMethod || 'COD'}`
+        : (orderData.paymentMethod ? `Original payment method: ${orderData.paymentMethod}` : '')
+    );
 
-    // Fetch authoritative prices + stock from the inventory table
-    const { data: dbInventory, error: inventoryError } = await supabase
-      .from('storefront_products')
-      .select('id, selling_price, stock')
-      .in('id', orderData.items.map(item => item.product.id));
+    // Call Supabase create-order Edge Function.
+    // Frontend only sends: customer_name, customer_phone, shipping_address, notes.
+    // The Edge Function handles cart fetching, product/price/stock validation,
+    // order creation, order items, stock deduction, status history, and cart clearing.
+    const { data, error } = await supabase.functions.invoke('create-order', {
+      body: {
+        customer_name,
+        customer_phone,
+        shipping_address,
+        notes,
+      },
+    });
 
-    if (inventoryError) {
-      console.error('Error fetching inventory for order:', inventoryError);
+    if (error) {
+      console.error('Error invoking create-order Edge Function:', error);
       return null;
     }
 
-    const priceMap = new Map((dbInventory ?? []).map(row => [row.id, row]));
-
-    let subtotal = 0;
-    for (const item of orderData.items) {
-      const dbRow = priceMap.get(item.product.id);
-      if (!dbRow) {
-        console.error('Order rejected: product not found in inventory', item.product.id);
-        return null;
-      }
-      if (Number(dbRow.stock) < item.quantity) {
-        console.error('Order rejected: insufficient stock for', item.product.id);
-        return null;
-      }
-      subtotal += Number(dbRow.selling_price) * item.quantity;
-    }
-    const total = Math.round((subtotal - discount + shippingFee) * 100) / 100;
-
-    // 1. Insert order metadata into orders table
-    const { data: orderRow, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        order_number: orderNumber,
-        customer_name: orderData.customer.name,
-        customer_phone: orderData.customer.phone,
-        customer_email: orderData.customer.email || null,
-        shipping_address: orderData.customer,
-        subtotal: subtotal,
-        shipping_fee: shippingFee,
-        discount: discount,
-        total_amount: total,
-        payment_method: paymentMethodMap,
-        payment_status: 'pending',
-        order_status: 'placed',
-        notes: `Original payment method: ${orderData.paymentMethod}`,
-        user_id: userId || null,
-        // Gift fields
-        is_gift: orderData.is_gift ?? false,
-        gift_recipient_name: orderData.gift_recipient_name || null,
-        gift_message: orderData.gift_message || null,
-        gift_wrap_charge: orderData.gift_wrap_charge ?? 0
-      })
-      .select('id, created_at')
-      .single();
-
-    if (orderError || !orderRow) {
-      console.error('Error inserting order:', orderError);
+    if (!data || data.error) {
+      console.error('create-order Edge Function failed:', data?.error || 'Empty response');
       return null;
     }
 
-    const orderIdUuid = orderRow.id;
-    const createdAtStr = orderRow.created_at;
+    const resOrder = data.order || data.data || data;
+    const orderIdUuid = resOrder.id || resOrder.order_id || '';
+    const orderNumber = resOrder.order_number || resOrder.orderId || `SBS-ORD-${Math.floor(100000 + Math.random() * 900000)}`;
+    const createdAtStr = resOrder.created_at || resOrder.createdAt || new Date().toISOString();
 
-    // 2. Prepare items insert
-    const itemsRows = orderData.items.map(item => {
-      const dbRow = priceMap.get(item.product.id);
-      const unitPrice = dbRow ? Number(dbRow.selling_price) : 0;
-      const totalPrice = unitPrice * item.quantity;
+    const rawShippingAddr = (typeof resOrder.shipping_address === 'object' && resOrder.shipping_address)
+      ? resOrder.shipping_address
+      : (typeof shipping_address === 'object' && shipping_address ? shipping_address : {});
+
+    const customerObj = {
+      name: resOrder.customer_name || rawShippingAddr.name || customer_name,
+      phone: resOrder.customer_phone || rawShippingAddr.phone || customer_phone,
+      email: resOrder.customer_email || rawShippingAddr.email || orderData.customer?.email || '',
+      address: rawShippingAddr.address || (typeof shipping_address === 'string' ? shipping_address : ''),
+      city: rawShippingAddr.city || 'Samastipur',
+      state: rawShippingAddr.state || 'Bihar',
+      pinCode: rawShippingAddr.pinCode || rawShippingAddr.pincode || '848103',
+      deliveryMethod: (rawShippingAddr.deliveryMethod || 'Home Delivery') as 'Home Delivery' | 'Store Pickup'
+    };
+
+    const subtotal = Number(resOrder.subtotal ?? orderData.subtotal ?? 0);
+    const discount = Number(resOrder.discount ?? orderData.discount ?? 0);
+    const shippingFee = Number(resOrder.shipping_fee ?? resOrder.shipping ?? orderData.shipping ?? 0);
+    const total = Number(resOrder.total_amount ?? resOrder.total ?? (subtotal - discount + shippingFee));
+
+    const rawPaymentStatus = (resOrder.payment_status || '').toLowerCase();
+    const paymentStatus: Order['paymentStatus'] =
+      rawPaymentStatus === 'paid' ? 'Paid' : rawPaymentStatus === 'refunded' ? 'Refunded' : rawPaymentStatus === 'failed' ? 'Failed' : 'Pending';
+
+    const rawOrderStatus = (resOrder.order_status || 'placed').toLowerCase();
+    const orderStatusMap: Record<string, Order['orderStatus']> = {
+      placed: 'Order Placed',
+      confirmed: 'Confirmed',
+      processing: 'Processing',
+      packed: 'Packed',
+      shipped: 'Shipped',
+      out_for_delivery: 'Out for Delivery',
+      delivered: 'Delivered',
+      cancelled: 'Cancelled',
+      returned: 'Returned'
+    };
+    const orderStatus = orderStatusMap[rawOrderStatus] || 'Order Placed';
+
+    const rawItems = resOrder.items || resOrder.order_items || orderData.items || [];
+    const items = rawItems.map((item: any) => {
+      if (item.product) return item;
+
+      let snapshot = item.product_snapshot;
+      if (typeof snapshot === 'string') {
+        try { snapshot = JSON.parse(snapshot); } catch { snapshot = null; }
+      }
+
+      if (snapshot) {
+        const snapshotImgs = extractImageUrls(snapshot.images);
+        const singleImg = typeof snapshot.image === 'string' ? [snapshot.image.trim()] : [];
+        const imgUrls = snapshotImgs.length > 0 ? snapshotImgs : singleImg.filter(u => !u.includes('NO_IMAGE_AVAILABLE'));
+        if (imgUrls.length > 0) {
+          snapshot.images = imgUrls;
+        }
+        return { product: snapshot, quantity: Number(item.quantity || 1) };
+      }
+
       return {
-        order_id: orderIdUuid,
-        inventory_id: item.product.id,
-        product_name: item.product.name,
-        sku: item.product.sku || null,
-        // barcode: null,
-        quantity: item.quantity,
-        unit_price: unitPrice,
-        total_price: totalPrice,
-        product_snapshot: item.product
+        product: {
+          id: item.inventory_id || item.id || '',
+          name: item.product_name || item.name || '',
+          price: Number(item.unit_price || item.price || 0),
+          originalPrice: Number(item.unit_price || item.price || 0),
+          discount: 0,
+          rating: 5,
+          reviewsCount: 0,
+          images: extractImageUrls(item.images).length > 0
+            ? extractImageUrls(item.images)
+            : (item.image_url ? [item.image_url] : []),
+          category: 'Banarasi Sarees',
+          fabric: '',
+          color: '',
+          occasion: '',
+          sku: item.sku || '',
+          barcode: item.barcode || null,
+          inStock: true,
+          stock: 1,
+          description: item.product_name || ''
+        },
+        quantity: Number(item.quantity || 1)
       };
     });
 
-    // 3. Insert items into order_items table
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(itemsRows);
-
-    if (itemsError) {
-      console.error('Error inserting order items:', itemsError);
-      // Clean up orders row
-      await supabase.from('orders').delete().eq('id', orderIdUuid);
-      return null;
-    }
-
-    // 4. Insert initial status history log into order_status_history table
-    const { error: historyError } = await supabase
-      .from('order_status_history')
-      .insert({
-        order_id: orderIdUuid,
-        status: 'placed',
-        note: 'Order placed successfully by customer on storefront'
-      });
-
-    if (historyError) {
-      console.error('Error inserting order status history:', historyError);
-    }
+    const rawHistory = resOrder.statusHistory || resOrder.order_status_history || [];
+    const statusHistory: OrderStatusHistoryEntry[] = Array.isArray(rawHistory) && rawHistory.length > 0
+      ? rawHistory.map((h: any) => ({
+          id: h.id || `hist-${Date.now()}`,
+          orderId: h.order_id || h.orderId || orderIdUuid,
+          status: h.status || rawOrderStatus,
+          note: h.note || null,
+          createdAt: h.created_at || h.createdAt || createdAtStr
+        }))
+      : [
+          {
+            id: 'initial',
+            orderId: orderIdUuid,
+            status: rawOrderStatus,
+            note: 'Order placed successfully by customer on storefront',
+            createdAt: createdAtStr
+          }
+        ];
 
     const finalOrder: Order = {
       id: orderIdUuid,
       orderId: orderNumber,
-      customer: orderData.customer,
-      items: orderData.items,
-      subtotal: subtotal,
-      discount: discount,
+      customer: customerObj,
+      items,
+      subtotal,
+      discount,
       shipping: shippingFee,
-      total: total,
-      paymentMethod: orderData.paymentMethod,
-      paymentStatus: 'Pending',
-      orderStatus: 'Order Placed',
+      total,
+      paymentMethod: orderData.paymentMethod || (resOrder.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'),
+      paymentStatus,
+      orderStatus,
       createdAt: createdAtStr,
-      statusHistory: [
-        {
-          id: 'initial',
-          orderId: orderIdUuid,
-          status: 'placed',
-          note: 'Order placed successfully by customer on storefront',
-          createdAt: createdAtStr
-        }
-      ]
+      statusHistory,
+      is_gift: resOrder.is_gift ?? orderData.is_gift ?? false,
+      gift_recipient_name: resOrder.gift_recipient_name || orderData.gift_recipient_name || null,
+      gift_message: resOrder.gift_message || orderData.gift_message || null,
+      gift_wrap_charge: resOrder.gift_wrap_charge ?? orderData.gift_wrap_charge ?? 0
     };
 
     // Trigger email & push notification for order placement (COD or Online)
-    if (orderData.customer.email) {
+    if (finalOrder.customer.email) {
       triggerOrderNotificationEmail('ORDER_PLACED', finalOrder);
     }
     if (userId) {
       triggerOrderPushNotification('placed', {
         order_number: orderNumber,
         user_id: userId,
-        customer_name: orderData.customer.name,
+        customer_name: finalOrder.customer.name,
         total_amount: total,
-        image_url: orderData.items?.[0]?.product?.images?.[0] || null,
+        image_url: items?.[0]?.product?.images?.[0] || null,
       });
     }
 
@@ -750,201 +827,126 @@ export async function createDbOrder(orderData: {
   }
 }
 
-export async function fetchDbOrders(userId: string): Promise<Order[]> {
-  try {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-    if (!userId || !isUuid) {
-      return [];
+/**
+ * Extract plain image URL strings from a product snapshot. The snapshot's
+ * `images` may contain either plain URL strings or objects shaped like
+ * `{ image_url, is_primary, sort_order, storage_key }` (as written by the
+ * `create-order` Edge Function).
+ */
+function extractImageUrls(images?: unknown): string[] {
+  if (!Array.isArray(images)) return [];
+  const urls: string[] = [];
+  for (const img of images) {
+    if (!img) continue;
+    const url = typeof img === 'string' ? img : (img as any)?.image_url;
+    if (typeof url === 'string' && url.trim() && !url.includes('NO_IMAGE_AVAILABLE')) {
+      urls.push(url.trim());
+    }
+  }
+  return urls;
+}
+
+/**
+ * Map raw database row joined with order_items and order_status_history to the frontend Order interface
+ */
+export function mapDbOrderToOrder(orderRow: any): Order {
+  const rawItems = orderRow.order_items || [];
+  const rawHistory = orderRow.order_status_history || [];
+
+  const items = rawItems.map((item: any) => {
+    let productSnapshot = item.product_snapshot as any;
+    if (typeof productSnapshot === 'string') {
+      try {
+        productSnapshot = JSON.parse(productSnapshot);
+      } catch {
+        productSnapshot = null;
+      }
     }
 
-    const { data: ordersData, error: ordersError } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    const snapshotImages = extractImageUrls(productSnapshot?.images);
+    const singleImage = typeof productSnapshot?.image === 'string' ? [productSnapshot.image.trim()] : [];
+    const candidateImages = snapshotImages.length > 0 ? snapshotImages : singleImage.filter(u => !u.includes('NO_IMAGE_AVAILABLE'));
 
-    if (ordersError || !ordersData || ordersData.length === 0) {
-      if (ordersError) console.error('Error fetching orders:', ordersError);
-      return [];
-    }
+    const resolvedImages = candidateImages.length > 0
+      ? candidateImages
+      : [NO_IMAGE_PLACEHOLDER];
 
-    const orderIds = ordersData.map((o: any) => o.id);
+    const productName =
+      productSnapshot?.name ||
+      productSnapshot?.saree_name ||
+      item.product_name ||
+      'Pure Silk Banarasi Saree';
 
-    // 1. Fetch all order items and status histories in parallel
-    const [itemsResult, historyResult] = await Promise.all([
-      supabase
-        .from('order_items')
-        .select('*')
-        .in('order_id', orderIds),
-      supabase
-        .from('order_status_history')
-        .select('*')
-        .in('order_id', orderIds)
-        .order('created_at', { ascending: true })
-    ]);
+    const product: Product = {
+      id: item.inventory_id || productSnapshot?.id || '',
+      sku: item.sku || productSnapshot?.sku || (item.inventory_id ? `SBS-${item.inventory_id}` : 'SBS-SAREE'),
+      barcode: item.barcode || null,
+      name: productName,
+      slug: getProductSlug(productName, item.inventory_id || 'item'),
+      description: productSnapshot?.description || '',
+      category: productSnapshot?.category || 'Banarasi',
+      fabric: productSnapshot?.fabric || 'Silk',
+      color: productSnapshot?.color || '',
+      occasion: productSnapshot?.occasion || 'Festive',
+      price: Number(item.unit_price || productSnapshot?.price || 0),
+      salePrice: productSnapshot?.salePrice ? Number(productSnapshot.salePrice) : undefined,
+      images: resolvedImages,
+      stock: productSnapshot?.stock || 0,
+      rating: productSnapshot?.rating || 0,
+      reviewsCount: productSnapshot?.reviewsCount || 0,
+      length: productSnapshot?.length || '5.5 meters',
+      blousePiece: productSnapshot?.blousePiece || '0.8 meters',
+      work: productSnapshot?.work || '',
+      care: productSnapshot?.care || ''
+    };
 
-    const allItems = itemsResult.data || [];
-    const allHistory = historyResult.data || [];
+    return {
+      product,
+      quantity: Number(item.quantity || 1)
+    };
+  });
 
-    // Group items and history by order_id
-    const itemsByOrderId: Record<string, any[]> = {};
-    const historyByOrderId: Record<string, OrderStatusHistoryEntry[]> = {};
+  const rawOrderStatus = (orderRow.order_status || 'placed').toLowerCase();
+  const orderStatusMap: Record<string, Order['orderStatus']> = {
+    placed: 'Order Placed',
+    confirmed: 'Confirmed',
+    processing: 'Processing',
+    packed: 'Packed',
+    shipped: 'Shipped',
+    out_for_delivery: 'Out for Delivery',
+    delivered: 'Delivered',
+    cancelled: 'Cancelled',
+    returned: 'Returned'
+  };
+  const orderStatus = orderStatusMap[rawOrderStatus] || 'Order Placed';
 
-    allItems.forEach((it: any) => {
-      if (!itemsByOrderId[it.order_id]) itemsByOrderId[it.order_id] = [];
-      itemsByOrderId[it.order_id].push(it);
-    });
+  let paymentStatus: Order['paymentStatus'] = 'Pending';
+  const ps = (orderRow.payment_status || '').toLowerCase();
+  if (ps === 'paid') paymentStatus = 'Paid';
+  else if (ps === 'failed') paymentStatus = 'Failed';
+  else if (ps === 'refunded') paymentStatus = 'Refunded';
 
-    allHistory.forEach((h: any) => {
-      if (!historyByOrderId[h.order_id]) historyByOrderId[h.order_id] = [];
-      historyByOrderId[h.order_id].push({
+  let paymentMethod: Order['paymentMethod'] = 'Cash on Delivery';
+  if (orderRow.notes && orderRow.notes.includes('Original payment method: ')) {
+    const originalMethod = orderRow.notes.replace('Original payment method: ', '').trim();
+    paymentMethod = originalMethod as Order['paymentMethod'];
+  } else if (orderRow.payment_method === 'cod') {
+    paymentMethod = 'Cash on Delivery';
+  }
+
+  const sortedHistory = [...rawHistory].sort((a: any, b: any) => 
+    new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+  );
+
+  const statusHistory: OrderStatusHistoryEntry[] = sortedHistory.length > 0
+    ? sortedHistory.map((h: any) => ({
         id: h.id,
         orderId: h.order_id,
         status: h.status,
-        note: h.note,
+        note: h.note || null,
         createdAt: h.created_at
-      });
-    });
-
-    // 2. Collect all inventory IDs across all order items
-    const inventoryIds = Array.from(
-      new Set(
-        allItems
-          .map((i: any) => i.inventory_id)
-          .filter(Boolean)
-      )
-    );
-
-    // 3. Hydrate product catalog data from storefront_products (SECURITY DEFINER view) and inventory_images
-    const storefrontProductMap: Record<string, any> = {};
-    const inventoryImageMap: Record<string, string[]> = {};
-
-    if (inventoryIds.length > 0) {
-      try {
-        const [sfRes, imgRes] = await Promise.all([
-          supabase
-            .from('storefront_products')
-            .select('id, saree_name, category, fabric, color, selling_price, mrp, sku, description')
-            .in('id', inventoryIds),
-          supabase
-            .from('inventory_images')
-            .select('inventory_id, image_url, is_primary, sort_order')
-            .in('inventory_id', inventoryIds)
-        ]);
-
-        if (sfRes.data && sfRes.data.length > 0) {
-          sfRes.data.forEach((prod: any) => {
-            storefrontProductMap[prod.id] = prod;
-          });
-        }
-
-        if (imgRes.data && imgRes.data.length > 0) {
-          const sortedImgs = [...imgRes.data].sort((a, b) => {
-            if (a.is_primary && !b.is_primary) return -1;
-            if (!a.is_primary && b.is_primary) return 1;
-            return (a.sort_order ?? 0) - (b.sort_order ?? 0);
-          });
-          sortedImgs.forEach((img: any) => {
-            if (!inventoryImageMap[img.inventory_id]) {
-              inventoryImageMap[img.inventory_id] = [];
-            }
-            inventoryImageMap[img.inventory_id].push(img.image_url);
-          });
-        }
-      } catch (e) {
-        console.warn('Could not load storefront products or images for orders:', e);
-      }
-    }
-
-    // 4. Map each order and hydrate items
-    const resolvedOrders: Order[] = ordersData.map((orderRow: any) => {
-      const orderItems = itemsByOrderId[orderRow.id] || [];
-
-      const items = orderItems.map((item: any) => {
-        let productSnapshot = item.product_snapshot as any;
-        if (typeof productSnapshot === 'string') {
-          try {
-            productSnapshot = JSON.parse(productSnapshot);
-          } catch (e) {
-            productSnapshot = null;
-          }
-        }
-
-        const sfProduct = item.inventory_id ? storefrontProductMap[item.inventory_id] : null;
-
-        const invImages = item.inventory_id && inventoryImageMap[item.inventory_id]?.length
-          ? inventoryImageMap[item.inventory_id]
-          : [];
-
-        const snapshotImages = Array.isArray(productSnapshot?.images)
-          ? productSnapshot.images.filter((img: string) => img && !img.includes('NO_IMAGE_AVAILABLE'))
-          : productSnapshot?.image
-            ? [productSnapshot.image]
-            : [];
-
-        const resolvedImages = snapshotImages.length > 0
-          ? snapshotImages
-          : invImages.length > 0
-            ? invImages
-            : [NO_IMAGE_PLACEHOLDER];
-
-        const productName = 
-          productSnapshot?.name || 
-          productSnapshot?.saree_name || 
-          sfProduct?.saree_name ||
-          item.product_name || 
-          'Pure Silk Banarasi Saree';
-
-        const product: Product = {
-          id: item.inventory_id || productSnapshot?.id || sfProduct?.id || '',
-          sku: item.sku || productSnapshot?.sku || sfProduct?.sku || (item.inventory_id ? `SBS-${item.inventory_id}` : 'SBS-SAREE'),
-          name: productName,
-          slug: getProductSlug(productName, item.inventory_id || 'item'),
-          description: productSnapshot?.description || sfProduct?.description || '',
-          category: productSnapshot?.category || sfProduct?.category || 'Banarasi',
-          fabric: productSnapshot?.fabric || sfProduct?.fabric || 'Silk',
-          color: productSnapshot?.color || sfProduct?.color || '',
-          occasion: productSnapshot?.occasion || 'Festive',
-          price: Number(item.unit_price || productSnapshot?.price || sfProduct?.selling_price || 0),
-          salePrice: productSnapshot?.salePrice ? Number(productSnapshot.salePrice) : (sfProduct?.mrp ? Number(sfProduct.selling_price) : undefined),
-          images: resolvedImages,
-          stock: productSnapshot?.stock || 0,
-          rating: productSnapshot?.rating || 0,
-          reviewsCount: productSnapshot?.reviewsCount || 0,
-          length: productSnapshot?.length || '5.5 meters',
-          blousePiece: productSnapshot?.blousePiece || '0.8 meters',
-          work: productSnapshot?.work || '',
-          care: productSnapshot?.care || ''
-        };
-
-        return {
-          product,
-          quantity: Number(item.quantity || 1)
-        };
-      });
-
-      let orderStatus: Order['orderStatus'] = 'Order Placed';
-      if (orderRow.order_status === 'confirmed') orderStatus = 'Confirmed';
-      else if (orderRow.order_status === 'processing') orderStatus = 'Confirmed';
-      else if (orderRow.order_status === 'packed') orderStatus = 'Packed';
-      else if (orderRow.order_status === 'shipped') orderStatus = 'Shipped';
-      else if (orderRow.order_status === 'out_for_delivery') orderStatus = 'Out for Delivery';
-      else if (orderRow.order_status === 'delivered') orderStatus = 'Delivered';
-      else if (orderRow.order_status === 'cancelled') orderStatus = 'Cancelled';
-
-      let paymentStatus: Order['paymentStatus'] = 'Pending';
-      if (orderRow.payment_status === 'paid') paymentStatus = 'Paid';
-      else if (orderRow.payment_status === 'failed') paymentStatus = 'Failed';
-
-      let paymentMethod: Order['paymentMethod'] = 'Cash on Delivery';
-      if (orderRow.notes && orderRow.notes.includes('Original payment method: ')) {
-        const originalMethod = orderRow.notes.replace('Original payment method: ', '').trim();
-        paymentMethod = originalMethod as Order['paymentMethod'];
-      } else if (orderRow.payment_method === 'cod') {
-        paymentMethod = 'Cash on Delivery';
-      }
-
-      const statusHistory = historyByOrderId[orderRow.id] || [
+      }))
+    : [
         {
           id: 'initial',
           orderId: orderRow.id,
@@ -954,40 +956,95 @@ export async function fetchDbOrders(userId: string): Promise<Order[]> {
         }
       ];
 
-      return {
-        id: orderRow.id,
-        orderId: orderRow.order_number,
-        customer: {
-          name: orderRow.customer_name || (orderRow.shipping_address as any)?.name || '',
-          phone: orderRow.customer_phone || (orderRow.shipping_address as any)?.phone || '',
-          email: orderRow.customer_email || (orderRow.shipping_address as any)?.email || '',
-          address: (orderRow.shipping_address as any)?.address || '',
-          city: (orderRow.shipping_address as any)?.city || '',
-          state: (orderRow.shipping_address as any)?.state || '',
-          pinCode: (orderRow.shipping_address as any)?.pinCode || (orderRow.shipping_address as any)?.pincode || '',
-          deliveryMethod: (orderRow.shipping_address as any)?.deliveryMethod || 'Home Delivery'
-        },
-        items,
-        subtotal: Number(orderRow.subtotal || 0),
-        discount: Number(orderRow.discount || 0),
-        shipping: Number(orderRow.shipping_fee || 0),
-        total: Number(orderRow.total_amount || 0),
-        paymentMethod,
-        paymentStatus,
-        orderStatus,
-        createdAt: orderRow.created_at,
-        statusHistory,
-        is_gift: orderRow.is_gift,
-        gift_recipient_name: orderRow.gift_recipient_name,
-        gift_message: orderRow.gift_message,
-        gift_wrap_charge: orderRow.gift_wrap_charge
-      };
-    });
+  const shippingAddr = typeof orderRow.shipping_address === 'object' && orderRow.shipping_address ? orderRow.shipping_address : {};
 
-    return resolvedOrders;
+  return {
+    id: orderRow.id,
+    orderId: orderRow.order_number,
+    customer: {
+      name: orderRow.customer_name || shippingAddr.name || '',
+      phone: orderRow.customer_phone || shippingAddr.phone || '',
+      email: orderRow.customer_email || shippingAddr.email || '',
+      address: shippingAddr.address || (typeof orderRow.shipping_address === 'string' ? orderRow.shipping_address : ''),
+      city: shippingAddr.city || 'Samastipur',
+      state: shippingAddr.state || 'Bihar',
+      pinCode: shippingAddr.pinCode || shippingAddr.pincode || '848103',
+      deliveryMethod: shippingAddr.deliveryMethod || 'Home Delivery'
+    },
+    items,
+    subtotal: Number(orderRow.subtotal || 0),
+    discount: Number(orderRow.discount || 0),
+    shipping: Number(orderRow.shipping_fee || 0),
+    total: Number(orderRow.total_amount || 0),
+    paymentMethod,
+    paymentStatus,
+    orderStatus,
+    createdAt: orderRow.created_at,
+    statusHistory,
+    is_gift: orderRow.is_gift ?? false,
+    gift_recipient_name: orderRow.gift_recipient_name || null,
+    gift_message: orderRow.gift_message || null,
+    gift_wrap_charge: Number(orderRow.gift_wrap_charge || 0)
+  };
+}
+
+export async function fetchDbOrders(userId?: string | null, phone?: string | null): Promise<Order[]> {
+  try {
+    let query = supabase
+      .from('orders')
+      .select('*, order_items(*), order_status_history(*)')
+      .order('created_at', { ascending: false });
+
+    const cleanUserId = userId?.trim() || null;
+    const isUuid = cleanUserId ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanUserId) : false;
+    const isPhoneUser = cleanUserId ? /^\+?[0-9]{10,13}$/.test(cleanUserId) : false;
+    const rawPhone = phone || (isPhoneUser ? cleanUserId : null);
+    const cleanPhone = rawPhone ? rawPhone.replace(/\D/g, '').slice(-10) : null;
+
+    if (isUuid && cleanPhone) {
+      query = query.or(`user_id.eq.${cleanUserId},customer_phone.ilike.%${cleanPhone}%`);
+    } else if (cleanPhone) {
+      query = query.ilike('customer_phone', `%${cleanPhone}%`);
+    } else if (isUuid) {
+      query = query.or(`user_id.eq.${cleanUserId},user_id.is.null`);
+    }
+
+    const { data: ordersData, error } = await query;
+    if (error) {
+      console.error('Error fetching orders:', error);
+      return [];
+    }
+
+    return (ordersData || []).map(mapDbOrderToOrder);
   } catch (err) {
     console.error('Exception in fetchDbOrders:', err);
     return [];
+  }
+}
+
+export async function fetchDbOrderWithItems(orderIdOrNumber: string): Promise<Order | null> {
+  if (!orderIdOrNumber || !orderIdOrNumber.trim()) return null;
+  const target = orderIdOrNumber.trim();
+
+  try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target);
+    let query = supabase
+      .from('orders')
+      .select('*, order_items(*), order_status_history(*)');
+
+    if (isUuid) {
+      query = query.eq('id', target);
+    } else {
+      query = query.eq('order_number', target);
+    }
+
+    const { data: orderRow, error } = await query.maybeSingle();
+    if (error || !orderRow) return null;
+
+    return mapDbOrderToOrder(orderRow);
+  } catch (err) {
+    console.error('Exception in fetchDbOrderWithItems:', err);
+    return null;
   }
 }
 
@@ -1301,11 +1358,17 @@ export async function updateDbOrderStatus(
   note?: string
 ): Promise<boolean> {
   try {
-    const { data: orderRow, error: fetchError } = await supabase
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderNumber);
+    let query = supabase
       .from('orders')
-      .select('*, order_items(*)')
-      .eq('order_number', orderNumber)
-      .single();
+      .select('*, order_items(*)');
+    if (isUuid) {
+      query = query.eq('id', orderNumber);
+    } else {
+      query = query.eq('order_number', orderNumber);
+    }
+
+    const { data: orderRow, error: fetchError } = await query.maybeSingle();
 
     if (fetchError || !orderRow) {
       console.error('Error fetching order for status update:', fetchError);
@@ -1388,52 +1451,43 @@ export async function updateDbOrderStatus(
   }
 }
 
-export async function cancelDbOrder(orderNumber: string): Promise<boolean> {
+export async function cancelDbOrder(orderIdentifier: string): Promise<boolean> {
   try {
-    const { data: orderRow, error: fetchError } = await supabase
-      .from('orders')
-      .select('id, order_status')
-      .eq('order_number', orderNumber)
-      .single();
+    let order_id = orderIdentifier;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderIdentifier);
+    if (!isUuid) {
+      const { data: row } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('order_number', orderIdentifier)
+        .maybeSingle();
+      if (row?.id) {
+        order_id = row.id;
+      }
+    }
 
-    if (fetchError || !orderRow) {
-      console.error('Error fetching order for cancellation:', fetchError);
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {};
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`;
+    }
+
+    const { data, error } = await supabase.functions.invoke("cancel-order-user", {
+      body: { order_id },
+      headers
+    });
+
+    if (error) {
+      console.error('Error invoking cancel-order-user Edge Function:', error);
       return false;
     }
 
-    const currentStatus = orderRow.order_status?.toLowerCase();
-    if (
-      currentStatus === 'out_for_delivery' ||
-      currentStatus === 'delivered' ||
-      currentStatus === 'cancelled'
-    ) {
-      console.warn(`Cannot cancel order in status: ${currentStatus}`);
+    if (data?.error || data?.success === false) {
+      console.error('cancel-order-user Edge Function returned error:', data?.error);
       return false;
     }
 
-    const { error: updateError } = await supabase
-      .from('orders')
-      .update({ order_status: 'cancelled', updated_at: new Date().toISOString() })
-      .eq('id', orderRow.id);
-
-    if (updateError) {
-      console.error('Error updating order status to cancelled:', updateError);
-      return false;
-    }
-
-    const { error: historyError } = await supabase
-      .from('order_status_history')
-      .insert({
-        order_id: orderRow.id,
-        status: 'cancelled',
-        note: 'Order cancelled by customer'
-      });
-
-    if (historyError) {
-      console.error('Error inserting cancellation status history:', historyError);
-    }
-
-    return true;
+    return Boolean(data?.success ?? true);
   } catch (err) {
     console.error('Exception in cancelDbOrder:', err);
     return false;
@@ -1442,11 +1496,17 @@ export async function cancelDbOrder(orderNumber: string): Promise<boolean> {
 
 export async function cancelDbOrderItem(orderNumber: string, productId: string): Promise<{ success: boolean; cancelledEntireOrder: boolean; newSubtotal?: number; newTotal?: number }> {
   try {
-    const { data: orderRow, error: orderFetchError } = await supabase
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderNumber);
+    let query = supabase
       .from('orders')
-      .select('id, subtotal, total_amount, order_status')
-      .eq('order_number', orderNumber)
-      .single();
+      .select('id, subtotal, total_amount, order_status');
+    if (isUuid) {
+      query = query.eq('id', orderNumber);
+    } else {
+      query = query.eq('order_number', orderNumber);
+    }
+
+    const { data: orderRow, error: orderFetchError } = await query.maybeSingle();
 
     if (orderFetchError || !orderRow) {
       console.error('Error fetching order for item cancellation:', orderFetchError);
@@ -1474,7 +1534,7 @@ export async function cancelDbOrderItem(orderNumber: string, productId: string):
     }
 
     if (items.length <= 1) {
-      const success = await cancelDbOrder(orderNumber);
+      const success = await cancelDbOrder(orderRow.id);
       return { success, cancelledEntireOrder: true };
     }
 
@@ -1932,8 +1992,12 @@ export async function fetchOrderDetailsForReview(orderIdOrNumber: string): Promi
 
       const existingReviewObj = reviewsList.find((r: any) => r.product_id === prodId || (snap.id && r.product_id === snap.id));
 
-      const snapImages = Array.isArray(snap.images) ? snap.images : snap.image ? [snap.image] : [];
-      const resolvedImage = (snapImages.find((img: string) => img && !img.includes('NO_IMAGE_AVAILABLE'))) || invImgs[0] || NO_IMAGE_PLACEHOLDER;
+      const snapImageUrls = extractImageUrls(snap.images);
+      const singleImage = typeof snap.image === 'string' ? [snap.image.trim()] : [];
+      const resolvedImage = (snapImageUrls.length > 0
+        ? snapImageUrls[0]
+        : singleImage.find(u => !u.includes('NO_IMAGE_AVAILABLE'))
+      ) || invImgs[0] || NO_IMAGE_PLACEHOLDER;
 
       return {
         productId: prodId,
@@ -2008,9 +2072,11 @@ export async function fetchOrderItems(orderId: string) {
   const target = orderId.trim();
 
   try {
-    let resolvedOrderId = target;
+    let resolvedOrderId: string | null = null;
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target);
-    if (!isUuid) {
+    if (isUuid) {
+      resolvedOrderId = target;
+    } else {
       const { data: orderRow } = await supabase
         .from('orders')
         .select('id')
@@ -2019,6 +2085,10 @@ export async function fetchOrderItems(orderId: string) {
       if (orderRow?.id) {
         resolvedOrderId = orderRow.id;
       }
+    }
+
+    if (!resolvedOrderId) {
+      return [];
     }
 
     const { data, error } = await supabase

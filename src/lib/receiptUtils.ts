@@ -11,11 +11,15 @@ export interface ReceiptData {
     paymentMode: string;
     customerName: string | null;
     customerMobile: string | null;
+    customerAddress?: string | null;
+    customerEmail?: string | null;
     items: ReceiptItem[];
+    subtotal?: number;
     totalAmount: number;
     discountAmount: number;
     discountPercentage?: number;
     shippingFee?: number;
+    giftWrapCharge?: number;
     issuedVoucherCode?: string | null;
     issuedVoucherAmount?: number | null;
     appliedVoucherCode?: string | null;

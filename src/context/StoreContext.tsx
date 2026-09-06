@@ -72,8 +72,8 @@ export interface Order {
   shipping: number;
   total: number;
   paymentMethod: 'UPI' | 'Cash on Delivery' | 'Online Payment';
-  paymentStatus: 'Pending' | 'Paid' | 'Failed';
-  orderStatus: 'Order Placed' | 'Confirmed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
+  paymentStatus: 'Pending' | 'Paid' | 'Failed' | 'Refunded';
+  orderStatus: 'Order Placed' | 'Confirmed' | 'Processing' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled' | 'Returned';
   createdAt: string;
   statusHistory?: OrderStatusHistoryEntry[];
   // Gift order fields
@@ -97,9 +97,16 @@ interface StoreContextType {
   clearCart: () => void;
   toggleWishlist: (product: Product) => void;
   isInWishlist: (productId: string) => boolean;
-  placeOrder: (orderData: Omit<Order, 'orderId' | 'orderStatus' | 'paymentStatus' | 'createdAt'>) => Promise<Order>;
+  placeOrder: (orderData: Omit<Order, 'orderId' | 'orderStatus' | 'paymentStatus' | 'createdAt'> & {
+    customer_name?: string;
+    customer_phone?: string;
+    shipping_address?: any;
+    notes?: string;
+  }) => Promise<Order>;
   cancelOrder: (orderId: string) => Promise<boolean>;
   cancelOrderItem: (orderId: string, productId: string) => Promise<{ success: boolean; cancelledEntireOrder: boolean }>;
+  markOrderCancelledLocally: (orderIdOrNumber: string) => void;
+  refreshOrders: () => Promise<void>;
   addCustomRequest: (request: Omit<CustomRequest, 'id' | 'status' | 'createdAt'>) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -353,7 +360,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         localStorage.setItem('sbs_wishlist', JSON.stringify([]));
       }
 
-      const dbOrders = await fetchDbOrders(identifier);
+      const phoneLookup = userProfile?.phone_number ? String(userProfile.phone_number) : (user?.phone || null);
+      const dbOrders = await fetchDbOrders(identifier, phoneLookup);
       setOrders(dbOrders || []);
     } catch (err) {
       console.error('Error syncing user data:', err);
@@ -707,10 +715,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Place order
-  const placeOrder = async (orderData: Omit<Order, 'orderId' | 'orderStatus' | 'paymentStatus' | 'createdAt'>): Promise<Order> => {
-    // 1. Try to create the order in Supabase
+  const placeOrder = async (orderData: Omit<Order, 'orderId' | 'orderStatus' | 'paymentStatus' | 'createdAt'> & {
+    customer_name?: string;
+    customer_phone?: string;
+    shipping_address?: any;
+    notes?: string;
+  }): Promise<Order> => {
+    // 1. Try to create the order in Supabase via create-order Edge Function
     const dbOrder = await createDbOrder({
       customer: orderData.customer,
+      customer_name: orderData.customer_name || orderData.customer?.name,
+      customer_phone: orderData.customer_phone || orderData.customer?.phone,
+      shipping_address: orderData.shipping_address || orderData.customer,
+      notes: orderData.notes,
       items: orderData.items,
       subtotal: orderData.subtotal,
       discount: orderData.discount,
@@ -727,7 +744,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // 2. Add to orders state
       setOrders((prev) => [dbOrder, ...prev]);
       
-      // 3. Clear cart from database if user is logged in
+      // 3. Clear cart
+      setCart([]);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('sbs_cart');
+      }
       const isUuid = userPhone ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userPhone) : false;
       if (userPhone && isUuid) {
         await clearDbCart(userPhone);
@@ -750,30 +771,51 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return fallbackOrder;
   };
 
+  // Instantly mark an order as cancelled in local state without full page reload
+  const markOrderCancelledLocally = (orderIdOrNumber: string) => {
+    setOrders(prevOrders => 
+      prevOrders.map(o => {
+        if (o.orderId === orderIdOrNumber || o.id === orderIdOrNumber) {
+          const nowStr = new Date().toISOString();
+          const newHistory: OrderStatusHistoryEntry = {
+            id: `cancelled-${Date.now()}`,
+            orderId: o.id || o.orderId,
+            status: 'cancelled',
+            note: 'Order cancelled by customer',
+            createdAt: nowStr
+          };
+          return {
+            ...o,
+            orderStatus: 'Cancelled',
+            statusHistory: o.statusHistory ? [...o.statusHistory, newHistory] : [newHistory]
+          };
+        }
+        return o;
+      })
+    );
+  };
+
+  // Re-fetch orders from Supabase DB to sync orders state
+  const refreshOrders = async () => {
+    try {
+      const identifier = userProfile?.phone_number ? String(userProfile.phone_number) : (user?.id || user?.phone || userPhone);
+      const phoneLookup = userProfile?.phone_number ? String(userProfile.phone_number) : (user?.phone || null);
+      if (identifier) {
+        const freshOrders = await fetchDbOrders(identifier, phoneLookup);
+        if (freshOrders) {
+          setOrders(freshOrders);
+        }
+      }
+    } catch (err) {
+      console.error('Error refreshing orders in StoreContext:', err);
+    }
+  };
+
   // Cancel order
   const cancelOrder = async (orderId: string): Promise<boolean> => {
     const success = await cancelDbOrder(orderId);
     if (success) {
-      setOrders(prevOrders => 
-        prevOrders.map(o => {
-          if (o.orderId === orderId) {
-            const nowStr = new Date().toISOString();
-            const newHistory: OrderStatusHistoryEntry = {
-              id: `cancelled-${Date.now()}`,
-              orderId,
-              status: 'cancelled',
-              note: 'Order cancelled by customer',
-              createdAt: nowStr
-            };
-            return {
-              ...o,
-              orderStatus: 'Cancelled',
-              statusHistory: o.statusHistory ? [...o.statusHistory, newHistory] : [newHistory]
-            };
-          }
-          return o;
-        })
-      );
+      markOrderCancelledLocally(orderId);
     }
     return success;
   };
@@ -903,8 +945,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setCart(finalCartItems);
     }
 
-    // Fetch user orders from DB using UUID
-    const dbOrders = await fetchDbOrders(userId);
+    // Fetch user orders from DB using UUID and phone
+    const phoneLookup = userProfile?.phone_number ? String(userProfile.phone_number) : (user?.phone || null);
+    const dbOrders = await fetchDbOrders(userId, phoneLookup);
     if (dbOrders && dbOrders.length > 0) {
       setOrders(dbOrders);
     }
@@ -1112,6 +1155,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       placeOrder,
       cancelOrder,
       cancelOrderItem,
+      markOrderCancelledLocally,
+      refreshOrders,
       addCustomRequest,
       searchQuery,
       setSearchQuery,
