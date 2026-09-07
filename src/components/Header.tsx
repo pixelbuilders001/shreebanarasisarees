@@ -13,27 +13,17 @@ import {
   X,
   ChevronRight,
   ChevronDown,
-  ArrowLeft,
-  Mic,
-  MessageCircle,
   LogOut,
   Package,
-  Sparkles,
-  MapPin,
-  Tag,
-  Gift,
-  HelpCircle,
-  Phone,
-  Download,
-  Smartphone
+  Sparkles
 } from 'lucide-react';
-import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 
 import { useStore } from '../context/StoreContext';
 import { AnnouncementBar } from './AnnouncementBar';
 import { AdvancedSearchBar } from './AdvancedSearchBar';
 import { AuthModal } from './AuthModal';
 import { DeliveryPincodeBar } from './DeliveryPincodeBar';
+import { MobileMenuDrawer } from './MobileMenuDrawer';
 import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 
 export interface HeaderProps {
@@ -66,8 +56,6 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
 
   // Mobile menu drawer state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMenuAnimating, setIsMenuAnimating] = useState(false);
-  const [drawerScreen, setDrawerScreen] = useState<'main' | 'categories'>('main');
 
   // Desktop collections dropdown state & hover timeout ref
   const [isCollectionsOpen, setIsCollectionsOpen] = useState(false);
@@ -107,27 +95,6 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
   // Search focus state for mobile search overlay
   const [isMobileSearchFocused, setIsMobileSearchFocused] = useState(false);
 
-  // PWA Install state
-  const isStandalone = useIsPwaInstalled();
-
-  const handlePwaInstall = async () => {
-    const promptEvent = typeof window !== 'undefined' ? (window as any).deferredPwaPrompt : null;
-    if (promptEvent) {
-      try {
-        await promptEvent.prompt();
-        const { outcome } = await promptEvent.userChoice;
-        if (outcome === 'accepted') {
-          (window as any).deferredPwaPrompt = null;
-          markPwaAsInstalled();
-        }
-      } catch (err) {
-        console.error('PWA install error:', err);
-      }
-    } else {
-      alert('To install our app:\n1. Tap the Share icon in your browser\n2. Select "Add to Home Screen"');
-    }
-  };
-
   // Track window scroll for compact header styling
   useEffect(() => {
     const handleScroll = () => {
@@ -139,23 +106,12 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
 
   // Handle opening mobile menu drawer
   const openMobileMenu = () => {
-    setDrawerScreen('main');
     setIsMobileMenuOpen(true);
-    // Lock body scroll cleanly
-    document.body.style.overflow = 'hidden';
-    requestAnimationFrame(() => {
-      setIsMenuAnimating(true);
-    });
   };
 
   // Handle closing mobile menu drawer
   const closeMobileMenu = () => {
-    setIsMenuAnimating(false);
-    document.body.style.overflow = '';
-    setTimeout(() => {
-      setIsMobileMenuOpen(false);
-      setDrawerScreen('main');
-    }, 250);
+    setIsMobileMenuOpen(false);
   };
 
   // ESC key listener to close drawer & dropdowns
@@ -249,18 +205,28 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
             <div className="flex items-center gap-4">
 
               {/* Wishlist */}
-              <Link
-                href="/wishlist"
-                className="relative p-2 text-[#292524] hover:text-[#6B1725] transition-colors"
-                aria-label="Wishlist"
-              >
-                <Heart size={21} />
-                {wishlistCount > 0 && (
-                  <span className="absolute top-0 right-0 bg-[#6B1725] text-[#FAF7F0] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-[#FAF7F0]">
-                    {wishlistCount}
-                  </span>
-                )}
-              </Link>
+              {user ? (
+                <Link
+                  href="/wishlist"
+                  className="relative p-2 text-[#292524] hover:text-[#6B1725] transition-colors"
+                  aria-label="Wishlist"
+                >
+                  <Heart size={21} />
+                  {wishlistCount > 0 && (
+                    <span className="absolute top-0 right-0 bg-[#6B1725] text-[#FAF7F0] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-[#FAF7F0]">
+                      {wishlistCount}
+                    </span>
+                  )}
+                </Link>
+              ) : (
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="relative p-2 text-[#292524] hover:text-[#6B1725] transition-colors cursor-pointer"
+                  aria-label="Wishlist (Sign in required)"
+                >
+                  <Heart size={21} />
+                </button>
+              )}
 
               {/* Account Dropdown */}
               <div className="relative">
@@ -343,7 +309,7 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
               {/* Menu Hamburger Button */}
               <button
                 onClick={openMobileMenu}
-                className="p-2 text-[#292524] hover:text-[#6B1725] active:scale-95 transition-all"
+                className="p-2 text-[#292524] hover:text-[#6B1725] active:scale-90 transition-transform cursor-pointer"
                 aria-label="Open navigation menu"
               >
                 <Menu size={24} />
@@ -361,18 +327,28 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
               {/* Mobile Right Icons (Wishlist & Cart) */}
               <div className="flex items-center gap-2">
 
-                <Link
-                  href="/wishlist"
-                  className="relative p-2 text-[#292524] hover:text-[#6B1725]"
-                  aria-label="Wishlist"
-                >
-                  <Heart size={21} />
-                  {wishlistCount > 0 && (
-                    <span className="absolute top-0.5 right-0.5 bg-[#6B1725] text-[#FAF7F0] text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[#FAF7F0]">
-                      {wishlistCount}
-                    </span>
-                  )}
-                </Link>
+                {user ? (
+                  <Link
+                    href="/wishlist"
+                    className="relative p-2 text-[#292524] hover:text-[#6B1725]"
+                    aria-label="Wishlist"
+                  >
+                    <Heart size={21} />
+                    {wishlistCount > 0 && (
+                      <span className="absolute top-0.5 right-0.5 bg-[#6B1725] text-[#FAF7F0] text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[#FAF7F0]">
+                        {wishlistCount}
+                      </span>
+                    )}
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="relative p-2 text-[#292524] hover:text-[#6B1725] cursor-pointer"
+                    aria-label="Wishlist (Sign in required)"
+                  >
+                    <Heart size={21} />
+                  </button>
+                )}
 
                 <button
                   onClick={() => setIsCartOpen(true)}
@@ -473,376 +449,11 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
         )}
       </header>
 
-      {/* 3. MOBILE NAVIGATION DRAWER (85-90% VIEWPORT WIDTH WITH SLIDE ANIMATION) */}
-      {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 z-50 overflow-hidden lg:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Navigation Menu"
-        >
-          {/* Backdrop Overlay */}
-          <div
-            className={`fixed inset-0 bg-[#292524]/60 backdrop-blur-xs transition-opacity duration-300 ${isMenuAnimating ? 'opacity-100' : 'opacity-0'
-              }`}
-            onClick={closeMobileMenu}
-          />
-
-          {/* Drawer Container (85% Viewport Width, Max 360px) */}
-          <aside
-            className={`fixed top-0 bottom-0 left-0 w-[85vw] max-w-[360px] bg-[#FAF7F0] shadow-2xl flex flex-col z-50 transform transition-transform duration-300 ease-out pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] overflow-hidden ${isMenuAnimating ? 'translate-x-0' : '-translate-x-full'
-              }`}
-          >
-            {/* DRAWER TOP HEADER */}
-            <div className="p-4 bg-white border-b border-[#F3ECE0] flex items-center justify-between shrink-0">
-              <Link
-                href="/"
-                onClick={closeMobileMenu}
-                className="flex items-center"
-                aria-label="Shree Banarasi Sarees Home"
-              >
-                <img
-                  src="/brand_logo.webp"
-                  alt="Shree Banarasi Sarees Logo"
-                  className="h-9 w-auto object-contain"
-                />
-              </Link>
-              <button
-                onClick={closeMobileMenu}
-                className="p-1.5 rounded-full text-[#6B625D] hover:text-[#6B1725] hover:bg-[#F3ECE0]/50 transition-colors"
-                aria-label="Close navigation menu"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* DRAWER BODY (SCROLLABLE & 2-SCREEN SUBMENU SLIDE) */}
-            <div className="flex-1 overflow-y-auto no-scrollbar relative">
-
-              <div
-                className={`w-[200%] h-full flex transition-transform duration-300 ease-in-out ${drawerScreen === 'categories' ? '-translate-x-1/2' : 'translate-x-0'
-                  }`}
-              >
-                {/* ── SCREEN 1: MAIN NAVIGATION ── */}
-                <div className="w-1/2 p-4 space-y-6 shrink-0">
-
-                  {/* Drawer Search Input */}
-                  <div>
-                    <AdvancedSearchBar />
-                  </div>
-
-                  {/* SHOP SECTION */}
-                  <div className="space-y-1">
-                    <h3 className="text-[10px] font-bold text-[#B08A3C] uppercase tracking-widest px-2 mb-1">
-                      Shop
-                    </h3>
-                    <Link
-                      href="/sarees"
-                      onClick={closeMobileMenu}
-                      className="flex items-center justify-between p-2.5 rounded-xl hover:bg-white text-xs font-bold text-[#292524] transition-colors"
-                    >
-                      <span>All Sarees</span>
-                      <ChevronRight size={16} className="text-[#6B625D]/50" />
-                    </Link>
-                    <Link
-                      href="/sarees?filter=new"
-                      onClick={closeMobileMenu}
-                      className="flex items-center justify-between p-2.5 rounded-xl hover:bg-white text-xs font-bold text-[#292524] transition-colors"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span>New Arrivals</span>
-                        <span className="text-[9px] bg-[#6B1725] text-[#FAF7F0] font-bold px-1.5 py-0.5 rounded-full">NEW</span>
-                      </span>
-                      <ChevronRight size={16} className="text-[#6B625D]/50" />
-                    </Link>
-                    <Link
-                      href="/sarees?filter=bestseller"
-                      onClick={closeMobileMenu}
-                      className="flex items-center justify-between p-2.5 rounded-xl hover:bg-white text-xs font-bold text-[#292524] transition-colors"
-                    >
-                      <span>Bestsellers</span>
-                      <ChevronRight size={16} className="text-[#6B625D]/50" />
-                    </Link>
-
-                    {/* CATEGORIES TRIGGER (OPEN SCREEN 2) */}
-                    <button
-                      onClick={() => setDrawerScreen('categories')}
-                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white border border-[#B08A3C]/20 text-xs font-bold text-[#6B1725] hover:bg-[#FAF7F0] transition-colors"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Tag size={14} className="text-[#B08A3C]" />
-                        <span>Categories</span>
-                      </span>
-                      <ChevronRight size={16} className="text-[#6B1725]" />
-                    </button>
-                  </div>
-
-                  {/* SHOP BY BUDGET */}
-                  <div className="space-y-1 border-t border-[#F3ECE0] pt-4">
-                    <h3 className="text-[10px] font-bold text-[#B08A3C] uppercase tracking-widest px-2 mb-1">
-                      Shop by Budget
-                    </h3>
-                    <div className="grid grid-cols-2 gap-2 text-xs font-medium">
-                      <Link
-                        href="/sarees?maxPrice=999"
-                        onClick={closeMobileMenu}
-                        className="p-2 rounded-xl bg-white border border-[#F3ECE0] text-center text-[#292524] hover:border-[#B08A3C] transition-colors"
-                      >
-                        Under ₹999
-                      </Link>
-                      <Link
-                        href="/sarees?maxPrice=1499"
-                        onClick={closeMobileMenu}
-                        className="p-2 rounded-xl bg-white border border-[#F3ECE0] text-center text-[#292524] hover:border-[#B08A3C] transition-colors"
-                      >
-                        Under ₹1,499
-                      </Link>
-                      <Link
-                        href="/sarees?maxPrice=1999"
-                        onClick={closeMobileMenu}
-                        className="p-2 rounded-xl bg-white border border-[#F3ECE0] text-center text-[#292524] hover:border-[#B08A3C] transition-colors"
-                      >
-                        Under ₹2,000
-                      </Link>
-                      <Link
-                        href="/sarees?minPrice=2000"
-                        onClick={closeMobileMenu}
-                        className="p-2 rounded-xl bg-white border border-[#F3ECE0] text-center text-[#292524] hover:border-[#B08A3C] transition-colors"
-                      >
-                        Above ₹2,000
-                      </Link>
-                    </div>
-                  </div>
-
-                  {/* SHOP BY OCCASION */}
-                  <div className="space-y-1 border-t border-[#F3ECE0] pt-4">
-                    <h3 className="text-[10px] font-bold text-[#B08A3C] uppercase tracking-widest px-2 mb-1">
-                      Shop by Occasion
-                    </h3>
-                    <div className="grid grid-cols-2 gap-2 text-xs font-medium">
-                      <Link
-                        href="/sarees?occasion=Wedding"
-                        onClick={closeMobileMenu}
-                        className="p-2 rounded-xl bg-white border border-[#F3ECE0] text-center text-[#292524] hover:border-[#B08A3C] transition-colors"
-                      >
-                        Wedding
-                      </Link>
-                      <Link
-                        href="/sarees?occasion=Festive"
-                        onClick={closeMobileMenu}
-                        className="p-2 rounded-xl bg-white border border-[#F3ECE0] text-center text-[#292524] hover:border-[#B08A3C] transition-colors"
-                      >
-                        Festive
-                      </Link>
-                      <Link
-                        href="/sarees?occasion=Party"
-                        onClick={closeMobileMenu}
-                        className="p-2 rounded-xl bg-white border border-[#F3ECE0] text-center text-[#292524] hover:border-[#B08A3C] transition-colors"
-                      >
-                        Party
-                      </Link>
-                      <Link
-                        href="/sarees?occasion=Daily+Wear"
-                        onClick={closeMobileMenu}
-                        className="p-2 rounded-xl bg-white border border-[#F3ECE0] text-center text-[#292524] hover:border-[#B08A3C] transition-colors"
-                      >
-                        Everyday
-                      </Link>
-                    </div>
-                  </div>
-
-                  {/* ACCOUNT SECTION */}
-                  <div className="space-y-1 border-t border-[#F3ECE0] pt-4">
-                    <h3 className="text-[10px] font-bold text-[#B08A3C] uppercase tracking-widest px-2 mb-1">
-                      Account
-                    </h3>
-                    {user ? (
-                      <>
-                        <Link
-                          href="/account"
-                          onClick={closeMobileMenu}
-                          className="flex items-center gap-2 p-2.5 rounded-xl hover:bg-white text-xs font-bold text-[#292524]"
-                        >
-                          <User size={16} className="text-[#6B1725]" />
-                          <span>My Account ({userProfile?.full_name || 'Profile'})</span>
-                        </Link>
-                        <Link
-                          href="/account"
-                          onClick={closeMobileMenu}
-                          className="flex items-center gap-2 p-2.5 rounded-xl hover:bg-white text-xs font-bold text-[#292524]"
-                        >
-                          <Package size={16} className="text-[#6B1725]" />
-                          <span>My Orders</span>
-                        </Link>
-                        <Link
-                          href="/wishlist"
-                          onClick={closeMobileMenu}
-                          className="flex items-center gap-2 p-2.5 rounded-xl hover:bg-white text-xs font-bold text-[#292524]"
-                        >
-                          <Heart size={16} className="text-[#6B1725]" />
-                          <span>Wishlist ({wishlistCount})</span>
-                        </Link>
-                        <button
-                          onClick={() => {
-                            closeMobileMenu();
-                            logoutUser();
-                          }}
-                          className="w-full flex items-center gap-2 p-2.5 rounded-xl hover:bg-red-50 text-xs font-bold text-red-700 text-left"
-                        >
-                          <LogOut size={16} />
-                          <span>Log Out</span>
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => {
-                            closeMobileMenu();
-                            setIsAuthModalOpen(true);
-                          }}
-                          className="w-full flex items-center gap-2 p-2.5 rounded-xl bg-[#6B1725] text-[#FAF7F0] text-xs font-bold text-left justify-between"
-                        >
-                          <span className="flex items-center gap-2">
-                            <User size={16} />
-                            <span>Login / Register</span>
-                          </span>
-                          <ChevronRight size={16} />
-                        </button>
-                        <Link
-                          href="/wishlist"
-                          onClick={closeMobileMenu}
-                          className="flex items-center gap-2 p-2.5 rounded-xl hover:bg-white text-xs font-bold text-[#292524]"
-                        >
-                          <Heart size={16} className="text-[#6B1725]" />
-                          <span>Wishlist ({wishlistCount})</span>
-                        </Link>
-                      </>
-                    )}
-                  </div>
-
-                  {/* PWA DOWNLOAD APP CTA (Clean, Minimalist Real-World Style) */}
-                  {!isStandalone && (
-                    <div className="border-t border-[#F3ECE0] pt-3">
-                      <button
-                        onClick={() => {
-                          closeMobileMenu();
-                          handlePwaInstall();
-                        }}
-                        className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white border border-[#F3ECE0] hover:border-[#6B1725]/30 text-left transition-all active:scale-98 shadow-2xs cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-[#6B1725]/10 text-[#6B1725] flex items-center justify-center shrink-0">
-                            <Smartphone size={16} />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-bold text-[#292524]">Install Mobile App</span>
-                              <span className="text-[9px] bg-[#6B1725]/10 text-[#6B1725] font-semibold px-1.5 py-0.5 rounded-full">FAST</span>
-                            </div>
-                            <p className="text-[10px] text-[#6B625D] truncate">Get live delivery updates</p>
-                          </div>
-                        </div>
-                        <div className="text-[11px] font-serif font-bold text-[#6B1725] flex items-center gap-0.5 shrink-0">
-                          <span>Install</span>
-                          <ChevronRight size={14} />
-                        </div>
-                      </button>
-                    </div>
-                  )}
-
-                  {/* WHATSAPP SUPPORT CTA */}
-                  <div className="border-t border-[#F3ECE0] pt-4">
-                    <p className="text-[11px] text-[#6B625D] mb-2 px-1">
-                      Need help choosing a saree?
-                    </p>
-                    <a
-                      href="https://wa.me/+916203909946"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-2.5 px-3 bg-[#2EBE5D] hover:bg-[#25A650] text-white rounded-xl font-serif font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all"
-                    >
-                      <MessageCircle size={16} className="fill-current" />
-                      <span>Chat on WhatsApp</span>
-                    </a>
-                  </div>
-
-                  {/* STORE INFO & FOOTER LINKS */}
-                  <div className="border-t border-[#F3ECE0] pt-4 space-y-3 pb-6">
-                    <div className="bg-white p-3 rounded-xl border border-[#F3ECE0] text-xs text-[#292524] space-y-1">
-                      <p className="font-serif font-bold text-[#6B1725]">Shree Banarasi Sarees</p>
-                      <p className="text-[11px] text-[#6B625D]">Samastipur, Bihar • +91 62039 09946</p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-[11px] text-[#6B625D] font-medium pt-1">
-                      <Link href="/contact" onClick={closeMobileMenu} className="hover:text-[#6B1725]">Contact Us</Link>
-                      <Link href="/faqs" onClick={closeMobileMenu} className="hover:text-[#6B1725]">FAQ</Link>
-                      <Link href="/shipping" onClick={closeMobileMenu} className="hover:text-[#6B1725]">Shipping</Link>
-                      <Link href="/returns" onClick={closeMobileMenu} className="hover:text-[#6B1725]">Returns</Link>
-                      <Link href="/about-us" onClick={closeMobileMenu} className="hover:text-[#6B1725]">About Us</Link>
-                      <Link href="/our-store" onClick={closeMobileMenu} className="hover:text-[#6B1725]">Our Showroom</Link>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* ── SCREEN 2: CATEGORIES SUBMENU ── */}
-                <div className="w-1/2 p-4 space-y-3 shrink-0">
-
-                  {/* Back to main menu header */}
-                  <button
-                    onClick={() => setDrawerScreen('main')}
-                    className="flex items-center gap-2 text-xs font-bold text-[#6B1725] p-2 hover:bg-white rounded-xl transition-colors w-full"
-                  >
-                    <ArrowLeft size={16} />
-                    <span>Back to Menu</span>
-                  </button>
-
-                  <div className="text-[11px] font-serif font-bold text-[#B08A3C] uppercase tracking-widest px-2 pt-2 border-t border-[#F3ECE0]">
-                    Select Category
-                  </div>
-
-                  <div className="space-y-1">
-                    {categories.map(cat => (
-                      <Link
-                        key={cat.slug}
-                        href={cat.slug ? `/sarees/${cat.slug}` : `/sarees?category=${encodeURIComponent(cat.name)}`}
-                        onClick={closeMobileMenu}
-                        className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-[#F3ECE0] hover:border-[#B08A3C] transition-colors"
-                      >
-                        <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-[#292524] border border-[#B08A3C]/20">
-                          <Image
-                            src={cat.image_url || NO_IMAGE_PLACEHOLDER}
-                            alt={cat.name}
-                            fill
-                            sizes="40px"
-                            className="object-cover"
-                          />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-[#292524] truncate">{cat.name}</p>
-                          <p className="text-[10px] text-[#6B625D] font-light line-clamp-1">{cat.desc}</p>
-                        </div>
-                        <ChevronRight size={16} className="text-[#6B625D]/50 shrink-0" />
-                      </Link>
-                    ))}
-
-                    <Link
-                      href="/sarees"
-                      onClick={closeMobileMenu}
-                      className="block p-3 rounded-xl bg-[#6B1725] text-[#FAF7F0] text-xs font-bold text-center mt-4"
-                    >
-                      VIEW ALL SAREES →
-                    </Link>
-                  </div>
-
-                </div>
-
-              </div>
-
-            </div>
-          </aside>
-        </div>
-      )}
+      {/* 3. MOBILE NAVIGATION DRAWER */}
+      <MobileMenuDrawer
+        isOpen={isMobileMenuOpen}
+        onClose={closeMobileMenu}
+      />
 
       {/* AUTH MODAL */}
       <AuthModal

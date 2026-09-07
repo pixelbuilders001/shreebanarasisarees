@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Smartphone, MapPin, Truck, Package, Store, MessageCircle } from 'lucide-react';
 import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
+import { useStore } from '../context/StoreContext';
 
 export const AnnouncementBar: React.FC = () => {
+  const { user, setIsAuthModalOpen } = useStore();
   const isPwaInstalled = useIsPwaInstalled();
   const [activeMobileIdx, setActiveMobileIdx] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -102,6 +104,14 @@ export const AnnouncementBar: React.FC = () => {
                       <IconComponent size={13} className="text-[#D4B870] shrink-0" />
                       <span>{item.text}</span>
                     </a>
+                  ) : item.href === '/account' && !user ? (
+                    <button
+                      onClick={() => setIsAuthModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 hover:text-[#D4B870] transition-colors underline-offset-2 hover:underline cursor-pointer"
+                    >
+                      <IconComponent size={13} className="text-[#D4B870] shrink-0" />
+                      <span>{item.text}</span>
+                    </button>
                   ) : (
                     <Link
                       href={item.href}
@@ -144,6 +154,13 @@ export const AnnouncementBar: React.FC = () => {
                     >
                       {currentMobileItem.text}
                     </a>
+                  ) : currentMobileItem.href === '/account' && !user ? (
+                    <button
+                      onClick={() => setIsAuthModalOpen(true)}
+                      className="hover:text-[#D4B870] hover:underline underline-offset-2 truncate text-[11px] font-medium transition-colors cursor-pointer"
+                    >
+                      {currentMobileItem.text}
+                    </button>
                   ) : (
                     <Link
                       href={currentMobileItem.href}

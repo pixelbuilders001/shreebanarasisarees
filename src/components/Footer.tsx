@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { MessageCircle, Phone, MapPin, Heart, ShieldCheck, Truck, Sparkles, Headset, ChevronDown, ExternalLink, Smartphone, Download } from 'lucide-react';
 import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
+import { useStore } from '../context/StoreContext';
 
 export const Footer: React.FC = () => {
+  const { user, setIsAuthModalOpen } = useStore();
   const currentYear = new Date().getFullYear();
   const [openSection, setOpenSection] = useState<string | null>(null);
 
@@ -122,8 +124,13 @@ export const Footer: React.FC = () => {
               <li><Link href="/shipping" className="hover:text-[#B08A3C] transition-colors">Shipping & Delivery</Link></li>
               <li><Link href="/returns" className="hover:text-[#B08A3C] transition-colors">Returns & Exchanges</Link></li>
               <li><Link href="/refund-policy" className="hover:text-[#B08A3C] transition-colors">Refund Policy</Link></li>
-              <li><Link href="/faqs" className="hover:text-[#B08A3C] transition-colors">FAQs</Link></li>
-              <li><Link href="/account" className="hover:text-[#B08A3C] transition-colors">Track Order</Link></li>
+              <li>
+                {user ? (
+                  <Link href="/account" className="hover:text-[#B08A3C] transition-colors">Track Order</Link>
+                ) : (
+                  <button onClick={() => setIsAuthModalOpen(true)} className="hover:text-[#B08A3C] transition-colors cursor-pointer text-left">Track Order</button>
+                )}
+              </li>
             </ul>
           </div>
 
@@ -233,8 +240,13 @@ export const Footer: React.FC = () => {
                 <li><Link href="/shipping" className="block py-1">Shipping & Delivery</Link></li>
                 <li><Link href="/returns" className="block py-1">Returns & Exchanges</Link></li>
                 <li><Link href="/refund-policy" className="block py-1">Refund Policy</Link></li>
-                <li><Link href="/faqs" className="block py-1">FAQs</Link></li>
-                <li><Link href="/account" className="block py-1">Track Order</Link></li>
+                <li>
+                  {user ? (
+                    <Link href="/account" className="block py-1">Track Order</Link>
+                  ) : (
+                    <button onClick={() => setIsAuthModalOpen(true)} className="block py-1 text-left w-full cursor-pointer">Track Order</button>
+                  )}
+                </li>
               </ul>
             )}
           </div>
