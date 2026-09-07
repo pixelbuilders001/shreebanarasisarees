@@ -273,6 +273,32 @@ export async function fetchProducts(): Promise<Product[]> {
 }
 
 /**
+ * Fetches only the products required for the home page (bestsellers and new arrivals)
+ * to avoid serializing the entire product catalog in the SSR RSC flight payload.
+ */
+export async function fetchHomePageProducts(): Promise<{
+  bestsellers: Product[];
+  newArrivals: Product[];
+}> {
+  try {
+    const products = await fetchProducts();
+    const bestsellers = products.filter(p => p.bestseller).slice(0, 8);
+    const newArrivals = products.filter(p => p.newArrival).slice(0, 8);
+
+    return {
+      bestsellers: bestsellers.length > 0 ? bestsellers : products.slice(0, 8),
+      newArrivals: newArrivals.length > 0 ? newArrivals : products.slice(0, 8)
+    };
+  } catch (err) {
+    console.error('Exception in fetchHomePageProducts:', err);
+    return {
+      bestsellers: PRODUCTS.filter(p => p.bestseller).slice(0, 8),
+      newArrivals: PRODUCTS.filter(p => p.newArrival).slice(0, 8)
+    };
+  }
+}
+
+/**
  * Execute Full-Text Search on Supabase inventory using search_vector.
  */
 export async function searchProductsAdvancedDb(params: {

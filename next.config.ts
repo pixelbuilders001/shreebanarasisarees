@@ -7,13 +7,20 @@ const allowedOrigins = allowedOriginsEnv
 
 const nextConfig: NextConfig = {
   images: {
-    unoptimized: true,
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 86400,
     remotePatterns: [
       {
         protocol: "https",
         hostname: "vzqlsawxvvyvsstyzzff.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "**.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "ik.imagekit.io",
       },
       {
         protocol: "https",

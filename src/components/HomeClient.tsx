@@ -30,19 +30,37 @@ const RecentlyViewed = dynamic(() => import('./RecentlyViewed').then(m => m.Rece
 });
 
 interface HomeClientProps {
+  bestsellers?: Product[];
+  newArrivals?: Product[];
   allProducts?: Product[];
   activeCampaigns?: DbCampaign[];
   heroBanners?: DbHeroBanner[];
 }
 
-export default function HomeClient({ allProducts = PRODUCTS, activeCampaigns = [], heroBanners }: HomeClientProps) {
-  // Filter bestsellers (up to 8)
-  const bestsellerProducts = allProducts.filter(p => p.bestseller).slice(0, 8);
-  const displayBestsellers = bestsellerProducts.length > 0 ? bestsellerProducts : allProducts.slice(0, 8);
+export default function HomeClient({
+  bestsellers,
+  newArrivals,
+  allProducts,
+  activeCampaigns = [],
+  heroBanners
+}: HomeClientProps) {
+  // Use server-provided bestsellers (8 items max) or derive from allProducts fallback
+  const displayBestsellers = bestsellers && bestsellers.length > 0
+    ? bestsellers.slice(0, 8)
+    : (() => {
+        const prods = allProducts || PRODUCTS;
+        const filtered = prods.filter(p => p.bestseller).slice(0, 8);
+        return filtered.length > 0 ? filtered : prods.slice(0, 8);
+      })();
 
-  // Filter new arrivals (up to 8 for desktop)
-  const newArrivalsList = allProducts.filter(p => p.newArrival).slice(0, 8);
-  const displayNewArrivals = newArrivalsList.length > 0 ? newArrivalsList : allProducts.slice(0, 8);
+  // Use server-provided new arrivals (8 items max) or derive from allProducts fallback
+  const displayNewArrivals = newArrivals && newArrivals.length > 0
+    ? newArrivals.slice(0, 8)
+    : (() => {
+        const prods = allProducts || PRODUCTS;
+        const filtered = prods.filter(p => p.newArrival).slice(0, 8);
+        return filtered.length > 0 ? filtered : prods.slice(0, 8);
+      })();
 
   // Recently viewed hook
   const { viewedIds } = useRecentlyViewed();

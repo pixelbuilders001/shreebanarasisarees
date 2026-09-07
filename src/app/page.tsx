@@ -1,7 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import HomeClient from '../components/HomeClient';
-import { fetchProducts, fetchActiveCampaigns, fetchActiveHeroBanners } from '../data/supabase';
+import { fetchHomePageProducts, fetchActiveCampaigns, fetchActiveHeroBanners } from '../data/supabase';
 
 export const revalidate = 60;
 
@@ -36,8 +36,8 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const [dbProducts, activeCampaigns, heroBanners] = await Promise.all([
-    fetchProducts(),
+  const [{ bestsellers, newArrivals }, activeCampaigns, heroBanners] = await Promise.all([
+    fetchHomePageProducts(),
     fetchActiveCampaigns(),
     fetchActiveHeroBanners()
   ]);
@@ -131,7 +131,12 @@ export default async function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
       />
-      <HomeClient allProducts={dbProducts} activeCampaigns={activeCampaigns} heroBanners={heroBanners} />
+      <HomeClient
+        bestsellers={bestsellers}
+        newArrivals={newArrivals}
+        activeCampaigns={activeCampaigns}
+        heroBanners={heroBanners}
+      />
     </>
   );
 }

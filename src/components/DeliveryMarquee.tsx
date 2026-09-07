@@ -1,13 +1,9 @@
 "use client";
 
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
 import { Zap, ShieldCheck, Truck, Sparkles } from 'lucide-react';
 
 export const DeliveryMarquee: React.FC = () => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const offsetRef = useRef<number>(0);
-  const isPausedRef = useRef<boolean>(false);
-
   const deliveryItems = [
     {
       icon: Zap,
@@ -25,29 +21,6 @@ export const DeliveryMarquee: React.FC = () => {
       subtitle: "COD Available · Free shipping above ₹1,999",
     },
   ];
-
-  useEffect(() => {
-    let animId: number;
-    const speed = 0.65; // Pixels per frame for smooth luxury motion
-
-    const step = () => {
-      if (scrollRef.current) {
-        if (!isPausedRef.current) {
-          offsetRef.current += speed;
-          // Single set width is exactly 1/4 of total scrollWidth (since we render 4 identical sets)
-          const singleSetWidth = scrollRef.current.scrollWidth / 4;
-          if (singleSetWidth > 0 && offsetRef.current >= singleSetWidth) {
-            offsetRef.current = offsetRef.current % singleSetWidth;
-          }
-          scrollRef.current.style.transform = `translate3d(-${offsetRef.current}px, 0, 0)`;
-        }
-      }
-      animId = requestAnimationFrame(step);
-    };
-
-    animId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(animId);
-  }, []);
 
   const renderItemSet = (setKey: string) => (
     <div key={setKey} className="flex items-center shrink-0">
@@ -86,10 +59,6 @@ export const DeliveryMarquee: React.FC = () => {
   return (
     <div
       className="w-full bg-gradient-to-r from-[#FAF7F0] via-[#F5EFE4] to-[#FAF7F0] text-[#292524] border-y border-[#B08A3C]/25 py-2.5 sm:py-3 overflow-hidden select-none relative group shadow-xs cursor-default"
-      onMouseEnter={() => { isPausedRef.current = true; }}
-      onMouseLeave={() => { isPausedRef.current = false; }}
-      onTouchStart={() => { isPausedRef.current = true; }}
-      onTouchEnd={() => { isPausedRef.current = false; }}
     >
       {/* Left Fade Gradient */}
       <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-12 sm:w-24 bg-gradient-to-r from-[#FAF7F0] to-transparent z-10" />
@@ -97,15 +66,12 @@ export const DeliveryMarquee: React.FC = () => {
       {/* Right Fade Gradient */}
       <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-12 sm:w-24 bg-gradient-to-l from-[#FAF7F0] to-transparent z-10" />
 
-      {/* Continuous JS V-Sync Accelerated Ticker Container */}
+      {/* Pure CSS GPU Compositor Marquee (zero JS main-thread load) */}
       <div
-        ref={scrollRef}
-        className="flex w-max items-center pointer-events-auto will-change-transform"
+        className="flex w-max items-center animate-marquee hover:[animation-play-state:paused] active:[animation-play-state:paused]"
       >
         {renderItemSet("set-1")}
         {renderItemSet("set-2")}
-        {renderItemSet("set-3")}
-        {renderItemSet("set-4")}
       </div>
     </div>
   );

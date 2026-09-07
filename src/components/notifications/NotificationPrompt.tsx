@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, X } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
-import { isMessagingSupported, getFCMToken, saveFCMTokenToSupabase } from '../../lib/firebase/messaging';
 
 export default function NotificationPrompt() {
   const { user, showToast } = useStore();
@@ -28,6 +27,7 @@ export default function NotificationPrompt() {
       }
 
       console.log("[FCM Prompt] Checking messaging support...");
+      const { isMessagingSupported } = await import('../../lib/firebase/messaging');
       const supported = await isMessagingSupported();
       console.log("[FCM Prompt] Is supported on this browser:", supported);
       if (!supported) return;
@@ -70,6 +70,7 @@ export default function NotificationPrompt() {
       if (permission === 'granted') {
         if ('serviceWorker' in navigator) {
           const registration = await navigator.serviceWorker.ready;
+          const { getFCMToken, saveFCMTokenToSupabase } = await import('../../lib/firebase/messaging');
           const token = await getFCMToken(registration);
           
           if (token) {

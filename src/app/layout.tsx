@@ -15,14 +15,14 @@ import RouteTransitionLoader from "../components/RouteTransitionLoader";
 const playfair = Playfair_Display({
   variable: "--font-serif",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "600", "700", "800"],
   display: "swap",
 });
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -111,10 +111,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${playfair.variable} ${plusJakartaSans.variable}`}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://vzqlsawxvvyvsstyzzff.supabase.co" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://vzqlsawxvvyvsstyzzff.supabase.co" />
+        <link rel="preconnect" href="https://ik.imagekit.io" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://ik.imagekit.io" />
       </head>
       <body className="font-sans antialiased text-[#292524] bg-[#FAF7F0] min-h-screen flex flex-col justify-between">
         <GoogleAnalytics />

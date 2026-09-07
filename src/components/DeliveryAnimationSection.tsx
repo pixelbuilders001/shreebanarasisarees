@@ -106,17 +106,16 @@ export const DeliveryAnimationSection: React.FC = () => {
         }`}>
           <video
             ref={videoRef}
-            autoPlay
             muted
             loop
             playsInline
-            preload="auto"
+            preload="none"
             poster="/how-it-works-poster.webp"
             onLoadedData={() => setIsVideoLoaded(true)}
             onContextMenu={(e) => e.preventDefault()}
             className={`w-full h-auto max-h-[380px] object-cover mx-auto block pointer-events-none select-none transition-opacity duration-500 ${isVideoLoaded ? 'opacity-100' : 'opacity-90'}`}
           >
-            <source src="/how-it-works.webm" type="video/webm" />
+            <source src="/how-it-works-opt.webm" type="video/webm" />
             <source src="/how-it-works.mp4" type="video/mp4" />
           </video>
         </div>
