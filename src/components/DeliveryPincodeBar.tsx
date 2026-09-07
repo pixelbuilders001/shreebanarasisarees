@@ -198,9 +198,16 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
             <button
               onClick={() => checkPincode(inputPincode)}
               disabled={inputPincode.length !== 6 || isLoading}
-              className="bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-50 text-white text-xs font-bold px-4 rounded-xl transition-colors cursor-pointer"
+              className="bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-50 text-white text-xs font-bold px-4 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 min-w-[70px]"
             >
-              Verify
+              {isLoading ? (
+                <>
+                  <Loader2 size={13} className="animate-spin text-white" />
+                  <span>...</span>
+                </>
+              ) : (
+                'Verify'
+              )}
             </button>
           </div>
         </div>

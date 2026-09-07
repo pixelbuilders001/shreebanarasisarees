@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Navigation, Clock, CheckCircle2, AlertCircle, RefreshCw, PackageX, Sparkles, ChevronDown, Plus, Moon } from 'lucide-react';
+import { MapPin, Navigation, Clock, CheckCircle2, AlertCircle, RefreshCw, PackageX, Sparkles, ChevronDown, Plus, Moon, Loader2 } from 'lucide-react';
 import { useCustomerLocation } from '../../hooks/useCustomerLocation';
 import { ExpressRiderIcon, StandardTruckIcon } from './DeliveryIcons';
 import { useStore } from '../../context/StoreContext';
@@ -242,9 +242,16 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
             <button
               type="submit"
               disabled={isLoading || pincodeInput.length !== 6}
-              className="bg-[#6B1725] hover:bg-[#52111C] text-[#FAF7F0] text-xs font-serif font-bold tracking-wider px-4 py-2.5 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-xs whitespace-nowrap"
+              className="bg-[#6B1725] hover:bg-[#52111C] text-[#FAF7F0] text-xs font-serif font-bold tracking-wider px-4 py-2.5 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-xs whitespace-nowrap flex items-center justify-center gap-1.5 min-w-[110px]"
             >
-              {isLoading ? 'Checking...' : 'Check Delivery'}
+              {isLoading ? (
+                <>
+                  <Loader2 size={13} className="animate-spin text-white" />
+                  <span>Checking...</span>
+                </>
+              ) : (
+                'Check Delivery'
+              )}
             </button>
           </div>
         </form>

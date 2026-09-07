@@ -1,6 +1,7 @@
 import React from 'react';
-import IconMarqueeLoader from '../../components/IconMarqueeLoader';
+import { CheckoutSkeleton } from '../../components/CheckoutSkeleton';
 
 export default function Loading() {
-  return <IconMarqueeLoader />;
+  return <CheckoutSkeleton />;
 }
+

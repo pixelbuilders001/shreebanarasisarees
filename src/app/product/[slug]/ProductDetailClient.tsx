@@ -27,7 +27,8 @@ import {
   User,
   AlertCircle,
   ShoppingBag,
-  Bell
+  Bell,
+  Loader2
 } from 'lucide-react';
 import { fetchDesignVariants, supabase } from '../../../data/supabase';
 import { RecentlyViewed } from '../../../components/RecentlyViewed';
@@ -683,18 +684,34 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                   <button
                     onClick={handleAddToCart}
                     disabled={isAddingToCart}
-                    className="flex-1 bg-[#6B1725] hover:bg-[#52111C] text-white py-3.5 px-6 rounded-full font-serif font-bold text-sm shadow-md cursor-pointer transition-all flex items-center justify-center gap-2"
+                    className="flex-1 bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-85 text-white py-3.5 px-6 rounded-full font-serif font-bold text-sm shadow-md cursor-pointer transition-all flex items-center justify-center gap-2"
                   >
-                    <ShoppingBag size={18} />
-                    <span>{isAlreadyInCart ? 'Go to cart' : 'Add to Bag'}</span>
+                    {isAddingToCart ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin text-white" />
+                        <span>Adding...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingBag size={18} />
+                        <span>{isAlreadyInCart ? 'Go to cart' : 'Add to Bag'}</span>
+                      </>
+                    )}
                   </button>
 
                   <button
                     onClick={handleBuyNow}
                     disabled={isBuyingNow}
-                    className="flex-1 bg-white border-2 border-[#6B1725] text-[#6B1725] py-3.5 px-6 rounded-full font-serif font-bold text-sm hover:bg-[#6B1725]/5 cursor-pointer transition-all text-center"
+                    className="flex-1 bg-white border-2 border-[#6B1725] disabled:opacity-85 text-[#6B1725] py-3.5 px-6 rounded-full font-serif font-bold text-sm hover:bg-[#6B1725]/5 cursor-pointer transition-all text-center flex items-center justify-center gap-2"
                   >
-                    Buy Now
+                    {isBuyingNow ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin text-[#6B1725]" />
+                        <span>Processing...</span>
+                      </>
+                    ) : (
+                      <span>Buy Now</span>
+                    )}
                   </button>
 
                   <button
@@ -952,17 +969,31 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
             <button
               onClick={handleAddToCart}
               disabled={isAddingToCart}
-              className="bg-[#6B1725] hover:bg-[#52111C] text-white py-2.5 px-5 rounded-full text-xs font-bold shadow-md cursor-pointer transition-colors"
+              className="bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-85 text-white py-2.5 px-5 rounded-full text-xs font-bold shadow-md cursor-pointer transition-colors flex items-center justify-center gap-1.5 min-w-[95px]"
             >
-              {isAlreadyInCart ? 'Go to cart' : 'Add to Bag'}
+              {isAddingToCart ? (
+                <>
+                  <Loader2 size={13} className="animate-spin text-white" />
+                  <span>Adding...</span>
+                </>
+              ) : (
+                <span>{isAlreadyInCart ? 'Go to cart' : 'Add to Bag'}</span>
+              )}
             </button>
 
             <button
               onClick={handleBuyNow}
               disabled={isBuyingNow}
-              className="bg-white border border-[#6B1725] text-[#6B1725] py-2.5 px-5 rounded-full text-xs font-bold hover:bg-[#6B1725]/5 cursor-pointer transition-colors"
+              className="bg-white border border-[#6B1725] disabled:opacity-85 text-[#6B1725] py-2.5 px-5 rounded-full text-xs font-bold hover:bg-[#6B1725]/5 cursor-pointer transition-colors flex items-center justify-center gap-1.5 min-w-[85px]"
             >
-              Buy now
+              {isBuyingNow ? (
+                <>
+                  <Loader2 size={13} className="animate-spin text-[#6B1725]" />
+                  <span>Wait...</span>
+                </>
+              ) : (
+                <span>Buy now</span>
+              )}
             </button>
           </>
         )}
@@ -1073,7 +1104,14 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                   disabled={submitting}
                   className="flex-1 py-3 bg-[#6B1725] text-[#FFFFFF] rounded-full font-serif font-bold text-xs tracking-wider uppercase hover:bg-[#52111C] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-md"
                 >
-                  {submitting ? 'Submitting…' : 'Submit Review'}
+                  {submitting ? (
+                    <>
+                      <Loader2 size={15} className="animate-spin text-white" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    <span>Submit Review</span>
+                  )}
                 </button>
               </div>
             </form>

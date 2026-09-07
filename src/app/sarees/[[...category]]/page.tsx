@@ -2,7 +2,7 @@ import React, { Suspense } from 'react';
 import { Metadata } from 'next';
 import { SareesClient } from '../../../components/SareesClient';
 import { fetchCategories, fetchProducts } from '../../../data/supabase';
-import { IconMarqueeLoader } from '../../../components/IconMarqueeLoader';
+import SareesLoading from './loading';
 
 interface PageProps {
   params: Promise<{ category?: string[] }>;
@@ -292,7 +292,7 @@ export default async function Page({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
       />
-      <Suspense fallback={<IconMarqueeLoader />}>
+      <Suspense fallback={<SareesLoading />}>
         <SareesClient
           initialCategory={data.category}
           initialOccasion={data.occasion}

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Heart, ShoppingBag, Eye, X, Star, Scissors, Bell } from 'lucide-react';
+import { Heart, ShoppingBag, Eye, X, Star, Scissors, Bell, Loader2 } from 'lucide-react';
 import { Product } from '../data/products';
 import { useStore } from '../context/StoreContext';
 import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
@@ -253,9 +253,14 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
   const currentPrice = product.salePrice ?? product.price;
   const activeWishlist = isInWishlist(product.id);
 
-  const handleAddToCart = () => {
+  const [isAdding, setIsAdding] = useState(false);
+
+  const handleAddToCart = async () => {
     if (product.stock > 0) {
+      setIsAdding(true);
+      await new Promise(resolve => setTimeout(resolve, 250));
       addToCart(product, qty);
+      setIsAdding(false);
       onClose();
     }
   };
@@ -409,11 +414,20 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
 
                 <button
                   onClick={handleAddToCart}
-                  disabled={product.stock === 0}
-                  className="flex-1 py-2.5 bg-maroon text-ivory rounded-lg font-serif font-bold text-[11px] uppercase tracking-wider hover:bg-maroon-dark transition-all shadow-md disabled:opacity-40 flex items-center justify-center gap-2"
+                  disabled={product.stock === 0 || isAdding}
+                  className="flex-1 py-2.5 bg-maroon disabled:opacity-85 text-ivory rounded-lg font-serif font-bold text-[11px] uppercase tracking-wider hover:bg-maroon-dark transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <ShoppingBag size={14} />
-                  Add to Cart
+                  {isAdding ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin text-ivory" />
+                      <span>Adding...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingBag size={14} />
+                      <span>Add to Cart</span>
+                    </>
+                  )}
                 </button>
 
                 <button

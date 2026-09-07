@@ -1,51 +1,78 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-
-const LOADER_ICONS = [
-  "/loader%20icons/loader_1.png",
-  "/loader%20icons/loader_2.png",
-  "/loader%20icons/loader_3.png",
-  "/loader%20icons/loader_4.png",
-  "/loader%20icons/loader_5.png"
-];
 
 export default function RouteTransitionLoader() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const [isLoading, setIsLoading] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [visible, setVisible] = useState(false);
 
-  // Stop loading when pathname or search parameters change
+  const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // When pathname or search parameters settle, complete the progress bar
   useEffect(() => {
-    setIsLoading(false);
+    if (isLoading || visible) {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+
+      // Rush to 100%
+      setProgress(100);
+
+      // Fade out and reset
+      hideTimerRef.current = setTimeout(() => {
+        setVisible(false);
+        setIsLoading(false);
+        setTimeout(() => setProgress(0), 200);
+      }, 250);
+    }
+
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
   }, [pathname, searchParams]);
 
-  // Handle smooth fade-in / fade-out animation timings
+  // Handle progressive bar simulation when loading starts
   useEffect(() => {
-    let timer: NodeJS.Timeout;
     if (isLoading) {
-      setIsVisible(true);
-    } else {
-      timer = setTimeout(() => {
-        setIsVisible(false);
-      }, 300);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+
+      setVisible(true);
+      setProgress(20);
+
+      progressTimerRef.current = setInterval(() => {
+        setProgress((prev) => {
+          if (prev < 60) return prev + Math.random() * 15 + 5;
+          if (prev < 85) return prev + Math.random() * 5 + 2;
+          return prev;
+        });
+      }, 200);
     }
-    return () => clearTimeout(timer);
+
+    return () => {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    };
   }, [isLoading]);
 
-  // Safety fallback: automatically dismiss loader if navigation hangs for over 5 seconds
+  // Safety fallback: dismiss progress bar if navigation hangs for over 5 seconds
   useEffect(() => {
     if (!isLoading) return;
     const safetyTimer = setTimeout(() => {
-      setIsLoading(false);
+      setProgress(100);
+      setTimeout(() => {
+        setVisible(false);
+        setIsLoading(false);
+        setTimeout(() => setProgress(0), 200);
+      }, 200);
     }, 5000);
     return () => clearTimeout(safetyTimer);
   }, [isLoading]);
 
-  // Intercept click events on internal links and patch history pushState / replaceState
+  // Intercept link clicks and monkey-patch history
   useEffect(() => {
     const handleAnchorClick = (e: MouseEvent) => {
       const anchor = (e.target as HTMLElement)?.closest?.('a');
@@ -88,7 +115,7 @@ export default function RouteTransitionLoader() {
           return;
         }
 
-        // Ignore any transitions to or within /account routes
+        // Ignore transitions to or within /account routes
         if (targetUrl.pathname.startsWith('/account') || currentUrl.pathname.startsWith('/account')) {
           return;
         }
@@ -99,7 +126,6 @@ export default function RouteTransitionLoader() {
       }
     };
 
-    // Patch history.pushState & replaceState for router.push/replace calls
     const originalPushState = window.history.pushState;
     const originalReplaceState = window.history.replaceState;
 
@@ -122,7 +148,6 @@ export default function RouteTransitionLoader() {
           ) {
             setTimeout(() => {
               setIsLoading(true);
-              setIsVisible(true);
             }, 0);
           }
         } catch (e) { }
@@ -149,7 +174,6 @@ export default function RouteTransitionLoader() {
           ) {
             setTimeout(() => {
               setIsLoading(true);
-              setIsVisible(true);
             }, 0);
           }
         } catch (e) { }
@@ -177,51 +201,23 @@ export default function RouteTransitionLoader() {
     };
   }, []);
 
-  // Completely disable full-page transition loader while inside /account
+  // Completely disable while inside /account
   if (pathname.startsWith('/account')) return null;
-  if (!isVisible && !isLoading) return null;
-
-  // Duplicate 5 icons for seamless loop
-  const marqueeList = [...LOADER_ICONS, ...LOADER_ICONS, ...LOADER_ICONS, ...LOADER_ICONS];
+  if (!visible && !isLoading && progress === 0) return null;
 
   return (
     <div
-      className={`fixed inset-0 z-[99999] w-screen h-screen overflow-hidden flex flex-col items-center justify-center select-none px-4 transition-all duration-300 ease-in-out bg-[#FAF7F0]/70 backdrop-blur-xl transform-gpu ${isLoading ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-105 pointer-events-none'
-        }`}
-      style={{
-        WebkitBackdropFilter: 'blur(24px) brightness(0.97)',
-        backdropFilter: 'blur(24px) brightness(0.97)'
-      }}
+      className={`fixed top-0 left-0 right-0 z-[99999] pointer-events-none transition-opacity duration-200 ${
+        visible ? 'opacity-100' : 'opacity-0'
+      }`}
+      aria-hidden="true"
     >
-      {/* 1. Brand Logo Above PNG Icons Track */}
-      <div className="relative z-10 mb-5 sm:mb-7">
-        <img
-          src="/brand_logo.webp"
-          alt="Shree Banarasi Sarees Logo"
-          className="h-12 sm:h-16 md:h-20 w-auto object-contain"
-        />
-      </div>
-
-      {/* 2. Ultra-Smooth Hardware-Accelerated Marquee Track */}
-      <div className="relative z-10 w-full max-w-lg sm:max-w-2xl md:max-w-3xl mx-auto overflow-hidden py-3 sm:py-5 transform-gpu">
-        <div className="flex items-center gap-6 sm:gap-10 md:gap-14 animate-marquee-loader w-max transform-gpu">
-          {marqueeList.map((src, idx) => (
-            <div
-              key={idx}
-              className="shrink-0 flex items-center justify-center transform-gpu"
-            >
-              <img
-                src={src}
-                alt="Loader Icon"
-                className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 object-contain transform-gpu"
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 3. Sleek Gold Zari Thread Pulse Accent Line */}
-      <div className="relative z-10 mt-3 sm:mt-4 w-36 sm:w-60 h-[2px] rounded-full bg-gradient-to-r from-transparent via-[#B08A3C]/70 to-transparent shadow-xs" />
+      <div
+        className="h-[2.5px] bg-gradient-to-r from-[#6B1725] via-[#B08A3C] to-[#E6CA65] shadow-[0_0_8px_#B08A3C,0_0_4px_#FAF7F0] transition-all duration-300 ease-out"
+        style={{
+          width: `${progress}%`,
+        }}
+      />
     </div>
   );
 }

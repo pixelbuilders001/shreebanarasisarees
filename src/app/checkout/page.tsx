@@ -37,7 +37,6 @@ import {
 import { checkDeliveryServiceability, createCashfreeOrder, getProductSlug, supabase } from '../../data/supabase';
 import { load } from '@cashfreepayments/cashfree-js';
 import { trackBeginCheckout, trackPurchase } from '../../lib/gtag';
-import { IconMarqueeLoader } from '../../components/IconMarqueeLoader';
 import { fetchPincodeDetails } from '../../lib/pincodeLookup';
 import { AddNewAddressModal } from '../../components/delivery/AddNewAddressModal';
 import { ExpressRiderIcon, StandardTruckIcon } from '../../components/delivery/DeliveryIcons';
@@ -643,7 +642,7 @@ function CheckoutContent() {
   // 0. HYDRATION LOADER VIEW
   // ==========================================
   if (!isHydrated) {
-    return <IconMarqueeLoader />;
+    return <CheckoutSkeleton />;
   }
 
   // ==========================================
@@ -1844,7 +1843,7 @@ function CheckoutContent() {
 
 export default function CheckoutPage() {
   return (
-    <Suspense fallback={<IconMarqueeLoader />}>
+    <Suspense fallback={<CheckoutSkeleton />}>
       <CheckoutContent />
     </Suspense>
   );

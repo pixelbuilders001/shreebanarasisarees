@@ -2,12 +2,13 @@
 
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Send, CheckCircle, X } from 'lucide-react';
+import { Send, CheckCircle, X, Loader2 } from 'lucide-react';
 
 export const CustomSareeRequest: React.FC = () => {
   const { addCustomRequest } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -27,13 +28,16 @@ export const CustomSareeRequest: React.FC = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.phone || !formData.whatsapp) {
       alert("Please fill in Name, Phone, and WhatsApp number.");
       return;
     }
     
+    setIsSubmitting(true);
+    await new Promise(resolve => setTimeout(resolve, 450));
+
     // Add custom request to context
     addCustomRequest({
       name: formData.name,
@@ -47,6 +51,7 @@ export const CustomSareeRequest: React.FC = () => {
       requirements: formData.requirements || 'None'
     });
 
+    setIsSubmitting(false);
     setIsSubmitted(true);
 
     // Reset form after submission
@@ -301,10 +306,20 @@ export const CustomSareeRequest: React.FC = () => {
                     {/* Submit CTA */}
                     <button
                       type="submit"
-                      className="w-full py-3 bg-maroon text-ivory rounded font-serif font-bold text-xs sm:text-sm tracking-widest uppercase hover:bg-maroon-dark hover:scale-[1.01] active:scale-[0.99] transition-all shadow-md flex items-center justify-center gap-2"
+                      disabled={isSubmitting}
+                      className="w-full py-3 bg-maroon disabled:opacity-85 text-ivory rounded font-serif font-bold text-xs sm:text-sm tracking-widest uppercase hover:bg-maroon-dark hover:scale-[1.01] active:scale-[0.99] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      <Send size={14} />
-                      SUBMIT REQUEST TO WEAVER
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin text-ivory" />
+                          <span>SUBMITTING REQUEST...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send size={14} />
+                          <span>SUBMIT REQUEST TO WEAVER</span>
+                        </>
+                      )}
                     </button>
                   </form>
                 </div>
