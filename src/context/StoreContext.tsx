@@ -132,7 +132,7 @@ interface StoreContextType {
   shippingAddresses: any[];
   shippingAddressesLoading: boolean;
   shippingAddressesLoaded: boolean;
-  fetchShippingAddresses: (userId: string) => Promise<void>;
+  fetchShippingAddresses: (userId: string) => Promise<any[]>;
   saveShippingAddress: (address: any) => Promise<void>;
   deleteShippingAddress: (id: string) => Promise<void>;
   setDefaultShippingAddress: (id: string) => Promise<void>;
