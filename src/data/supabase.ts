@@ -1016,23 +1016,37 @@ export function mapDbOrderToOrder(orderRow: any): Order {
 
 export async function fetchDbOrders(userId?: string | null, phone?: string | null): Promise<Order[]> {
   try {
+    const cleanUserId = userId?.trim() || null;
+    const isUuid = cleanUserId ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanUserId) : false;
+    const isPhoneUser = cleanUserId ? /^\+?[0-9]{10,13}$/.test(cleanUserId) : false;
+    const rawPhone = phone || (isPhoneUser ? cleanUserId : null);
+    const digitsOnly = rawPhone ? rawPhone.replace(/\D/g, '') : '';
+    // Require a minimum of 10 digits to prevent short substring broad matching
+    const cleanPhone = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : null;
+
+    // Fail-safe: If neither a valid user ID (Google OAuth / user UUID) nor a verified 10-digit phone number is provided,
+    // immediately return an empty array without executing an open query.
+    if (!isUuid && !cleanPhone) {
+      return [];
+    }
+
     let query = supabase
       .from('orders')
       .select('*, order_items(*), order_status_history(*)')
       .order('created_at', { ascending: false });
 
-    const cleanUserId = userId?.trim() || null;
-    const isUuid = cleanUserId ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanUserId) : false;
-    const isPhoneUser = cleanUserId ? /^\+?[0-9]{10,13}$/.test(cleanUserId) : false;
-    const rawPhone = phone || (isPhoneUser ? cleanUserId : null);
-    const cleanPhone = rawPhone ? rawPhone.replace(/\D/g, '').slice(-10) : null;
-
     if (isUuid && cleanPhone) {
-      query = query.or(`user_id.eq.${cleanUserId},customer_phone.ilike.%${cleanPhone}%`);
-    } else if (cleanPhone) {
-      query = query.ilike('customer_phone', `%${cleanPhone}%`);
+      // User is logged in via OAuth AND has verified phone:
+      // Match orders explicitly owned by this user_id, OR guest orders (user_id IS NULL) with matching phone.
+      // Note: In PostgREST .or() filter string, '*' is the wildcard operator (not '%').
+      // Orders owned by another user are NEVER matched.
+      query = query.or(`user_id.eq.${cleanUserId},and(user_id.is.null,customer_phone.ilike.*${cleanPhone}*)`);
     } else if (isUuid) {
-      query = query.or(`user_id.eq.${cleanUserId},user_id.is.null`);
+      // User is logged in via Google OAuth but has not provided a phone number yet: match strictly by user_id
+      query = query.eq('user_id', cleanUserId);
+    } else if (cleanPhone) {
+      // Phone-only customer lookup: match strictly unassigned guest orders (user_id IS NULL)
+      query = query.is('user_id', null).ilike('customer_phone', `%${cleanPhone}%`);
     }
 
     const { data: ordersData, error } = await query;
@@ -1504,18 +1518,28 @@ export async function cancelDbOrder(orderIdentifier: string): Promise<boolean> {
       headers
     });
 
-    if (!error && data?.success !== false) {
+    if (!error && data?.success) {
       return true;
     }
 
-    // Direct DB fallback
-    await supabase
+    if (error && (error as any)?.context?.status === 403) {
+      console.warn("Unauthorized to cancel order:", error);
+      return false;
+    }
+
+    // Direct DB fallback (for staff/admin operations if edge function is unavailable)
+    const { error: updateErr } = await supabase
       .from('orders')
       .update({
         order_status: 'cancelled',
         updated_at: new Date().toISOString()
       })
       .eq('id', order_id);
+
+    if (updateErr) {
+      console.error('Direct DB order cancellation failed:', updateErr);
+      return false;
+    }
 
     await supabase
       .from('order_items')
@@ -1597,6 +1621,11 @@ export async function cancelDbOrderItem(orderNumber: string, productId: string):
           newSubtotal: fnData.newSubtotal,
           newTotal: fnData.newTotal
         };
+      }
+
+      if (fnError && (fnError as any)?.context?.status === 403) {
+        console.warn("Unauthorized to cancel order item:", fnError);
+        return { success: false, cancelledEntireOrder: false };
       }
     } catch (edgeErr) {
       console.warn("Edge function cancel-order-user item cancellation attempt failed, falling back to direct DB:", edgeErr);

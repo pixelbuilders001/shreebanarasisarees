@@ -39,9 +39,41 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // 1. Fetch the target order (support both UUID id and order_number)
+    // 1. Authenticate caller via JWT token
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
+    if (!authHeader || !authHeader.toLowerCase().startsWith("bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Missing or invalid Authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace(/^bearer\s+/i, "").trim();
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+
+    if (authErr || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized: Invalid or expired session token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 2. Fetch caller role from profiles
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, phone_number")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const callerRole = (profile?.role || "user").toLowerCase().trim();
+    const isAdminOrStaff = callerRole === "admin" || callerRole === "staff";
+
+    // 3. Fetch the target order (support both UUID id and order_number)
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(order_id);
-    let query = supabase.from("orders").select("id, order_number, order_status, total_amount, subtotal");
+    let query = supabase
+      .from("orders")
+      .select("id, order_number, order_status, total_amount, subtotal, user_id, customer_phone");
+
     if (isUuid) {
       query = query.eq("id", order_id);
     } else {
@@ -56,6 +88,23 @@ serve(async (req) => {
         JSON.stringify({ error: "Order not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // 4. Ownership verification: If caller is not admin or staff, they must own the order
+    if (!isAdminOrStaff) {
+      const isOwner = order.user_id === user.id;
+
+      // Also allow if it was an unassigned guest order and the profile phone matches the order phone
+      const profilePhone = profile?.phone_number ? String(profile.phone_number).replace(/\D/g, "").slice(-10) : null;
+      const orderPhone = order.customer_phone ? String(order.customer_phone).replace(/\D/g, "").slice(-10) : null;
+      const isGuestPhoneMatch = !order.user_id && profilePhone && orderPhone && profilePhone === orderPhone;
+
+      if (!isOwner && !isGuestPhoneMatch) {
+        return new Response(
+          JSON.stringify({ error: "Forbidden: You do not have permission to cancel this order" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const rawStatus = (order.order_status || "").toLowerCase().trim();
@@ -116,13 +165,17 @@ serve(async (req) => {
       console.warn("Could not update order items to cancelled:", itemsUpdateErr);
     }
 
+    const cancellerNote = isAdminOrStaff
+      ? `Order cancelled by ${callerRole}: ${body.note || body.reason || "Administrative cancellation"}`
+      : (body.note || body.reason || "Order cancelled by customer");
+
     // 3. Record status history entry
     const { error: historyErr } = await supabase
       .from("order_status_history")
       .insert({
         order_id: order.id,
         status: "cancelled",
-        note: body.note || body.reason || "Order cancelled by customer"
+        note: cancellerNote
       });
 
     if (historyErr) {

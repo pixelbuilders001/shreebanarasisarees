@@ -658,115 +658,225 @@ function CheckoutContent() {
   // ==========================================
   if (isOrdered && createdOrder) {
     const isCod = createdOrder.paymentMethod === 'Cash on Delivery';
+    const cleanPin = (createdOrder.customer?.pinCode || pinCode || '').trim();
+    const isLocal20MinDelivery = Boolean(
+      cleanPin === '848101' ||
+      cleanPin === '848114' ||
+      (deliveryInfo && (deliveryInfo.is20MinDelivery || deliveryInfo.isExpress)) ||
+      createdOrder.customer?.deliveryMethod === 'Store Pickup'
+    );
+
+    const orderItems = createdOrder.items || [];
 
     return (
-      <div className="min-h-screen bg-[#FAF7F0] text-[#292524] flex flex-col font-sans">
-        {/* Minimal Header */}
-        <header className="bg-white border-b border-[#B08A3C]/20 py-4 px-4 sm:px-8 shadow-sm">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
+      <div className="min-h-screen bg-[#FAF7F0] text-[#292524] flex flex-col justify-center items-center font-sans py-10 sm:py-16 px-4">
+        <main className="max-w-md w-full mx-auto">
+          {/* Status Check Icon */}
+          <div className="w-16 h-16 rounded-full bg-[#6B1725] text-white flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <Check size={32} strokeWidth={2.5} className="text-white" />
+          </div>
+
+          {/* Title */}
+          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#292524] text-center mb-2">
+            Order placed
+          </h1>
+
+          {/* Subtitle - Ramesh picking ONLY for 20-min local delivery */}
+          <p className="text-xs sm:text-sm text-[#7A6E65] text-center max-w-sm mx-auto leading-relaxed mb-6 font-sans">
+            {isLocal20MinDelivery
+              ? "Ramesh is picking your saree off the shelf now. He'll be at your door in about 20 minutes."
+              : "Thank you for your order. We are carefully inspecting and preparing your saree for dispatch."}
+          </p>
+
+          {/* Card 1 & Timeline: Conditional based on 20-min local vs standard */}
+          {isLocal20MinDelivery ? (
+            /* Local 20-Min Delivery: Card with 20-min delivery line */
+            <div className="bg-white rounded-2xl p-5 border border-[#E5DEC9] shadow-2xs mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-sans font-medium text-[#7A6E65] uppercase tracking-wider">
+                  ORDER
+                </span>
+                <span className="font-bold text-sm text-[#292524]">
+                  {createdOrder.orderId}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-sans font-medium text-[#7A6E65] uppercase tracking-wider">
+                  PAYING
+                </span>
+                <span className="font-bold text-sm text-[#292524]">
+                  ₹{createdOrder.total.toLocaleString('en-IN')} · {isCod ? 'cash on delivery' : 'paid online'}
+                </span>
+              </div>
+
+              <div className="border-t border-[#F3ECE0] my-3.5" />
+
+              <div className="flex items-start gap-3">
+                <Zap size={18} className="text-[#6B1725] shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-[#292524]">
+                    Arriving in about 20 minutes
+                  </p>
+                  <p className="text-xs text-[#7A6E65] mt-0.5">
+                    To {cleanPin || '848101'}{createdOrder.customer?.city ? `, ${createdOrder.customer.city}` : ', Samastipur'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Standard Delivery: Simple Order Summary Card + Delivery Timeline Card */
+            <>
+              <div className="bg-white rounded-2xl p-5 border border-[#E5DEC9] shadow-2xs mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-sans font-medium text-[#7A6E65] uppercase tracking-wider">
+                    ORDER
+                  </span>
+                  <span className="font-bold text-sm text-[#292524]">
+                    {createdOrder.orderId}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-sans font-medium text-[#7A6E65] uppercase tracking-wider">
+                    PAYING
+                  </span>
+                  <span className="font-bold text-sm text-[#292524]">
+                    ₹{createdOrder.total.toLocaleString('en-IN')} · {isCod ? 'cash on delivery' : 'paid online'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Delivery Timeline Card */}
+              <div className="bg-white rounded-2xl p-5 border border-[#E5DEC9] shadow-2xs mb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-[11px] font-sans font-medium text-[#7A6E65] uppercase tracking-wider">
+                    DELIVERY TIMELINE
+                  </span>
+                  <span className="text-xs font-semibold text-[#6B1725] bg-[#FAF6EE] border border-[#E5DEC9] px-2.5 py-0.5 rounded-full">
+                    Est. 3–5 Days
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-4 text-center relative pt-1">
+                  {/* Horizontal connecting line behind circles */}
+                  <div className="absolute top-4.5 left-[12.5%] right-[12.5%] h-0.5 bg-[#E5DEC9] z-0" />
+
+                  {/* Step 1: Placed */}
+                  <div className="flex flex-col items-center gap-1.5 relative z-10">
+                    <div className="w-7 h-7 rounded-full bg-[#6B1725] text-white flex items-center justify-center text-xs shadow-xs">
+                      <Check size={14} strokeWidth={3} />
+                    </div>
+                    <span className="text-[11px] font-bold text-[#292524] leading-tight">Order Placed</span>
+                    <span className="text-[10px] text-[#7A6E65]">Confirmed</span>
+                  </div>
+
+                  {/* Step 2: Quality Check */}
+                  <div className="flex flex-col items-center gap-1.5 relative z-10">
+                    <div className="w-7 h-7 rounded-full bg-[#FAF7F0] border-2 border-[#E5DEC9] text-[#7A6E65] flex items-center justify-center text-[10px] font-bold">
+                      2
+                    </div>
+                    <span className="text-[11px] font-medium text-[#7A6E65] leading-tight">Quality Check</span>
+                    <span className="text-[10px] text-[#7A6E65]">Silk test</span>
+                  </div>
+
+                  {/* Step 3: Packed */}
+                  <div className="flex flex-col items-center gap-1.5 relative z-10">
+                    <div className="w-7 h-7 rounded-full bg-[#FAF7F0] border-2 border-[#E5DEC9] text-[#7A6E65] flex items-center justify-center text-[10px] font-bold">
+                      3
+                    </div>
+                    <span className="text-[11px] font-medium text-[#7A6E65] leading-tight">Packed</span>
+                    <span className="text-[10px] text-[#7A6E65]">Care box</span>
+                  </div>
+
+                  {/* Step 4: Shipped */}
+                  <div className="flex flex-col items-center gap-1.5 relative z-10">
+                    <div className="w-7 h-7 rounded-full bg-[#FAF7F0] border-2 border-[#E5DEC9] text-[#7A6E65] flex items-center justify-center text-[10px] font-bold">
+                      4
+                    </div>
+                    <span className="text-[11px] font-medium text-[#7A6E65] leading-tight">Shipped</span>
+                    <span className="text-[10px] text-[#7A6E65]">3–5 days</span>
+                  </div>
+                </div>
+
+                <div className="border-t border-[#F3ECE0] mt-4 pt-3 text-xs text-[#7A6E65] flex items-center justify-between">
+                  <span>Shipping to:</span>
+                  <span className="font-semibold text-[#292524] text-right truncate max-w-[200px]">
+                    {createdOrder.customer?.city || 'Your address'}{cleanPin ? `, ${cleanPin}` : ''}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Card 2: Items List */}
+          {orderItems.length > 0 && (
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5DEC9] shadow-2xs mb-6 divide-y divide-[#F3ECE0]">
+              {orderItems.map((item: any, idx: number) => {
+                const prod = item.product || item;
+                const img = prod.images?.[0] || prod.image || '/brand_logo.webp';
+                const name = prod.name || 'Handloom Banarasi Saree';
+                const sku = prod.sku || prod.designCode || 'SBS';
+                const quantity = item.quantity || 1;
+                const price = (prod.salePrice ?? prod.price ?? 0) * quantity;
+
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-center gap-3.5 ${idx > 0 ? 'pt-3.5' : ''} ${
+                      idx < orderItems.length - 1 ? 'pb-3.5' : ''
+                    }`}
+                  >
+                    <img
+                      src={img}
+                      alt={name}
+                      className="w-14 h-18 sm:w-16 sm:h-20 rounded-xl object-cover border border-[#E5DEC9] shrink-0 bg-[#FAF7F0]"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-medium text-[#292524] line-clamp-2 leading-snug">
+                        {name}
+                      </h3>
+                      <p className="text-xs text-[#7A6E65] mt-1 font-mono">
+                        {sku}
+                        {quantity > 1 && (
+                          <span className="ml-2 font-sans text-[11px] font-bold text-[#6B1725]">
+                            (Qty: {quantity})
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="text-sm font-semibold text-[#292524] text-right shrink-0 pl-2">
+                      ₹{price.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Action CTAs: Maroon Account Tracker & Cream Keep Browsing */}
+          <div className="space-y-3">
             <button
-              onClick={() => router.push('/')}
-              className="text-[#6B625D] hover:text-[#6B1725] text-xs font-serif font-bold flex items-center gap-1 cursor-pointer transition-colors"
+              onClick={() => router.push(`/account?orderId=${encodeURIComponent(createdOrder.orderId)}`)}
+              className="w-full py-4 bg-[#6B1725] hover:bg-[#52111C] text-white rounded-full font-medium text-sm transition-all shadow-md active:scale-[0.99] cursor-pointer text-center block"
             >
-              <ArrowLeft size={14} /> Home
+              Track order in account
             </button>
-            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
-              <CheckCircle size={14} className="text-emerald-600" /> Order Placed
-            </div>
+
+            <button
+              onClick={() => router.push('/sarees')}
+              className="w-full py-4 bg-[#FAF7F0] hover:bg-[#F3ECE0] border border-[#E5DEC9] text-[#292524] rounded-full font-medium text-sm transition-all active:scale-[0.99] cursor-pointer text-center block"
+            >
+              Keep browsing
+            </button>
           </div>
-        </header>
 
-        <main className="max-w-2xl mx-auto px-4 py-8 sm:py-12 flex-grow w-full">
-          <div className="bg-white border border-[#B08A3C]/25 p-6 sm:p-8 rounded-2xl shadow-xl space-y-6 flex flex-col items-center relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-[#6B1725] via-[#B08A3C] to-[#6B1725]" />
-
-            <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 animate-bounce">
-              <CheckCircle size={36} />
-            </div>
-
-            <div className="space-y-1.5 text-center">
-              <h1 className="font-serif text-2xl sm:text-3xl font-extrabold text-[#6B1725]">
-                🎉 Order Confirmed!
-              </h1>
-              <p className="text-xs sm:text-sm text-[#6B625D] max-w-md mx-auto">
-                Thank you for your purchase from Shree Banarasi Sarees. We are carefully preparing your saree for dispatch.
-              </p>
-            </div>
-
-            {/* Order Details Card */}
-            <div className="bg-[#FFF9F0] w-full p-5 rounded-xl border border-[#B08A3C]/20 space-y-3 text-xs">
-              <div className="flex justify-between border-b border-[#B08A3C]/15 pb-2.5 font-bold text-[#292524] text-sm">
-                <span>Order Reference:</span>
-                <span className="text-[#6B1725] font-mono tracking-wider">#{createdOrder.orderId}</span>
-              </div>
-              <div className="flex justify-between text-[#6B625D]">
-                <span>Payment Status:</span>
-                <span className={`font-bold ${isCod ? 'text-amber-800' : 'text-emerald-700'}`}>
-                  {isCod ? 'Cash on Delivery' : 'Paid Online'}
-                </span>
-              </div>
-              <div className="flex justify-between text-[#6B625D]">
-                <span>Delivery To:</span>
-                <span className="font-semibold text-[#292524] text-right max-w-[200px] truncate">
-                  {createdOrder.customer.name} ({createdOrder.customer.city})
-                </span>
-              </div>
-              <div className="flex justify-between text-[#6B625D]">
-                <span>Estimated Delivery:</span>
-                <span className="font-semibold text-[#292524]">3–5 Business Days</span>
-              </div>
-              <div className="flex justify-between border-t border-[#B08A3C]/15 pt-2.5 font-bold text-[#292524] text-sm">
-                <span>{isCod ? 'Amount Payable on Delivery:' : 'Total Amount Paid:'}</span>
-                <span className="text-[#6B1725] text-base">₹{createdOrder.total.toLocaleString('en-IN')}</span>
-              </div>
-            </div>
-
-            {/* Status Timeline */}
-            <div className="w-full bg-white p-4 border border-[#B08A3C]/20 rounded-xl space-y-2">
-              <span className="text-xs font-serif font-bold text-[#292524] block">Order Status Timeline</span>
-              <div className="grid grid-cols-4 text-center text-[10px] gap-1 pt-1">
-                <div className="flex flex-col items-center gap-1 text-emerald-800 font-bold">
-                  <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">✓</div>
-                  <span>Order Placed</span>
-                </div>
-                <div className="flex flex-col items-center gap-1 text-[#6B625D]">
-                  <div className="w-5 h-5 rounded-full bg-[#FAF7F0] border border-[#B08A3C]/40 flex items-center justify-center text-[10px]">2</div>
-                  <span>Quality Check</span>
-                </div>
-                <div className="flex flex-col items-center gap-1 text-[#6B625D]">
-                  <div className="w-5 h-5 rounded-full bg-[#FAF7F0] border border-[#B08A3C]/40 flex items-center justify-center text-[10px]">3</div>
-                  <span>Packed</span>
-                </div>
-                <div className="flex flex-col items-center gap-1 text-[#6B625D]">
-                  <div className="w-5 h-5 rounded-full bg-[#FAF7F0] border border-[#B08A3C]/40 flex items-center justify-center text-[10px]">4</div>
-                  <span>Shipped</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Post Order Actions */}
-            <div className="w-full space-y-2.5 pt-2">
-              <button
-                onClick={() => router.push('/account')}
-                className="w-full py-3.5 bg-[#6B1725] text-[#FAF7F0] rounded-xl font-serif font-bold text-xs tracking-wider uppercase hover:bg-[#52111C] active:scale-[0.99] transition-all shadow-md cursor-pointer text-center"
-              >
-                TRACK ORDER STATUS
-              </button>
-              <button
-                onClick={() => handleWhatsAppPostOrderHelp(createdOrder.orderId)}
-                className="w-full py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-serif font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <MessageSquare size={14} className="text-emerald-600" />
-                NEED HELP? CHAT ON WHATSAPP
-              </button>
-              <button
-                onClick={() => router.push('/sarees')}
-                className="w-full py-2.5 bg-white border border-[#B08A3C]/30 text-[#292524] rounded-xl font-serif font-bold text-xs hover:bg-[#FAF7F0] cursor-pointer text-center"
-              >
-                CONTINUE SHOPPING
-              </button>
-            </div>
-          </div>
+          {/* Bottom assurance note */}
+          <p className="text-center text-xs text-[#7A6E65] max-w-xs mx-auto mt-6 leading-relaxed font-sans">
+            {isLocal20MinDelivery
+              ? "Open the packet in front of the rider. If the weave isn't what you saw, hand it straight back — no questions."
+              : "Authentic handloom guarantee. If the weave isn't what you expected, enjoy 7-day hassle-free doorstep returns."}
+          </p>
         </main>
       </div>
     );

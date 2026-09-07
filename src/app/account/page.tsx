@@ -21,7 +21,7 @@ import {
   X,
   AlertCircle
 } from 'lucide-react';
-import { supabase, fetchDbOrderWithItems, mapDbOrderToOrder, OrderStatusHistoryEntry } from '../../data/supabase';
+import { supabase, fetchDbOrderWithItems, fetchDbOrders, mapDbOrderToOrder, OrderStatusHistoryEntry } from '../../data/supabase';
 import { OrdersTabSkeleton } from '../../components/TabSkeletons';
 import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 import { generateReceiptUrl, ReceiptData, ReceiptItem } from '@/lib/receiptUtils';
@@ -324,6 +324,9 @@ function AccountContent() {
     cancelOrderItem,
     markOrderCancelledLocally,
     refreshOrders,
+    user,
+    userPhone,
+    userProfile,
     isHydrated
   } = useStore();
 
@@ -345,30 +348,41 @@ function AccountContent() {
     return s === 'placed' || s === 'order placed' || s === 'confirmed' || s === 'processing';
   };
 
-  // Directly fetch orders from Supabase with order_items and order_status_history
+  // Fetch only the authenticated user's orders (by user.id or profile/phone number)
   const loadAccountOrders = async () => {
+    setIsLoadingDbOrders(true);
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*, order_items(*), order_status_history(*)')
-        .order('created_at', { ascending: false });
+      const targetUserId = user?.id || null;
+      const targetPhone = userProfile?.phone_number
+        ? String(userProfile.phone_number)
+        : (userPhone && /^\d{10}$/.test(userPhone) ? userPhone : (user?.phone || null));
 
-      if (!error && data) {
-        setDbOrders(data.map(mapDbOrderToOrder));
+      const has10DigitPhone = targetPhone && targetPhone.replace(/\D/g, '').length >= 10;
+      // If user is neither logged in via Google OAuth (UUID) nor has a valid 10-digit phone, show no orders
+      if (!targetUserId && !has10DigitPhone) {
+        setDbOrders([]);
+        return;
       }
+
+      const freshOrders = await fetchDbOrders(targetUserId, targetPhone);
+      setDbOrders(freshOrders);
     } catch (err) {
       console.error('Error loading orders in AccountContent:', err);
+      setDbOrders([]);
     } finally {
       setIsLoadingDbOrders(false);
     }
   };
 
   useEffect(() => {
-    loadAccountOrders();
-  }, []);
+    if (isHydrated) {
+      loadAccountOrders();
+    }
+  }, [isHydrated, user?.id, userProfile?.phone_number, userPhone]);
 
-  // Prioritize fresh database orders from Supabase, fallback to context orders
-  const displayOrders = dbOrders.length > 0 ? dbOrders : orders;
+  // For authenticated accounts, display strictly their verified database orders.
+  // Never fall back to unverified context orders when a user session is present.
+  const displayOrders = (user || userPhone) ? dbOrders : (dbOrders.length > 0 ? dbOrders : orders);
 
   // Sync with searchParams if someone navigates with ?orderId=...
   useEffect(() => {
@@ -835,7 +849,7 @@ function AccountContent() {
     return displayOrders; // 'All'
   }, [displayOrders, activeFilter]);
 
-  if (!isHydrated || (isLoadingDbOrders && orders.length === 0 && dbOrders.length === 0)) {
+  if (!isHydrated || (isLoadingDbOrders && dbOrders.length === 0)) {
     return <OrdersTabSkeleton />;
   }
 

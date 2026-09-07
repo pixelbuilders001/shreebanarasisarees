@@ -803,13 +803,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Re-fetch orders from Supabase DB to sync orders state
   const refreshOrders = async () => {
     try {
-      const identifier = userProfile?.phone_number ? String(userProfile.phone_number) : (user?.id || user?.phone || userPhone);
+      const identifier = user?.id || (userProfile?.phone_number ? String(userProfile.phone_number) : (user?.phone || userPhone));
       const phoneLookup = userProfile?.phone_number ? String(userProfile.phone_number) : (user?.phone || null);
       if (identifier) {
         const freshOrders = await fetchDbOrders(identifier, phoneLookup);
-        if (freshOrders) {
-          setOrders(freshOrders);
-        }
+        setOrders(freshOrders || []);
+      } else {
+        setOrders([]);
       }
     } catch (err) {
       console.error('Error refreshing orders in StoreContext:', err);
@@ -972,9 +972,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Fetch user orders from DB using UUID and phone
     const phoneLookup = userProfile?.phone_number ? String(userProfile.phone_number) : (user?.phone || null);
     const dbOrders = await fetchDbOrders(userId, phoneLookup);
-    if (dbOrders && dbOrders.length > 0) {
-      setOrders(dbOrders);
-    }
+    setOrders(dbOrders || []);
   };
 
   const loginWithGoogle = async () => {

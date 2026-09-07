@@ -135,18 +135,32 @@ Deno.serve(async (req) => {
     );
 
     // --------------------------------------------------
-    // CHECK ADMIN / MANAGER IN PROFILES
+    // CHECK ADMIN / STAFF ROLE IN PROFILES
     // --------------------------------------------------
-    // In this database, user roles are stored in the `profiles` table.
-    const { data: profile } = await adminClient
+    // In this database, user roles are strictly: 'admin', 'staff', 'user'.
+    const { data: profile, error: profileError } = await adminClient
       .from("profiles")
       .select("id, role")
       .eq("id", user.id)
       .maybeSingle();
 
-    // If profile exists with role, enforce admin/manager/staff check; otherwise authenticated user is permitted
-    if (profile && profile.role && !["admin", "manager", "staff"].includes(profile.role)) {
-      throw new Error("Admin access required");
+    const callerRole = (profile?.role || "user").toLowerCase().trim();
+
+    // STRICT CHECK: Only admin and staff are permitted to update order status
+    if (callerRole !== "admin" && callerRole !== "staff") {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Forbidden: Admin or staff access required to update order status",
+        }),
+        {
+          status: 403,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
     }
 
     // --------------------------------------------------
@@ -453,7 +467,7 @@ Deno.serve(async (req) => {
     await adminClient.from("order_status_history").insert({
       order_id: order.id,
       status: normalizedStatus,
-      note: note || `Order status changed to ${normalizedStatus} by admin`,
+      note: note || `Order status changed to ${normalizedStatus} by ${callerRole}`,
     });
 
     // --------------------------------------------------

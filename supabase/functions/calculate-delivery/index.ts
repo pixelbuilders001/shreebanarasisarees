@@ -219,8 +219,6 @@ Deno.serve(async (req) => {
       packingBufferMinutes +
       deliveryBufferMinutes;
 
-    const maxDistanceKm = 20.0;
-
     // ------------------------------------------
     // OPERATING HOURS & CUTOFF CHECK (IST)
     // - 9 AM to 8 PM (09:00 - 19:59): Normal 20-min express flow
@@ -241,10 +239,19 @@ Deno.serve(async (req) => {
     const isStoreClosed = !isNormalHours;
 
     // ------------------------------------------
-    // ELIGIBILITY (Under 20 km = Express)
+    // ELIGIBILITY (Within maxDistanceKm & maxEtaMinutes)
     // ------------------------------------------
 
-    const isExpress = distanceKm <= maxDistanceKm;
+    const distanceEligible = distanceKm <= maxDistanceKm;
+    const timeEligible = totalEtaMinutes <= maxEtaMinutes;
+    const isExpress = distanceEligible && timeEligible;
+
+    let reason = "eligible";
+    if (!distanceEligible) {
+      reason = "distance_exceeded";
+    } else if (!timeEligible) {
+      reason = "eta_exceeded";
+    }
 
     // ------------------------------------------
     // CUSTOMER MESSAGE & FORMATTED DELIVERY
@@ -256,7 +263,7 @@ Deno.serve(async (req) => {
 
     if (isExpress) {
       if (isNormalHours) {
-        message = `🚀 Express delivery available! Estimated delivery in about ${totalEtaMinutes} minutes.`;
+        message = `🚀 20-minute delivery available! Estimated delivery in about ${totalEtaMinutes} minutes.`;
         formattedDelivery = `~${totalEtaMinutes} mins`;
       } else if (isAfterMidnight) {
         message = "☀️ Order now for Today Morning Express Delivery (by 10:00 AM)!";
@@ -268,13 +275,16 @@ Deno.serve(async (req) => {
         storeClosedMessage = "Place your order tonight! Priority express delivery will arrive first thing tomorrow morning by 10:00 AM.";
         formattedDelivery = "Tomorrow Morning (by 10:00 AM)";
       }
+    } else if (!distanceEligible) {
+      message = `20-minute delivery is available within ${maxDistanceKm} km. Your location is approximately ${distanceKm} km away by road. Standard delivery available (3–5 Business Days).`;
+      formattedDelivery = "3–5 Business Days";
     } else {
-      message = `📦 Standard delivery available! Estimated delivery in 3–5 Business Days.`;
+      message = `20-minute delivery is not available for this location. Estimated delivery time is about ${totalEtaMinutes} minutes. Standard delivery available (3–5 Business Days).`;
       formattedDelivery = "3–5 Business Days";
     }
 
     // ------------------------------------------
-    // RESPONSE
+    // RESPONSE (Unified for all client specifications)
     // ------------------------------------------
 
     return jsonResponse({
@@ -288,6 +298,7 @@ Deno.serve(async (req) => {
       isAfter8PM,
       storeClosedMessage,
 
+      reason,
       message,
 
       source: customerCoordinates.source,
@@ -310,9 +321,15 @@ Deno.serve(async (req) => {
 
       eta: {
         minutes: totalEtaMinutes,
+        maxMinutes: maxEtaMinutes,
         packingBufferMinutes,
         deliveryBufferMinutes,
         formattedDelivery,
+      },
+
+      location: {
+        latitude: customerCoordinates.latitude,
+        longitude: customerCoordinates.longitude,
       },
 
       serviceArea: {
@@ -320,6 +337,7 @@ Deno.serve(async (req) => {
         state: serviceableState,
       },
     });
+  } catch (error) {
     console.error(
       "calculate-delivery error:",
       error,
@@ -471,6 +489,41 @@ async function getCoordinatesFromPincode(
 
 
 // ==================================================
+// HAVERSINE FALLBACK ROUTING
+// ==================================================
+
+function calculateHaversineRoute(
+  shopLng: number,
+  shopLat: number,
+  customerLng: number,
+  customerLat: number,
+): { distance: number; duration: number } {
+  const R = 6371; // Earth radius in km
+  const dLat = ((customerLat - shopLat) * Math.PI) / 180;
+  const dLon = ((customerLng - shopLng) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((shopLat * Math.PI) / 180) *
+      Math.cos((customerLat * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const straightDistanceKm = R * c;
+
+  // Road curvature factor: Indian urban roads average ~1.35x straight-line distance
+  const estimatedRoadKm = straightDistanceKm * 1.35;
+  const distanceMeters = Math.round(estimatedRoadKm * 1000);
+
+  // Average rider bike speed in Samastipur: ~25 km/h
+  const durationSeconds = Math.round((estimatedRoadKm / 25) * 3600);
+
+  return {
+    distance: distanceMeters,
+    duration: durationSeconds,
+  };
+}
+
+// ==================================================
 // ROAD ROUTING
 // ==================================================
 
@@ -479,39 +532,40 @@ async function getRoadRoute(
   shopLat: number,
   customerLng: number,
   customerLat: number,
-) {
-  const coordinates =
-    `${shopLng},${shopLat};${customerLng},${customerLat}`;
+): Promise<{ distance: number; duration: number }> {
+  try {
+    const coordinates =
+      `${shopLng},${shopLat};${customerLng},${customerLat}`;
 
-  const url =
-    `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=false`;
+    const url =
+      `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=false`;
 
-  const response = await fetch(url);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
 
-  if (!response.ok) {
-    throw new Error(
-      "Routing service unavailable",
-    );
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      console.warn(`OSRM routing returned HTTP ${response.status}, using Haversine fallback`);
+      return calculateHaversineRoute(shopLng, shopLat, customerLng, customerLat);
+    }
+
+    const data = await response.json();
+
+    if (data.code !== "Ok" || !data.routes || data.routes.length === 0) {
+      console.warn("OSRM returned invalid route data, using Haversine fallback");
+      return calculateHaversineRoute(shopLng, shopLat, customerLng, customerLat);
+    }
+
+    return {
+      distance: data.routes[0].distance,
+      duration: data.routes[0].duration,
+    };
+  } catch (err) {
+    console.warn("OSRM routing request failed or timed out, using Haversine fallback:", err);
+    return calculateHaversineRoute(shopLng, shopLat, customerLng, customerLat);
   }
-
-  const data = await response.json();
-
-  if (data.code !== "Ok") {
-    throw new Error(
-      "Unable to calculate road route",
-    );
-  }
-
-  if (
-    !data.routes ||
-    data.routes.length === 0
-  ) {
-    throw new Error(
-      "No road route found",
-    );
-  }
-
-  return data.routes[0];
 }
 
 

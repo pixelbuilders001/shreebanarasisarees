@@ -298,6 +298,14 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
     }
   };
 
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/sarees');
+    }
+  };
+
   const handleShare = async () => {
     const shareData = {
       title: `${product.name} | Shree Banarasi Sarees`,
@@ -326,9 +334,9 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
   return (
     <>
-      <Header />
+      <Header hideOnMobile />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 font-sans">
+      <main className="max-w-7xl mx-auto px-0 lg:px-8 pt-0 pb-6 lg:py-8 font-sans">
         {/* DESKTOP BREADCRUMB STRIP */}
         <div className="hidden lg:flex items-center gap-2 text-xs font-sans text-[#7A6E65] mb-6">
           <Link href="/" className="hover:text-[#6B1725] transition-colors">Home</Link>
@@ -345,7 +353,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
           <div className="lg:col-span-7 space-y-4 lg:sticky lg:top-24">
             
             {/* MOBILE IMAGE CAROUSEL (Visible on < lg screens) */}
-            <div className="lg:hidden relative aspect-[3/4] w-full rounded-3xl overflow-hidden bg-[#FAF7F0] border border-[#E5DEC9] shadow-sm mb-6">
+            <div className="lg:hidden relative aspect-[3/4] w-full overflow-hidden bg-[#FAF7F0] mb-6">
               <div
                 ref={carouselRef}
                 onScroll={handleScroll}
@@ -368,28 +376,31 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
               </div>
 
               {/* Mobile Header Action Overlay */}
-              <div className="absolute top-4 inset-x-4 flex items-center justify-between z-10 pointer-events-none">
+              <div
+                className="absolute inset-x-4 flex items-center justify-between z-20 pointer-events-none"
+                style={{ top: 'max(1rem, env(safe-area-inset-top, 1rem))' }}
+              >
                 <button
-                  onClick={() => router.back()}
-                  className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-md shadow-md flex items-center justify-center text-[#292524] hover:bg-white transition-all cursor-pointer pointer-events-auto"
+                  onClick={handleBack}
+                  className="w-11 h-11 rounded-full bg-white/95 backdrop-blur-md shadow-md flex items-center justify-center text-[#292524] hover:bg-white active:scale-95 transition-all cursor-pointer pointer-events-auto"
                   aria-label="Go back"
                 >
-                  <ChevronLeft size={20} />
+                  <ChevronLeft size={22} />
                 </button>
-                <div className="flex items-center gap-2 pointer-events-auto">
+                <div className="flex items-center gap-2.5 pointer-events-auto">
                   <button
                     onClick={handleShare}
-                    className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-md shadow-md flex items-center justify-center text-[#292524] hover:bg-white transition-all cursor-pointer"
+                    className="w-11 h-11 rounded-full bg-white/95 backdrop-blur-md shadow-md flex items-center justify-center text-[#292524] hover:bg-white active:scale-95 transition-all cursor-pointer"
                     aria-label="Share product"
                   >
-                    <Share2 size={18} />
+                    <Share2 size={19} />
                   </button>
                   <button
                     onClick={() => toggleWishlist(product)}
-                    className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-md shadow-md flex items-center justify-center text-[#292524] hover:bg-white transition-all cursor-pointer"
+                    className="w-11 h-11 rounded-full bg-white/95 backdrop-blur-md shadow-md flex items-center justify-center text-[#292524] hover:bg-white active:scale-95 transition-all cursor-pointer"
                     aria-label="Save to Wishlist"
                   >
-                    <Heart size={18} className={isWishlisted ? 'fill-[#6B1725] text-[#6B1725]' : 'text-[#292524]'} />
+                    <Heart size={19} className={isWishlisted ? 'fill-[#6B1725] text-[#6B1725]' : 'text-[#292524]'} />
                   </button>
                 </div>
               </div>
@@ -410,8 +421,8 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                   {product.images.map((_, idx) => (
                     <div
                       key={idx}
-                      className={`h-2 rounded-full transition-all ${
-                        activeImageIndex === idx ? 'w-6 bg-white shadow' : 'w-2 bg-white/60'
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        activeImageIndex === idx ? 'w-5 bg-white shadow-sm' : 'w-1.5 bg-white/70'
                       }`}
                     />
                   ))}
@@ -471,7 +482,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
           </div>
 
           {/* ── RIGHT COLUMN: PRODUCT INFO & PRIMARY ACTIONS ── */}
-          <div className="lg:col-span-5 space-y-5">
+          <div className="lg:col-span-5 space-y-5 px-4 sm:px-6 lg:px-0">
             
             {/* CATEGORY & TITLE */}
             <div className="space-y-1">
@@ -777,7 +788,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
         </div>
 
         {/* ── FULL-WIDTH BOTTOM CUSTOMER REVIEWS SECTION ── */}
-        <div className="my-10 pt-6 border-t border-[#F3ECE0]">
+        <div className="my-10 pt-6 border-t border-[#F3ECE0] px-4 sm:px-6 lg:px-0">
           <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
             <div>
               <div className="flex items-center gap-2">
@@ -889,7 +900,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
         {/* ── SIMILAR WEAVES SECTION ── */}
         {similarProducts.length > 0 && (
-          <div className="mt-6 mb-2">
+          <div className="mt-6 mb-2 px-4 sm:px-6 lg:px-0">
             <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#292524] mb-4">
               Similar weaves
             </h2>

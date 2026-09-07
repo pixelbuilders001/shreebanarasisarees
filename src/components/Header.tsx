@@ -36,11 +36,15 @@ import { AuthModal } from './AuthModal';
 import { DeliveryPincodeBar } from './DeliveryPincodeBar';
 import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 
-export const Header: React.FC = () => {
-  return <HeaderInner />;
+export interface HeaderProps {
+  hideOnMobile?: boolean;
+}
+
+export const Header: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
+  return <HeaderInner hideOnMobile={hideOnMobile} />;
 };
 
-const HeaderInner: React.FC = () => {
+const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
   const router = useRouter();
   const {
     cart,
@@ -182,11 +186,13 @@ const HeaderInner: React.FC = () => {
   return (
     <>
       {/* 1. TOP ANNOUNCEMENT STRIP (SAMASTIPUR DELIVERY, STORE, WHATSAPP, TRACK ORDER) */}
-      <AnnouncementBar />
+      <div className={hideOnMobile ? "hidden lg:block" : ""}>
+        <AnnouncementBar />
+      </div>
 
       {/* 2. MAIN HEADER (STICKY ON DESKTOP & MOBILE) */}
       <header
-        className={`sticky top-0 z-40 w-full transition-all duration-300 bg-[#FAF7F0]/95 backdrop-blur-md border-b border-[#F3ECE0] ${isScrolled ? 'shadow-sm py-1.5 sm:py-2' : 'py-2.5 sm:py-3.5'
+        className={`${hideOnMobile ? "hidden lg:block" : ""} sticky top-0 z-40 w-full transition-all duration-300 bg-[#FAF7F0]/95 backdrop-blur-md border-b border-[#F3ECE0] ${isScrolled ? 'shadow-sm py-1.5 sm:py-2' : 'py-2.5 sm:py-3.5'
           }`}
       >
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
