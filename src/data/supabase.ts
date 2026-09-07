@@ -2265,3 +2265,105 @@ export async function fetchOrderItems(orderId: string) {
     return [];
   }
 }
+
+/**
+ * In-memory cache for delivery settings default pincode
+ */
+let cachedDeliverySettingsPincode: string | null = null;
+
+function extractPincodeFromSettingsRow(row: any): string | null {
+  if (!row || typeof row !== 'object') return null;
+
+  // 1. Prioritized candidate column checks
+  const prioritizedCandidate =
+    row.default_pincode ??
+    row.pincode ??
+    row.shop_pincode ??
+    row.default_pin ??
+    row.pin_code ??
+    row.postal_code ??
+    row.serviceable_pincode;
+
+  if (prioritizedCandidate && /^\d{6}$/.test(String(prioritizedCandidate).trim())) {
+    const pin = String(prioritizedCandidate).trim();
+    cachedDeliverySettingsPincode = pin;
+    return pin;
+  }
+
+  // 2. Dynamic inspection across all properties for a 6-digit Indian PIN
+  for (const [key, val] of Object.entries(row)) {
+    if (typeof val === 'string' && /^\d{6}$/.test(val.trim())) {
+      const pin = val.trim();
+      cachedDeliverySettingsPincode = pin;
+      return pin;
+    }
+    if (typeof val === 'number' && /^\d{6}$/.test(String(val))) {
+      const pin = String(val);
+      cachedDeliverySettingsPincode = pin;
+      return pin;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Fetches the default delivery pincode from the delivery_settings table.
+ * Inspects existing columns/structure (e.g. default_pincode, pincode, shop_pincode, default_pin, etc.)
+ * so no hardcoding is used anywhere in the frontend.
+ */
+export async function fetchDefaultDeliveryPincode(): Promise<string | null> {
+  if (cachedDeliverySettingsPincode) {
+    return cachedDeliverySettingsPincode;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('delivery_settings')
+      .select('*')
+      .eq('id', 'default')
+      .maybeSingle();
+
+    if (error || !data) {
+      // Fallback query without id='default' constraint
+      const { data: anyData, error: anyError } = await supabase
+        .from('delivery_settings')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (anyError || !anyData) {
+        console.error('Error fetching delivery_settings default pincode:', error || anyError);
+        return null;
+      }
+      return extractPincodeFromSettingsRow(anyData);
+    }
+
+    return extractPincodeFromSettingsRow(data);
+  } catch (err) {
+    console.error('Exception fetching default delivery pincode:', err);
+    return null;
+  }
+}
+
+/**
+ * Updates profiles.default_pincode for the specified user.
+ */
+export async function updateProfileDefaultPincode(userId: string, pincode: string | null): Promise<{ success: boolean; error?: any }> {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ default_pincode: pincode ? pincode.trim() : null })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('Error updating profile default pincode:', error);
+      return { success: false, error };
+    }
+    return { success: true };
+  } catch (err) {
+    console.error('Exception updating profile default pincode:', err);
+    return { success: false, error: err };
+  }
+}
+

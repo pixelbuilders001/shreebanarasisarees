@@ -41,6 +41,7 @@ import { fetchPincodeDetails } from '../../lib/pincodeLookup';
 import { AddNewAddressModal } from '../../components/delivery/AddNewAddressModal';
 import { ExpressRiderIcon, StandardTruckIcon } from '../../components/delivery/DeliveryIcons';
 import { CheckoutSkeleton } from '../../components/CheckoutSkeleton';
+import { getStandardDeliveryDateInfo } from '../../lib/deliveryDates';
 
 const FREE_SHIPPING_THRESHOLD = 999;
 const STANDARD_SHIPPING_FEE = 99;
@@ -117,6 +118,7 @@ const getExpressTimingStatus = (result?: any) => {
 function CheckoutContent() {
   const router = useRouter();
   const [cashfreeSDK, setCashfreeSDK] = useState<any>(null);
+  const deliveryDateInfo = useMemo(() => getStandardDeliveryDateInfo(), []);
 
   useEffect(() => {
     load({ mode: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox' })
@@ -134,6 +136,9 @@ function CheckoutContent() {
     setDeliveryInfo,
     checkedPincode,
     setCheckedPincode,
+    currentPincode,
+    setCurrentPincode,
+    defaultDeliveryPincode,
     shippingAddresses,
     shippingAddressesLoading,
     shippingAddressesLoaded,
@@ -143,6 +148,8 @@ function CheckoutContent() {
     isHydrated,
     setIsAuthModalOpen
   } = useStore();
+
+  const fallbackTiming = useMemo(() => getExpressTimingStatus(deliveryInfo), [deliveryInfo]);
 
   // Route Protection: Open AuthModal if unauthenticated
   useEffect(() => {
@@ -166,7 +173,7 @@ function CheckoutContent() {
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('Bihar');
-  const [pinCode, setPinCode] = useState(checkedPincode || '');
+  const [pinCode, setPinCode] = useState(currentPincode || defaultDeliveryPincode || '');
   const [landmark, setLandmark] = useState('');
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isAddAddressModalOpen, setIsAddAddressModalOpen] = useState(false);
@@ -205,46 +212,83 @@ function CheckoutContent() {
     }
   }, [user, email]);
 
-  // Sync pincode from context
+  // Sync pincode from centralized context
   useEffect(() => {
-    if (checkedPincode && !pinCode) {
-      setPinCode(checkedPincode);
+    const active = currentPincode || defaultDeliveryPincode;
+    if (active && !pinCode) {
+      setPinCode(active);
     }
-  }, [checkedPincode, pinCode]);
+  }, [currentPincode, defaultDeliveryPincode, pinCode]);
 
   // Auto-prefill selected or default address for logged-in user or profile info
   useEffect(() => {
     if (shippingAddresses && shippingAddresses.length > 0 && !hasPrefilled) {
-      const savedSelectedId = typeof window !== 'undefined' ? sessionStorage.getItem('selected_delivery_address_id') : null;
-      let targetAddr = null;
-      if (savedSelectedId) {
-        targetAddr = shippingAddresses.find(a => a.id === savedSelectedId);
-      }
-      if (!targetAddr) {
-        targetAddr = shippingAddresses.find(a => a.is_default) || shippingAddresses[0];
-      }
-      if (targetAddr) {
-        setFullName(targetAddr.full_name || '');
-        setMobileNumber(targetAddr.phone || (isPhoneValid ? userPhone : ''));
-        setAddress(targetAddr.address_line1 + (targetAddr.address_line2 ? ', ' + targetAddr.address_line2 : ''));
-        setLandmark(targetAddr.landmark || '');
-        setCity(targetAddr.city || '');
-        if (targetAddr.state) {
-          setState(targetAddr.state);
+      // Check if any saved address matches currentPincode
+      const matchingAddr = currentPincode
+        ? shippingAddresses.find(a => a.pincode?.trim() === currentPincode.trim())
+        : null;
+
+      const isManualOtherPincode = currentPincode && !matchingAddr;
+
+      if (matchingAddr) {
+        setFullName(matchingAddr.full_name || '');
+        setMobileNumber(matchingAddr.phone || (isPhoneValid ? userPhone : ''));
+        setAddress(matchingAddr.address_line1 + (matchingAddr.address_line2 ? ', ' + matchingAddr.address_line2 : ''));
+        setLandmark(matchingAddr.landmark || '');
+        setCity(matchingAddr.city || '');
+        if (matchingAddr.state) {
+          setState(matchingAddr.state);
         }
-        setPinCode(targetAddr.pincode || '');
-        if (targetAddr.pincode) {
-          handleCheckPincode(targetAddr.pincode);
+        setPinCode(matchingAddr.pincode || '');
+        if (matchingAddr.pincode) {
+          handleCheckPincode(matchingAddr.pincode);
         }
+        setSelectedAddressId(matchingAddr.id);
         setHasPrefilled(true);
-        setSelectedAddressId(targetAddr.id);
+      } else if (isManualOtherPincode) {
+        // Logged-in user explicitly selected an alternate pincode (e.g. to deliver for someone else)
+        setPinCode(currentPincode);
+        handleCheckPincode(currentPincode);
+        fetchPincodeDetails(currentPincode).then((details) => {
+          if (details && details.success) {
+            if (details.city) setCity(details.city);
+            if (details.state) setState(details.state);
+          }
+        });
+        setSelectedAddressId('');
+        setHasPrefilled(true);
+      } else {
+        let targetAddr = shippingAddresses.find(a => a.is_default) || shippingAddresses[0];
+        if (targetAddr) {
+          setFullName(targetAddr.full_name || '');
+          setMobileNumber(targetAddr.phone || (isPhoneValid ? userPhone : ''));
+          setAddress(targetAddr.address_line1 + (targetAddr.address_line2 ? ', ' + targetAddr.address_line2 : ''));
+          setLandmark(targetAddr.landmark || '');
+          setCity(targetAddr.city || '');
+          if (targetAddr.state) {
+            setState(targetAddr.state);
+          }
+          setPinCode(targetAddr.pincode || '');
+          if (targetAddr.pincode) {
+            handleCheckPincode(targetAddr.pincode);
+            setCurrentPincode(targetAddr.pincode);
+          }
+          setHasPrefilled(true);
+          setSelectedAddressId(targetAddr.id);
+        }
       }
     } else if (userProfile && !hasPrefilled && (!shippingAddresses || shippingAddresses.length === 0)) {
       if (userProfile.full_name && !fullName) setFullName(userProfile.full_name);
       if (userProfile.phone && !mobileNumber) setMobileNumber(userProfile.phone);
       if (userProfile.email && !email) setEmail(userProfile.email);
+      const active = currentPincode || userProfile.default_pincode;
+      if (active) {
+        setPinCode(active);
+        handleCheckPincode(active);
+      }
+      setHasPrefilled(true);
     }
-  }, [shippingAddresses, userProfile, hasPrefilled, isPhoneValid, userPhone]);
+  }, [shippingAddresses, userProfile, hasPrefilled, isPhoneValid, userPhone, pinCode, currentPincode, setCurrentPincode]);
 
   // Calculate totals
   const subtotal = useMemo(() => {
@@ -341,7 +385,7 @@ function CheckoutContent() {
             setPincodeSuccessMsg(`🚀 Express Delivery available for PIN ${cleanPin}! (Approx. ${etaMins} mins)`);
           }
         } else {
-          setPincodeSuccessMsg(`✓ Standard delivery is available for PIN ${cleanPin} (3–5 business days)`);
+          setPincodeSuccessMsg(`✓ Standard delivery is available for PIN ${cleanPin} (${deliveryDateInfo.deliveryByText})`);
         }
       } else {
         setErrorMsg(res?.error || res?.message || "We currently don't deliver to this location.");
@@ -367,9 +411,10 @@ function CheckoutContent() {
       });
       // Immediately calculate delivery details & serviceability for new pincode
       handleCheckPincode(sanitized);
+      setCurrentPincode(sanitized);
     } else {
       setPincodeSuccessMsg(null);
-      if (sanitized !== checkedPincode) {
+      if (sanitized !== (currentPincode || defaultDeliveryPincode)) {
         setDeliveryInfo(null);
       }
     }
@@ -387,9 +432,8 @@ function CheckoutContent() {
       setState(addr.state);
     }
     setPinCode(addr.pincode || '');
-    if (typeof window !== 'undefined') {
-      if (addr.id) sessionStorage.setItem('selected_delivery_address_id', addr.id);
-      if (addr.pincode) sessionStorage.setItem('selected_delivery_pincode', addr.pincode);
+    if (addr.pincode) {
+      setCurrentPincode(addr.pincode);
     }
     handleCheckPincode(addr.pincode);
   };
@@ -413,6 +457,7 @@ function CheckoutContent() {
     setDeliveryInfo(null);
     setPincodeSuccessMsg(null);
     if (savedAddr.pincode) {
+      setCurrentPincode(savedAddr.pincode);
       handleCheckPincode(savedAddr.pincode);
     }
   };
@@ -718,7 +763,7 @@ function CheckoutContent() {
                     Arriving in about 20 minutes
                   </p>
                   <p className="text-xs text-[#7A6E65] mt-0.5">
-                    To {cleanPin || '848101'}{createdOrder.customer?.city ? `, ${createdOrder.customer.city}` : ', Samastipur'}
+                    To {cleanPin || defaultDeliveryPincode || ''}{createdOrder.customer?.city ? `, ${createdOrder.customer.city}` : ', Samastipur'}
                   </p>
                 </div>
               </div>
@@ -753,7 +798,7 @@ function CheckoutContent() {
                     DELIVERY TIMELINE
                   </span>
                   <span className="text-xs font-semibold text-[#6B1725] bg-[#FAF6EE] border border-[#E5DEC9] px-2.5 py-0.5 rounded-full">
-                    Est. 3–5 Days
+                    {deliveryDateInfo.deliveryByText}
                   </span>
                 </div>
 
@@ -794,7 +839,7 @@ function CheckoutContent() {
                       4
                     </div>
                     <span className="text-[11px] font-medium text-[#7A6E65] leading-tight">Shipped</span>
-                    <span className="text-[10px] text-[#7A6E65]">3–5 days</span>
+                    <span className="text-[10px] text-[#7A6E65]">{deliveryDateInfo.shortFormat}</span>
                   </div>
                 </div>
 
@@ -1239,13 +1284,13 @@ function CheckoutContent() {
                     <span>Standard Delivery</span>
                   </div>
                   <span className="text-[10px] font-bold text-[#6B1725] bg-[#6B1725]/10 px-2.5 py-0.5 rounded-full border border-[#6B1725]/20 font-serif whitespace-nowrap">
-                    3–5 Days
+                    {deliveryDateInfo.rangeFormat}
                   </span>
                 </div>
                 <div className="space-y-1 text-xs text-[#6B625D] pt-1.5 border-t border-[#B08A3C]/20">
                   <div className="flex items-center gap-2 font-bold text-[#292524] text-xs">
                     <Clock size={15} className="text-[#6B1725] flex-shrink-0" />
-                    <span>Estimated delivery: 3–5 Business Days</span>
+                    <span>Estimated delivery by {deliveryDateInfo.formattedDate}</span>
                   </div>
                   <div className="text-[10px] text-[#6B625D] font-medium">
                     Verified for pincode {pinCode || deliveryInfo?.pincode}
@@ -1262,12 +1307,12 @@ function CheckoutContent() {
                   <div>
                     <h4 className="font-sans font-bold text-xs sm:text-sm text-[#292524]">
                       {!pinCode || pinCode.startsWith('848')
-                        ? '20-minute hand delivery'
-                        : 'Express Delivery (3–5 Days)'}
+                        ? (fallbackTiming.isNormalHours ? '20-minute hand delivery' : fallbackTiming.timingText)
+                        : deliveryDateInfo.deliveryByText}
                     </h4>
                     <p className="text-[11px] sm:text-xs text-[#7A6E65] mt-0.5">
                       {!pinCode || pinCode.startsWith('848')
-                        ? 'Arriving by 6:45 pm today · our own rider, not a courier'
+                        ? fallbackTiming.descText
                         : 'Tracked express courier · packed with care'}
                     </p>
                   </div>

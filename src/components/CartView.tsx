@@ -24,6 +24,7 @@ import { getProductSlug } from '../data/supabase';
 import { useCustomerLocation } from '../hooks/useCustomerLocation';
 
 import { DeliveryPincodeBar, openPincodeSheet, getExpressTimingStatus } from './DeliveryPincodeBar';
+import { getStandardDeliveryDateInfo } from '../lib/deliveryDates';
 
 interface CartViewProps {
   onBack?: () => void;
@@ -157,7 +158,9 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
     addToCart,
     user,
     setIsAuthModalOpen,
-    isHydrated
+    isHydrated,
+    currentPincode,
+    defaultDeliveryPincode
   } = useStore();
 
   // Skeleton Loading & Navigation State
@@ -173,27 +176,8 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
     }
   }, [isHydrated]);
 
-  // Pincode State synchronized with global location system
-  const [pincode, setPincode] = useState<string>('848101');
-
-  // Sync pincode from sessionStorage/localStorage & event listener
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedPin = sessionStorage.getItem('selected_delivery_pincode') || localStorage.getItem('user_pincode') || '848101';
-      setPincode(savedPin);
-
-      const handlePincodeUpdate = (e: CustomEvent) => {
-        if (e.detail?.pincode) {
-          setPincode(e.detail.pincode);
-        }
-      };
-
-      window.addEventListener('pincode-updated', handlePincodeUpdate as EventListener);
-      return () => {
-        window.removeEventListener('pincode-updated', handlePincodeUpdate as EventListener);
-      };
-    }
-  }, []);
+  // Pincode synchronized with centralized location system
+  const pincode = currentPincode || defaultDeliveryPincode || '';
 
   // Location serviceability check hook
   const { result, checkPincode } = useCustomerLocation();
@@ -208,12 +192,16 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
     if (result) {
       return !!(result.is20MinDelivery || (result.distanceKm !== undefined && result.distanceKm <= 20) || (result as any).eligible);
     }
-    return pincode === '848101' || pincode === '848114';
-  }, [result, pincode]);
+    return pincode === (defaultDeliveryPincode || '848101') || pincode === '848114';
+  }, [result, pincode, defaultDeliveryPincode]);
 
   const timingStatus = useMemo(() => {
     return getExpressTimingStatus(result);
   }, [result]);
+
+  const deliveryDateInfo = useMemo(() => {
+    return getStandardDeliveryDateInfo();
+  }, []);
 
   // Delivery method choice: automatically synced with pincode serviceability
   const [selectedDeliveryMethod, setSelectedDeliveryMethod] = useState<'express_20min' | 'standard'>('express_20min');
@@ -569,7 +557,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
                     </div>
                     <div>
                       <h4 className="text-xs sm:text-sm font-sans font-bold text-[#292524]">
-                        Express, 3–5 days
+                        {deliveryDateInfo.deliveryByText}
                       </h4>
                       <p className="text-[11px] text-[#7A6E65]">
                         Free above ₹1,999 &middot; COD available

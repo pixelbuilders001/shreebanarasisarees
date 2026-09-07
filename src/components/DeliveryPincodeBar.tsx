@@ -7,6 +7,7 @@ import { useCustomerLocation } from '../hooks/useCustomerLocation';
 import { ExpressRiderIcon, StandardTruckIcon } from './delivery/DeliveryIcons';
 import { useStore } from '../context/StoreContext';
 import { AddNewAddressModal } from './delivery/AddNewAddressModal';
+import { getStandardDeliveryDateInfo } from '../lib/deliveryDates';
 
 const SUGGESTED_PINCODES = [
   { pin: '848101', label: 'Samastipur (Express 20-Min)' },
@@ -69,10 +70,10 @@ interface DeliveryPincodeBarProps {
 }
 
 export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar = false }) => {
-  const { user, shippingAddresses, setIsAuthModalOpen } = useStore();
-  const [pincode, setPincode] = useState<string>('848101');
+  const { user, shippingAddresses, setIsAuthModalOpen, currentPincode, setCurrentPincode, defaultDeliveryPincode } = useStore();
+  const activePin = currentPincode || defaultDeliveryPincode || '';
   const [isSheetOpen, setIsSheetOpen] = useState<boolean>(false);
-  const [inputPincode, setInputPincode] = useState<string>('848101');
+  const [inputPincode, setInputPincode] = useState<string>(activePin);
   const [mounted, setMounted] = useState<boolean>(false);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [isAddressModalOpen, setIsAddressModalOpen] = useState<boolean>(false);
@@ -81,26 +82,22 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
 
   useEffect(() => {
     setMounted(true);
-    if (typeof window !== 'undefined') {
-      const savedPin = sessionStorage.getItem('selected_delivery_pincode') || localStorage.getItem('user_pincode') || '848101';
-      setPincode(savedPin);
-      setInputPincode(savedPin);
-      checkPincode(savedPin);
+  }, []);
 
-      const savedAddrId = sessionStorage.getItem('selected_delivery_address_id');
-      if (savedAddrId) setSelectedAddressId(savedAddrId);
+  // Synchronize input pincode and check location whenever activePin changes
+  useEffect(() => {
+    if (activePin) {
+      setInputPincode(activePin);
+      checkPincode(activePin);
     }
-  }, [checkPincode]);
+  }, [activePin, checkPincode]);
 
   useEffect(() => {
     const handleOpenSheet = () => {
-      if (typeof window !== 'undefined') {
-        const savedPin = sessionStorage.getItem('selected_delivery_pincode') || localStorage.getItem('user_pincode') || '848101';
-        setInputPincode(savedPin);
-        checkPincode(savedPin);
-
-        const savedAddrId = sessionStorage.getItem('selected_delivery_address_id');
-        if (savedAddrId) setSelectedAddressId(savedAddrId);
+      const pin = currentPincode || defaultDeliveryPincode || '';
+      if (pin) {
+        setInputPincode(pin);
+        checkPincode(pin);
       }
       setIsSheetOpen(true);
     };
@@ -109,7 +106,7 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
     return () => {
       window.removeEventListener('open-pincode-sheet', handleOpenSheet);
     };
-  }, [checkPincode]);
+  }, [currentPincode, defaultDeliveryPincode, checkPincode]);
 
   const handleInputChange = (val: string) => {
     const clean = val.replace(/\D/g, '').slice(0, 6);
@@ -125,31 +122,23 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
     const cleanPin = addr.pincode.trim().slice(0, 6);
     setSelectedAddressId(addr.id || '');
     setInputPincode(cleanPin);
-
-    if (typeof window !== 'undefined' && addr.id) {
-      sessionStorage.setItem('selected_delivery_address_id', addr.id);
-      sessionStorage.setItem('selected_delivery_pincode', cleanPin);
-    }
+    setCurrentPincode(cleanPin);
     checkPincode(cleanPin);
   };
 
-  const handleSavePincode = (pinToSave: string) => {
+  const handleSavePincode = async (pinToSave: string) => {
     if (/^\d{6}$/.test(pinToSave)) {
-      setPincode(pinToSave);
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('selected_delivery_pincode', pinToSave);
-        localStorage.setItem('user_pincode', pinToSave);
-        window.dispatchEvent(new CustomEvent('pincode-updated', { detail: { pincode: pinToSave } }));
-      }
+      await setCurrentPincode(pinToSave);
       setIsSheetOpen(false);
     }
   };
 
   const is20Min = result
     ? (result.is20MinDelivery || (result.distanceKm !== undefined && result.distanceKm <= 20) || (result as any).eligible)
-    : (inputPincode === '848101' || inputPincode === '848114');
+    : (inputPincode === (defaultDeliveryPincode || '848101') || inputPincode === '848114');
 
   const timingStatus = getExpressTimingStatus(result);
+  const deliveryDateInfo = getStandardDeliveryDateInfo();
 
   const sheetContent = isSheetOpen ? (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs transition-opacity animate-fadeIn p-0 sm:p-4">
@@ -243,7 +232,7 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
                 {is20Min ? (
                   <span><strong>{timingStatus.timingText}:</strong> {timingStatus.descText}</span>
                 ) : (
-                  <span><strong>3–5 Business Days</strong> to {inputPincode}. Free delivery & COD available.</span>
+                  <span><strong>{deliveryDateInfo.deliveryByText}</strong> to {inputPincode}. Free delivery & COD available.</span>
                 )}
               </p>
             </div>
@@ -271,7 +260,7 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
               {shippingAddresses.map((addr: any) => {
                 const isSelected = selectedAddressId
                   ? addr.id === selectedAddressId
-                  : (addr.is_default || (shippingAddresses.length > 0 && shippingAddresses[0].id === addr.id));
+                  : (Boolean(inputPincode) && addr.pincode?.trim() === inputPincode.trim());
                 const IconComponent = addr.address_label?.toLowerCase() === 'work' ? Building : Home;
 
                 return (
@@ -331,16 +320,16 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
       {!hideBar && (
         <div className="w-full bg-[#4A121A] text-[#FAF7F0] px-4 py-2 flex items-center justify-between text-xs border-t border-[#B08A3C]/20">
           <div
-            onClick={() => { setInputPincode(pincode); checkPincode(pincode); setIsSheetOpen(true); }}
+            onClick={() => { setInputPincode(activePin); checkPincode(activePin); setIsSheetOpen(true); }}
             className="flex items-center gap-1.5 cursor-pointer hover:opacity-90 transition-opacity truncate"
           >
             <MapPin size={13} className="text-[#D4B870] shrink-0" />
             <span className="font-sans font-medium text-[11px] sm:text-xs truncate">
-              Deliver to <strong className="font-bold text-white">{pincode}</strong> — {is20Min ? timingStatus.timingText : 'Standard 3-5 days delivery'}
+              Deliver to <strong className="font-bold text-white">{activePin}</strong> — {is20Min ? timingStatus.timingText : deliveryDateInfo.deliveryByText}
             </span>
           </div>
           <button
-            onClick={() => { setInputPincode(pincode); checkPincode(pincode); setIsSheetOpen(true); }}
+            onClick={() => { setInputPincode(activePin); checkPincode(activePin); setIsSheetOpen(true); }}
             className="text-[11px] font-sans font-semibold text-[#FAF7F0] underline hover:text-[#D4B870] shrink-0 ml-2 cursor-pointer"
           >
             Change
@@ -359,18 +348,9 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
           if (savedAddr && savedAddr.pincode) {
             const cleanPin = savedAddr.pincode.trim().slice(0, 6);
             setInputPincode(cleanPin);
-            setPincode(cleanPin);
+            setCurrentPincode(cleanPin);
             if (savedAddr.id) setSelectedAddressId(savedAddr.id);
             checkPincode(cleanPin);
-
-            if (typeof window !== 'undefined') {
-              sessionStorage.setItem('selected_delivery_pincode', cleanPin);
-              localStorage.setItem('user_pincode', cleanPin);
-              if (savedAddr.id) {
-                sessionStorage.setItem('selected_delivery_address_id', savedAddr.id);
-              }
-              window.dispatchEvent(new CustomEvent('pincode-updated', { detail: { pincode: cleanPin } }));
-            }
             // Keep pincode sheet open so user sees updated address list & timing!
             setIsSheetOpen(true);
           }

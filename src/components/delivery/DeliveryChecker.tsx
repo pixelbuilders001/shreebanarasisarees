@@ -4,6 +4,7 @@ import { useCustomerLocation } from '../../hooks/useCustomerLocation';
 import { ExpressRiderIcon, StandardTruckIcon } from './DeliveryIcons';
 import { useStore } from '../../context/StoreContext';
 import { AddNewAddressModal } from './AddNewAddressModal';
+import { getStandardDeliveryDateInfo } from '../../lib/deliveryDates';
 
 // Helper to check current IST operating hours window:
 // - 9 AM to 8 PM (09:00 - 19:59): Normal 20-min express flow
@@ -69,11 +70,13 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const { loadingState, isLoading, result, errorMsg, checkGpsLocation, checkPincode, resetState } = useCustomerLocation();
+  const deliveryDateInfo = getStandardDeliveryDateInfo();
 
   // Retrieve saved shipping addresses safely from StoreContext
   let shippingAddresses: any[] = [];
+  let store: any = null;
   try {
-    const store = useStore();
+    store = useStore();
     if (store && Array.isArray(store.shippingAddresses)) {
       shippingAddresses = store.shippingAddresses;
     }
@@ -87,10 +90,9 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
       setPincodeInput(cleanPin);
       if (savedAddr.id) {
         setSelectedAddressId(savedAddr.id);
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('selected_delivery_address_id', savedAddr.id);
-          sessionStorage.setItem('selected_delivery_pincode', cleanPin);
-        }
+      }
+      if (store?.setCurrentPincode) {
+        store.setCurrentPincode(cleanPin);
       }
       checkPincode(cleanPin);
     }
@@ -105,9 +107,8 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
     if (chosenAddr && chosenAddr.pincode) {
       const cleanPin = chosenAddr.pincode.trim().slice(0, 6);
       setPincodeInput(cleanPin);
-      if (typeof window !== 'undefined' && chosenAddr.id) {
-        sessionStorage.setItem('selected_delivery_address_id', chosenAddr.id);
-        sessionStorage.setItem('selected_delivery_pincode', cleanPin);
+      if (store?.setCurrentPincode) {
+        store.setCurrentPincode(cleanPin);
       }
       checkPincode(cleanPin);
     }
@@ -117,9 +118,8 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
     e.preventDefault();
     if (isLoading) return;
     setSelectedAddressId('');
-    if (typeof window !== 'undefined' && pincodeInput.length === 6) {
-      sessionStorage.removeItem('selected_delivery_address_id');
-      sessionStorage.setItem('selected_delivery_pincode', pincodeInput);
+    if (pincodeInput.length === 6 && store?.setCurrentPincode) {
+      store.setCurrentPincode(pincodeInput);
     }
     checkPincode(pincodeInput);
   };
@@ -430,14 +430,14 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
                   <span>Standard Delivery Available</span>
                 </div>
                 <span className="text-[10px] font-bold text-[#6B1725] bg-[#6B1725]/10 px-2.5 py-0.5 rounded-full border border-[#6B1725]/20 font-serif">
-                  3–5 Days
+                  {deliveryDateInfo.rangeFormat}
                 </span>
               </div>
 
               <div className="space-y-1 text-xs text-[#6B625D] pt-2 border-t border-[#B08A3C]/20">
                 <div className="flex items-center gap-2 font-bold text-[#292524] text-xs">
                   <Clock size={15} className="text-[#6B1725] flex-shrink-0" />
-                  <span>Estimated delivery: 3–5 Business Days</span>
+                  <span>Estimated delivery by {deliveryDateInfo.formattedDate}</span>
                 </div>
                 <div className="text-[10px] text-[#6B625D] font-medium">
                   {result.source === 'gps'

@@ -7,12 +7,14 @@ import { verifyCashfreePayment, triggerOrderNotificationEmail } from '../../../d
 import { useStore } from '../../../context/StoreContext';
 import { trackPurchase } from '../../../lib/gtag';
 import { CheckCircle, XCircle, Loader2, ShoppingBag, ArrowRight, Check, Zap } from 'lucide-react';
+import { getStandardDeliveryDateInfo } from '../../../lib/deliveryDates';
 
 function StatusContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { clearCart } = useStore();
   const orderId = searchParams.get('order_id');
+  const deliveryDateInfo = getStandardDeliveryDateInfo();
 
   const [loading, setLoading] = useState(true);
   const [paymentStatus, setPaymentStatus] = useState<'PAID' | 'FAILED' | 'PENDING'>('PENDING');
@@ -120,7 +122,7 @@ function StatusContent() {
               <Zap size={18} className="text-[#6B1725] shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-semibold text-[#292524]">
-                  Arriving in 3–5 business days
+                  {deliveryDateInfo.deliveryByText}
                 </p>
                 <p className="text-xs text-[#7A6E65] mt-0.5">
                   To your delivery address

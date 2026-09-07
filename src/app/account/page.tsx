@@ -26,6 +26,7 @@ import { supabase, fetchDbOrderWithItems, fetchDbOrders, mapDbOrderToOrder, Orde
 import { OrdersTabSkeleton } from '../../components/TabSkeletons';
 import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 import { generateReceiptUrl, ReceiptData, ReceiptItem } from '@/lib/receiptUtils';
+import { getStandardDeliveryDateInfo } from '../../lib/deliveryDates';
 
 // Format date into "Today, 6:12 pm" or "12 Feb 2026"
 function formatOrderDate(dateString: string): string {
@@ -317,6 +318,7 @@ function resolveOrderItem(item: any, products: any[] = []): ResolvedOrderItem {
 function AccountContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const deliveryDateInfo = useMemo(() => getStandardDeliveryDateInfo(), []);
 
   const {
     orders,
@@ -1010,7 +1012,7 @@ function AccountContent() {
       packed: { current: 'Safely packed in our authentic fabric pouch', done: 'Packed', future: 'Not yet packed' },
       shipped: { current: 'Dispatched with priority courier', done: 'Shipped', future: 'Not yet shipped' },
       out_for_delivery: { current: isSamastipur ? 'Ramesh is on the way' : 'Priority courier partner is on the way', done: 'Out for delivery', future: 'Out for delivery soon' },
-      delivered: { current: 'Hand delivered to your doorstep', done: 'Delivered', future: isSamastipur ? 'Arriving by 6:45 pm' : 'Expected in 3–5 days' }
+      delivered: { current: 'Hand delivered to your doorstep', done: 'Delivered', future: isSamastipur ? 'Arriving by 6:45 pm' : `Expected by ${deliveryDateInfo.formattedDate}` }
     };
 
     let timelineSteps: Array<{

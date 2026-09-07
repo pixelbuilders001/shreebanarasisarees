@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Header } from '../../../components/Header';
@@ -13,6 +13,7 @@ import {
   Share2,
   ZoomIn,
   Zap,
+  Truck,
   ChevronLeft,
   RotateCcw,
   CheckCircle2,
@@ -35,7 +36,9 @@ import { RecentlyViewed } from '../../../components/RecentlyViewed';
 import { ProductCard } from '../../../components/ProductCard';
 import { useRecentlyViewed } from '../../../utils/useRecentlyViewed';
 import { trackViewItem } from '../../../lib/gtag';
-import { openPincodeSheet } from '../../../components/DeliveryPincodeBar';
+import { openPincodeSheet, getExpressTimingStatus } from '../../../components/DeliveryPincodeBar';
+import { useCustomerLocation } from '../../../hooks/useCustomerLocation';
+import { getStandardDeliveryDateInfo } from '../../../lib/deliveryDates';
 
 interface ProductDetailClientProps {
   product: Product;
@@ -49,6 +52,8 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     isInWishlist,
     checkedPincode,
     setCheckedPincode,
+    currentPincode,
+    defaultDeliveryPincode,
     cart,
     setIsCartOpen,
     user,
@@ -59,7 +64,27 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const [activeImage, setActiveImage] = useState<string>(product.images[0]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [displayPincode, setDisplayPincode] = useState<string>(checkedPincode || '848101');
+  const displayPincode = currentPincode || defaultDeliveryPincode || '';
+  const { result, checkPincode } = useCustomerLocation();
+
+  useEffect(() => {
+    if (displayPincode && displayPincode.length === 6) {
+      checkPincode(displayPincode);
+    }
+  }, [displayPincode, checkPincode]);
+
+  const is20Min = useMemo(() => {
+    if (result) {
+      return !!(result.is20MinDelivery || (result.distanceKm !== undefined && result.distanceKm <= 20) || (result as any).eligible);
+    }
+    return displayPincode === (defaultDeliveryPincode || '848101') || displayPincode === '848114';
+  }, [result, displayPincode, defaultDeliveryPincode]);
+
+  const timingStatus = useMemo(() => {
+    return getExpressTimingStatus(result);
+  }, [result]);
+
+  const deliveryDateInfo = useMemo(() => getStandardDeliveryDateInfo(), []);
 
   // Loading/success states for actions
   const [isAddingToCart, setIsAddingToCart] = useState(false);
@@ -148,24 +173,6 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     if (c.includes('black')) return '#18181B';
     return '#B08A3C';
   };
-
-  // Sync pincode from storage & event
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedPin = sessionStorage.getItem('selected_delivery_pincode') || localStorage.getItem('user_pincode');
-      if (savedPin) setDisplayPincode(savedPin);
-    }
-
-    const handlePincodeUpdated = (e: any) => {
-      if (e?.detail?.pincode) {
-        setDisplayPincode(e.detail.pincode);
-        setCheckedPincode(e.detail.pincode);
-      }
-    };
-
-    window.addEventListener('pincode-updated', handlePincodeUpdated);
-    return () => window.removeEventListener('pincode-updated', handlePincodeUpdated);
-  }, [setCheckedPincode]);
 
   useEffect(() => {
     recordView(product.id);
@@ -630,13 +637,19 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                   onClick={openPincodeSheet}
                   className="flex items-start gap-2.5 cursor-pointer group"
                 >
-                  <Zap size={18} className="text-[#6B1725] shrink-0 mt-0.5" />
+                  {is20Min ? (
+                    <Zap size={18} className="text-[#6B1725] shrink-0 mt-0.5" />
+                  ) : (
+                    <Truck size={18} className="text-[#6B1725] shrink-0 mt-0.5" />
+                  )}
                   <div>
                     <h4 className="text-sm font-sans font-bold text-[#292524] group-hover:text-[#6B1725] transition-colors">
-                      Delivered in 20 minutes
+                      {is20Min
+                        ? (timingStatus.isNormalHours ? '20-minute hand delivery' : timingStatus.timingText)
+                        : deliveryDateInfo.deliveryByText}
                     </h4>
                     <p className="text-xs text-[#7A6E65] mt-0.5">
-                      To <strong className="font-bold text-[#292524]">{displayPincode}</strong> · Order before 8 pm, pay at the door
+                      To <strong className="font-bold text-[#292524]">{displayPincode}</strong> · {is20Min ? timingStatus.descText : 'Free delivery & COD available'}
                     </p>
                   </div>
                 </div>

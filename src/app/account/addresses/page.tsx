@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { fetchPincodeDetails } from '../../../lib/pincodeLookup';
 import { AddressesTabSkeleton } from '../../../components/TabSkeletons';
+import { getStandardDeliveryDateInfo } from '../../../lib/deliveryDates';
 
 function is20MinPincode(pincode?: string): boolean {
   const clean = pincode?.trim();
@@ -26,6 +27,7 @@ function is20MinPincode(pincode?: string): boolean {
 
 export default function AddressesPage() {
   const router = useRouter();
+  const deliveryDateInfo = getStandardDeliveryDateInfo();
   const { 
     shippingAddresses, 
     shippingAddressesLoading,
@@ -346,7 +348,7 @@ export default function AddressesPage() {
                   ) : (
                     <div className="flex items-center gap-1.5 text-xs font-normal text-[#57534E] mt-2.5 font-sans">
                       <Truck size={14} className="stroke-[#57534E] stroke-[1.8] flex-shrink-0" />
-                      <span>Express, 3–5 days</span>
+                      <span>{deliveryDateInfo.deliveryByText}</span>
                     </div>
                   )}
 

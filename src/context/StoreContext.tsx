@@ -19,7 +19,9 @@ import {
   DeliveryCheckResult,
   fetchDbWishlist,
   addToDbWishlist,
-  removeFromDbWishlist
+  removeFromDbWishlist,
+  fetchDefaultDeliveryPincode,
+  updateProfileDefaultPincode
 } from '../data/supabase';
 import { trackAddToCart, trackRemoveFromCart, trackAddToWishlist } from '../lib/gtag';
 import { parseSearchQuery, scoreProducts } from '../lib/searchEngine';
@@ -145,6 +147,10 @@ interface StoreContextType {
   setCustomerCoords: (coords: { latitude: number; longitude: number } | null) => void;
   checkedPincode: string;
   setCheckedPincode: (pincode: string) => void;
+  currentPincode: string;
+  setCurrentPincode: (pincode: string) => Promise<void>;
+  defaultDeliveryPincode: string | null;
+  isPincodeReady: boolean;
   toast: {
     message: string;
     type?: 'cart' | 'info';
@@ -244,7 +250,144 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryCheckResult | null>(null);
   const [customerCoords, setCustomerCoords] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [checkedPincode, setCheckedPincode] = useState<string>('');
+  const [defaultDeliveryPincode, setDefaultDeliveryPincode] = useState<string | null>(null);
+  const [currentPincode, setCurrentPincodeState] = useState<string>('');
+  const [isPincodeReady, setIsPincodeReady] = useState<boolean>(false);
+  const currentPincodeRef = useRef<string>('');
+
+  // Centralized Pincode update:
+  // Guest: Saves to localStorage.selected_pincode.
+  // Logged-in: Saved/default address is authoritative. Keeps profiles.default_pincode synchronized when appropriate.
+  const setCurrentPincode = async (pincode: string) => {
+    const cleanPin = pincode.trim().replace(/\D/g, '').slice(0, 6);
+    if (!/^\d{6}$/.test(cleanPin)) return;
+
+    setCurrentPincodeState(cleanPin);
+    currentPincodeRef.current = cleanPin;
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('pincode-updated', { detail: { pincode: cleanPin } }));
+      // Save active session delivery pincode so navigating between pages or reloads retains user's manual choice
+      sessionStorage.setItem('active_delivery_pincode', cleanPin);
+    }
+
+    if (!currentUserRef.current) {
+      // Guest: Save manually selected pincode to localStorage.selected_pincode
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('selected_pincode', cleanPin);
+      }
+    } else {
+      // Logged in:
+      // If user has no saved addresses, keep profiles.default_pincode synchronized
+      if (!shippingAddresses || shippingAddresses.length === 0) {
+        await updateProfileDefaultPincode(currentUserRef.current, cleanPin);
+        if (userProfile) {
+          userProfile.default_pincode = cleanPin;
+          setUserProfile({ ...userProfile });
+        }
+      }
+    }
+  };
+
+  const setCheckedPincode = (pincode: string) => {
+    setCurrentPincode(pincode);
+  };
+
+  // Login Sync logic adhering to the strict priority rules:
+  // 1. Saved/default address pincode FIRST
+  // 2. profiles.default_pincode
+  // 3. localStorage.selected_pincode
+  // 4. Default pincode from delivery_settings
+  const syncPincodeOnAuth = async (
+    currentUser: any,
+    profile: any,
+    addresses: any[],
+    defaultPinSetting: string | null
+  ) => {
+    const defaultAddr = addresses?.find(a => a.is_default) || (addresses && addresses.length > 0 ? addresses[0] : null);
+    const defaultAddressPincode = defaultAddr?.pincode ? String(defaultAddr.pincode).trim() : null;
+    const profilePincode = profile?.default_pincode ? String(profile.default_pincode).trim() : null;
+
+    let activeSessionPin: string | null = null;
+    let guestPincode: string | null = null;
+    if (typeof window !== 'undefined') {
+      activeSessionPin = sessionStorage.getItem('active_delivery_pincode')?.trim() || null;
+      guestPincode = localStorage.getItem('selected_pincode')?.trim() ||
+                     localStorage.getItem('user_pincode')?.trim() ||
+                     sessionStorage.getItem('selected_delivery_pincode')?.trim() ||
+                     null;
+    }
+
+    let finalPincode = '';
+
+    // Active session override: if user explicitly entered/selected a pincode during this session (e.g. to deliver for someone else)
+    if (activeSessionPin && /^\d{6}$/.test(activeSessionPin)) {
+      finalPincode = activeSessionPin;
+
+      // In background, ensure default address pincode syncs to profile if profile is empty
+      if (defaultAddressPincode && !profilePincode) {
+        await updateProfileDefaultPincode(currentUser.id, defaultAddressPincode);
+        if (profile) profile.default_pincode = defaultAddressPincode;
+      }
+    }
+    // Priority 1: Saved/default address pincode (always authoritative over localStorage on fresh sessions)
+    else if (defaultAddressPincode) {
+      finalPincode = defaultAddressPincode;
+
+      // Never overwrite an existing saved/default address or profiles.default_pincode with old guest pincode.
+      // If profile has no pincode, synchronize default address pincode to profile
+      if (!profilePincode) {
+        await updateProfileDefaultPincode(currentUser.id, defaultAddressPincode);
+        if (profile) profile.default_pincode = defaultAddressPincode;
+      }
+
+      // Successful sync complete: remove guest pincode
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('selected_pincode');
+        localStorage.removeItem('user_pincode');
+        sessionStorage.removeItem('selected_delivery_pincode');
+      }
+    }
+    // Priority 2: profiles.default_pincode
+    else if (profilePincode) {
+      finalPincode = profilePincode;
+
+      // Never overwrite profiles.default_pincode with old guest pincode
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('selected_pincode');
+        localStorage.removeItem('user_pincode');
+        sessionStorage.removeItem('selected_delivery_pincode');
+      }
+    }
+    // Priority 3: localStorage.selected_pincode
+    else if (guestPincode) {
+      finalPincode = guestPincode;
+
+      // If guest pincode exists and profile has no pincode, save to profiles.default_pincode
+      const { success } = await updateProfileDefaultPincode(currentUser.id, guestPincode);
+      if (success) {
+        if (profile) profile.default_pincode = guestPincode;
+        // ONLY remove localStorage.selected_pincode AFTER successful database synchronization!
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('selected_pincode');
+          localStorage.removeItem('user_pincode');
+          sessionStorage.removeItem('selected_delivery_pincode');
+        }
+      } else {
+        console.warn('Database sync of guest pincode failed. Retaining localStorage pincode.');
+      }
+    }
+    // Priority 4: Default pincode from delivery_settings
+    else {
+      finalPincode = defaultPinSetting || '';
+    }
+
+    if (finalPincode) {
+      setCurrentPincodeState(finalPincode);
+      currentPincodeRef.current = finalPincode;
+    }
+    setIsPincodeReady(true);
+  };
   const [toast, setToast] = useState<{
     message: string;
     type?: 'cart' | 'info';
@@ -425,6 +568,48 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setIsCategoriesLoading(false);
     });
 
+    // Fetch default pincode from delivery_settings
+    fetchDefaultDeliveryPincode().then(defPin => {
+      const pinSetting = defPin || '';
+      setDefaultDeliveryPincode(pinSetting);
+
+      // Active session delivery pincode check (if user explicitly entered a pincode during this session)
+      let activeSessionPin: string | null = null;
+      if (typeof window !== 'undefined') {
+        activeSessionPin = sessionStorage.getItem('active_delivery_pincode')?.trim() || null;
+      }
+
+      if (activeSessionPin && /^\d{6}$/.test(activeSessionPin)) {
+        setCurrentPincodeState(activeSessionPin);
+        currentPincodeRef.current = activeSessionPin;
+        setIsPincodeReady(true);
+        return;
+      }
+
+      // Guest Pincode Priority (when not logged in):
+      // 1. localStorage.selected_pincode
+      // 2. Default pincode from delivery_settings
+      if (!currentUserRef.current) {
+        let localPin: string | null = null;
+        if (typeof window !== 'undefined') {
+          localPin = localStorage.getItem('selected_pincode')?.trim() ||
+                     localStorage.getItem('user_pincode')?.trim() ||
+                     sessionStorage.getItem('selected_delivery_pincode')?.trim() ||
+                     null;
+        }
+
+        const resolvedGuestPin = localPin || pinSetting;
+        if (resolvedGuestPin) {
+          setCurrentPincodeState(resolvedGuestPin);
+          currentPincodeRef.current = resolvedGuestPin;
+          if (localPin && typeof window !== 'undefined') {
+            localStorage.setItem('selected_pincode', localPin);
+          }
+        }
+        setIsPincodeReady(true);
+      }
+    });
+
     // Subscribe to Supabase authentication state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const prevUserId = currentUserRef.current;
@@ -479,14 +664,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setUserPhone(currentUser.id);
         localStorage.setItem('sbs_user_phone', currentUser.id);
 
-        // Fetch shipping addresses
-        fetchShippingAddresses(currentUser.id).catch(err => {
-          console.error('Error fetching shipping addresses:', err);
-        });
+        // Fetch shipping addresses and synchronize pincode according to priority
+        const addresses = await fetchShippingAddresses(currentUser.id);
+        const activeDefaultPin = defaultDeliveryPincode || await fetchDefaultDeliveryPincode();
+        const shouldMerge = prevUserId === null;
+        if (shouldMerge && addresses && addresses.length > 0 && typeof window !== 'undefined') {
+          sessionStorage.removeItem('active_delivery_pincode');
+        }
+        await syncPincodeOnAuth(currentUser, currentProfile, addresses, activeDefaultPin);
 
         // Fetch and merge cart & orders for this user
         // We only merge if the user just signed in (i.e. transitioned from anonymous to logged-in)
-        const shouldMerge = prevUserId === null;
         await syncUserData(currentUser.id, activeProducts, shouldMerge);
 
         // Sync FCM token if notification permission is granted
@@ -522,6 +710,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setOrders([]);
           setCart([]);
           setWishlist([]);
+
+          // Reset to Guest Pincode Priority on signout
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('active_delivery_pincode');
+          }
+          const guestPin = typeof window !== 'undefined' ? localStorage.getItem('selected_pincode')?.trim() : null;
+          const fallbackPin = guestPin || defaultDeliveryPincode || '';
+          if (fallbackPin) {
+            setCurrentPincodeState(fallbackPin);
+            currentPincodeRef.current = fallbackPin;
+          }
 
           // Disassociate FCM token
           if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
@@ -1023,7 +1222,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const fetchShippingAddresses = async (userId: string) => {
+  const fetchShippingAddresses = async (userId: string): Promise<any[]> => {
     setShippingAddressesLoading(true);
     try {
       const { data, error } = await supabase
@@ -1034,9 +1233,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (error) {
         console.error('Error fetching shipping addresses:', error);
+        return [];
       } else if (data) {
         setShippingAddresses(data);
+        return data;
       }
+      return [];
     } finally {
       setShippingAddressesLoading(false);
       setShippingAddressesLoaded(true);
@@ -1099,7 +1301,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     // Refresh addresses list
-    await fetchShippingAddresses(user.id);
+    const freshAddrs = await fetchShippingAddresses(user.id);
+
+    // If this address is default or the only address, keep profiles.default_pincode and currentPincode synchronized
+    if (addr.is_default || freshAddrs.length === 1) {
+      if (addr.pincode) {
+        const cleanPin = String(addr.pincode).trim();
+        setCurrentPincodeState(cleanPin);
+        currentPincodeRef.current = cleanPin;
+        await updateProfileDefaultPincode(user.id, cleanPin);
+        if (userProfile) {
+          userProfile.default_pincode = cleanPin;
+          setUserProfile({ ...userProfile });
+        }
+      }
+    }
   };
 
   const deleteShippingAddress = async (id: string) => {
@@ -1115,7 +1331,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     // Refresh addresses list
-    await fetchShippingAddresses(user.id);
+    const freshAddrs = await fetchShippingAddresses(user.id);
+
+    // Re-evaluate authoritative address
+    const defaultAddr = freshAddrs.find(a => a.is_default) || (freshAddrs.length > 0 ? freshAddrs[0] : null);
+    if (defaultAddr?.pincode) {
+      const cleanPin = String(defaultAddr.pincode).trim();
+      setCurrentPincodeState(cleanPin);
+      currentPincodeRef.current = cleanPin;
+      await updateProfileDefaultPincode(user.id, cleanPin);
+      if (userProfile) {
+        userProfile.default_pincode = cleanPin;
+        setUserProfile({ ...userProfile });
+      }
+    } else {
+      // If no addresses remain, fallback to profiles.default_pincode or delivery_settings
+      const profilePin = userProfile?.default_pincode ? String(userProfile.default_pincode).trim() : null;
+      const nextPin = profilePin || defaultDeliveryPincode || '';
+      if (nextPin) {
+        setCurrentPincodeState(nextPin);
+        currentPincodeRef.current = nextPin;
+      }
+    }
   };
 
   const setDefaultShippingAddress = async (id: string) => {
@@ -1139,7 +1376,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     // Refresh addresses list
-    await fetchShippingAddresses(user.id);
+    const freshAddrs = await fetchShippingAddresses(user.id);
+    const target = freshAddrs.find(a => a.id === id);
+    if (target?.pincode) {
+      const cleanPin = String(target.pincode).trim();
+      setCurrentPincodeState(cleanPin);
+      currentPincodeRef.current = cleanPin;
+      await updateProfileDefaultPincode(user.id, cleanPin);
+      if (userProfile) {
+        userProfile.default_pincode = cleanPin;
+        setUserProfile({ ...userProfile });
+      }
+    }
   };
 
   const logoutUser = async () => {
@@ -1154,6 +1402,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.removeItem('sbs_user_phone');
     localStorage.removeItem('sbs_wishlist');
     await supabase.auth.signOut();
+
+    // Reset to guest priority (localStorage.selected_pincode or delivery_settings default)
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('active_delivery_pincode');
+    }
+    const guestPin = typeof window !== 'undefined' ? localStorage.getItem('selected_pincode')?.trim() : null;
+    const fallbackPin = guestPin || defaultDeliveryPincode || '';
+    if (fallbackPin) {
+      setCurrentPincodeState(fallbackPin);
+      currentPincodeRef.current = fallbackPin;
+    }
+
     if (typeof window !== 'undefined') {
       window.location.href = '/';
     }
@@ -1210,8 +1470,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setDeliveryInfo,
       customerCoords,
       setCustomerCoords,
-      checkedPincode,
+      checkedPincode: currentPincode,
       setCheckedPincode,
+      currentPincode,
+      setCurrentPincode,
+      defaultDeliveryPincode,
+      isPincodeReady,
       toast,
       showToast
     }}>
