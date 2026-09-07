@@ -39,6 +39,7 @@ import { trackViewItem } from '../../../lib/gtag';
 import { openPincodeSheet, getExpressTimingStatus } from '../../../components/DeliveryPincodeBar';
 import { useCustomerLocation } from '../../../hooks/useCustomerLocation';
 import { getStandardDeliveryDateInfo } from '../../../lib/deliveryDates';
+import { triggerHaptic } from '../../../utils/haptics';
 
 interface ProductDetailClientProps {
   product: Product;
@@ -224,6 +225,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
   const handleAddToCart = async () => {
     if (product.stock > 0) {
+      triggerHaptic('medium');
       if (isAlreadyInCart) {
         setIsCartOpen(true);
       } else {
@@ -238,6 +240,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
   const handleBuyNow = async () => {
     if (product.stock > 0) {
+      triggerHaptic('medium');
       setIsBuyingNow(true);
       await new Promise(resolve => setTimeout(resolve, 300));
       if (!isAlreadyInCart) {
@@ -344,7 +347,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
     <>
       <Header hideOnMobile />
 
-      <main className="max-w-7xl mx-auto px-0 lg:px-8 pt-0 pb-6 lg:py-8 font-sans">
+      <main className="max-w-7xl mx-auto px-0 lg:px-8 pt-0 pb-28 lg:py-8 font-sans">
         {/* DESKTOP BREADCRUMB STRIP */}
         <div className="hidden lg:flex items-center gap-2 text-xs font-sans text-[#7A6E65] mb-6">
           <Link href="/" className="hover:text-[#6B1725] transition-colors">Home</Link>
@@ -951,67 +954,81 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
       <Footer />
 
-      {/* ── STICKY BOTTOM ACTION BAR (ONLY ON MOBILE - HIDDEN ON DESKTOP `md:hidden`) ── */}
-      <div className="fixed bottom-16 inset-x-0 z-40 bg-white border-t border-[#E5DEC9] px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] flex items-center justify-between select-none md:hidden">
-        <div>
-          <div className="font-sans text-base font-bold text-[#292524]">
-            ₹{finalPrice.toLocaleString('en-IN')}
-          </div>
-{product.stock === 0 ? (
-          <span className="text-[11px] font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
-            Currently Out of Stock
-          </span>
-        ) : (
-          <div className="text-[11px] font-bold text-[#6B1725]">
-            Only {product.stock} left
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2">
-        {product.stock === 0 ? (
+      {/* ── STICKY BOTTOM ACTION BAR (ONLY ON MOBILE - DOCKED TO SCREEN BOTTOM) ── */}
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E5DEC9] px-4 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] shadow-[0_-4px_20px_rgba(41,37,36,0.08)] flex items-center justify-between select-none md:hidden gap-3">
+        {/* Left: Quick Wishlist toggle + Price */}
+        <div className="flex items-center gap-2.5 shrink-0">
           <button
-            onClick={handleNotifyMe}
-            className="flex-1 bg-[#292524] hover:bg-black text-white py-3 px-5 rounded-full text-xs font-bold shadow-md cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+            onClick={() => {
+              triggerHaptic('light');
+              toggleWishlist(product);
+            }}
+            className="w-10 h-10 rounded-full border border-[#E5DEC9] bg-[#FAF7F0] flex items-center justify-center text-[#292524] active:scale-90 transition-transform cursor-pointer shrink-0 shadow-2xs"
+            aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
           >
-            <Bell size={14} />
-            Notify Me
+            <Heart size={18} className={isWishlisted ? 'fill-[#6B1725] text-[#6B1725]' : 'text-[#292524]'} />
           </button>
-        ) : (
-          <>
-            <button
-              onClick={handleAddToCart}
-              disabled={isAddingToCart}
-              className="bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-85 text-white py-2.5 px-5 rounded-full text-xs font-bold shadow-md cursor-pointer transition-colors flex items-center justify-center gap-1.5 min-w-[95px]"
-            >
-              {isAddingToCart ? (
-                <>
-                  <Loader2 size={13} className="animate-spin text-white" />
-                  <span>Adding...</span>
-                </>
-              ) : (
-                <span>{isAlreadyInCart ? 'Go to cart' : 'Add to Bag'}</span>
-              )}
-            </button>
+          <div>
+            <div className="font-sans text-base font-bold text-[#292524] leading-tight">
+              ₹{finalPrice.toLocaleString('en-IN')}
+            </div>
+            {product.stock === 0 ? (
+              <span className="text-[10px] font-bold text-red-700 bg-red-50 px-1.5 py-0.2 rounded border border-red-200 block">
+                Out of Stock
+              </span>
+            ) : (
+              <div className="text-[10px] font-bold text-[#6B1725] leading-tight">
+                Only {product.stock} left
+              </div>
+            )}
+          </div>
+        </div>
 
+        {/* Right: Primary Action Buttons */}
+        <div className="flex items-center gap-2 flex-1 justify-end">
+          {product.stock === 0 ? (
             <button
-              onClick={handleBuyNow}
-              disabled={isBuyingNow}
-              className="bg-white border border-[#6B1725] disabled:opacity-85 text-[#6B1725] py-2.5 px-5 rounded-full text-xs font-bold hover:bg-[#6B1725]/5 cursor-pointer transition-colors flex items-center justify-center gap-1.5 min-w-[85px]"
+              onClick={handleNotifyMe}
+              className="flex-1 bg-[#292524] hover:bg-black text-white py-3 px-5 rounded-full text-xs font-bold shadow-md cursor-pointer transition-colors flex items-center justify-center gap-1.5 active:scale-95"
             >
-              {isBuyingNow ? (
-                <>
-                  <Loader2 size={13} className="animate-spin text-[#6B1725]" />
-                  <span>Wait...</span>
-                </>
-              ) : (
-                <span>Buy now</span>
-              )}
+              <Bell size={14} />
+              Notify Me
             </button>
-          </>
-        )}
+          ) : (
+            <>
+              <button
+                onClick={handleAddToCart}
+                disabled={isAddingToCart}
+                className="bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-85 text-white py-2.5 px-4 rounded-full text-xs font-bold shadow-md cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1.5 min-w-[95px]"
+              >
+                {isAddingToCart ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin text-white" />
+                    <span>Adding...</span>
+                  </>
+                ) : (
+                  <span>{isAlreadyInCart ? 'Go to cart' : 'Add to Bag'}</span>
+                )}
+              </button>
+
+              <button
+                onClick={handleBuyNow}
+                disabled={isBuyingNow}
+                className="bg-white border border-[#6B1725] disabled:opacity-85 text-[#6B1725] py-2.5 px-4 rounded-full text-xs font-bold hover:bg-[#6B1725]/5 cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1.5 min-w-[85px]"
+              >
+                {isBuyingNow ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin text-[#6B1725]" />
+                    <span>Wait...</span>
+                  </>
+                ) : (
+                  <span>Buy now</span>
+                )}
+              </button>
+            </>
+          )}
+        </div>
       </div>
-    </div>
 
       {/* WRITE A REVIEW MODAL */}
       {isReviewModalOpen && (

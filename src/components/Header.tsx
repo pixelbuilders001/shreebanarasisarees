@@ -24,6 +24,8 @@ import { AdvancedSearchBar } from './AdvancedSearchBar';
 import { AuthModal } from './AuthModal';
 import { DeliveryPincodeBar } from './DeliveryPincodeBar';
 import { MobileMenuDrawer } from './MobileMenuDrawer';
+import { SearchViewModal } from './SearchViewModal';
+import { triggerHaptic } from '../utils/haptics';
 import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 
 export interface HeaderProps {
@@ -95,11 +97,54 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
   // Search focus state for mobile search overlay
   const [isMobileSearchFocused, setIsMobileSearchFocused] = useState(false);
 
-  // Track window scroll for compact header styling
+  // Collapsible mobile header state
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [isMobileSearchModalOpen, setIsMobileSearchModalOpen] = useState(false);
+  const lastScrollY = useRef(0);
+  const accumulatedScroll = useRef(0);
+  const isTicking = useRef(false);
+
+  // Track window scroll with hysteresis & deadband for smooth, flicker-free collapse
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      if (isTicking.current) return;
+
+      isTicking.current = true;
+      requestAnimationFrame(() => {
+        const currentScrollY = Math.max(0, window.scrollY);
+        const delta = currentScrollY - lastScrollY.current;
+
+        // Sticky header compact shadow styling
+        setIsScrolled(currentScrollY > 20);
+
+        // 1. Top Safe Zone (< 90px): Always stay expanded, reset accumulator
+        if (currentScrollY <= 90) {
+          setIsHeaderCollapsed(false);
+          accumulatedScroll.current = 0;
+        } else {
+          // 2. Accumulate directional scroll; reset accumulator if direction flips
+          if ((delta > 0 && accumulatedScroll.current < 0) || (delta < 0 && accumulatedScroll.current > 0)) {
+            accumulatedScroll.current = 0;
+          }
+          accumulatedScroll.current += delta;
+
+          // 3. Deliberate downward scroll (> 45px) past the top zone -> collapse
+          if (accumulatedScroll.current > 45) {
+            setIsHeaderCollapsed(true);
+            accumulatedScroll.current = 0;
+          }
+          // 4. Deliberate upward scroll (< -35px) -> expand
+          else if (accumulatedScroll.current < -35) {
+            setIsHeaderCollapsed(false);
+            accumulatedScroll.current = 0;
+          }
+        }
+
+        lastScrollY.current = currentScrollY;
+        isTicking.current = false;
+      });
     };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -148,8 +193,13 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
 
       {/* 2. MAIN HEADER (STICKY ON DESKTOP & MOBILE) */}
       <header
-        className={`${hideOnMobile ? "hidden lg:block" : ""} sticky top-0 z-40 w-full transition-all duration-300 bg-[#FAF7F0]/95 backdrop-blur-md border-b border-[#F3ECE0] ${isScrolled ? 'shadow-sm py-1.5 sm:py-2' : 'py-2.5 sm:py-3.5'
-          }`}
+        className={`${hideOnMobile ? "hidden lg:block" : ""} sticky top-0 z-40 w-full transition-all duration-300 bg-[#FAF7F0]/95 backdrop-blur-md border-b border-[#F3ECE0] ${
+          isHeaderCollapsed
+            ? 'shadow-sm py-1.5'
+            : isScrolled
+              ? 'shadow-sm py-1.5 sm:py-2'
+              : 'py-2 sm:py-3.5'
+        }`}
       >
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
 
@@ -301,14 +351,17 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
           </div>
 
           {/* MOBILE HEADER LAYOUT */}
-          <div className="lg:hidden flex flex-col gap-2">
+          <div className="lg:hidden flex flex-col gap-1.5">
 
-            {/* MOBILE TOP BAR: MENU | LOGO | WISHLIST | CART */}
+            {/* MOBILE TOP BAR: MENU | LOGO | SEARCH (WHEN COLLAPSED) | WISHLIST | CART */}
             <div className="flex items-center justify-between">
 
               {/* Menu Hamburger Button */}
               <button
-                onClick={openMobileMenu}
+                onClick={() => {
+                  triggerHaptic('light');
+                  openMobileMenu();
+                }}
                 className="p-2 text-[#292524] hover:text-[#6B1725] active:scale-90 transition-transform cursor-pointer"
                 aria-label="Open navigation menu"
               >
@@ -324,13 +377,28 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
                 />
               </Link>
 
-              {/* Mobile Right Icons (Wishlist & Cart) */}
-              <div className="flex items-center gap-2">
+              {/* Mobile Right Icons (Quick Search when collapsed, Wishlist & Cart) */}
+              <div className="flex items-center gap-1 sm:gap-2">
+
+                {/* Quick Search trigger icon button when header is collapsed */}
+                {isHeaderCollapsed && (
+                  <button
+                    onClick={() => {
+                      triggerHaptic('light');
+                      setIsMobileSearchModalOpen(true);
+                    }}
+                    className="p-2 text-[#292524] hover:text-[#6B1725] active:scale-90 transition-transform cursor-pointer animate-fadeIn"
+                    aria-label="Search sarees"
+                  >
+                    <Search size={21} />
+                  </button>
+                )}
 
                 {user ? (
                   <Link
                     href="/wishlist"
-                    className="relative p-2 text-[#292524] hover:text-[#6B1725]"
+                    onClick={() => triggerHaptic('selection')}
+                    className="relative p-2 text-[#292524] hover:text-[#6B1725] active:scale-90 transition-transform"
                     aria-label="Wishlist"
                   >
                     <Heart size={21} />
@@ -342,8 +410,11 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
                   </Link>
                 ) : (
                   <button
-                    onClick={() => setIsAuthModalOpen(true)}
-                    className="relative p-2 text-[#292524] hover:text-[#6B1725] cursor-pointer"
+                    onClick={() => {
+                      triggerHaptic('light');
+                      setIsAuthModalOpen(true);
+                    }}
+                    className="relative p-2 text-[#292524] hover:text-[#6B1725] active:scale-90 transition-transform cursor-pointer"
                     aria-label="Wishlist (Sign in required)"
                   >
                     <Heart size={21} />
@@ -351,8 +422,11 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
                 )}
 
                 <button
-                  onClick={() => setIsCartOpen(true)}
-                  className="relative p-2 text-[#6B1725] hover:text-[#52111C]"
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    setIsCartOpen(true);
+                  }}
+                  className="relative p-2 text-[#6B1725] hover:text-[#52111C] active:scale-90 transition-transform cursor-pointer"
                   aria-label="Shopping Cart"
                 >
                   <ShoppingBag size={21} />
@@ -367,14 +441,23 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
 
             </div>
 
-            {/* MOBILE PINCODE DELIVERY BAR MATCHING IMAGE 2 */}
-            <div className="w-full -mx-4 font-sans font-medium" style={{ width: 'calc(100% + 2rem)' }}>
-              <DeliveryPincodeBar />
-            </div>
+            {/* COLLAPSIBLE SECTION: PINCODE + ADVANCED SEARCH */}
+            <div
+              className={`transition-all duration-300 ease-out flex flex-col gap-2 overflow-hidden ${
+                isHeaderCollapsed
+                  ? 'max-h-0 opacity-0 pointer-events-none'
+                  : 'max-h-72 opacity-100 pt-1 pb-0.5'
+              }`}
+            >
+              {/* MOBILE PINCODE DELIVERY BAR MATCHING IMAGE 2 */}
+              <div className="w-full -mx-4 font-sans font-medium" style={{ width: 'calc(100% + 2rem)' }}>
+                <DeliveryPincodeBar />
+              </div>
 
-            {/* MOBILE SEARCH BAR (ALWAYS VISIBLE IN MOBILE HEADER) */}
-            <div className="w-full">
-              <AdvancedSearchBar />
+              {/* MOBILE SEARCH BAR (ALWAYS VISIBLE IN EXPANDED MOBILE HEADER) */}
+              <div className="w-full">
+                <AdvancedSearchBar />
+              </div>
             </div>
 
           </div>
@@ -459,6 +542,12 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+      />
+
+      {/* MOBILE SEARCH VIEW MODAL */}
+      <SearchViewModal
+        isOpen={isMobileSearchModalOpen}
+        onClose={() => setIsMobileSearchModalOpen(false)}
       />
     </>
   );

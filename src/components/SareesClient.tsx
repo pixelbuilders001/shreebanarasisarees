@@ -10,6 +10,7 @@ import { Product, PRODUCTS } from '../data/products';
 import { SlidersHorizontal, ArrowUpDown, X, Search, ChevronDown, Check, Zap, Tag, RefreshCw, Filter } from 'lucide-react';
 import { parseSearchQuery, scoreProducts, formatPriceFilter, type DetectedFilters } from '../lib/searchEngine';
 import { useStore } from '../context/StoreContext';
+import { triggerHaptic } from '../utils/haptics';
 
 const PAGE_SIZE = 24;
 const INITIAL_VISIBLE_COUNT = PAGE_SIZE;
@@ -687,12 +688,15 @@ export const SareesClient: React.FC<SareesClientProps> = ({
       </main>
 
       {/* ── 1. FLOATING PILL BAR (SORT & FILTER) - MOBILE ONLY (lg:hidden) ── */}
-      <div className="lg:hidden fixed bottom-20 sm:bottom-24 left-1/2 -translate-x-1/2 z-[45]">
-        <div className="bg-white/95 backdrop-blur-md border border-[#E5DEC9] rounded-full shadow-2xl px-6 py-3 flex items-center gap-6 text-sm font-sans font-semibold text-[#292524] select-none transition-all hover:scale-105 active:scale-95">
+      <div className="lg:hidden fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 z-[45]">
+        <div className="bg-white/95 backdrop-blur-md border border-[#E5DEC9] rounded-full shadow-2xl px-6 py-2.5 flex items-center gap-6 text-sm font-sans font-semibold text-[#292524] select-none transition-all hover:scale-105 active:scale-95 no-select">
           {/* SORT BUTTON */}
           <button
-            onClick={() => setIsSortModalOpen(true)}
-            className="flex items-center gap-2 hover:text-[#6B1725] transition-colors cursor-pointer"
+            onClick={() => {
+              triggerHaptic('selection');
+              setIsSortModalOpen(true);
+            }}
+            className="flex items-center gap-2 hover:text-[#6B1725] transition-colors cursor-pointer active:scale-95"
           >
             <ArrowUpDown size={16} className="text-[#292524]" />
             <span>Sort</span>
@@ -703,8 +707,11 @@ export const SareesClient: React.FC<SareesClientProps> = ({
 
           {/* FILTER BUTTON */}
           <button
-            onClick={() => setIsFilterModalOpen(true)}
-            className="flex items-center gap-2 hover:text-[#6B1725] transition-colors cursor-pointer relative"
+            onClick={() => {
+              triggerHaptic('selection');
+              setIsFilterModalOpen(true);
+            }}
+            className="flex items-center gap-2 hover:text-[#6B1725] transition-colors cursor-pointer relative active:scale-95"
           >
             <SlidersHorizontal size={16} className="text-[#292524]" />
             <span>Filter</span>

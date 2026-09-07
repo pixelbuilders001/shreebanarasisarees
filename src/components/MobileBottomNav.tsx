@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Home, Grid, Search, ShoppingBag, User } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { SearchViewModal } from './SearchViewModal';
+import { triggerHaptic } from '../utils/haptics';
 
 export const MobileBottomNav: React.FC = () => {
   const pathname = usePathname();
@@ -15,19 +16,27 @@ export const MobileBottomNav: React.FC = () => {
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const userAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || userProfile?.avatar_url;
 
-  // Hide mobile bottom nav on checkout, payment, or receipt pages to keep UI clean and distraction-free
-  if (pathname.startsWith('/checkout') || pathname.startsWith('/payment') || pathname.startsWith('/receipt')) {
+  // Native App Architecture: Hide bottom navigation on PDP (/product), Cart (/cart), Checkout, Payment, and Receipt
+  // to prevent double-stacked bars and provide full-bleed dedicated primary action bars.
+  if (
+    pathname.startsWith('/product') ||
+    pathname.startsWith('/cart') ||
+    pathname.startsWith('/checkout') ||
+    pathname.startsWith('/payment') ||
+    pathname.startsWith('/receipt')
+  ) {
     return null;
   }
 
   return (
     <>
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FAF7F0]/95 backdrop-blur-md border-t border-[#F3ECE0] shadow-[0_-4px_16px_rgba(41,37,36,0.06)] px-2 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FAF7F0]/95 backdrop-blur-md border-t border-[#F3ECE0] shadow-[0_-4px_16px_rgba(41,37,36,0.06)] px-2 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] no-select">
         <div className="flex items-center justify-around max-w-md mx-auto">
           {/* Home */}
           <Link
             href="/"
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all ${
+            onClick={() => triggerHaptic('selection')}
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all active:scale-95 select-none ${
               pathname === '/' ? 'text-[#6B1725] font-bold scale-105' : 'text-[#6B625D] hover:text-[#6B1725]'
             }`}
           >
@@ -38,7 +47,8 @@ export const MobileBottomNav: React.FC = () => {
           {/* Shop / Sarees */}
           <Link
             href="/sarees"
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all ${
+            onClick={() => triggerHaptic('selection')}
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all active:scale-95 select-none ${
               pathname.startsWith('/sarees') ? 'text-[#6B1725] font-bold scale-105' : 'text-[#6B625D] hover:text-[#6B1725]'
             }`}
           >
@@ -48,8 +58,11 @@ export const MobileBottomNav: React.FC = () => {
 
           {/* Search (Replaces Wishlist) */}
           <button
-            onClick={() => setIsSearchOpen(true)}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all cursor-pointer ${
+            onClick={() => {
+              triggerHaptic('selection');
+              setIsSearchOpen(true);
+            }}
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all active:scale-95 select-none cursor-pointer ${
               isSearchOpen ? 'text-[#6B1725] font-bold scale-105' : 'text-[#6B625D] hover:text-[#6B1725]'
             }`}
             aria-label="Search sarees"
@@ -61,7 +74,8 @@ export const MobileBottomNav: React.FC = () => {
           {/* Cart Page */}
           <Link
             href="/cart"
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all relative ${
+            onClick={() => triggerHaptic('selection')}
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all active:scale-95 select-none relative ${
               pathname === '/cart' ? 'text-[#6B1725] font-bold scale-105' : 'text-[#6B625D] hover:text-[#6B1725]'
             }`}
           >
@@ -80,7 +94,8 @@ export const MobileBottomNav: React.FC = () => {
           {user ? (
             <Link
               href="/account"
-              className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all ${
+              onClick={() => triggerHaptic('selection')}
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all active:scale-95 select-none ${
                 pathname.startsWith('/account') ? 'text-[#6B1725] font-bold scale-105' : 'text-[#6B625D] hover:text-[#6B1725]'
               }`}
             >
@@ -99,8 +114,11 @@ export const MobileBottomNav: React.FC = () => {
             </Link>
           ) : (
             <button
-              onClick={() => setIsAuthModalOpen(true)}
-              className="flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[#6B625D] hover:text-[#6B1725] transition-all cursor-pointer"
+              onClick={() => {
+                triggerHaptic('selection');
+                setIsAuthModalOpen(true);
+              }}
+              className="flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[#6B625D] hover:text-[#6B1725] transition-all active:scale-95 select-none cursor-pointer"
               aria-label="Login or Register"
             >
               <User size={20} />

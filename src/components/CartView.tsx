@@ -25,6 +25,7 @@ import { useCustomerLocation } from '../hooks/useCustomerLocation';
 
 import { DeliveryPincodeBar, openPincodeSheet, getExpressTimingStatus } from './DeliveryPincodeBar';
 import { getStandardDeliveryDateInfo } from '../lib/deliveryDates';
+import { triggerHaptic } from '../utils/haptics';
 
 interface CartViewProps {
   onBack?: () => void;
@@ -44,7 +45,7 @@ const CartSkeleton: React.FC<{ isDrawer?: boolean }> = ({ isDrawer = false }) =>
       </header>
 
       {/* 2. MAIN SKELETON CONTENT */}
-      <main className={`flex-1 ${isDrawer ? 'overflow-y-auto pb-6' : 'pb-44 lg:pb-28'} max-w-xl mx-auto w-full p-4 space-y-4`}>
+      <main className={`flex-1 ${isDrawer ? 'overflow-y-auto pb-6' : 'pb-32 lg:pb-28'} max-w-xl mx-auto w-full p-4 space-y-4`}>
         {/* Delivery Pincode Card Skeleton */}
         <div className="bg-white rounded-2xl border border-[#E5DEC9] p-3.5 sm:p-4 flex items-center justify-between shadow-2xs animate-pulse">
           <div className="flex items-center gap-2">
@@ -130,7 +131,7 @@ const CartSkeleton: React.FC<{ isDrawer?: boolean }> = ({ isDrawer = false }) =>
       <div className={
         isDrawer
           ? 'shrink-0 bg-white border-t border-[#E5DEC9] p-3.5 sm:p-4 shadow-md animate-pulse z-20'
-          : 'fixed left-0 right-0 z-30 bg-white border-t border-[#E5DEC9] p-3.5 sm:p-4 shadow-md animate-pulse bottom-[58px] lg:bottom-0'
+          : 'fixed left-0 right-0 z-30 bg-white border-t border-[#E5DEC9] px-4 pt-3.5 pb-[calc(0.875rem+env(safe-area-inset-bottom,0px))] shadow-md animate-pulse bottom-0'
       }>
         <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
           <div className="space-y-1">
@@ -289,6 +290,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
   };
 
   const handleProceedToCheckout = () => {
+    triggerHaptic('medium');
     setIsNavigatingToCheckout(true);
     setIsCartOpen(false);
     if (!user) {
@@ -312,7 +314,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
   }
 
   return (
-    <div className={`${isDrawer ? 'h-full overflow-hidden' : 'min-h-full justify-between'} bg-[#FAF7F0] flex flex-col font-sans text-[#292524]`}>
+    <div className={`${isDrawer ? 'h-full overflow-hidden' : 'min-h-screen'} bg-[#FAF7F0] flex flex-col justify-between font-sans`}>
       {/* 1. TOP HEADER BAR */}
       <header className="shrink-0 bg-white border-b border-[#E5DEC9] sticky top-0 z-20 px-4 py-3.5 flex items-center justify-between shadow-2xs">
         <div className="flex items-center gap-3">
@@ -348,14 +350,14 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
           <span>Saree removed from cart.</span>
           <button
             onClick={handleUndoRemove}
-            className="font-serif font-bold text-[#D4B870] hover:underline flex items-center gap-1 cursor-pointer"
+            className="text-[#D4B870] font-bold underline hover:text-white cursor-pointer ml-3 shrink-0"
           >
-            <RotateCcw size={12} /> UNDO
+            Undo
           </button>
         </div>
       )}
 
-      {/* WISHLIST TOAST */}
+      {/* WISHLIST CONFIRMATION TOAST */}
       {wishlistToastMsg && (
         <div className="shrink-0 bg-[#6B1725] text-white px-4 py-2.5 text-xs font-sans font-medium flex items-center justify-between sticky top-14 z-30 animate-slideDown shadow-md">
           <span className="flex items-center gap-1.5">
@@ -372,7 +374,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
       )}
 
       {/* 2. MAIN CONTENT AREA */}
-      <main className={`flex-1 ${isDrawer ? 'overflow-y-auto overscroll-contain pb-6' : 'pb-44 lg:pb-28'} max-w-xl mx-auto w-full p-4 space-y-4`}>
+      <main className={`flex-1 ${isDrawer ? 'overflow-y-auto overscroll-contain pb-6' : 'pb-32 lg:pb-28'} max-w-xl mx-auto w-full p-4 space-y-4`}>
         {cart.length === 0 ? (
           /* PIXEL-PERFECT EMPTY CART VIEW MATCHING MOCKUP */
           <div className={`flex-1 flex flex-col items-center justify-center ${isDrawer ? 'py-12 my-auto' : 'min-h-[60vh] py-12'} px-6 text-center`}>
@@ -660,7 +662,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
           className={
             isDrawer
               ? 'shrink-0 z-20 bg-white border-t border-[#E5DEC9] p-3.5 sm:p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]'
-              : 'fixed left-0 right-0 z-30 bg-white border-t border-[#E5DEC9] p-3.5 sm:p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bottom-[58px] lg:bottom-0'
+              : 'fixed left-0 right-0 z-30 bg-white border-t border-[#E5DEC9] px-4 pt-3.5 pb-[calc(0.875rem+env(safe-area-inset-bottom,0px))] shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bottom-0'
           }
         >
           <div className="max-w-xl mx-auto flex items-center justify-between gap-4">

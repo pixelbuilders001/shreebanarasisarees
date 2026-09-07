@@ -30,7 +30,9 @@ export const viewport: Viewport = {
   themeColor: "#801F32",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 5, // Allow zooming for accessibility
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
@@ -125,7 +127,7 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <RouteTransitionLoader />
           </Suspense>
-          <div className="flex-grow pb-16 lg:pb-0">
+          <div className="flex-grow pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0">
             {children}
           </div>
           <CartDrawer />

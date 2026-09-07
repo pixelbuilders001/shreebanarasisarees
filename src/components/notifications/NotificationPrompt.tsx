@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Bell, X } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 
 export default function NotificationPrompt() {
+  const pathname = usePathname();
   const { user, showToast } = useStore();
   const [showPrompt, setShowPrompt] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -97,10 +99,12 @@ export default function NotificationPrompt() {
     setShowPrompt(false);
   };
 
-  if (!user || !showPrompt) return null;
+  if (!user || !showPrompt || pathname.startsWith('/checkout') || pathname.startsWith('/payment') || pathname.startsWith('/receipt')) {
+    return null;
+  }
 
   return (
-    <div className="fixed bottom-24 left-4 right-4 md:left-auto md:right-6 z-40 bg-[#FFF9F0] border border-gold/45 text-dark-brown p-5 rounded-2xl shadow-2xl max-w-sm animate-toast-slide-down">
+    <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] left-4 right-4 md:left-auto md:right-6 z-50 bg-[#FFF9F0] border border-gold/45 text-dark-brown p-5 rounded-2xl shadow-2xl max-w-sm animate-toast-slide-down">
       <button 
         onClick={handleDismiss}
         className="absolute top-3 right-3 text-dark-brown/40 hover:text-dark-brown p-1"

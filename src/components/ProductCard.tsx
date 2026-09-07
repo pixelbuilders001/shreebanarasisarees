@@ -7,6 +7,7 @@ import { Heart, ShoppingBag, Eye, X, Star, Scissors, Bell, Loader2 } from 'lucid
 import { Product } from '../data/products';
 import { useStore } from '../context/StoreContext';
 import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
+import { triggerHaptic } from '../utils/haptics';
 
 interface ProductCardProps {
   product: Product;
@@ -34,10 +35,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   return (
     <>
-    <div className="group relative bg-[#FFF9F0]/65 border border-gold/15 hover:border-gold/45 rounded-xl hover:shadow-[0_8px_24px_rgba(212,175,55,0.12)] hover:-translate-y-1 transition-all duration-500 flex flex-col justify-between overflow-hidden">
+    <div className="group relative bg-[#FFF9F0]/65 border border-gold/15 hover:border-gold/45 rounded-xl md:hover:shadow-[0_8px_24px_rgba(212,175,55,0.12)] md:hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden">
       {/* Image Container with Luxury Full-bleed Top */}
       <div className={`relative w-full aspect-[3/4] overflow-hidden border-b border-gold/10 ${imageLoaded ? 'bg-cream/20' : 'bg-cream animate-pulse'}`}>
-        <Link href={`/product/${product.slug}`} className="block w-full h-full">
+        <Link href={`/product/${product.slug}`} className="block w-full h-full active:opacity-90 transition-opacity">
           <Image
             src={imageError || !product.images?.[0] ? NO_IMAGE_PLACEHOLDER : product.images[0]}
             alt={product.name}
@@ -59,14 +60,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {/* Rich Overlay */}
         <div className="absolute inset-0 bg-maroon/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-        {/* Quick View Button — always visible on mobile, slides up on desktop hover */}
+        {/* Quick View Button — slides up on desktop hover only */}
         <button
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            triggerHaptic('light');
             setIsQuickViewOpen(true);
           }}
-          className="absolute bottom-0 inset-x-0 z-10 py-1.5 sm:py-2 bg-dark-brown/85 backdrop-blur-sm text-ivory text-[8.5px] sm:text-[10px] font-serif font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 md:translate-y-full md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 transition-all duration-300"
+          className="hidden md:flex absolute bottom-0 inset-x-0 z-10 py-2 bg-dark-brown/85 backdrop-blur-sm text-ivory text-[10px] font-serif font-bold uppercase tracking-widest items-center justify-center gap-1.5 md:translate-y-full md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 transition-all duration-300 cursor-pointer select-none"
           aria-label={`Quick view ${product.name}`}
         >
           <Eye size={12} />
@@ -79,8 +81,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         {/* Wishlist Floating Button (Top Right Corner) */}
         <button
-          onClick={() => toggleWishlist(product)}
-          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-xs shadow-md hover:scale-108 transition-all z-10 flex items-center justify-center border border-[#E5DEC9]/50"
+          onClick={() => {
+            triggerHaptic('light');
+            toggleWishlist(product);
+          }}
+          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-xs shadow-md hover:scale-108 transition-all z-10 flex items-center justify-center border border-[#E5DEC9]/50 active:scale-90 select-none cursor-pointer"
           aria-label="Add to Wishlist"
         >
           <Heart
@@ -166,9 +171,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  triggerHaptic('medium');
                   updateCartQuantity(product.id, quantityInCart - 1);
                 }}
-                className="px-2.5 h-full text-xs font-bold text-maroon hover:bg-maroon/5 transition-colors flex items-center justify-center"
+                className="px-2.5 h-full text-xs font-bold text-maroon hover:bg-maroon/5 transition-colors flex items-center justify-center active:scale-90 cursor-pointer"
                 aria-label="Decrease quantity"
               >
                 -
@@ -180,10 +186,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  triggerHaptic('medium');
                   updateCartQuantity(product.id, quantityInCart + 1);
                 }}
                 disabled={product.stock > 0 && quantityInCart >= product.stock}
-                className="px-2.5 h-full text-xs font-bold text-maroon hover:bg-maroon/5 transition-colors disabled:opacity-40 disabled:hover:bg-transparent flex items-center justify-center"
+                className="px-2.5 h-full text-xs font-bold text-maroon hover:bg-maroon/5 transition-colors disabled:opacity-40 disabled:hover:bg-transparent flex items-center justify-center active:scale-90 cursor-pointer"
                 aria-label="Increase quantity"
               >
                 +
@@ -192,7 +199,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           ) : product.stock === 0 ? (
             <button
               onClick={handleNotifyMe}
-              className="w-full py-1.5 sm:py-2 rounded border border-maroon/30 bg-[#FFF9F0]/40 text-maroon font-bold text-[10px] sm:text-[11px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm"
+              className="w-full py-1.5 sm:py-2 rounded border border-maroon/30 bg-[#FFF9F0]/40 text-maroon font-bold text-[10px] sm:text-[11px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
               aria-label={`Notify me when ${product.name} is back in stock`}
             >
               <Bell size={11} />
@@ -203,9 +210,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                triggerHaptic('medium');
                 addToCart(product, 1);
               }}
-              className="w-full py-1.5 sm:py-2 rounded border border-maroon/30 hover:border-maroon/80 bg-[#FFF9F0]/40 hover:bg-[#FFF9F0]/90 text-maroon font-bold text-[10px] sm:text-[11px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98] hover:scale-[1.01]"
+              className="w-full py-1.5 sm:py-2 rounded border border-maroon/30 hover:border-maroon/80 bg-[#FFF9F0]/40 hover:bg-[#FFF9F0]/90 text-maroon font-bold text-[10px] sm:text-[11px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.96] hover:scale-[1.01] cursor-pointer"
               aria-label="Add to Cart"
             >
               <ShoppingBag size={11} className="transition-colors" />
@@ -257,6 +265,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
 
   const handleAddToCart = async () => {
     if (product.stock > 0) {
+      triggerHaptic('medium');
       setIsAdding(true);
       await new Promise(resolve => setTimeout(resolve, 250));
       addToCart(product, qty);
@@ -431,8 +440,11 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
                 </button>
 
                 <button
-                  onClick={() => toggleWishlist(product)}
-                  className="p-2.5 rounded-lg border border-gold/30 text-dark-brown hover:text-maroon hover:border-maroon/50 transition-colors flex-shrink-0"
+                  onClick={() => {
+                    triggerHaptic('light');
+                    toggleWishlist(product);
+                  }}
+                  className="p-2.5 rounded-lg border border-gold/30 text-dark-brown hover:text-maroon hover:border-maroon/50 active:scale-90 transition-all flex-shrink-0 cursor-pointer"
                   aria-label="Toggle wishlist"
                 >
                   <Heart size={16} className={activeWishlist ? 'fill-maroon text-maroon' : ''} />

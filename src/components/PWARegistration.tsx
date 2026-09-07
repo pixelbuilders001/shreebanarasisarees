@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Download, X, Share } from "lucide-react";
 import { recordPwaInstall } from "@/data/supabase";
 import { event as trackGAEvent } from "@/lib/gtag";
@@ -23,6 +24,7 @@ function getPlatform(): string {
 }
 
 export default function PWARegistration() {
+  const pathname = usePathname();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState<boolean>(false);
   const [isIOS, setIsIOS] = useState<boolean>(false);
@@ -168,10 +170,13 @@ export default function PWARegistration() {
   };
 
 
-  if (!showPrompt) return null;
+  // Suppress PWA install banner during checkout/payment flow or if prompt is closed
+  if (!showPrompt || pathname.startsWith('/checkout') || pathname.startsWith('/payment') || pathname.startsWith('/receipt')) {
+    return null;
+  }
 
   return (
-    <div className="sm:hidden fixed bottom-16 left-3 right-3 z-50 bg-white/95 backdrop-blur-md border border-[#F3ECE0] text-[#292524] p-3 rounded-2xl shadow-xl transition-all">
+    <div className="sm:hidden fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] left-3 right-3 z-50 bg-white/95 backdrop-blur-md border border-[#F3ECE0] text-[#292524] p-3 rounded-2xl shadow-xl transition-all animate-slideUp">
       <div className="flex items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
           <img

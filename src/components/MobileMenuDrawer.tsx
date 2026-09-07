@@ -14,6 +14,7 @@ import {
   Star
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
+import { triggerHaptic } from '../utils/haptics';
 
 interface MobileMenuDrawerProps {
   isOpen: boolean;
@@ -177,7 +178,10 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
             />
           </Link>
           <button
-            onClick={onClose}
+            onClick={() => {
+              triggerHaptic('light');
+              onClose();
+            }}
             className="p-1.5 rounded-full text-[#6B625D] hover:text-[#6B1725] hover:bg-[#FAF7F0] active:scale-90 transition-all cursor-pointer"
             aria-label="Close menu"
           >
@@ -193,7 +197,10 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
             <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-[#E5DEC9]">
               <Link
                 href="/account"
-                onClick={onClose}
+                onClick={() => {
+                  triggerHaptic('selection');
+                  onClose();
+                }}
                 className="flex items-center gap-2.5 min-w-0 flex-1"
               >
                 <div className="w-8 h-8 rounded-full bg-[#6B1725] text-white flex items-center justify-center font-bold text-xs shrink-0">
@@ -210,6 +217,7 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
               </Link>
               <button
                 onClick={() => {
+                  triggerHaptic('light');
                   onClose();
                   logoutUser();
                 }}
@@ -222,6 +230,7 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
           ) : (
             <button
               onClick={() => {
+                triggerHaptic('light');
                 onClose();
                 setIsAuthModalOpen(true);
               }}
@@ -241,7 +250,10 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
           <div className="grid grid-cols-2 gap-2">
             <Link
               href="/sarees?filter=new"
-              onClick={onClose}
+              onClick={() => {
+                triggerHaptic('selection');
+                onClose();
+              }}
               className="p-2.5 bg-white rounded-xl border border-[#E5DEC9] hover:border-[#6B1725] flex items-center justify-between transition-colors active:scale-98"
             >
               <div className="flex items-center gap-1.5">
@@ -252,7 +264,10 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
             </Link>
             <Link
               href="/sarees?filter=bestseller"
-              onClick={onClose}
+              onClick={() => {
+                triggerHaptic('selection');
+                onClose();
+              }}
               className="p-2.5 bg-white rounded-xl border border-[#E5DEC9] hover:border-[#6B1725] flex items-center justify-between transition-colors active:scale-98"
             >
               <div className="flex items-center gap-1.5">
@@ -271,7 +286,10 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
               </span>
               <Link
                 href="/sarees"
-                onClick={onClose}
+                onClick={() => {
+                  triggerHaptic('selection');
+                  onClose();
+                }}
                 className="text-[11px] font-semibold text-[#6B1725] hover:underline"
               >
                 All Sarees &rarr;
@@ -283,7 +301,10 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
                 <Link
                   key={cat.name}
                   href={cat.href}
-                  onClick={onClose}
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    onClose();
+                  }}
                   className="flex items-center justify-between px-3.5 py-2.5 hover:bg-[#FAF7F0] text-xs font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
                 >
                   <span>{cat.name}</span>
@@ -302,7 +323,10 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
               {user ? (
                 <Link
                   href="/account"
-                  onClick={onClose}
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    onClose();
+                  }}
                   className="flex items-center justify-between px-3.5 py-2.5 hover:bg-[#FAF7F0] text-xs font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
                 >
                   <div className="flex items-center gap-2.5">
@@ -314,6 +338,7 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
               ) : (
                 <button
                   onClick={() => {
+                    triggerHaptic('light');
                     onClose();
                     setIsAuthModalOpen(true);
                   }}
@@ -330,7 +355,10 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
               {user ? (
                 <Link
                   href="/wishlist"
-                  onClick={onClose}
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    onClose();
+                  }}
                   className="flex items-center justify-between px-3.5 py-2.5 hover:bg-[#FAF7F0] text-xs font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
                 >
                   <div className="flex items-center gap-2.5">
@@ -348,6 +376,7 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
               ) : (
                 <button
                   onClick={() => {
+                    triggerHaptic('light');
                     onClose();
                     setIsAuthModalOpen(true);
                   }}
@@ -363,7 +392,10 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
 
               <Link
                 href="/our-store"
-                onClick={onClose}
+                onClick={() => {
+                  triggerHaptic('selection');
+                  onClose();
+                }}
                 className="flex items-center justify-between px-3.5 py-2.5 hover:bg-[#FAF7F0] text-xs font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
               >
                 <div className="flex items-center gap-2.5">
@@ -377,6 +409,7 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
                 href="https://wa.me/+916203909946?text=Namaste!%20I%20would%20like%20assistance%20with%20a%20saree."
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => triggerHaptic('selection')}
                 className="flex items-center justify-between px-3.5 py-2.5 hover:bg-[#FAF7F0] text-xs font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
               >
                 <div className="flex items-center gap-2.5">
