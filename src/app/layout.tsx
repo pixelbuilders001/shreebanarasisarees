@@ -27,7 +27,10 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const viewport: Viewport = {
-  themeColor: "#801F32",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FAF7F0" },
+    { media: "(prefers-color-scheme: dark)", color: "#FAF7F0" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -59,7 +62,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "Shree Banarasi",
   },
   robots: {

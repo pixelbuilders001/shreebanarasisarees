@@ -235,7 +235,10 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
       <div className="w-full h-full md:h-auto md:max-w-4xl bg-[#FAF7F0] md:border md:border-[#B08A3C]/40 md:rounded-3xl md:shadow-2xl overflow-hidden flex flex-col md:max-h-[85vh]">
 
         {/* ── 1. SEARCH HEADER BAR ── */}
-        <div className="sticky top-0 z-20 bg-[#FAF7F0] px-4 md:px-6 py-3.5 border-b border-[#E5DEC9] flex items-center gap-3 shadow-2xs">
+        <div
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.875rem)' }}
+          className="sticky top-0 z-20 bg-[#FAF7F0] px-4 md:px-6 pb-3.5 border-b border-[#E5DEC9] flex items-center gap-3 shadow-2xs"
+        >
           {/* Mobile Chevron Back Arrow */}
           <button
             onClick={onClose}

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
-  Search,
   ShoppingBag,
   Heart,
   User,
@@ -24,7 +23,6 @@ import { AdvancedSearchBar } from './AdvancedSearchBar';
 import { AuthModal } from './AuthModal';
 import { DeliveryPincodeBar } from './DeliveryPincodeBar';
 import { MobileMenuDrawer } from './MobileMenuDrawer';
-import { SearchViewModal } from './SearchViewModal';
 import { triggerHaptic } from '../utils/haptics';
 import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 
@@ -99,54 +97,73 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
 
   // Collapsible mobile header state
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
-  const [isMobileSearchModalOpen, setIsMobileSearchModalOpen] = useState(false);
-  const lastScrollY = useRef(0);
-  const accumulatedScroll = useRef(0);
-  const isTicking = useRef(false);
+  const touchStartY = useRef<number | null>(null);
 
-  // Track window scroll with hysteresis & deadband for smooth, flicker-free collapse
   useEffect(() => {
+    // 1. Scroll listener only handles compact header styling and top boundary
     const handleScroll = () => {
-      if (isTicking.current) return;
+      const currentScrollY = window.scrollY;
+      setIsScrolled(currentScrollY > 20);
 
-      isTicking.current = true;
-      requestAnimationFrame(() => {
-        const currentScrollY = Math.max(0, window.scrollY);
-        const delta = currentScrollY - lastScrollY.current;
+      // When near the very top of the page, always keep the header expanded
+      if (currentScrollY <= 40) {
+        setIsHeaderCollapsed(false);
+      }
+    };
 
-        // Sticky header compact shadow styling
-        setIsScrolled(currentScrollY > 20);
+    // 2. Physical touch gesture tracking (100% immune to DOM reflows & layout shifts)
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartY.current = e.touches[0].clientY;
+    };
 
-        // 1. Top Safe Zone (< 90px): Always stay expanded, reset accumulator
-        if (currentScrollY <= 90) {
-          setIsHeaderCollapsed(false);
-          accumulatedScroll.current = 0;
-        } else {
-          // 2. Accumulate directional scroll; reset accumulator if direction flips
-          if ((delta > 0 && accumulatedScroll.current < 0) || (delta < 0 && accumulatedScroll.current > 0)) {
-            accumulatedScroll.current = 0;
-          }
-          accumulatedScroll.current += delta;
+    const handleTouchMove = (e: TouchEvent) => {
+      if (touchStartY.current === null) return;
+      const currentY = e.touches[0].clientY;
+      const deltaY = currentY - touchStartY.current;
 
-          // 3. Deliberate downward scroll (> 45px) past the top zone -> collapse
-          if (accumulatedScroll.current > 45) {
-            setIsHeaderCollapsed(true);
-            accumulatedScroll.current = 0;
-          }
-          // 4. Deliberate upward scroll (< -35px) -> expand
-          else if (accumulatedScroll.current < -35) {
-            setIsHeaderCollapsed(false);
-            accumulatedScroll.current = 0;
-          }
+      // Only collapse/expand when scrolled past the top safe zone
+      if (window.scrollY > 50) {
+        // Finger swiped UP by > 35px -> user scrolling DOWN -> collapse
+        if (deltaY < -35) {
+          setIsHeaderCollapsed(true);
+          touchStartY.current = currentY; // Reset baseline
         }
+        // Finger swiped DOWN by > 30px -> user scrolling UP -> expand
+        else if (deltaY > 30) {
+          setIsHeaderCollapsed(false);
+          touchStartY.current = currentY; // Reset baseline
+        }
+      }
+    };
 
-        lastScrollY.current = currentScrollY;
-        isTicking.current = false;
-      });
+    const handleTouchEnd = () => {
+      touchStartY.current = null;
+    };
+
+    // 3. Mouse wheel / Trackpad gesture tracking for desktop/tablet
+    const handleWheel = (e: WheelEvent) => {
+      if (window.scrollY > 50) {
+        if (e.deltaY > 25) {
+          setIsHeaderCollapsed(true);
+        } else if (e.deltaY < -20) {
+          setIsHeaderCollapsed(false);
+        }
+      }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+    window.addEventListener('wheel', handleWheel, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('wheel', handleWheel);
+    };
   }, []);
 
   // Handle opening mobile menu drawer
@@ -186,19 +203,22 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
 
   return (
     <>
-      {/* 1. TOP ANNOUNCEMENT STRIP (SAMASTIPUR DELIVERY, STORE, WHATSAPP, TRACK ORDER) */}
-      <div className={hideOnMobile ? "hidden lg:block" : ""}>
+      {/* 1. TOP ANNOUNCEMENT STRIP (SAMASTIPUR DELIVERY, STORE, WHATSAPP, TRACK ORDER - DESKTOP ONLY) */}
+      <div className="hidden lg:block">
         <AnnouncementBar />
       </div>
 
-      {/* 2. MAIN HEADER (STICKY ON DESKTOP & MOBILE) */}
+      {/* 2. MAIN HEADER (STICKY ON DESKTOP & MOBILE WITH SAFE-AREA-INSET-TOP) */}
       <header
+        style={{
+          paddingTop: `calc(env(safe-area-inset-top, 0px) + ${isHeaderCollapsed ? '0.25rem' : isScrolled ? '0.375rem' : '0.5rem'})`
+        }}
         className={`${hideOnMobile ? "hidden lg:block" : ""} sticky top-0 z-40 w-full transition-all duration-300 bg-[#FAF7F0]/95 backdrop-blur-md border-b border-[#F3ECE0] ${
           isHeaderCollapsed
-            ? 'shadow-sm py-1.5'
+            ? 'shadow-sm pb-1 sm:pb-1.5'
             : isScrolled
-              ? 'shadow-sm py-1.5 sm:py-2'
-              : 'py-2 sm:py-3.5'
+              ? 'shadow-sm pb-1.5 sm:pb-2'
+              : 'pb-2 sm:pb-3'
         }`}
       >
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
@@ -215,6 +235,9 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
                   }`}
               />
             </Link>
+
+            {/* DESKTOP PINCODE LOCATION CHIP */}
+            <DeliveryPincodeBar variant="desktop" />
 
             {/* NAVIGATION LINKS */}
             <nav className="flex items-center gap-6 text-xs font-semibold tracking-wider text-[#292524] uppercase">
@@ -353,7 +376,7 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
           {/* MOBILE HEADER LAYOUT */}
           <div className="lg:hidden flex flex-col gap-1.5">
 
-            {/* MOBILE TOP BAR: MENU | LOGO | SEARCH (WHEN COLLAPSED) | WISHLIST | CART */}
+            {/* MOBILE TOP BAR: MENU | LOGO | WISHLIST | CART */}
             <div className="flex items-center justify-between">
 
               {/* Menu Hamburger Button */}
@@ -373,26 +396,12 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
                 <img
                   src="/brand_logo.webp"
                   alt="Shree Banarasi Sarees Logo"
-                  className="h-10 w-auto object-contain"
+                  className="h-8 sm:h-9 w-auto object-contain"
                 />
               </Link>
 
-              {/* Mobile Right Icons (Quick Search when collapsed, Wishlist & Cart) */}
+              {/* Mobile Right Icons (Wishlist & Cart) */}
               <div className="flex items-center gap-1 sm:gap-2">
-
-                {/* Quick Search trigger icon button when header is collapsed */}
-                {isHeaderCollapsed && (
-                  <button
-                    onClick={() => {
-                      triggerHaptic('light');
-                      setIsMobileSearchModalOpen(true);
-                    }}
-                    className="p-2 text-[#292524] hover:text-[#6B1725] active:scale-90 transition-transform cursor-pointer animate-fadeIn"
-                    aria-label="Search sarees"
-                  >
-                    <Search size={21} />
-                  </button>
-                )}
 
                 {user ? (
                   <Link
@@ -443,14 +452,14 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
 
             {/* COLLAPSIBLE SECTION: PINCODE + ADVANCED SEARCH */}
             <div
-              className={`transition-all duration-300 ease-out flex flex-col gap-2 overflow-hidden ${
+              className={`transition-all duration-300 ease-out flex flex-col gap-1.5 overflow-hidden ${
                 isHeaderCollapsed
                   ? 'max-h-0 opacity-0 pointer-events-none'
                   : 'max-h-72 opacity-100 pt-1 pb-0.5'
               }`}
             >
-              {/* MOBILE PINCODE DELIVERY BAR MATCHING IMAGE 2 */}
-              <div className="w-full -mx-4 font-sans font-medium" style={{ width: 'calc(100% + 2rem)' }}>
+              {/* MOBILE PINCODE DELIVERY BAR */}
+              <div className="w-full font-sans font-medium">
                 <DeliveryPincodeBar />
               </div>
 
@@ -542,12 +551,6 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
-      />
-
-      {/* MOBILE SEARCH VIEW MODAL */}
-      <SearchViewModal
-        isOpen={isMobileSearchModalOpen}
-        onClose={() => setIsMobileSearchModalOpen(false)}
       />
     </>
   );

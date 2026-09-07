@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight, ArrowRight, Sparkles } from 'lucide-react';
@@ -50,7 +50,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
   const [dbBanners, setDbBanners] = useState<DbHeroBanner[]>(initialBanners ?? []);
   const [loading, setLoading] = useState(initialBanners === undefined);
   const [activeIdx, setActiveIdx] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (initialBanners !== undefined) return;
@@ -83,15 +82,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
     return () => clearInterval(timer);
   }, [slides.length]);
 
-  const handleScroll = () => {
-    if (scrollRef.current) {
-      const scrollLeft = scrollRef.current.scrollLeft;
-      const width = scrollRef.current.clientWidth;
-      const index = Math.round(scrollLeft / (width * 0.85));
-      setActiveIdx(Math.min(Math.max(index, 0), slides.length - 1));
-    }
-  };
-
   const prevDesktopSlide = () => {
     setActiveIdx((prev) => (prev - 1 + slides.length) % slides.length);
   };
@@ -114,11 +104,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
     <>
       {/* ── 1. MOBILE HERO VIEW (PRESERVED 100% UNTOUCHED FOR MOBILE) ── */}
       <section className="w-full bg-[#FAF6EE] py-3 select-none md:hidden">
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="flex gap-3 overflow-x-auto snap-x snap-mandatory px-4 no-scrollbar scroll-smooth"
-        >
+        <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory px-4 no-scrollbar scroll-smooth">
           {slides.map((slide, idx) => (
             <Link
               key={slide.id}
@@ -138,20 +124,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
             </Link>
           ))}
         </div>
-
-        {slides.length > 1 && (
-          <div className="flex justify-center items-center pt-2.5">
-            <div className="w-20 h-1 bg-[#E5DEC9] rounded-full overflow-hidden relative">
-              <div
-                className="h-full bg-[#B08A3C] rounded-full transition-all duration-300"
-                style={{
-                  width: `${100 / slides.length}%`,
-                  transform: `translateX(${activeIdx * 100}%)`,
-                }}
-              />
-            </div>
-          </div>
-        )}
       </section>
 
       {/* ── 2. DESKTOP HERO VIEW (REDESIGNED LUXURY EXPERIENCE FOR DESKTOP/LAPTOP) ── */}
