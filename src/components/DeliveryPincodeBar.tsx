@@ -189,15 +189,21 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
     checkPincode(cleanPin);
   };
 
-  const handleSavePincode = async (pinToSave: string) => {
-    if (/^\d{6}$/.test(pinToSave)) {
-      const quick = getQuickCity(pinToSave);
-      if (quick) {
-        setCity(quick);
-      }
-      await setCurrentPincode(pinToSave);
-      setIsSheetOpen(false);
+  const handleSavePincode = (pinToSave: string) => {
+    const clean = pinToSave?.trim().replace(/\D/g, '').slice(0, 6);
+    if (!/^\d{6}$/.test(clean)) return;
+
+    triggerHaptic('selection');
+    const quick = getQuickCity(clean);
+    if (quick) {
+      setCity(quick);
     }
+    // 1. Immediately close the sheet synchronously on the very first click / tap
+    setIsSheetOpen(false);
+
+    // 2. Persist and check in background without blocking UI dismissal
+    setCurrentPincode(clean);
+    checkPincode(clean);
   };
 
   // Helper to determine if a pincode is eligible for 20-min express
@@ -265,6 +271,12 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
                 maxLength={6}
                 value={inputPincode}
                 onChange={(e) => handleInputChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && inputPincode.length === 6) {
+                    e.preventDefault();
+                    handleSavePincode(inputPincode);
+                  }
+                }}
                 placeholder="Enter 6-digit pincode"
                 className="w-full bg-[#FAF6EE] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 text-xs font-sans font-medium text-[#292524] focus:outline-none focus:border-[#6B1725] transition-colors font-mono"
               />
@@ -417,9 +429,11 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
         {/* 4. SAVE & DELIVER TO THIS PINCODE BUTTON (FOURTH) */}
         <div className="pt-1">
           <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => handleSavePincode(inputPincode)}
-            disabled={inputPincode.length !== 6 || isLoading}
-            className="w-full py-3 bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-50 text-white rounded-full font-serif font-bold text-xs uppercase tracking-wider transition-colors shadow-md cursor-pointer flex items-center justify-center gap-2"
+            disabled={inputPincode.length !== 6}
+            className="w-full py-3 bg-[#6B1725] hover:bg-[#52111C] active:scale-[0.99] disabled:opacity-50 text-white rounded-full font-serif font-bold text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
           >
             Deliver to {inputPincode}
           </button>
