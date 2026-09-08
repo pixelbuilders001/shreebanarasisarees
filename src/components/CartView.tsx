@@ -198,9 +198,15 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
 
   const is20Min = useMemo(() => {
     if (result) {
-      return !!(result.is20MinDelivery || (result.distanceKm !== undefined && result.distanceKm <= 20) || (result as any).eligible);
+      return !!(
+        result.is20MinDelivery ||
+        result.isExpress ||
+        (result.distanceKm !== undefined && result.distanceKm <= 10) ||
+        result.eligible
+      );
     }
-    return pincode === (defaultDeliveryPincode || '848101') || pincode === '848114';
+    const cleanPin = (pincode || '').trim();
+    return cleanPin.startsWith('8481') || cleanPin === (defaultDeliveryPincode || '848101');
   }, [result, pincode, defaultDeliveryPincode]);
 
   const timingStatus = useMemo(() => {

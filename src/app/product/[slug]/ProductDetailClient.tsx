@@ -81,7 +81,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
         result.is20MinDelivery ||
         result.isExpress ||
         (result.distanceKm !== undefined && result.distanceKm <= 10) ||
-        (result as any).eligible
+        result.eligible
       );
     }
     const cleanPin = (displayPincode || '').trim();
