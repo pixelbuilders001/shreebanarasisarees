@@ -7,8 +7,8 @@ const allowedOrigins = allowedOriginsEnv
 
 const nextConfig: NextConfig = {
   images: {
-    formats: ["image/avif", "image/webp"],
-    minimumCacheTTL: 86400,
+    loader: 'custom',
+    loaderFile: './src/lib/imagekitLoader.ts',
     remotePatterns: [
       {
         protocol: "https",

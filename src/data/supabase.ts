@@ -287,12 +287,14 @@ export async function fetchHomePageProducts(): Promise<{
 }> {
   try {
     const products = await fetchProducts();
-    const bestsellers = products.filter(p => p.bestseller).slice(0, 8);
-    const newArrivals = products.filter(p => p.newArrival).slice(0, 8);
+    const withImages = products.filter(p => p.images && p.images.length > 0 && !p.images[0].startsWith('data:'));
+    const pool = withImages.length > 0 ? withImages : products;
+    const bestsellers = pool.filter(p => p.bestseller).slice(0, 8);
+    const newArrivals = pool.filter(p => p.newArrival).slice(0, 8);
 
     return {
-      bestsellers: bestsellers.length > 0 ? bestsellers : products.slice(0, 8),
-      newArrivals: newArrivals.length > 0 ? newArrivals : products.slice(0, 8)
+      bestsellers: bestsellers.length > 0 ? bestsellers : pool.slice(0, 8),
+      newArrivals: newArrivals.length > 0 ? newArrivals : pool.slice(0, 8)
     };
   } catch (err) {
     console.error('Exception in fetchHomePageProducts:', err);
@@ -379,7 +381,7 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
     // 1. Try to extract ID from end of slug (format: name-id)
     const parts = slug.split('-');
     if (parts.length > 1) {
-      const idCandidate = parts[parts.length - 1];
+      const idCandidate = parts[parts.length - 1].toUpperCase();
       const [{ data, error }, ratingMap] = await Promise.all([
         supabase
           .from('storefront_products')
@@ -392,7 +394,7 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
       if (!error && data) {
         const product = mapDbProductToProduct(data as DbInventory, ratingMap);
         // Double check slug matches
-        if (product.slug === slug) {
+        if (product.slug.toLowerCase() === slug.toLowerCase()) {
           return product;
         }
       }

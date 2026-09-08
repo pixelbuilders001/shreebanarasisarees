@@ -65,6 +65,14 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
   const [activeImage, setActiveImage] = useState<string>(product.images[0]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  // Sync active image when product or variant changes
+  useEffect(() => {
+    if (product.images && product.images.length > 0) {
+      setActiveImage(product.images[0]);
+      setActiveImageIndex(0);
+    }
+  }, [product.id, product.images]);
   const [quantity, setQuantity] = useState(1);
   const displayPincode = currentPincode || defaultDeliveryPincode || '';
   const { result, checkPincode } = useCustomerLocation();
