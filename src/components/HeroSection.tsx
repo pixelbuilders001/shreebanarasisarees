@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight, ArrowRight, Sparkles } from 'lucide-react';
-import { fetchActiveHeroBanners, DbHeroBanner } from '../data/supabase';
+import { DbHeroBanner } from '../data/supabase';
+import { useHeroBanners } from '../hooks/useHeroBanners';
 
 // High-resolution authentic Indian saree model hero images
 const DEFAULT_HERO_SLIDES = [
@@ -47,21 +48,8 @@ interface HeroSectionProps {
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
-  const [dbBanners, setDbBanners] = useState<DbHeroBanner[]>(initialBanners ?? []);
-  const [loading, setLoading] = useState(initialBanners === undefined);
+  const { banners: dbBanners, isLoading: loading } = useHeroBanners(initialBanners);
   const [activeIdx, setActiveIdx] = useState(0);
-
-  useEffect(() => {
-    if (initialBanners !== undefined) return;
-    let cancelled = false;
-    fetchActiveHeroBanners().then(data => {
-      if (!cancelled) {
-        setDbBanners(data);
-        setLoading(false);
-      }
-    });
-    return () => { cancelled = true; };
-  }, [initialBanners]);
 
   const slides = dbBanners.length > 0
     ? dbBanners.map((b, i) => ({
