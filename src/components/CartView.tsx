@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   Trash2,
   Zap,
-  Truck,
   Tag,
   Plus,
   Minus,
@@ -26,6 +25,7 @@ import { useCustomerLocation } from '../hooks/useCustomerLocation';
 import { DeliveryPincodeBar, openPincodeSheet, getExpressTimingStatus } from './DeliveryPincodeBar';
 import { getStandardDeliveryDateInfo } from '../lib/deliveryDates';
 import { triggerHaptic } from '../utils/haptics';
+import { DeliveryRiderIcon } from './delivery/DeliveryIcons';
 
 interface CartViewProps {
   onBack?: () => void;
@@ -535,14 +535,14 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
                 <div className="bg-white border-1.5 border-[#6B1725] rounded-2xl p-3.5 flex items-center justify-between shadow-xs">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-[#6B1725]/10 flex items-center justify-center text-[#6B1725] shrink-0">
-                      <Zap size={16} className="fill-[#6B1725]" />
+                      <DeliveryRiderIcon className="w-5 h-5 shrink-0" />
                     </div>
                     <div>
                       <h4 className="text-xs sm:text-sm font-sans font-bold text-[#292524]">
-                        {timingStatus.isNormalHours ? '20-minute hand delivery' : timingStatus.timingText}
+                        20-Minute Express Delivery
                       </h4>
                       <p className="text-[11px] text-[#7A6E65]">
-                        {timingStatus.descText}
+                        Hand delivery directly from our Samastipur showroom
                       </p>
                     </div>
                   </div>
@@ -555,7 +555,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
                 <div className="bg-white border-1.5 border-[#6B1725] rounded-2xl p-3.5 flex items-center justify-between shadow-xs">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-[#FAF7F0] border border-[#E5DEC9] flex items-center justify-center text-[#7A6E65] shrink-0">
-                      <Truck size={16} />
+                      <DeliveryRiderIcon className="w-5 h-5 shrink-0" />
                     </div>
                     <div>
                       <h4 className="text-xs sm:text-sm font-sans font-bold text-[#292524]">

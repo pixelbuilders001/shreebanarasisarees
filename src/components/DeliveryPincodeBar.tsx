@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { MapPin, X, Loader2, AlertCircle, Plus, Check, Home, Building, Sparkles, ChevronRight } from 'lucide-react';
 import { useCustomerLocation } from '../hooks/useCustomerLocation';
-import { ExpressRiderIcon, StandardTruckIcon } from './delivery/DeliveryIcons';
+import { DeliveryRiderIcon } from './delivery/DeliveryIcons';
 import { useStore } from '../context/StoreContext';
 import { AddNewAddressModal } from './delivery/AddNewAddressModal';
 import { getStandardDeliveryDateInfo } from '../lib/deliveryDates';
@@ -48,7 +48,7 @@ export const getExpressTimingStatus = (result?: any) => {
       isNormalHours: true,
       timingText: '20-Min Express Available',
       badgeText: '✓ 20-Min Express',
-      descText: 'Order before 8 PM for 20-minute hand delivery in Samastipur.'
+      descText: 'Fast hand delivery directly from our Samastipur showroom. Free express & COD available.'
     };
   }
 
@@ -328,11 +328,7 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
               ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950'
               : 'bg-[#FAF6EE] border-[#E5DEC9] text-[#292524]'
             }`}>
-            {isInput20Min ? (
-              <ExpressRiderIcon className="w-9 h-9 shrink-0" />
-            ) : (
-              <StandardTruckIcon className="w-9 h-9 shrink-0" />
-            )}
+            <DeliveryRiderIcon className="w-9 h-9 shrink-0" />
             <div className="space-y-0.5 text-xs">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-serif font-bold text-xs text-[#292524]">

@@ -9,7 +9,6 @@ import {
   MapPin,
   CreditCard,
   Landmark,
-  Truck,
   ShoppingBag,
   ArrowLeft,
   Lock,
@@ -39,7 +38,7 @@ import { load } from '@cashfreepayments/cashfree-js';
 import { trackBeginCheckout, trackPurchase } from '../../lib/gtag';
 import { fetchPincodeDetails } from '../../lib/pincodeLookup';
 import { AddNewAddressModal } from '../../components/delivery/AddNewAddressModal';
-import { ExpressRiderIcon, StandardTruckIcon } from '../../components/delivery/DeliveryIcons';
+import { DeliveryRiderIcon } from '../../components/delivery/DeliveryIcons';
 import { CheckoutSkeleton } from '../../components/CheckoutSkeleton';
 import { getStandardDeliveryDateInfo } from '../../lib/deliveryDates';
 
@@ -1244,7 +1243,7 @@ function CheckoutContent() {
                   <div className="rounded-2xl p-4 text-xs space-y-2.5 shadow-xs bg-emerald-50/90 border border-emerald-300 text-emerald-950">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5 font-extrabold text-emerald-800 text-sm font-serif">
-                        <ExpressRiderIcon className="w-10 h-10 flex-shrink-0" />
+                        <DeliveryRiderIcon className="w-10 h-10 flex-shrink-0" />
                         <span>{isExpressNow ? '20-Min Express Delivery' : 'Express Delivery Available'}</span>
                       </div>
                       <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 font-serif whitespace-nowrap">
@@ -1280,7 +1279,7 @@ function CheckoutContent() {
               <div className="bg-[#FAF7F0] border border-[#B08A3C]/30 rounded-2xl p-4 text-xs space-y-2.5 text-[#292524] shadow-xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5 font-extrabold text-[#6B1725] text-sm font-serif">
-                    <StandardTruckIcon className="w-10 h-10 flex-shrink-0" />
+                    <DeliveryRiderIcon className="w-10 h-10 flex-shrink-0" />
                     <span>Standard Delivery</span>
                   </div>
                   <span className="text-[10px] font-bold text-[#6B1725] bg-[#6B1725]/10 px-2.5 py-0.5 rounded-full border border-[#6B1725]/20 font-serif whitespace-nowrap">

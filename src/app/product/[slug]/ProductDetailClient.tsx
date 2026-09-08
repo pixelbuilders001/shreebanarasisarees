@@ -13,7 +13,6 @@ import {
   Share2,
   ZoomIn,
   Zap,
-  Truck,
   ChevronLeft,
   RotateCcw,
   CheckCircle2,
@@ -40,6 +39,8 @@ import { openPincodeSheet, getExpressTimingStatus } from '../../../components/De
 import { useCustomerLocation } from '../../../hooks/useCustomerLocation';
 import { getStandardDeliveryDateInfo } from '../../../lib/deliveryDates';
 import { triggerHaptic } from '../../../utils/haptics';
+import { DeliveryRiderIcon } from '../../../components/delivery/DeliveryIcons';
+import { getQuickCity } from '../../../lib/pincodeLookup';
 
 interface ProductDetailClientProps {
   product: Product;
@@ -640,19 +641,15 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                   onClick={openPincodeSheet}
                   className="flex items-start gap-2.5 cursor-pointer group"
                 >
-                  {is20Min ? (
-                    <Zap size={18} className="text-[#6B1725] shrink-0 mt-0.5" />
-                  ) : (
-                    <Truck size={18} className="text-[#6B1725] shrink-0 mt-0.5" />
-                  )}
+                  <DeliveryRiderIcon className="w-5 h-5 shrink-0 mt-0.5" />
                   <div>
                     <h4 className="text-sm font-sans font-bold text-[#292524] group-hover:text-[#6B1725] transition-colors">
                       {is20Min
-                        ? (timingStatus.isNormalHours ? '20-minute hand delivery' : timingStatus.timingText)
+                        ? '20-Minute Express Delivery'
                         : deliveryDateInfo.deliveryByText}
                     </h4>
                     <p className="text-xs text-[#7A6E65] mt-0.5">
-                      To <strong className="font-bold text-[#292524]">{displayPincode}</strong> · {is20Min ? timingStatus.descText : 'Free delivery & COD available'}
+                      To <strong className="font-bold text-[#292524]">{getQuickCity(displayPincode) ? `${getQuickCity(displayPincode)} (${displayPincode})` : displayPincode}</strong> · {is20Min ? 'Free express delivery & COD available' : 'Free delivery & COD available'}
                     </p>
                   </div>
                 </div>

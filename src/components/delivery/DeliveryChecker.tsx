@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MapPin, Navigation, Clock, CheckCircle2, AlertCircle, RefreshCw, PackageX, Sparkles, ChevronDown, Plus, Moon, Loader2 } from 'lucide-react';
 import { useCustomerLocation } from '../../hooks/useCustomerLocation';
-import { ExpressRiderIcon, StandardTruckIcon } from './DeliveryIcons';
+import { DeliveryRiderIcon } from './DeliveryIcons';
 import { useStore } from '../../context/StoreContext';
 import { AddNewAddressModal } from './AddNewAddressModal';
 import { getStandardDeliveryDateInfo } from '../../lib/deliveryDates';
@@ -367,7 +367,7 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
                   <div className="p-4 bg-emerald-50/90 border border-emerald-300 rounded-xl text-xs space-y-2.5 text-emerald-950 shadow-xs">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5 font-extrabold text-emerald-800 text-sm font-serif">
-                        <ExpressRiderIcon className="w-10 h-10 flex-shrink-0" />
+                        <DeliveryRiderIcon className="w-10 h-10 flex-shrink-0" />
                         <span>Express Delivery Available</span>
                       </div>
                       <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 font-serif">
@@ -398,7 +398,7 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
                 <div className="p-4 bg-emerald-50/90 border border-emerald-300 rounded-xl text-xs space-y-2.5 text-emerald-950 shadow-xs">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5 font-extrabold text-emerald-800 text-sm font-serif">
-                      <ExpressRiderIcon className="w-10 h-10 flex-shrink-0" />
+                      <DeliveryRiderIcon className="w-10 h-10 flex-shrink-0" />
                       <span>Express Delivery Available</span>
                     </div>
                     <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
@@ -426,7 +426,7 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
             <div className="p-4 bg-[#FAF7F0] border border-[#B08A3C]/30 rounded-xl text-xs space-y-2.5 text-[#292524] shadow-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5 font-extrabold text-[#6B1725] text-sm font-serif">
-                  <StandardTruckIcon className="w-10 h-10 flex-shrink-0" />
+                  <DeliveryRiderIcon className="w-10 h-10 flex-shrink-0" />
                   <span>Standard Delivery Available</span>
                 </div>
                 <span className="text-[10px] font-bold text-[#6B1725] bg-[#6B1725]/10 px-2.5 py-0.5 rounded-full border border-[#6B1725]/20 font-serif">
