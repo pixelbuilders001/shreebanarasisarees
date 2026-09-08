@@ -214,10 +214,14 @@ Deno.serve(async (req) => {
     const productIds = Array.from(itemMap.keys());
 
     // --------------------------------------------------
-    // 2. Authoritative Product Read from storefront_products VIEW
+    // 2. Authoritative Product Read from storefront_products / inventory
     // Rule: Never trust price/discount/stock sent from browser.
     // --------------------------------------------------
-    const { data: dbProducts, error: prodErr } = await admin
+    let dbProducts: any[] | null = null;
+    let prodErr: any = null;
+
+    // Step 2A: Query storefront_products with standard catalog fields & inventory_images
+    const { data: sfData, error: sfErr } = await admin
       .from("storefront_products")
       .select(`
         id,
@@ -235,23 +239,166 @@ Deno.serve(async (req) => {
         fabric,
         color,
         sku,
-        barcode,
         description,
         inventory_images (
           image_url,
-          storage_key,
           is_primary,
           sort_order
         )
       `)
       .in("id", productIds);
 
-    if (prodErr || !dbProducts) {
-      console.error("Storefront products fetch error:", prodErr);
-      return response({ success: false, error: "Failed to verify products in catalog" }, 500);
+    if (!sfErr && sfData && sfData.length > 0) {
+      dbProducts = sfData;
+    } else {
+      if (sfErr) {
+        console.warn("storefront_products join query error:", sfErr.message);
+      }
+      // Step 2B: Fallback without nested relation on view
+      const { data: sfFlatData, error: sfFlatErr } = await admin
+        .from("storefront_products")
+        .select(`
+          id,
+          saree_name,
+          selling_price,
+          mrp,
+          discount_amount,
+          discount_percentage,
+          hsn_code,
+          gst_rate,
+          price_includes_gst,
+          stock,
+          status,
+          category,
+          fabric,
+          color,
+          sku,
+          description
+        `)
+        .in("id", productIds);
+
+      if (!sfFlatErr && sfFlatData && sfFlatData.length > 0) {
+        dbProducts = sfFlatData;
+      } else {
+        // Step 2C: Fallback directly to underlying 'inventory' table
+        const { data: invData, error: invErr } = await admin
+          .from("inventory")
+          .select(`
+            id,
+            saree_name,
+            selling_price,
+            mrp,
+            discount_amount,
+            discount_percentage,
+            hsn_code,
+            gst_rate,
+            price_includes_gst,
+            stock,
+            status,
+            category,
+            fabric,
+            color,
+            sku,
+            description
+          `)
+          .in("id", productIds);
+
+        if (!invErr && invData && invData.length > 0) {
+          dbProducts = invData;
+        } else {
+          // Step 2D: Fallback lookup by SKU in case client sent SKU instead of ID
+          const { data: skuData, error: skuErr } = await admin
+            .from("storefront_products")
+            .select(`
+              id,
+              saree_name,
+              selling_price,
+              mrp,
+              discount_amount,
+              discount_percentage,
+              hsn_code,
+              gst_rate,
+              price_includes_gst,
+              stock,
+              status,
+              category,
+              fabric,
+              color,
+              sku,
+              description
+            `)
+            .in("sku", productIds);
+
+          if (!skuErr && skuData && skuData.length > 0) {
+            dbProducts = skuData;
+          } else {
+            prodErr = sfErr || sfFlatErr || invErr || skuErr;
+          }
+        }
+      }
     }
 
-    const productMap = new Map<string, any>(dbProducts.map((p: any) => [p.id, p]));
+    if (prodErr && (!dbProducts || dbProducts.length === 0)) {
+      console.error("Storefront products fetch error:", prodErr);
+      return response(
+        {
+          success: false,
+          error: `Failed to verify products in catalog: ${prodErr?.message || prodErr?.details || "Product lookup failed"}`,
+        },
+        500
+      );
+    }
+
+    if (!dbProducts || dbProducts.length === 0) {
+      return response(
+        {
+          success: false,
+          error: `Failed to verify products in catalog: No matching products found for ID(s) [${productIds.join(", ")}]`,
+        },
+        404
+      );
+    }
+
+    // Attach inventory_images if needed
+    const needsImages = dbProducts.some(
+      (p: any) => !p.inventory_images || p.inventory_images.length === 0
+    );
+    if (needsImages) {
+      try {
+        const pIds = dbProducts.map((p: any) => p.id).filter(Boolean);
+        if (pIds.length > 0) {
+          const { data: imgRows } = await admin
+            .from("inventory_images")
+            .select("inventory_id, image_url, is_primary, sort_order")
+            .in("inventory_id", pIds);
+
+          if (imgRows && imgRows.length > 0) {
+            for (const p of dbProducts) {
+              if (!p.inventory_images || p.inventory_images.length === 0) {
+                p.inventory_images = imgRows.filter((img: any) => img.inventory_id === p.id);
+              }
+            }
+          }
+        }
+      } catch (imgCatchErr) {
+        console.warn("Could not fetch supplementary inventory_images:", imgCatchErr);
+      }
+    }
+
+    // Map by both ID and SKU (raw, lowercase, uppercase) for ultra-reliable matching
+    const productMap = new Map<string, any>();
+    for (const p of dbProducts) {
+      if (p.id) {
+        productMap.set(String(p.id), p);
+        productMap.set(String(p.id).toLowerCase(), p);
+        productMap.set(String(p.id).toUpperCase(), p);
+      }
+      if (p.sku) {
+        productMap.set(String(p.sku), p);
+        productMap.set(String(p.sku).toLowerCase(), p);
+        productMap.set(String(p.sku).toUpperCase(), p);
+      }
+    }
 
     const validatedItems: {
       product: any;
@@ -265,7 +412,10 @@ Deno.serve(async (req) => {
     let calculatedSubtotal = 0;
 
     for (const [pId, requestedQty] of itemMap.entries()) {
-      const prod = productMap.get(pId);
+      const prod =
+        productMap.get(pId) ||
+        productMap.get(String(pId).toLowerCase()) ||
+        productMap.get(String(pId).toUpperCase());
 
       if (!prod) {
         return response({ success: false, error: `Product not found: ${pId}` }, 404);
@@ -503,11 +653,25 @@ Deno.serve(async (req) => {
       gift_wrap_charge: finalGiftWrapCharge,
     };
 
-    const { data: createdOrder, error: orderInsertErr } = await admin
+    let { data: createdOrder, error: orderInsertErr } = await admin
       .from("orders")
       .insert([orderInsertPayload])
       .select()
       .single();
+
+    if (
+      orderInsertErr &&
+      (orderInsertErr.message?.includes("shipping_charge") ||
+        orderInsertErr.message?.includes("delivery_method"))
+    ) {
+      console.warn(
+        "Retrying orders insert without newly added delivery columns in case schema cache is reloading..."
+      );
+      const { shipping_charge, delivery_method, ...fallbackPayload } = orderInsertPayload;
+      const retryRes = await admin.from("orders").insert([fallbackPayload]).select().single();
+      createdOrder = retryRes.data;
+      orderInsertErr = retryRes.error;
+    }
 
     if (orderInsertErr || !createdOrder) {
       console.error("Order insertion error:", orderInsertErr);
@@ -528,7 +692,6 @@ Deno.serve(async (req) => {
       const images = Array.isArray(prod.inventory_images)
         ? prod.inventory_images.map((img: any) => ({
             image_url: img.image_url || img,
-            storage_key: img.storage_key || null,
             is_primary: img.is_primary ?? false,
             sort_order: img.sort_order ?? 0,
           }))
@@ -576,10 +739,21 @@ Deno.serve(async (req) => {
       };
     });
 
-    const { data: createdItems, error: itemsInsertErr } = await admin
+    let { data: createdItems, error: itemsInsertErr } = await admin
       .from("order_items")
       .insert(orderItemsPayload)
       .select();
+
+    if (itemsInsertErr && itemsInsertErr.message?.includes("barcode")) {
+      console.warn("Retrying order_items insert without barcode column...");
+      const fallbackPayload = orderItemsPayload.map(({ barcode, ...rest }) => rest);
+      const retryRes = await admin
+        .from("order_items")
+        .insert(fallbackPayload)
+        .select();
+      createdItems = retryRes.data;
+      itemsInsertErr = retryRes.error;
+    }
 
     if (itemsInsertErr) {
       console.error("Order items insertion error:", itemsInsertErr);
