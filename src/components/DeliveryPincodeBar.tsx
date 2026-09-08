@@ -48,7 +48,7 @@ export const getExpressTimingStatus = (result?: any) => {
       isNormalHours: true,
       timingText: '20-Min Express Available',
       badgeText: '✓ 20-Min Express',
-      descText: 'Fast hand delivery directly from our Samastipur showroom. Free express & COD available.'
+      descText: 'Fast hand delivery directly from our Samastipur showroom. Express delivery & COD available.'
     };
   }
 
@@ -340,7 +340,15 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
               ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950'
               : 'bg-[#FAF6EE] border-[#E5DEC9] text-[#292524]'
             }`}>
-            <DeliveryRiderIcon className="w-9 h-9 shrink-0" />
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 overflow-hidden ${
+              isInput20Min ? 'bg-white border border-emerald-200 shadow-2xs' : 'bg-white border border-[#E5DEC9] shadow-2xs'
+            }`}>
+              <img
+                src={isInput20Min ? '/expressdel.webp' : '/standarddel.webp'}
+                alt={isInput20Min ? 'Express Delivery' : 'Standard Delivery'}
+                className="w-full h-full object-contain p-1"
+              />
+            </div>
             <div className="space-y-0.5 text-xs">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-serif font-bold text-xs text-[#292524]">
@@ -357,7 +365,7 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
                   <span><strong>{timingStatus.timingText}:</strong> {timingStatus.descText}</span>
                 ) : (
                   <span>
-                    <strong>{deliveryDateInfo.deliveryByText}</strong> to {getQuickCity(inputPincode) ? `${getQuickCity(inputPincode)}, ${inputPincode}` : inputPincode}. Free delivery & COD available.
+                    <strong>{deliveryDateInfo.deliveryByText}</strong> to {getQuickCity(inputPincode) ? `${getQuickCity(inputPincode)}, ${inputPincode}` : inputPincode}. Standard courier & COD available.
                   </span>
                 )}
               </p>

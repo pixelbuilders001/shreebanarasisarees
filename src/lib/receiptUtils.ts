@@ -3,6 +3,7 @@ export interface ReceiptItem {
     quantity: number;
     mrp: number;
     sellingPrice: number;
+    hsnCode?: string;
 }
 
 export interface ReceiptData {
@@ -34,6 +35,7 @@ export interface ReceiptData {
     igstRate?: number;
     igstAmount?: number;
     totalGst?: number;
+    placeOfSupply?: string;
 }
 
 /**

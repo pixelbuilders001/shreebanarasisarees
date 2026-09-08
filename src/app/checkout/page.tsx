@@ -31,9 +31,21 @@ import {
   Smartphone,
   Loader2,
   X,
-  Clock
+  Clock,
+  Download,
+  FileText
 } from 'lucide-react';
-import { checkDeliveryServiceability, createCashfreeOrder, getProductSlug, supabase } from '../../data/supabase';
+import {
+  checkDeliveryServiceability,
+  createCashfreeOrder,
+  fetchDeliverySettings,
+  calculateDeliveryOptions,
+  DeliverySettings,
+  CalculatedDeliveryOption,
+  DeliveryOptionType,
+  getProductSlug,
+  supabase
+} from '../../data/supabase';
 import { load } from '@cashfreepayments/cashfree-js';
 import { trackBeginCheckout, trackPurchase } from '../../lib/gtag';
 import { fetchPincodeDetails } from '../../lib/pincodeLookup';
@@ -179,6 +191,16 @@ function CheckoutContent() {
 
   // Delivery & Payment selection
   const [deliveryMethod, setDeliveryMethod] = useState<'Home Delivery' | 'Store Pickup'>('Home Delivery');
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
+  const [selectedDeliveryOption, setSelectedDeliveryOption] = useState<DeliveryOptionType>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('selected_delivery_option');
+      if (saved === 'express' || saved === 'same_day' || saved === 'standard') {
+        return saved as DeliveryOptionType;
+      }
+    }
+    return 'express';
+  });
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Cash on Delivery' | 'Card' | 'Net Banking'>('Cash on Delivery');
 
   // Saved Addresses selection
@@ -210,6 +232,11 @@ function CheckoutContent() {
       setEmail(user.email);
     }
   }, [user, email]);
+
+  // Fetch dynamic delivery_settings from database table
+  useEffect(() => {
+    fetchDeliverySettings().then(setDeliverySettings).catch(console.error);
+  }, []);
 
   // Sync pincode from centralized context
   useEffect(() => {
@@ -303,10 +330,56 @@ function CheckoutContent() {
 
   const totalProductDiscount = originalTotal - subtotal;
 
-  const isFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD || deliveryMethod === 'Store Pickup';
-  const shippingFee = deliveryMethod === 'Home Delivery'
-    ? (isFreeShipping ? 0 : (deliveryInfo?.delivery_charge ?? STANDARD_SHIPPING_FEE))
-    : 0;
+  // Delivery options calculated dynamically from delivery_settings & customer distance
+  const deliveryOptions = useMemo<CalculatedDeliveryOption[]>(() => {
+    const dist = deliveryInfo?.distanceKm ?? deliveryInfo?.distance_km;
+    const etaMins = deliveryInfo?.customerEtaMinutes ?? deliveryInfo?.eta?.minutes;
+    const cleanPin = (pinCode || currentPincode || defaultDeliveryPincode || '').trim();
+    const settings = deliverySettings || {
+      id: 'default',
+      serviceable_district: 'Samastipur',
+      serviceable_state: 'Bihar',
+      express_max_km: 5,
+      same_day_max_km: 10,
+      standard_max_km: 20,
+      express_charge: 29,
+      same_day_charge: 49,
+      standard_charge: 69,
+      express_min_minutes: 60,
+      express_max_minutes: 120,
+      same_day_cutoff_time: '17:00:00',
+      is_active: true,
+      shop_latitude: 25.855802,
+      shop_longitude: 85.779337,
+      express_packing_buffer_minutes: 3,
+      express_delivery_buffer_minutes: 3,
+      is_express_20min_enabled: true,
+      default_pincode: '848101'
+    };
+
+    return calculateDeliveryOptions(dist, settings, etaMins, cleanPin);
+  }, [deliveryInfo, deliverySettings, pinCode, currentPincode, defaultDeliveryPincode]);
+
+  // Keep fastest available delivery option selected
+  useEffect(() => {
+    const currentOpt = deliveryOptions.find(o => o.id === selectedDeliveryOption);
+    if (!currentOpt || !currentOpt.available) {
+      const best = deliveryOptions.find(o => o.available);
+      const nextMethod = best ? best.id : 'standard';
+      setSelectedDeliveryOption(nextMethod);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('selected_delivery_option', nextMethod);
+      }
+    }
+  }, [deliveryOptions, selectedDeliveryOption]);
+
+  const activeDeliveryOption = useMemo(() => {
+    return deliveryOptions.find(o => o.id === selectedDeliveryOption) || deliveryOptions[0];
+  }, [deliveryOptions, selectedDeliveryOption]);
+
+  const shippingFee = deliveryMethod === 'Store Pickup'
+    ? 0
+    : (activeDeliveryOption ? activeDeliveryOption.charge : (deliverySettings?.standard_charge ?? 69));
 
   const couponDiscountAmount = useMemo(() => {
     if (!appliedCoupon) return 0;
@@ -314,6 +387,8 @@ function CheckoutContent() {
   }, [appliedCoupon]);
 
   const grandTotal = Math.max(0, subtotal - couponDiscountAmount + shippingFee);
+
+
 
   // Track GA4 begin_checkout
   const hasTrackedCheckout = React.useRef(false);
@@ -375,16 +450,24 @@ function CheckoutContent() {
       setCheckedPincode(cleanPin);
 
       if (res && (res.success || res.serviceable) && !res.isOutsideServiceArea && res.serviceable !== false) {
-        if (res.is20MinDelivery || res.isExpress) {
+        const isLocalPinEligible = Boolean(
+          res.is20MinDelivery ||
+          res.isExpress ||
+          (res.distanceKm && res.distanceKm <= 10) ||
+          cleanPin.startsWith('8481') ||
+          cleanPin === (defaultDeliveryPincode || '848101')
+        );
+
+        if (isLocalPinEligible) {
           if (res.isStoreClosed || res.isAfterMidnight || res.isAfter8PM) {
             const timeLabel = res.isAfterMidnight ? 'Today by 10:00 AM' : 'Tomorrow by 10:00 AM';
-            setPincodeSuccessMsg(`⚡ Express Delivery available for PIN ${cleanPin}! (${timeLabel})`);
+            setPincodeSuccessMsg(`⚡ Express & Same Day Delivery available for PIN ${cleanPin}! (${timeLabel})`);
           } else {
             const etaMins = res.customerEtaMinutes || res.eta?.minutes || 20;
-            setPincodeSuccessMsg(`🚀 Express Delivery available for PIN ${cleanPin}! (Approx. ${etaMins} mins)`);
+            setPincodeSuccessMsg(`🚀 Express & Same Day Delivery available for PIN ${cleanPin}! (Approx. ${etaMins} mins)`);
           }
         } else {
-          setPincodeSuccessMsg(`✓ Standard delivery is available for PIN ${cleanPin} (${deliveryDateInfo.deliveryByText})`);
+          setPincodeSuccessMsg(`✓ Standard delivery is available for PIN ${cleanPin} (${deliveryDateInfo.deliveryByText}). Express and same-day delivery are not available for this pincode.`);
         }
       } else {
         setErrorMsg(res?.error || res?.message || "We currently don't deliver to this location.");
@@ -560,6 +643,10 @@ function CheckoutContent() {
       ? `Gift for: ${giftRecipientName.trim() || 'Recipient'}. Message: ${giftMessage.trim()}. Payment method: ${paymentMethod}`
       : `Payment method: ${paymentMethod}`;
 
+    const chosenMethodTitle = deliveryMethod === 'Store Pickup'
+      ? 'Store Pickup'
+      : (activeDeliveryOption?.title || 'Standard Delivery');
+
     // Execute order creation
     placeOrder({
       customer: customerDetails,
@@ -567,6 +654,10 @@ function CheckoutContent() {
       customer_phone: mobileNumber,
       shipping_address: customerDetails,
       notes: orderNotes,
+      coupon_code: appliedCoupon?.code || undefined,
+      delivery_option: selectedDeliveryOption,
+      delivery_method: chosenMethodTitle,
+      shipping_charge: shippingFee,
       items: cart,
       subtotal,
       discount: couponDiscountAmount,
@@ -756,7 +847,9 @@ function CheckoutContent() {
               <div className="border-t border-[#F3ECE0] my-3.5" />
 
               <div className="flex items-start gap-3">
-                <Zap size={18} className="text-[#6B1725] shrink-0 mt-0.5" />
+                <div className="w-8 h-8 rounded-lg bg-[#FAF6EE] border border-[#E5DEC9] p-0.5 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                  <img src="/expressdel.webp" alt="Express Delivery" className="w-full h-full object-contain" />
+                </div>
                 <div>
                   <p className="text-sm font-semibold text-[#292524]">
                     Arriving in about 20 minutes
@@ -851,6 +944,72 @@ function CheckoutContent() {
               </div>
             </>
           )}
+
+          {/* Tax Invoice & GST Summary Card */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5DEC9] shadow-2xs mb-4 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-sans font-medium text-[#7A6E65] uppercase tracking-wider">
+                TAX INVOICE & GST
+              </span>
+              <span className="text-xs font-mono font-bold text-[#6B1725] bg-[#FAF6EE] border border-[#E5DEC9] px-2 py-0.5 rounded">
+                {createdOrder.invoice_number || createdOrder.orderId}
+              </span>
+            </div>
+
+            <div className="space-y-1.5 text-xs text-[#7A6E65] pt-1 border-t border-[#F3ECE0]">
+              {createdOrder.taxable_amount != null && (
+                <div className="flex justify-between">
+                  <span>Taxable Value</span>
+                  <span className="font-medium text-[#292524]">
+                    ₹{Number(createdOrder.taxable_amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              )}
+              {createdOrder.gst_amount != null && (
+                <div className="flex justify-between">
+                  <span>Total GST ({createdOrder.gst_rate || 5}%)</span>
+                  <span className="font-medium text-[#292524]">
+                    ₹{Number(createdOrder.gst_amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              )}
+              {Number(createdOrder.cgst_amount || 0) > 0 && (
+                <div className="flex justify-between text-[11px] pl-2 text-[#7A6E65]">
+                  <span>CGST ({(Number(createdOrder.gst_rate || 5) / 2).toFixed(1)}%)</span>
+                  <span>₹{Number(createdOrder.cgst_amount).toFixed(2)}</span>
+                </div>
+              )}
+              {Number(createdOrder.sgst_amount || 0) > 0 && (
+                <div className="flex justify-between text-[11px] pl-2 text-[#7A6E65]">
+                  <span>SGST ({(Number(createdOrder.gst_rate || 5) / 2).toFixed(1)}%)</span>
+                  <span>₹{Number(createdOrder.sgst_amount).toFixed(2)}</span>
+                </div>
+              )}
+              {Number(createdOrder.igst_amount || 0) > 0 && (
+                <div className="flex justify-between text-[11px] pl-2 text-[#7A6E65]">
+                  <span>IGST ({Number(createdOrder.gst_rate || 5)}%)</span>
+                  <span>₹{Number(createdOrder.igst_amount).toFixed(2)}</span>
+                </div>
+              )}
+              {createdOrder.place_of_supply && (
+                <div className="flex justify-between text-[10px] text-[#A89F91] pt-0.5">
+                  <span>Place of Supply</span>
+                  <span>{createdOrder.place_of_supply}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-[#F3ECE0]">
+              <Link
+                href={`/receipt/${encodeURIComponent(createdOrder.invoice_number || createdOrder.orderId)}`}
+                target="_blank"
+                className="text-xs font-semibold text-[#6B1725] hover:text-[#52111C] flex items-center justify-center gap-1.5 py-2 bg-[#FAF7F0] hover:bg-[#F3ECE0] rounded-xl transition-colors font-sans"
+              >
+                <Download size={13} />
+                <span>View & Download Tax Invoice</span>
+              </Link>
+            </div>
+          </div>
 
           {/* Card 2: Items List */}
           {orderItems.length > 0 && (
@@ -1212,7 +1371,7 @@ function CheckoutContent() {
               )}
             </div>
 
-            {/* 4. DELIVERY MODE RESULT CARD (dynamic based on pincode check) */}
+            {/* 4. DELIVERY OPTIONS SELECTOR (dynamic based on delivery_settings & customer distance) */}
             {loadingPincode ? (
               <div className="bg-white rounded-2xl border border-[#E5DEC9] p-4 flex items-start justify-between shadow-2xs animate-pulse" aria-hidden="true">
                 <div className="flex items-start gap-3 flex-1">
@@ -1235,90 +1394,116 @@ function CheckoutContent() {
                   {deliveryInfo?.error || deliveryInfo?.message || "We currently don't deliver to this location."}
                 </p>
               </div>
-            ) : deliveryInfo && (deliveryInfo.is20MinDelivery || (deliveryInfo.distanceKm && deliveryInfo.distanceKm <= 20) || deliveryInfo.eligible || deliveryInfo.isExpress) ? (
-              (() => {
-                const timing = getExpressTimingStatus(deliveryInfo);
-                const isExpressNow = timing.isNormalHours;
-                return (
-                  <div className="rounded-2xl p-4 text-xs space-y-2.5 shadow-xs bg-emerald-50/90 border border-emerald-300 text-emerald-950">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5 font-extrabold text-emerald-800 text-sm font-serif">
-                        <DeliveryRiderIcon className="w-10 h-10 flex-shrink-0" />
-                        <span>{isExpressNow ? '20-Min Express Delivery' : 'Express Delivery Available'}</span>
-                      </div>
-                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 font-serif whitespace-nowrap">
-                        {isExpressNow ? '✓ Today' : timing.badgeText}
-                      </span>
-                    </div>
-                    <div className="space-y-1 text-xs text-emerald-900 pt-1.5 border-t border-emerald-200/80">
-                      {isExpressNow ? (
-                        <div className="flex items-center gap-2 font-extrabold text-emerald-950 text-xs">
-                          <Clock size={15} className="text-emerald-700 flex-shrink-0" />
-                          <span>Arriving in ~{deliveryInfo.customerEtaMinutes || deliveryInfo.eta?.minutes || 20} minutes</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 font-extrabold text-emerald-950 text-xs">
-                          <Clock size={15} className="text-emerald-700 flex-shrink-0" />
-                          <span>Estimated arrival: {timing.timingText}</span>
-                        </div>
-                      )}
-                      {!isExpressNow && (
-                        <p className="text-[11px] text-emerald-800 font-medium leading-relaxed pt-0.5">{timing.descText}</p>
-                      )}
-                      <div className="text-[10px] text-emerald-700 font-medium">
-                        {deliveryInfo?.source === 'gps'
-                          ? 'Based on your current location'
-                          : `Verified for pincode ${pinCode || deliveryInfo?.pincode}`}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()
-            ) : deliveryInfo ? (
-              /* STANDARD DELIVERY (ABOVE 20 KM) */
-              <div className="bg-[#FAF7F0] border border-[#B08A3C]/30 rounded-2xl p-4 text-xs space-y-2.5 text-[#292524] shadow-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5 font-extrabold text-[#6B1725] text-sm font-serif">
-                    <DeliveryRiderIcon className="w-10 h-10 flex-shrink-0" />
-                    <span>Standard Delivery</span>
-                  </div>
-                  <span className="text-[10px] font-bold text-[#6B1725] bg-[#6B1725]/10 px-2.5 py-0.5 rounded-full border border-[#6B1725]/20 font-serif whitespace-nowrap">
-                    {deliveryDateInfo.rangeFormat}
-                  </span>
-                </div>
-                <div className="space-y-1 text-xs text-[#6B625D] pt-1.5 border-t border-[#B08A3C]/20">
-                  <div className="flex items-center gap-2 font-bold text-[#292524] text-xs">
-                    <Clock size={15} className="text-[#6B1725] flex-shrink-0" />
-                    <span>Estimated delivery by {deliveryDateInfo.formattedDate}</span>
-                  </div>
-                  <div className="text-[10px] text-[#6B625D] font-medium">
-                    Verified for pincode {pinCode || deliveryInfo?.pincode}
-                  </div>
-                </div>
-              </div>
             ) : (
-              /* NO CHECK YET: DEFAULT FALLBACK CARD */
-              <div className="bg-white rounded-2xl border border-[#6B1725] p-4 flex items-start justify-between shadow-2xs">
-                <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-full bg-[#6B1725]/10 flex items-center justify-center text-[#6B1725] shrink-0 mt-0.5">
-                    <Zap size={16} className="fill-[#6B1725]" />
-                  </div>
-                  <div>
-                    <h4 className="font-sans font-bold text-xs sm:text-sm text-[#292524]">
-                      {!pinCode || pinCode.startsWith('848')
-                        ? (fallbackTiming.isNormalHours ? '20-minute hand delivery' : fallbackTiming.timingText)
-                        : deliveryDateInfo.deliveryByText}
-                    </h4>
-                    <p className="text-[11px] sm:text-xs text-[#7A6E65] mt-0.5">
-                      {!pinCode || pinCode.startsWith('848')
-                        ? fallbackTiming.descText
-                        : 'Tracked express courier · packed with care'}
-                    </p>
-                  </div>
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-sans font-bold text-[#B08A3C] uppercase tracking-wider block">
+                    DELIVERY OPTIONS
+                  </span>
+                  {deliveryInfo?.distanceKm ? (
+                    <span className="text-[11px] text-[#7A6E65] font-medium">
+                      Distance: ~{deliveryInfo.distanceKm} km
+                    </span>
+                  ) : null}
                 </div>
-                <span className="font-serif font-bold text-xs sm:text-sm text-[#292524] shrink-0">
-                  {shippingFee === 0 ? 'FREE' : `₹${shippingFee}`}
-                </span>
+
+                <div className="space-y-2.5">
+                  {deliveryOptions.map((opt) => {
+                    const isSelected = selectedDeliveryOption === opt.id;
+                    const isAvailable = opt.available;
+
+                    return (
+                      <div
+                        key={opt.id}
+                        onClick={() => {
+                          if (isAvailable) {
+                            setSelectedDeliveryOption(opt.id);
+                          }
+                        }}
+                        className={`rounded-2xl p-3.5 sm:p-4 transition-all relative border ${
+                          !isAvailable
+                            ? 'bg-stone-50/80 border-stone-200 opacity-60 cursor-not-allowed select-none'
+                            : isSelected
+                            ? 'border-2 border-[#6B1725] bg-[#6B1725]/[0.03] shadow-2xs cursor-pointer'
+                            : 'border-[#E5DEC9] bg-white hover:border-[#6B1725]/40 cursor-pointer shadow-xs'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3">
+                            {/* Selection Radio Circle */}
+                            <div className="pt-1 shrink-0">
+                              {isSelected && isAvailable ? (
+                                <div className="w-4 h-4 rounded-full bg-[#6B1725] flex items-center justify-center text-white">
+                                  <Check size={10} strokeWidth={3} />
+                                </div>
+                              ) : (
+                                <div className={`w-4 h-4 rounded-full border ${isAvailable ? 'border-[#D4C39D]' : 'border-stone-300 bg-stone-100'}`} />
+                              )}
+                            </div>
+
+                            {/* Delivery Option WebP Image */}
+                            <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 overflow-hidden ${
+                              isSelected && isAvailable ? 'bg-white ring-1.5 ring-[#6B1725]' : 'bg-[#FAF7F0] border border-[#E5DEC9]'
+                            }`}>
+                              <img
+                                src={opt.image || (opt.id === 'express' ? '/expressdel.webp' : opt.id === 'same_day' ? '/sameday.webp' : '/standarddel.webp')}
+                                alt={opt.title}
+                                className={`w-full h-full object-contain p-1 ${!isAvailable ? 'grayscale opacity-60' : ''}`}
+                              />
+                            </div>
+
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className={`font-sans font-bold text-xs sm:text-sm ${isAvailable ? 'text-[#292524]' : 'text-stone-400'}`}>
+                                  {opt.title}
+                                </h4>
+                                {opt.badge && isAvailable && (
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap ${
+                                    opt.id === 'express'
+                                      ? 'text-emerald-800 bg-emerald-50 border-emerald-200'
+                                      : opt.id === 'same_day'
+                                      ? 'text-amber-800 bg-amber-50 border-amber-200'
+                                      : 'text-stone-700 bg-stone-100 border-stone-200'
+                                  }`}>
+                                    {opt.badge}
+                                  </span>
+                                )}
+                                {!isAvailable && (
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border text-stone-500 bg-stone-100 border-stone-200 whitespace-nowrap">
+                                    Disabled
+                                  </span>
+                                )}
+                              </div>
+
+                              <p className={`text-[11px] mt-1 leading-relaxed ${isAvailable ? 'text-[#7A6E65]' : 'text-stone-400'}`}>
+                                {opt.description}
+                              </p>
+
+                              <div className="flex items-center gap-2 text-[11px] font-semibold text-[#6B1725] mt-1.5">
+                                <Clock size={13} className="text-[#6B1725] shrink-0" />
+                                <span>{opt.eta}</span>
+                              </div>
+
+                              {!isAvailable && opt.unavailableReason && (
+                                <p className="text-[10px] text-amber-700 mt-1 font-medium flex items-center gap-1">
+                                  <AlertCircle size={11} />
+                                  <span>{opt.unavailableReason}</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            <span className={`font-sans font-extrabold text-sm sm:text-base tabular-nums block ${isAvailable ? 'text-[#292524]' : 'text-stone-400'}`}>
+                              ₹{opt.charge}
+                            </span>
+                            <span className="text-[10px] text-[#7A6E65]">incl. GST</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
@@ -1359,7 +1544,8 @@ function CheckoutContent() {
                 )}
               </div>
 
-              {/* Option 2: UPI */}
+              {/* Option 2: UPI (Commented out for now) */}
+              {/*
               <div
                 onClick={() => setPaymentMethod('UPI')}
                 className={`bg-white rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all ${
@@ -1389,8 +1575,10 @@ function CheckoutContent() {
                   <div className="w-5 h-5 rounded-full border border-[#D4C39D]" />
                 )}
               </div>
+              */}
 
-              {/* Option 3: Card */}
+              {/* Option 3: Card (Commented out for now) */}
+              {/*
               <div
                 onClick={() => setPaymentMethod('Card')}
                 className={`bg-white rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all ${
@@ -1420,6 +1608,7 @@ function CheckoutContent() {
                   <div className="w-5 h-5 rounded-full border border-[#D4C39D]" />
                 )}
               </div>
+              */}
 
               <p className="text-xs text-[#7A6E65] leading-relaxed font-sans pt-1">
                 Cash on delivery is how most of Samastipur buys from us. Open the packet in front of the rider &mdash; if the weave isn&apos;t what you saw, send it straight back.
@@ -1454,7 +1643,7 @@ function CheckoutContent() {
                           </span>
                         </div>
                       </div>
-                      <span className="font-serif font-bold text-xs sm:text-sm text-[#292524] shrink-0">
+                      <span className="font-sans font-bold text-xs sm:text-sm text-[#292524] tabular-nums shrink-0">
                         ₹{(price * item.quantity).toLocaleString('en-IN')}
                       </span>
                     </div>
@@ -1462,13 +1651,101 @@ function CheckoutContent() {
                 })}
               </div>
 
-              <div className="border-t border-[#F3ECE0] pt-3 flex items-center justify-between">
-                <span className="font-sans font-bold text-sm text-[#292524]">
-                  To pay
-                </span>
-                <span className="font-serif font-bold text-lg sm:text-xl text-[#292524]">
-                  ₹{grandTotal.toLocaleString('en-IN')}
-                </span>
+              {/* Coupon Code Section (Mobile) */}
+              <div className="pt-2 border-t border-[#F3ECE0]">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      placeholder="COUPON CODE"
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                      className="w-full bg-[#FAF7F0] border border-dashed border-[#B08A3C]/60 rounded-xl px-3 py-2.5 text-xs uppercase font-sans font-medium text-[#292524] placeholder:text-[#A89F91] outline-none focus:border-[#6B1725]"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    className="px-4 py-2.5 bg-[#FAF7F0] hover:bg-[#6B1725] hover:text-white text-[#6B1725] border border-[#6B1725]/30 rounded-xl font-sans font-bold text-xs transition-colors cursor-pointer shrink-0"
+                  >
+                    Apply
+                  </button>
+                </div>
+
+                {couponError && (
+                  <p className="text-[11px] text-red-600 font-medium mt-1 px-0.5">{couponError}</p>
+                )}
+
+                {appliedCoupon && (
+                  <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <Tag size={13} className="text-emerald-700" />
+                      <span><strong>{appliedCoupon.code}</strong> applied (-₹{appliedCoupon.discountAmount.toLocaleString('en-IN')})</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="text-xs text-red-600 hover:underline font-semibold cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Price Details (Mobile) */}
+              <div className="space-y-2.5 pt-3 border-t border-[#F3ECE0] text-xs font-sans">
+                <h4 className="font-serif font-bold text-xs sm:text-sm text-[#292524] uppercase tracking-wider">
+                  Price Details
+                </h4>
+
+                <div className="flex justify-between text-[#7A6E65]">
+                  <span>Item total</span>
+                  <span className="font-medium text-[#292524]">₹{originalTotal.toLocaleString('en-IN')}</span>
+                </div>
+
+                {totalProductDiscount > 0 && (
+                  <div className="flex justify-between text-[#7A6E65]">
+                    <span>Product discount</span>
+                    <span className="font-medium text-[#0F766E]">- ₹{totalProductDiscount.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+
+                {appliedCoupon && couponDiscountAmount > 0 && (
+                  <div className="flex justify-between text-[#7A6E65]">
+                    <span>Coupon ({appliedCoupon.code})</span>
+                    <span className="font-medium text-[#0F766E]">- ₹{couponDiscountAmount.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between text-[#7A6E65]">
+                  <span>Delivery ({activeDeliveryOption?.title ? activeDeliveryOption.title.replace(' Delivery', '') : 'Standard'})</span>
+                  <span className="font-sans font-bold text-[#292524] tabular-nums">
+                    {shippingFee === 0 ? (
+                      <span className="text-[#0F766E] font-bold">FREE</span>
+                    ) : (
+                      `₹${shippingFee}`
+                    )}
+                  </span>
+                </div>
+
+                {/* Divider Line */}
+                <div className="border-t border-[#E5DEC9] pt-3 flex justify-between items-baseline">
+                  <span className="font-sans font-bold text-sm sm:text-base text-[#292524]">Total Payable</span>
+                  <span className="font-sans font-extrabold text-2xl text-[#6B1725] tabular-nums tracking-tight">
+                    ₹{grandTotal.toLocaleString('en-IN')}
+                  </span>
+                </div>
+
+                {totalProductDiscount + couponDiscountAmount > 0 && (
+                  <p className="text-xs font-semibold text-[#0F766E] pt-0.5">
+                    🎉 You saved ₹{(totalProductDiscount + couponDiscountAmount).toLocaleString('en-IN')}
+                  </p>
+                )}
+
+                <div className="text-[11px] text-[#7A6E65] font-sans pt-0.5">
+                  Prices include applicable GST
+                </div>
               </div>
             </div>
           </>
@@ -1522,11 +1799,11 @@ function CheckoutContent() {
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <div className="font-serif font-bold text-sm text-[#292524]">
+                        <div className="font-sans font-bold text-sm text-[#292524] tabular-nums">
                           ₹{(currentPrice * item.quantity).toLocaleString('en-IN')}
                         </div>
                         {hasDiscount && (
-                          <span className="text-[11px] text-[#A89F91] line-through block">
+                          <span className="text-[11px] text-[#A89F91] line-through block tabular-nums">
                             ₹{(originalPrice * item.quantity).toLocaleString('en-IN')}
                           </span>
                         )}
@@ -1579,29 +1856,33 @@ function CheckoutContent() {
               </div>
 
               {/* Price Details */}
-              <div className="space-y-2 pt-2 border-t border-[#F3ECE0] text-xs">
+              <div className="space-y-2.5 pt-3 border-t border-[#F3ECE0] text-xs font-sans">
+                <h4 className="font-serif font-bold text-xs sm:text-sm text-[#292524] uppercase tracking-wider">
+                  Price Details
+                </h4>
+
                 <div className="flex justify-between text-[#7A6E65]">
-                  <span>Item Total ({cart.reduce((sum, item) => sum + item.quantity, 0)})</span>
+                  <span>Item total</span>
                   <span className="font-medium text-[#292524]">₹{originalTotal.toLocaleString('en-IN')}</span>
                 </div>
 
                 {totalProductDiscount > 0 && (
                   <div className="flex justify-between text-[#7A6E65]">
-                    <span>Product Discount</span>
+                    <span>Product discount</span>
                     <span className="font-medium text-[#0F766E]">- ₹{totalProductDiscount.toLocaleString('en-IN')}</span>
                   </div>
                 )}
 
-                {couponDiscountAmount > 0 && (
+                {appliedCoupon && couponDiscountAmount > 0 && (
                   <div className="flex justify-between text-[#7A6E65]">
-                    <span>Coupon Savings</span>
+                    <span>Coupon ({appliedCoupon.code})</span>
                     <span className="font-medium text-[#0F766E]">- ₹{couponDiscountAmount.toLocaleString('en-IN')}</span>
                   </div>
                 )}
 
                 <div className="flex justify-between text-[#7A6E65]">
-                  <span>Delivery</span>
-                  <span className="font-medium text-[#292524]">
+                  <span>Delivery ({activeDeliveryOption?.title ? activeDeliveryOption.title.replace(' Delivery', '') : 'Standard'})</span>
+                  <span className="font-sans font-bold text-[#292524] tabular-nums">
                     {shippingFee === 0 ? (
                       <span className="text-[#0F766E] font-bold">FREE</span>
                     ) : (
@@ -1610,19 +1891,23 @@ function CheckoutContent() {
                   </span>
                 </div>
 
-                {/* Grand Total */}
+                {/* Divider Line */}
                 <div className="border-t border-[#E5DEC9] pt-3 flex justify-between items-baseline">
-                  <span className="font-serif font-extrabold text-base text-[#292524]">To Pay</span>
-                  <span className="font-serif font-extrabold text-2xl text-[#6B1725]">
+                  <span className="font-sans font-bold text-sm sm:text-base text-[#292524]">Total Payable</span>
+                  <span className="font-sans font-extrabold text-2xl text-[#6B1725] tabular-nums tracking-tight">
                     ₹{grandTotal.toLocaleString('en-IN')}
                   </span>
                 </div>
 
                 {totalProductDiscount + couponDiscountAmount > 0 && (
-                  <p className="text-[11px] font-semibold text-[#0F766E] pt-0.5">
-                    🎉 You save ₹{(totalProductDiscount + couponDiscountAmount).toLocaleString('en-IN')} on this order!
+                  <p className="text-xs font-semibold text-[#0F766E] pt-0.5">
+                    🎉 You saved ₹{(totalProductDiscount + couponDiscountAmount).toLocaleString('en-IN')}
                   </p>
                 )}
+
+                <div className="text-[11px] text-[#7A6E65] font-sans pt-0.5">
+                  Prices include applicable GST
+                </div>
               </div>
 
               {/* Primary Desktop Action Button */}
@@ -1683,11 +1968,11 @@ function CheckoutContent() {
     <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E5DEC9] px-4 py-3.5 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
           <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
             <div>
-              <div className="font-serif font-extrabold text-xl sm:text-2xl text-[#292524]">
+              <div className="font-sans font-extrabold text-xl sm:text-2xl text-[#292524] tabular-nums tracking-tight">
                 ₹{grandTotal.toLocaleString('en-IN')}
               </div>
               <span className="text-xs text-[#7A6E65] font-sans block">
-                {paymentMethod === 'Cash on Delivery' ? 'Pay on delivery' : 'Includes all taxes'}
+                Prices include applicable GST
               </span>
             </div>
 

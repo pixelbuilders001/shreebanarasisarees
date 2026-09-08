@@ -591,10 +591,18 @@ function AccountContent() {
             order_id,
             inventory_id,
             product_name,
+            product_name_snapshot,
             sku,
             barcode,
             quantity,
             unit_price,
+            discount_amount,
+            taxable_value,
+            gst_rate,
+            cgst_amount,
+            sgst_amount,
+            igst_amount,
+            gst_amount,
             total_price,
             product_snapshot,
             item_status
@@ -1122,11 +1130,13 @@ function AccountContent() {
           const unitPrice = item.unit_price != null ? Number(item.unit_price) : resolved.price;
           const snapMrp = Number(snap?.mrp || snap?.price || 0);
           const mrp = snapMrp > 0 ? snapMrp : (resolved.mrp > 0 ? resolved.mrp : unitPrice);
+          const hsnCode = item.hsn_code || snap?.hsn_code || '5208';
           return {
             sareeName: isItemCancelled ? `[Cancelled] ${resolved.name}` : resolved.name,
             quantity: resolved.quantity || 1,
             mrp: mrp > 0 ? mrp : unitPrice,
-            sellingPrice: unitPrice
+            sellingPrice: unitPrice,
+            hsnCode,
           };
         });
 
@@ -1137,9 +1147,14 @@ function AccountContent() {
           activeOrder.customer?.pinCode
         ].filter(Boolean).join(', ');
 
+        const isIntraState = ((activeOrder.place_of_supply || activeOrder.customer?.state || 'Bihar').trim().toLowerCase()) === 'bihar';
+        const orderTaxable = activeOrder.taxable_amount;
+        const orderGst = activeOrder.gst_amount;
+        const isGstPresent = orderTaxable != null && orderGst != null && orderGst > 0;
+
         const receiptData: ReceiptData = {
-          invoiceNumber: activeOrder.orderId,
-          date: activeOrder.createdAt,
+          invoiceNumber: activeOrder.invoice_number || activeOrder.orderId,
+          date: activeOrder.invoice_date || activeOrder.createdAt,
           paymentMode: activeOrder.paymentMethod || 'cod',
           customerName: activeOrder.customer?.name || null,
           customerMobile: activeOrder.customer?.phone || null,
@@ -1150,7 +1165,18 @@ function AccountContent() {
           totalAmount: activeOrder.total,
           discountAmount: activeOrder.discount || 0,
           shippingFee: activeOrder.shipping || 0,
-          giftWrapCharge: activeOrder.gift_wrap_charge || 0
+          giftWrapCharge: activeOrder.gift_wrap_charge || 0,
+          isGstApplied: isGstPresent,
+          gstRate: activeOrder.gst_rate || 5,
+          taxableAmount: orderTaxable,
+          cgstRate: isIntraState ? 2.5 : 0,
+          cgstAmount: activeOrder.cgst_amount,
+          sgstRate: isIntraState ? 2.5 : 0,
+          sgstAmount: activeOrder.sgst_amount,
+          igstRate: !isIntraState ? (activeOrder.gst_rate || 5) : 0,
+          igstAmount: activeOrder.igst_amount,
+          totalGst: orderGst,
+          placeOfSupply: activeOrder.place_of_supply || activeOrder.customer?.state || 'Bihar',
         };
 
         return generateReceiptUrl(receiptData);
@@ -1433,6 +1459,53 @@ function AccountContent() {
               </div>
             )}
 
+            {/* GST Breakdown in Account Order Details */}
+            {activeOrder.gst_amount != null && Number(activeOrder.gst_amount) > 0 && (
+              <div className="bg-[#FAF8F5] border border-[#E7DFC9] rounded-xl p-3 my-2 space-y-1.5 font-sans">
+                <div className="flex items-center justify-between text-xs font-semibold text-[#1C1917]">
+                  <div className="flex items-center gap-1.5">
+                    <span>GST Included ({activeOrder.gst_rate || 5}%)</span>
+                    <span className="text-[10px] bg-[#E7DFC9] text-[#6B1725] px-1.5 py-0.5 rounded font-bold">
+                      {Number(activeOrder.igst_amount || 0) > 0 ? 'IGST' : 'CGST + SGST'}
+                    </span>
+                  </div>
+                  <span className="font-bold text-[#6B1725]">₹{Number(activeOrder.gst_amount).toFixed(2)}</span>
+                </div>
+                <div className="pt-1.5 border-t border-[#E7DFC9]/60 space-y-1 text-[11px] text-[#78716C]">
+                  {activeOrder.taxable_amount != null && (
+                    <div className="flex justify-between">
+                      <span>Taxable Value</span>
+                      <span className="font-medium text-[#1C1917]">₹{Number(activeOrder.taxable_amount).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {Number(activeOrder.cgst_amount || 0) > 0 && (
+                    <div className="flex justify-between">
+                      <span>CGST ({(Number(activeOrder.gst_rate || 5) / 2).toFixed(1)}%)</span>
+                      <span>₹{Number(activeOrder.cgst_amount).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {Number(activeOrder.sgst_amount || 0) > 0 && (
+                    <div className="flex justify-between">
+                      <span>SGST ({(Number(activeOrder.gst_rate || 5) / 2).toFixed(1)}%)</span>
+                      <span>₹{Number(activeOrder.sgst_amount).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {Number(activeOrder.igst_amount || 0) > 0 && (
+                    <div className="flex justify-between">
+                      <span>IGST ({Number(activeOrder.gst_rate || 5)}%)</span>
+                      <span>₹{Number(activeOrder.igst_amount).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {activeOrder.place_of_supply && (
+                    <div className="flex justify-between text-[10px] text-[#A89F91] pt-0.5">
+                      <span>Place of Supply</span>
+                      <span>{activeOrder.place_of_supply}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="border-t border-[#F3ECE0] pt-2 flex items-center justify-between text-sm font-bold text-[#1C1917]">
               <span>Total Amount</span>
               <span>₹{activeOrder.total.toLocaleString('en-IN')}</span>
@@ -1614,13 +1687,13 @@ function AccountContent() {
                     {/* Estimate Line */}
                     {estimate.type === 'express' && (
                       <p className="text-[#6B1725] font-semibold text-xs flex items-center gap-1.5 mt-2 font-sans">
-                        <Zap size={13} className="text-[#6B1725] stroke-[2] shrink-0" />
+                        <img src="/expressdel.webp" alt="Express" className="w-3.5 h-3.5 object-contain shrink-0" />
                         <span>{estimate.label}</span>
                       </p>
                     )}
                     {estimate.type === 'standard' && (
                       <p className="text-[#6B1725] font-semibold text-xs flex items-center gap-1.5 mt-2 font-sans">
-                        <Truck size={14} className="text-[#6B1725] stroke-[2] shrink-0" />
+                        <img src="/standarddel.webp" alt="Standard" className="w-3.5 h-3.5 object-contain shrink-0" />
                         <span>{estimate.label}</span>
                       </p>
                     )}

@@ -34,6 +34,14 @@ export interface CartItem {
   total_price?: number;
   product: Product;
   quantity: number;
+  hsn_code?: string;
+  discount_amount?: number;
+  taxable_value?: number;
+  gst_rate?: number;
+  cgst_amount?: number;
+  sgst_amount?: number;
+  igst_amount?: number;
+  gst_amount?: number;
 }
 
 export interface CustomRequest {
@@ -78,6 +86,15 @@ export interface Order {
   discount: number;
   shipping: number;
   total: number;
+  taxable_amount?: number;
+  gst_amount?: number;
+  cgst_amount?: number;
+  sgst_amount?: number;
+  igst_amount?: number;
+  gst_rate?: number;
+  place_of_supply?: string;
+  invoice_number?: string;
+  invoice_date?: string;
   paymentMethod: 'UPI' | 'Cash on Delivery' | 'Online Payment';
   paymentStatus: 'Pending' | 'Paid' | 'Failed' | 'Refunded';
   orderStatus: 'Order Placed' | 'Confirmed' | 'Processing' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled' | 'Returned';
@@ -109,6 +126,10 @@ interface StoreContextType {
     customer_phone?: string;
     shipping_address?: any;
     notes?: string;
+    coupon_code?: string;
+    delivery_option?: string;
+    delivery_method?: string;
+    shipping_charge?: number;
   }) => Promise<Order>;
   cancelOrder: (orderId: string) => Promise<boolean>;
   cancelOrderItem: (orderId: string, productId: string) => Promise<{ success: boolean; cancelledEntireOrder: boolean; newSubtotal?: number; newTotal?: number; message?: string }>;
@@ -924,6 +945,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     customer_phone?: string;
     shipping_address?: any;
     notes?: string;
+    coupon_code?: string;
+    delivery_option?: string;
+    delivery_method?: string;
+    shipping_charge?: number;
   }): Promise<Order> => {
     // 1. Try to create the order in Supabase via create-order Edge Function
     const dbOrder = await createDbOrder({
@@ -932,6 +957,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       customer_phone: orderData.customer_phone || orderData.customer?.phone,
       shipping_address: orderData.shipping_address || orderData.customer,
       notes: orderData.notes,
+      coupon_code: orderData.coupon_code,
+      delivery_option: orderData.delivery_option,
+      delivery_method: orderData.delivery_method,
+      shipping_charge: orderData.shipping_charge ?? orderData.shipping,
       items: orderData.items,
       subtotal: orderData.subtotal,
       discount: orderData.discount,

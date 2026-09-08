@@ -342,12 +342,12 @@ export default function AddressesPage() {
                   {/* Delivery Serviceability Badge */}
                   {is20MinPincode(addr.pincode) ? (
                     <div className="flex items-center gap-1.5 text-xs font-medium text-[#6B1725] mt-2.5 font-sans">
-                      <Zap size={14} className="stroke-[#6B1725] stroke-[1.8] fill-none flex-shrink-0" />
+                      <img src="/expressdel.webp" alt="Express" className="w-4 h-4 object-contain flex-shrink-0" />
                       <span>20-min delivery reaches here</span>
                     </div>
                   ) : (
                     <div className="flex items-center gap-1.5 text-xs font-normal text-[#57534E] mt-2.5 font-sans">
-                      <Truck size={14} className="stroke-[#57534E] stroke-[1.8] flex-shrink-0" />
+                      <img src="/standarddel.webp" alt="Standard" className="w-4 h-4 object-contain flex-shrink-0" />
                       <span>{deliveryDateInfo.deliveryByText}</span>
                     </div>
                   )}

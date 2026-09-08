@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -19,7 +19,14 @@ import {
   Loader2
 } from 'lucide-react';
 import { useStore, CartItem } from '../context/StoreContext';
-import { getProductSlug } from '../data/supabase';
+import {
+  getProductSlug,
+  fetchDeliverySettings,
+  calculateDeliveryOptions,
+  DeliverySettings,
+  CalculatedDeliveryOption,
+  DeliveryOptionType
+} from '../data/supabase';
 import { useCustomerLocation } from '../hooks/useCustomerLocation';
 
 import { DeliveryPincodeBar, openPincodeSheet, getExpressTimingStatus } from './DeliveryPincodeBar';
@@ -204,16 +211,67 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
     return getStandardDeliveryDateInfo();
   }, []);
 
-  // Delivery method choice: automatically synced with pincode serviceability
-  const [selectedDeliveryMethod, setSelectedDeliveryMethod] = useState<'express_20min' | 'standard'>('express_20min');
+  // Delivery settings loaded dynamically from public.delivery_settings table
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
+  const [selectedDeliveryMethod, setSelectedDeliveryMethod] = useState<DeliveryOptionType>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('selected_delivery_option');
+      if (saved === 'express' || saved === 'same_day' || saved === 'standard') {
+        return saved as DeliveryOptionType;
+      }
+    }
+    return 'express';
+  });
+  const hasUserSelectedDeliveryRef = useRef(false);
 
   useEffect(() => {
-    if (is20Min) {
-      setSelectedDeliveryMethod('express_20min');
-    } else {
-      setSelectedDeliveryMethod('standard');
+    fetchDeliverySettings().then(setDeliverySettings).catch(console.error);
+  }, []);
+
+  const deliveryOptions = useMemo<CalculatedDeliveryOption[]>(() => {
+    const dist = result?.distanceKm;
+    const etaMins = result?.customerEtaMinutes ?? result?.eta?.minutes;
+    const settings = deliverySettings || {
+      id: 'default',
+      serviceable_district: 'Samastipur',
+      serviceable_state: 'Bihar',
+      express_max_km: 5,
+      same_day_max_km: 10,
+      standard_max_km: 20,
+      express_charge: 29,
+      same_day_charge: 49,
+      standard_charge: 69,
+      express_min_minutes: 60,
+      express_max_minutes: 120,
+      same_day_cutoff_time: '17:00:00',
+      is_active: true,
+      shop_latitude: 25.855802,
+      shop_longitude: 85.779337,
+      express_packing_buffer_minutes: 3,
+      express_delivery_buffer_minutes: 3,
+      is_express_20min_enabled: true,
+      default_pincode: '848101'
+    };
+
+    return calculateDeliveryOptions(dist, settings, etaMins, pincode);
+  }, [result, deliverySettings, pincode]);
+
+  // Keep fastest available delivery option selected
+  useEffect(() => {
+    const currentOpt = deliveryOptions.find(o => o.id === selectedDeliveryMethod);
+    if (!currentOpt || !currentOpt.available) {
+      const best = deliveryOptions.find(o => o.available);
+      const nextMethod = best ? best.id : 'standard';
+      setSelectedDeliveryMethod(nextMethod);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('selected_delivery_option', nextMethod);
+      }
     }
-  }, [is20Min]);
+  }, [deliveryOptions, selectedDeliveryMethod]);
+
+  const activeOption = useMemo(() => {
+    return deliveryOptions.find(o => o.id === selectedDeliveryMethod) || deliveryOptions[0];
+  }, [deliveryOptions, selectedDeliveryMethod]);
 
   // Coupon state
   const [couponInput, setCouponInput] = useState<string>('');
@@ -244,12 +302,11 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
 
   const itemDiscount = Math.max(0, originalTotal - subtotal);
 
-  // Delivery fee
+  // Delivery fee dynamically calculated from delivery_settings
   const deliveryFee = useMemo(() => {
     if (cart.length === 0) return 0;
-    if (selectedDeliveryMethod === 'express_20min') return 49;
-    return subtotal >= 1999 ? 0 : 99;
-  }, [cart, selectedDeliveryMethod, subtotal]);
+    return activeOption ? activeOption.charge : (deliverySettings?.standard_charge ?? 69);
+  }, [cart, activeOption, deliverySettings]);
 
   // Coupon discount amount
   const couponDiscountAmount = appliedCoupon ? Math.round((subtotal * appliedCoupon.discount) / 100) : 0;
@@ -257,6 +314,8 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
 
   // Final Payable
   const finalPayable = Math.max(0, subtotal - couponDiscountAmount + deliveryFee);
+
+
 
   // Handlers
   const handleRemoveItem = (item: CartItem, index: number) => {
@@ -293,6 +352,9 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
     triggerHaptic('medium');
     setIsNavigatingToCheckout(true);
     setIsCartOpen(false);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('selected_delivery_option', selectedDeliveryMethod);
+    }
     if (!user) {
       setIsNavigatingToCheckout(false);
       setIsAuthModalOpen(true);
@@ -524,53 +586,95 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
               })}
             </div>
 
-            {/* ── 2C. DYNAMIC SINGLE DELIVERY OPTION BASED ON PINCODE ── */}
+            {/* ── 2C. DYNAMIC DELIVERY OPTIONS BASED ON DELIVERY_SETTINGS & PINCODE ── */}
             <div className="space-y-2 pt-1">
               <span className="text-[11px] font-bold text-[#B08A3C] uppercase tracking-widest block font-serif">
                 DELIVERY
               </span>
 
-              {is20Min ? (
-                /* 20-Minute Local Express Delivery Option (for Samastipur area pincodes) */
-                <div className="bg-white border-1.5 border-[#6B1725] rounded-2xl p-3.5 flex items-center justify-between shadow-xs">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#6B1725]/10 flex items-center justify-center text-[#6B1725] shrink-0">
-                      <DeliveryRiderIcon className="w-5 h-5 shrink-0" />
+              <div className="space-y-2">
+                {deliveryOptions.map((opt) => {
+                  const isSelected = selectedDeliveryMethod === opt.id;
+                  const isAvailable = opt.available;
+
+                  return (
+                    <div
+                      key={opt.id}
+                      onClick={() => {
+                        if (isAvailable) {
+                          triggerHaptic('light');
+                          hasUserSelectedDeliveryRef.current = true;
+                          setSelectedDeliveryMethod(opt.id);
+                          if (typeof window !== 'undefined') {
+                            sessionStorage.setItem('selected_delivery_option', opt.id);
+                          }
+                        }
+                      }}
+                      className={`rounded-2xl p-3 sm:p-3.5 flex items-center justify-between transition-all relative border ${
+                        !isAvailable
+                          ? 'bg-stone-50/80 border-stone-200 opacity-60 cursor-not-allowed select-none'
+                          : isSelected
+                          ? 'bg-white border-2 border-[#6B1725] shadow-xs cursor-pointer'
+                          : 'bg-white/80 border border-[#E5DEC9] hover:border-[#6B1725]/40 cursor-pointer'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {/* Radio Selection Circle */}
+                        <div className="shrink-0">
+                          {isSelected && isAvailable ? (
+                            <div className="w-4 h-4 rounded-full bg-[#6B1725] flex items-center justify-center text-white">
+                              <Check size={10} strokeWidth={3} />
+                            </div>
+                          ) : (
+                            <div className={`w-4 h-4 rounded-full border ${isAvailable ? 'border-[#D4C39D]' : 'border-stone-300 bg-stone-100'}`} />
+                          )}
+                        </div>
+
+                        <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden ${
+                          isSelected && isAvailable ? 'bg-white ring-1.5 ring-[#6B1725]' : 'bg-[#FAF7F0] border border-[#E5DEC9]'
+                        }`}>
+                          <img
+                            src={opt.image || (opt.id === 'express' ? '/expressdel.webp' : opt.id === 'same_day' ? '/sameday.webp' : '/standarddel.webp')}
+                            alt={opt.title}
+                            className={`w-full h-full object-contain p-1 ${!isAvailable ? 'grayscale opacity-60' : ''}`}
+                          />
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className={`text-xs sm:text-sm font-sans font-bold ${isAvailable ? 'text-[#292524]' : 'text-stone-400'}`}>
+                              {opt.title}
+                            </h4>
+                            {opt.badge && isAvailable && (
+                              <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border whitespace-nowrap ${
+                                opt.id === 'express'
+                                  ? 'text-emerald-800 bg-emerald-50 border-emerald-200'
+                                  : opt.id === 'same_day'
+                                  ? 'text-amber-800 bg-amber-50 border-amber-200'
+                                  : 'text-stone-700 bg-stone-100 border-stone-200'
+                              }`}>
+                                {opt.badge}
+                              </span>
+                            )}
+                            {!isAvailable && (
+                              <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-stone-100 text-stone-500 border border-stone-200 whitespace-nowrap">
+                                Disabled
+                              </span>
+                            )}
+                          </div>
+                          <p className={`text-[11px] truncate ${isAvailable ? 'text-[#7A6E65]' : 'text-amber-700 font-medium'}`}>
+                            {isAvailable ? `${opt.eta} · ${opt.description}` : (opt.unavailableReason || 'Standard delivery only for this pincode')}
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className={`font-sans font-bold text-xs sm:text-sm tabular-nums shrink-0 ml-2 ${isAvailable ? 'text-[#292524]' : 'text-stone-400'}`}>
+                        ₹{opt.charge}
+                      </span>
                     </div>
-                    <div>
-                      <h4 className="text-xs sm:text-sm font-sans font-bold text-[#292524]">
-                        20-Minute Express Delivery
-                      </h4>
-                      <p className="text-[11px] text-[#7A6E65]">
-                        Hand delivery directly from our Samastipur showroom
-                      </p>
-                    </div>
-                  </div>
-                  <span className="font-serif font-bold text-xs sm:text-sm text-[#292524]">
-                    ₹49
-                  </span>
-                </div>
-              ) : (
-                /* Standard Express India Delivery Option (for all other pincodes) */
-                <div className="bg-white border-1.5 border-[#6B1725] rounded-2xl p-3.5 flex items-center justify-between shadow-xs">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#FAF7F0] border border-[#E5DEC9] flex items-center justify-center text-[#7A6E65] shrink-0">
-                      <DeliveryRiderIcon className="w-5 h-5 shrink-0" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs sm:text-sm font-sans font-bold text-[#292524]">
-                        {deliveryDateInfo.deliveryByText}
-                      </h4>
-                      <p className="text-[11px] text-[#7A6E65]">
-                        Free above ₹1,999 &middot; COD available
-                      </p>
-                    </div>
-                  </div>
-                  <span className="font-serif font-bold text-xs sm:text-sm text-[#0F766E]">
-                    {subtotal >= 1999 ? 'Free' : '₹99'}
-                  </span>
-                </div>
-              )}
+                  );
+                })}
+              </div>
             </div>
 
             {/* ── 2D. COUPON CODE BOX ── */}
@@ -631,16 +735,16 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
 
               {/* Delivery */}
               <div className="flex justify-between text-xs sm:text-sm text-[#7A6E65]">
-                <span>Delivery</span>
-                <span className="font-bold text-[#292524]">
+                <span>Delivery ({activeOption?.title ? activeOption.title.replace(' Delivery', '') : 'Standard'})</span>
+                <span className="font-sans font-bold text-[#292524] tabular-nums">
                   {deliveryFee === 0 ? 'Free' : `₹${deliveryFee}`}
                 </span>
               </div>
 
               {/* Divider */}
               <div className="border-t border-[#E5DEC9] pt-2.5 flex justify-between items-baseline">
-                <span className="font-serif font-extrabold text-base sm:text-lg text-[#292524]">To pay</span>
-                <span className="font-serif font-extrabold text-xl sm:text-2xl text-[#292524]">
+                <span className="font-sans font-bold text-base text-[#292524]">To pay</span>
+                <span className="font-sans font-extrabold text-xl sm:text-2xl text-[#292524] tabular-nums tracking-tight">
                   ₹{finalPayable.toLocaleString('en-IN')}
                 </span>
               </div>
@@ -648,9 +752,13 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
               {/* Savings callout */}
               {totalSavings > 0 && (
                 <p className="text-xs font-medium text-[#0F766E] pt-0.5">
-                  You save ₹{totalSavings.toLocaleString('en-IN')} on this order
+                  🎉 You saved ₹{totalSavings.toLocaleString('en-IN')} on this order
                 </p>
               )}
+
+              <div className="text-[11px] text-[#7A6E65] font-sans pt-0.5">
+                Prices include applicable GST
+              </div>
             </div>
           </>
         )}
@@ -667,7 +775,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
         >
           <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
             <div>
-              <div className="font-serif font-extrabold text-xl sm:text-2xl text-[#292524]">
+              <div className="font-sans font-extrabold text-xl sm:text-2xl text-[#292524] tabular-nums tracking-tight">
                 ₹{finalPayable.toLocaleString('en-IN')}
               </div>
               <span className="text-xs text-[#7A6E65] font-sans block">
@@ -744,7 +852,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
                 <h4 className="text-xs sm:text-sm font-serif font-bold text-[#292524] line-clamp-2 leading-snug">
                   {itemToRemove.item.product.name}
                 </h4>
-                <span className="font-serif font-bold text-xs text-[#292524]">
+                <span className="font-sans font-bold text-xs text-[#292524] tabular-nums">
                   ₹{(itemToRemove.item.product.salePrice || itemToRemove.item.product.price).toLocaleString('en-IN')}
                 </span>
               </div>

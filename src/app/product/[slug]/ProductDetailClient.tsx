@@ -30,7 +30,7 @@ import {
   Bell,
   Loader2
 } from 'lucide-react';
-import { fetchDesignVariants, supabase } from '../../../data/supabase';
+import { fetchDesignVariants, fetchDeliverySettings, DeliverySettings, supabase } from '../../../data/supabase';
 import { RecentlyViewed } from '../../../components/RecentlyViewed';
 import { ProductCard } from '../../../components/ProductCard';
 import { useRecentlyViewed } from '../../../utils/useRecentlyViewed';
@@ -77,9 +77,15 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
   const is20Min = useMemo(() => {
     if (result) {
-      return !!(result.is20MinDelivery || (result.distanceKm !== undefined && result.distanceKm <= 20) || (result as any).eligible);
+      return !!(
+        result.is20MinDelivery ||
+        result.isExpress ||
+        (result.distanceKm !== undefined && result.distanceKm <= 10) ||
+        (result as any).eligible
+      );
     }
-    return displayPincode === (defaultDeliveryPincode || '848101') || displayPincode === '848114';
+    const cleanPin = (displayPincode || '').trim();
+    return cleanPin.startsWith('8481') || cleanPin === (defaultDeliveryPincode || '848101');
   }, [result, displayPincode, defaultDeliveryPincode]);
 
   const timingStatus = useMemo(() => {
@@ -87,6 +93,34 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   }, [result]);
 
   const deliveryDateInfo = useMemo(() => getStandardDeliveryDateInfo(), []);
+
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
+
+  useEffect(() => {
+    fetchDeliverySettings().then(setDeliverySettings).catch(console.error);
+  }, []);
+
+  const activeDeliveryCharge = useMemo(() => {
+    if (result?.options && Array.isArray(result.options)) {
+      if (is20Min) {
+        const expOpt = result.options.find((o: any) => o.id === 'express' && o.available);
+        if (expOpt) return expOpt.charge;
+      }
+      const stdOpt = result.options.find((o: any) => o.id === 'standard');
+      if (stdOpt) return stdOpt.charge;
+    }
+    if (deliverySettings) {
+      return is20Min ? Number(deliverySettings.express_charge) : Number(deliverySettings.standard_charge);
+    }
+    return is20Min ? 29 : 69;
+  }, [result, is20Min, deliverySettings]);
+
+  const deliveryChargeText = useMemo(() => {
+    if (activeDeliveryCharge === 0) {
+      return is20Min ? 'Free express delivery' : 'Free delivery';
+    }
+    return is20Min ? `Express (₹${activeDeliveryCharge})` : `Standard delivery (₹${activeDeliveryCharge})`;
+  }, [activeDeliveryCharge, is20Min]);
 
   // Loading/success states for actions
   const [isAddingToCart, setIsAddingToCart] = useState(false);
@@ -141,7 +175,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     try {
       setLoadingReviews(true);
       const { data, error } = await supabase
-        .from('reviews')
+        .from('product_reviews')
         .select('*')
         .eq('product_id', product.id)
         .eq('status', 'approved')
@@ -269,7 +303,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
       setFormError(null);
       const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Verified Buyer';
 
-      const { error } = await supabase.from('reviews').insert([{
+      const { error } = await supabase.from('product_reviews').insert([{
         product_id: product.id,
         user_id: user.id,
         rating: formRating,
@@ -639,9 +673,15 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
               <div className="flex items-start justify-between">
                 <div
                   onClick={openPincodeSheet}
-                  className="flex items-start gap-2.5 cursor-pointer group"
+                  className="flex items-start gap-3 cursor-pointer group"
                 >
-                  <DeliveryRiderIcon className="w-5 h-5 shrink-0 mt-0.5" />
+                  <div className="w-10 h-10 rounded-xl bg-[#FAF7F0] border border-[#E5DEC9] p-1 flex items-center justify-center shrink-0 mt-0.5 group-hover:border-[#6B1725]/40 transition-colors shadow-2xs overflow-hidden">
+                    <img
+                      src={is20Min ? "/expressdel.webp" : "/standarddel.webp"}
+                      alt={is20Min ? "Express Delivery" : "Standard Delivery"}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
                   <div>
                     <h4 className="text-sm font-sans font-bold text-[#292524] group-hover:text-[#6B1725] transition-colors">
                       {is20Min
@@ -649,7 +689,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                         : deliveryDateInfo.deliveryByText}
                     </h4>
                     <p className="text-xs text-[#7A6E65] mt-0.5">
-                      To <strong className="font-bold text-[#292524]">{getQuickCity(displayPincode) ? `${getQuickCity(displayPincode)} (${displayPincode})` : displayPincode}</strong> · {is20Min ? 'Free express delivery & COD available' : 'Free delivery & COD available'}
+                      To <strong className="font-bold text-[#292524]">{getQuickCity(displayPincode) ? `${getQuickCity(displayPincode)} (${displayPincode})` : displayPincode}</strong> · <span className="font-bold text-[#292524] tabular-nums">{deliveryChargeText}</span> · COD available
                     </p>
                   </div>
                 </div>

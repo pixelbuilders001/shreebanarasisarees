@@ -171,15 +171,17 @@ export default function ReceiptPage() {
                         id,
                         order_number, created_at, payment_method, total_amount, subtotal, discount, shipping_fee,
                         customer_name, customer_phone, customer_email, shipping_address,
+                        taxable_amount, gst_amount, cgst_amount, sgst_amount, igst_amount, gst_rate, place_of_supply,
+                        invoice_number, invoice_date,
                         gift_wrap_charge,
                         order_items (
-                            id, order_id, inventory_id, product_name, sku, barcode, quantity, unit_price, total_price, product_snapshot, item_status
+                            id, order_id, inventory_id, product_name, product_name_snapshot, sku, barcode, quantity, unit_price, discount_amount, taxable_value, gst_rate, cgst_amount, sgst_amount, igst_amount, gst_amount, total_price, product_snapshot, item_status
                         )
                     `);
                 if (isUuid) {
                     query = query.eq('id', decodedInvoice);
                 } else {
-                    query = query.eq('order_number', decodedInvoice);
+                    query = query.or(`order_number.eq.${decodedInvoice},invoice_number.eq.${decodedInvoice}`);
                 }
                 const { data: orderData, error: orderErr } = await query.maybeSingle();
 
@@ -194,7 +196,7 @@ export default function ReceiptPage() {
                         }
                         const unitPrice = Number(i.unit_price || snap?.selling_price || 0);
                         const snapMrp = Number(snap?.mrp || snap?.price || 0);
-                        const rawSareeName = i.product_name || snap?.saree_name || snap?.name || 'Pure Silk Banarasi Saree';
+                        const rawSareeName = i.product_name || i.product_name_snapshot || snap?.saree_name || snap?.name || 'Pure Silk Banarasi Saree';
                         const sareeName = (i.item_status === 'cancelled') ? `[Cancelled] ${rawSareeName}` : rawSareeName;
 
                         // Fallback match in PRODUCTS catalog if MRP was not found in snapshot
@@ -219,6 +221,7 @@ export default function ReceiptPage() {
                             quantity: Number(i.quantity || 1),
                             mrp: mrpVal,
                             sellingPrice: unitPrice,
+                            hsnCode: i.hsn_code || snap?.hsn_code || '5208',
                         };
                     });
 
@@ -230,9 +233,13 @@ export default function ReceiptPage() {
                     shippingAddr.pinCode || shippingAddr.pincode
                 ].filter(Boolean).join(', ');
 
+                const customerState = (orderData.place_of_supply || shippingAddr.state || 'Bihar').trim();
+                const isIntraState = customerState.toLowerCase() === 'bihar';
+                const hasGst = orderData.gst_amount != null && Number(orderData.gst_amount) > 0;
+
                 receiptData = {
-                    invoiceNumber: orderData.order_number || orderData.id,
-                    date: orderData.created_at,
+                    invoiceNumber: orderData.invoice_number || orderData.order_number || orderData.id,
+                    date: orderData.invoice_date || orderData.created_at,
                     paymentMode: orderData.payment_method || 'cod',
                     customerName: orderData.customer_name || shippingAddr.name || null,
                     customerMobile: orderData.customer_phone || shippingAddr.phone || null,
@@ -244,6 +251,17 @@ export default function ReceiptPage() {
                     discountAmount: Number(orderData.discount || 0),
                     shippingFee: Number(orderData.shipping_fee || 0),
                     giftWrapCharge: Number(orderData.gift_wrap_charge || 0),
+                    isGstApplied: hasGst,
+                    gstRate: Number(orderData.gst_rate || 5),
+                    taxableAmount: orderData.taxable_amount != null ? Number(orderData.taxable_amount) : undefined,
+                    cgstRate: isIntraState ? (Number(orderData.gst_rate || 5) / 2) : 0,
+                    cgstAmount: orderData.cgst_amount != null ? Number(orderData.cgst_amount) : 0,
+                    sgstRate: isIntraState ? (Number(orderData.gst_rate || 5) / 2) : 0,
+                    sgstAmount: orderData.sgst_amount != null ? Number(orderData.sgst_amount) : 0,
+                    igstRate: !isIntraState ? Number(orderData.gst_rate || 5) : 0,
+                    igstAmount: orderData.igst_amount != null ? Number(orderData.igst_amount) : 0,
+                    totalGst: orderData.gst_amount != null ? Number(orderData.gst_amount) : 0,
+                    placeOfSupply: customerState,
                 };
             }
 
@@ -519,6 +537,13 @@ export default function ReceiptPage() {
                                 {'  '}
                                 <span style={{ fontStyle: 'italic' }}>{dateShort}</span>
                             </div>
+                            {receipt.placeOfSupply && (
+                                <div>
+                                    <span style={{ fontWeight: 'bold' }}>Place of Supply:</span>
+                                    {'  '}
+                                    <span style={{ fontStyle: 'italic' }}>{receipt.placeOfSupply}</span>
+                                </div>
+                            )}
                         </div>
                         {(receipt.customerName || receipt.customerMobile || receipt.customerAddress) && (
                             <div className="invoice-header-right" style={{ lineHeight: '1.85', fontSize: '12.5px', textAlign: 'right', maxWidth: '300px' }}>
@@ -557,7 +582,12 @@ export default function ReceiptPage() {
 
                                     return (
                                         <tr key={idx} style={{ borderBottom: '1px dashed #ccc' }}>
-                                            <td style={{ padding: '11px 8px 11px 0', wordBreak: 'break-word' }}>{item.sareeName}</td>
+                                            <td style={{ padding: '11px 8px 11px 0', wordBreak: 'break-word' }}>
+                                                <div>{item.sareeName}</div>
+                                                {item.hsnCode && (
+                                                    <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>HSN: {item.hsnCode}</div>
+                                                )}
+                                            </td>
                                             <td style={{ padding: '11px 6px', textAlign: 'center' }}>{item.quantity}</td>
                                             <td style={{ padding: '11px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtCurrency(itemMrp)}</td>
                                             <td style={{ padding: '11px 6px', textAlign: 'right', color: itemDisc > 0 ? '#b91c1c' : '#777', whiteSpace: 'nowrap' }}>

@@ -379,7 +379,7 @@ function ReviewContent() {
                                 </>
                               )}
                               <span>&bull;</span>
-                              <span className="font-serif font-bold text-maroon">₹{item.price.toLocaleString('en-IN')}</span>
+                              <span className="font-sans font-bold text-maroon tabular-nums">₹{item.price.toLocaleString('en-IN')}</span>
                             </div>
                           </div>
                         </div>

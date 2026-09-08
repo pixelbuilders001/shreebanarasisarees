@@ -32,7 +32,9 @@ export interface DbInventory {
   // created_at: string;
   sku: string | null;
   design_code?: string | null;
-  // hsn_code?: string | null;
+  hsn_code?: string | null;
+  gst_rate?: number | null;
+  price_includes_gst?: boolean | null;
   description: string | null;
   mrp: number | null;
   discount_amount: number | null;
@@ -47,7 +49,7 @@ export interface DbInventory {
 /**
  * Public fields to select from the inventory table. Excludes confidential vendor pricing (purchase_price).
  */
-export const PUBLIC_INVENTORY_SELECT = 'id, saree_name, category, fabric, color, selling_price, stock, status, sku, design_code, description, mrp, discount_amount, discount_percentage, inventory_images(image_url, is_primary, sort_order)';
+export const PUBLIC_INVENTORY_SELECT = 'id, saree_name, category, fabric, color, selling_price, stock, status, sku, design_code, description, mrp, discount_amount, discount_percentage, hsn_code, gst_rate, price_includes_gst, inventory_images(image_url, is_primary, sort_order)';
 
 /**
  * Stable slug generator for database products.
@@ -192,7 +194,10 @@ export function mapDbProductToProduct(
     blousePiece: "0.8 meters",
     work: "Traditional woven borders and zari motifs",
     care: "Dry Clean Only",
-    designCode: item.design_code || undefined
+    designCode: item.design_code || undefined,
+    hsn_code: item.hsn_code || '5208',
+    gst_rate: item.gst_rate != null ? Number(item.gst_rate) : 5.0,
+    price_includes_gst: item.price_includes_gst ?? true
   };
 }
 
@@ -635,11 +640,28 @@ export interface Order {
     total_price?: number;
     product: Product;
     quantity: number;
+    hsn_code?: string;
+    discount_amount?: number;
+    taxable_value?: number;
+    gst_rate?: number;
+    cgst_amount?: number;
+    sgst_amount?: number;
+    igst_amount?: number;
+    gst_amount?: number;
   }[];
   subtotal: number;
   discount: number;
   shipping: number;
   total: number;
+  taxable_amount?: number;
+  gst_amount?: number;
+  cgst_amount?: number;
+  sgst_amount?: number;
+  igst_amount?: number;
+  gst_rate?: number;
+  place_of_supply?: string;
+  invoice_number?: string;
+  invoice_date?: string;
   paymentMethod: 'UPI' | 'Cash on Delivery' | 'Online Payment';
   paymentStatus: 'Pending' | 'Paid' | 'Failed' | 'Refunded';
   orderStatus: 'Order Placed' | 'Confirmed' | 'Processing' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled' | 'Returned';
@@ -657,6 +679,7 @@ export interface CreateDbOrderParams {
   customer_phone?: string;
   shipping_address?: any;
   notes?: string;
+  coupon_code?: string;
   customer?: {
     name: string;
     phone: string;
@@ -671,6 +694,9 @@ export interface CreateDbOrderParams {
   subtotal?: number;
   discount?: number;
   shipping?: number;
+  shipping_charge?: number;
+  delivery_option?: string;
+  delivery_method?: string;
   total?: number;
   paymentMethod?: 'UPI' | 'Cash on Delivery' | 'Online Payment';
   is_gift?: boolean;
@@ -683,33 +709,54 @@ export async function createDbOrder(orderData: CreateDbOrderParams, userId?: str
   try {
     const customer_name = orderData.customer_name || orderData.customer?.name || '';
     const customer_phone = orderData.customer_phone || orderData.customer?.phone || '';
+    const customer_email = orderData.customer?.email || '';
     const shipping_address = orderData.shipping_address || orderData.customer || {};
     const notes = orderData.notes ?? (
       orderData.is_gift && orderData.gift_message
         ? `Gift for ${orderData.gift_recipient_name || 'recipient'}: ${orderData.gift_message}. Payment: ${orderData.paymentMethod || 'COD'}`
         : (orderData.paymentMethod ? `Original payment method: ${orderData.paymentMethod}` : '')
     );
+    const payment_method = orderData.paymentMethod === 'Cash on Delivery' ? 'cod' : 'online';
 
-    // Call Supabase create-order Edge Function.
-    // Frontend only sends: customer_name, customer_phone, shipping_address, notes.
-    // The Edge Function handles cart fetching, product/price/stock validation,
-    // order creation, order items, stock deduction, status history, and cart clearing.
-    const { data, error } = await supabase.functions.invoke('create-order', {
-      body: {
-        customer_name,
-        customer_phone,
-        shipping_address,
-        notes,
-      },
-    });
+    const orderPayload = {
+      items: (orderData.items || []).map(i => ({
+        productId: i.product.id,
+        quantity: i.quantity
+      })),
+      customer_name,
+      customer_phone,
+      customer_email,
+      shipping_address,
+      notes,
+      coupon_code: orderData.coupon_code || undefined,
+      delivery_option: orderData.delivery_option,
+      delivery_method: orderData.delivery_method,
+      shipping_charge: orderData.shipping_charge ?? orderData.shipping,
+      payment_method,
+      is_gift: orderData.is_gift,
+      gift_recipient_name: orderData.gift_recipient_name,
+      gift_message: orderData.gift_message,
+      gift_wrap_charge: orderData.gift_wrap_charge,
+      user_id: userId || null
+    };
 
-    if (error) {
-      console.error('Error invoking create-order Edge Function:', error);
-      return null;
+    let data: any = null;
+    let error: any = null;
+
+    // Invoke Supabase create-order Edge Function
+    try {
+      const edgeRes = await supabase.functions.invoke('create-order', {
+        body: orderPayload
+      });
+      data = edgeRes.data;
+      error = edgeRes.error;
+    } catch (invokeErr) {
+      console.error('create-order edge function invocation failed:', invokeErr);
+      error = invokeErr;
     }
 
-    if (!data || data.error) {
-      console.error('create-order Edge Function failed:', data?.error || 'Empty response');
+    if (error || !data || data.error) {
+      console.error('createDbOrder failed:', error || data?.error || 'Empty response');
       return null;
     }
 
@@ -725,7 +772,7 @@ export async function createDbOrder(orderData: CreateDbOrderParams, userId?: str
     const customerObj = {
       name: resOrder.customer_name || rawShippingAddr.name || customer_name,
       phone: resOrder.customer_phone || rawShippingAddr.phone || customer_phone,
-      email: resOrder.customer_email || rawShippingAddr.email || orderData.customer?.email || '',
+      email: resOrder.customer_email || rawShippingAddr.email || customer_email,
       address: rawShippingAddr.address || (typeof shipping_address === 'string' ? shipping_address : ''),
       city: rawShippingAddr.city || 'Samastipur',
       state: rawShippingAddr.state || 'Bihar',
@@ -758,11 +805,32 @@ export async function createDbOrder(orderData: CreateDbOrderParams, userId?: str
 
     const rawItems = resOrder.items || resOrder.order_items || orderData.items || [];
     const items = rawItems.map((item: any) => {
-      if (item.product) return item;
-
       let snapshot = item.product_snapshot;
       if (typeof snapshot === 'string') {
         try { snapshot = JSON.parse(snapshot); } catch { snapshot = null; }
+      }
+
+      const hsn_code = item.hsn_code || snapshot?.hsn_code || '5208';
+      const discount_amount = item.discount_amount != null ? Number(item.discount_amount) : 0;
+      const taxable_value = item.taxable_value != null ? Number(item.taxable_value) : undefined;
+      const gst_rate = item.gst_rate != null ? Number(item.gst_rate) : (snapshot?.gst_rate != null ? Number(snapshot.gst_rate) : 5);
+      const cgst_amount = item.cgst_amount != null ? Number(item.cgst_amount) : undefined;
+      const sgst_amount = item.sgst_amount != null ? Number(item.sgst_amount) : undefined;
+      const igst_amount = item.igst_amount != null ? Number(item.igst_amount) : undefined;
+      const gst_amount = item.gst_amount != null ? Number(item.gst_amount) : undefined;
+
+      if (item.product) {
+        return {
+          ...item,
+          hsn_code,
+          discount_amount,
+          taxable_value,
+          gst_rate,
+          cgst_amount,
+          sgst_amount,
+          igst_amount,
+          gst_amount,
+        };
       }
 
       if (snapshot) {
@@ -772,7 +840,23 @@ export async function createDbOrder(orderData: CreateDbOrderParams, userId?: str
         if (imgUrls.length > 0) {
           snapshot.images = imgUrls;
         }
-        return { product: snapshot, quantity: Number(item.quantity || 1) };
+        return {
+          id: item.id,
+          inventory_id: item.inventory_id,
+          item_status: item.item_status || 'active',
+          unit_price: Number(item.unit_price || snapshot.selling_price || 0),
+          total_price: Number(item.total_price || 0),
+          product: snapshot,
+          quantity: Number(item.quantity || 1),
+          hsn_code,
+          discount_amount,
+          taxable_value,
+          gst_rate,
+          cgst_amount,
+          sgst_amount,
+          igst_amount,
+          gst_amount,
+        };
       }
 
       return {
@@ -795,9 +879,25 @@ export async function createDbOrder(orderData: CreateDbOrderParams, userId?: str
           barcode: item.barcode || null,
           inStock: true,
           stock: 1,
-          description: item.product_name || ''
+          description: item.product_name || '',
+          hsn_code,
+          gst_rate,
+          price_includes_gst: true
         },
-        quantity: Number(item.quantity || 1)
+        quantity: Number(item.quantity || 1),
+        id: item.id,
+        inventory_id: item.inventory_id,
+        item_status: item.item_status || 'active',
+        unit_price: Number(item.unit_price || 0),
+        total_price: Number(item.total_price || 0),
+        hsn_code,
+        discount_amount,
+        taxable_value,
+        gst_rate,
+        cgst_amount,
+        sgst_amount,
+        igst_amount,
+        gst_amount,
       };
     });
 
@@ -829,6 +929,15 @@ export async function createDbOrder(orderData: CreateDbOrderParams, userId?: str
       discount,
       shipping: shippingFee,
       total,
+      taxable_amount: resOrder.taxable_amount != null ? Number(resOrder.taxable_amount) : undefined,
+      gst_amount: resOrder.gst_amount != null ? Number(resOrder.gst_amount) : undefined,
+      cgst_amount: resOrder.cgst_amount != null ? Number(resOrder.cgst_amount) : undefined,
+      sgst_amount: resOrder.sgst_amount != null ? Number(resOrder.sgst_amount) : undefined,
+      igst_amount: resOrder.igst_amount != null ? Number(resOrder.igst_amount) : undefined,
+      gst_rate: resOrder.gst_rate != null ? Number(resOrder.gst_rate) : undefined,
+      place_of_supply: resOrder.place_of_supply || customerObj.state,
+      invoice_number: resOrder.invoice_number,
+      invoice_date: resOrder.invoice_date,
       paymentMethod: orderData.paymentMethod || (resOrder.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'),
       paymentStatus,
       orderStatus,
@@ -931,10 +1040,21 @@ export function mapDbOrderToOrder(orderRow: any): Order {
       length: productSnapshot?.length || '5.5 meters',
       blousePiece: productSnapshot?.blousePiece || '0.8 meters',
       work: productSnapshot?.work || '',
-      care: productSnapshot?.care || ''
+      care: productSnapshot?.care || '',
+      hsn_code: item.hsn_code || productSnapshot?.hsn_code || '5208',
+      gst_rate: item.gst_rate != null ? Number(item.gst_rate) : (productSnapshot?.gst_rate != null ? Number(productSnapshot.gst_rate) : 5),
+      price_includes_gst: true
     };
 
     const itemStatus = item.item_status || 'active';
+    const hsn_code = item.hsn_code || productSnapshot?.hsn_code || '5208';
+    const discount_amount = item.discount_amount != null ? Number(item.discount_amount) : 0;
+    const taxable_value = item.taxable_value != null ? Number(item.taxable_value) : undefined;
+    const gst_rate = item.gst_rate != null ? Number(item.gst_rate) : (productSnapshot?.gst_rate != null ? Number(productSnapshot.gst_rate) : 5);
+    const cgst_amount = item.cgst_amount != null ? Number(item.cgst_amount) : undefined;
+    const sgst_amount = item.sgst_amount != null ? Number(item.sgst_amount) : undefined;
+    const igst_amount = item.igst_amount != null ? Number(item.igst_amount) : undefined;
+    const gst_amount = item.gst_amount != null ? Number(item.gst_amount) : undefined;
 
     return {
       id: item.id,
@@ -946,7 +1066,15 @@ export function mapDbOrderToOrder(orderRow: any): Order {
         ...product,
         item_status: itemStatus
       },
-      quantity: Number(item.quantity || 1)
+      quantity: Number(item.quantity || 1),
+      hsn_code,
+      discount_amount,
+      taxable_value,
+      gst_rate,
+      cgst_amount,
+      sgst_amount,
+      igst_amount,
+      gst_amount,
     };
   });
 
@@ -1028,6 +1156,15 @@ export function mapDbOrderToOrder(orderRow: any): Order {
     discount: Number(orderRow.discount || 0),
     shipping: Number(orderRow.shipping_fee || 0),
     total: Number(orderRow.total_amount || 0),
+    taxable_amount: orderRow.taxable_amount != null ? Number(orderRow.taxable_amount) : undefined,
+    gst_amount: orderRow.gst_amount != null ? Number(orderRow.gst_amount) : undefined,
+    cgst_amount: orderRow.cgst_amount != null ? Number(orderRow.cgst_amount) : undefined,
+    sgst_amount: orderRow.sgst_amount != null ? Number(orderRow.sgst_amount) : undefined,
+    igst_amount: orderRow.igst_amount != null ? Number(orderRow.igst_amount) : undefined,
+    gst_rate: orderRow.gst_rate != null ? Number(orderRow.gst_rate) : undefined,
+    place_of_supply: orderRow.place_of_supply || shippingAddr.state,
+    invoice_number: orderRow.invoice_number,
+    invoice_date: orderRow.invoice_date,
     paymentMethod,
     paymentStatus,
     orderStatus,
@@ -1114,6 +1251,50 @@ export async function fetchDbOrderWithItems(orderIdOrNumber: string): Promise<Or
   }
 }
 
+export type DeliveryOptionType = 'express' | 'same_day' | 'standard';
+
+export interface CalculatedDeliveryOption {
+  id: DeliveryOptionType;
+  title: string;
+  charge: number;
+  eta: string;
+  badge?: string;
+  description: string;
+  available: boolean;
+  unavailableReason?: string;
+  image?: string;
+}
+
+export const DELIVERY_OPTION_IMAGES: Record<DeliveryOptionType, string> = {
+  express: '/expressdel.webp',
+  same_day: '/sameday.webp',
+  standard: '/standarddel.webp',
+};
+
+export interface DeliverySettings {
+  id: string;
+  serviceable_district: string;
+  serviceable_state: string;
+  express_max_km: number;
+  same_day_max_km: number;
+  standard_max_km: number;
+  express_charge: number;
+  same_day_charge: number;
+  standard_charge: number;
+  express_min_minutes: number;
+  express_max_minutes: number;
+  same_day_cutoff_time: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+  shop_latitude?: number | null;
+  shop_longitude?: number | null;
+  express_packing_buffer_minutes?: number;
+  express_delivery_buffer_minutes?: number;
+  is_express_20min_enabled?: boolean;
+  default_pincode?: string | null;
+}
+
 export interface DeliveryCheckResult {
   success: boolean;
   serviceable?: boolean;
@@ -1141,6 +1322,8 @@ export interface DeliveryCheckResult {
     packingBufferMinutes?: number;
     deliveryBufferMinutes?: number;
   };
+  options?: CalculatedDeliveryOption[];
+  deliverySettings?: DeliverySettings;
 }
 
 export async function checkDeliveryServiceability(
@@ -2365,5 +2548,239 @@ export async function updateProfileDefaultPincode(userId: string, pincode: strin
     console.error('Exception updating profile default pincode:', err);
     return { success: false, error: err };
   }
+}
+
+let cachedDeliverySettings: DeliverySettings | null = null;
+
+/**
+ * Fetches the active delivery settings row from public.delivery_settings.
+ * Cached in memory for speed across page views and component renders.
+ */
+export async function fetchDeliverySettings(): Promise<DeliverySettings> {
+  if (cachedDeliverySettings) {
+    return cachedDeliverySettings;
+  }
+
+  const defaultSettings: DeliverySettings = {
+    id: 'default',
+    serviceable_district: 'Samastipur',
+    serviceable_state: 'Bihar',
+    express_max_km: 5,
+    same_day_max_km: 10,
+    standard_max_km: 20,
+    express_charge: 29,
+    same_day_charge: 49,
+    standard_charge: 69,
+    express_min_minutes: 60,
+    express_max_minutes: 120,
+    same_day_cutoff_time: '17:00:00',
+    is_active: true,
+    shop_latitude: 25.855802,
+    shop_longitude: 85.779337,
+    express_packing_buffer_minutes: 3,
+    express_delivery_buffer_minutes: 3,
+    is_express_20min_enabled: true,
+    default_pincode: '848101'
+  };
+
+  try {
+    const { data, error } = await supabase
+      .from('delivery_settings')
+      .select('*')
+      .eq('id', 'default')
+      .maybeSingle();
+
+    if (error || !data) {
+      // Fallback if no default id row
+      const { data: anyData } = await supabase
+        .from('delivery_settings')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (!anyData) {
+        cachedDeliverySettings = defaultSettings;
+        return defaultSettings;
+      }
+
+      cachedDeliverySettings = {
+        id: anyData.id || 'default',
+        serviceable_district: anyData.serviceable_district || 'Samastipur',
+        serviceable_state: anyData.serviceable_state || 'Bihar',
+        express_max_km: Number(anyData.express_max_km ?? 5),
+        same_day_max_km: Number(anyData.same_day_max_km ?? 10),
+        standard_max_km: Number(anyData.standard_max_km ?? 20),
+        express_charge: Number(anyData.express_charge ?? 29),
+        same_day_charge: Number(anyData.same_day_charge ?? 49),
+        standard_charge: Number(anyData.standard_charge ?? 69),
+        express_min_minutes: Number(anyData.express_min_minutes ?? 60),
+        express_max_minutes: Number(anyData.express_max_minutes ?? 120),
+        same_day_cutoff_time: anyData.same_day_cutoff_time || '17:00:00',
+        is_active: anyData.is_active !== false,
+        shop_latitude: anyData.shop_latitude ? Number(anyData.shop_latitude) : 25.855802,
+        shop_longitude: anyData.shop_longitude ? Number(anyData.shop_longitude) : 85.779337,
+        express_packing_buffer_minutes: Number(anyData.express_packing_buffer_minutes ?? 3),
+        express_delivery_buffer_minutes: Number(anyData.express_delivery_buffer_minutes ?? 3),
+        is_express_20min_enabled: anyData.is_express_20min_enabled !== false,
+        default_pincode: anyData.default_pincode || '848101'
+      };
+      return cachedDeliverySettings;
+    }
+
+    cachedDeliverySettings = {
+      id: data.id || 'default',
+      serviceable_district: data.serviceable_district || 'Samastipur',
+      serviceable_state: data.serviceable_state || 'Bihar',
+      express_max_km: Number(data.express_max_km ?? 5),
+      same_day_max_km: Number(data.same_day_max_km ?? 10),
+      standard_max_km: Number(data.standard_max_km ?? 20),
+      express_charge: Number(data.express_charge ?? 29),
+      same_day_charge: Number(data.same_day_charge ?? 49),
+      standard_charge: Number(data.standard_charge ?? 69),
+      express_min_minutes: Number(data.express_min_minutes ?? 60),
+      express_max_minutes: Number(data.express_max_minutes ?? 120),
+      same_day_cutoff_time: data.same_day_cutoff_time || '17:00:00',
+      is_active: data.is_active !== false,
+      shop_latitude: data.shop_latitude ? Number(data.shop_latitude) : 25.855802,
+      shop_longitude: data.shop_longitude ? Number(data.shop_longitude) : 85.779337,
+      express_packing_buffer_minutes: Number(data.express_packing_buffer_minutes ?? 3),
+      express_delivery_buffer_minutes: Number(data.express_delivery_buffer_minutes ?? 3),
+      is_express_20min_enabled: data.is_express_20min_enabled !== false,
+      default_pincode: data.default_pincode || '848101'
+    };
+
+    return cachedDeliverySettings;
+  } catch (err) {
+    console.error('Exception fetching delivery_settings:', err);
+    return defaultSettings;
+  }
+}
+
+/**
+ * Calculates delivery options, eligibility, charges, and ETAs from delivery_settings
+ * based on customer distance (in km), pincode, and current Indian Standard Time.
+ * 
+ * Condition Rules:
+ * 1. If pincode is within local service area (distance <= same_day_max_km or local Samastipur pincode):
+ *    All 3 options (Express, Same Day, Standard) are AVAILABLE so the customer can choose.
+ * 2. If pincode is for Standard Delivery only (distance > same_day_max_km or non-local pincode across India):
+ *    Express and Same Day are DISABLED (available: false), and ONLY Standard Delivery is available.
+ */
+export function calculateDeliveryOptions(
+  distanceKm: number | null | undefined,
+  settings: DeliverySettings,
+  customerEtaMinutes?: number,
+  pincode?: string
+): CalculatedDeliveryOption[] {
+  const dist = distanceKm != null ? distanceKm : 0;
+  const hasDistance = distanceKm != null && distanceKm > 0;
+  const cleanPin = (pincode || '').replace(/\D/g, '').slice(0, 6);
+
+  // Check if pincode or distance is within local same-day / express delivery zone:
+  // - If road / GPS distance is known (> 0): within same_day_max_km (e.g. 10 km)
+  // - If distance is not yet known: local Samastipur district pincodes (starts with 8481, or default_pincode, or 848101)
+  // - If no pincode or distance is given: defaults to local showroom area
+  let isLocalDeliveryEligible = false;
+  if (hasDistance) {
+    isLocalDeliveryEligible = dist <= settings.same_day_max_km;
+  } else if (cleanPin) {
+    isLocalDeliveryEligible = cleanPin.startsWith('8481') || cleanPin === (settings.default_pincode || '848101');
+  } else {
+    isLocalDeliveryEligible = true;
+  }
+
+  // Operating window in IST
+  const istFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false
+  });
+  const parts = istFormatter.formatToParts(new Date());
+  const istHour = parseInt(parts.find(p => p.type === 'hour')?.value || '12', 10);
+  const istMinute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+  const isShopOpen = istHour >= 9 && istHour < 20;
+
+  // Cutoff check for same day: e.g. 17:00 (5 PM)
+  let cutoffHour = 17;
+  let cutoffMinute = 0;
+  if (settings.same_day_cutoff_time) {
+    const timeParts = settings.same_day_cutoff_time.split(':');
+    if (timeParts.length >= 2) {
+      cutoffHour = parseInt(timeParts[0], 10) || 17;
+      cutoffMinute = parseInt(timeParts[1], 10) || 0;
+    }
+  }
+  const isBeforeSameDayCutoff = (istHour < cutoffHour) || (istHour === cutoffHour && istMinute <= cutoffMinute);
+
+  // 1. Express Option: Available if local delivery eligible and settings active
+  const expressEligible = isLocalDeliveryEligible && settings.is_active;
+  let expressTitle = 'Express Delivery';
+  let expressEta = `${settings.express_min_minutes}–${settings.express_max_minutes} mins`;
+  let expressBadge = '⚡ Express';
+
+  if (settings.is_express_20min_enabled) {
+    if (isShopOpen) {
+      const etaMins = customerEtaMinutes || 20;
+      expressTitle = '20-Min Express Delivery';
+      expressEta = `~${etaMins} mins`;
+      expressBadge = '⚡ 20-Min Express';
+    } else if (istHour < 9) {
+      expressTitle = 'Morning Express Delivery';
+      expressEta = 'Today by 10:00 AM';
+      expressBadge = '⚡ Today Morning';
+    } else {
+      expressTitle = 'Morning Express Delivery';
+      expressEta = 'Tomorrow by 10:00 AM';
+      expressBadge = '⚡ Tomorrow Morning';
+    }
+  }
+
+  // 2. Same Day Option: Available if local delivery eligible and settings active
+  const sameDayEligible = isLocalDeliveryEligible && settings.is_active;
+  const cutoffDisplay = `${cutoffHour > 12 ? cutoffHour - 12 : cutoffHour}:${cutoffMinute < 10 ? '0' + cutoffMinute : cutoffMinute} ${cutoffHour >= 12 ? 'PM' : 'AM'}`;
+  const sameDayEta = isBeforeSameDayCutoff ? 'Today by 9:00 PM' : 'Tomorrow by 9:00 PM';
+  const sameDayBadge = isBeforeSameDayCutoff ? 'Today Evening' : 'Tomorrow';
+
+  // 3. Standard Option: Always available across India when active
+  const standardEligible = settings.is_active;
+  const standardEta = '3–5 Business Days';
+
+  return [
+    {
+      id: 'express',
+      title: expressTitle,
+      charge: settings.express_charge,
+      eta: expressEta,
+      badge: expressBadge,
+      description: `Hand delivery directly from our showroom (within ${settings.express_max_km} km)`,
+      available: expressEligible,
+      unavailableReason: !isLocalDeliveryEligible ? 'Standard delivery only for this pincode' : undefined,
+      image: '/expressdel.webp'
+    },
+    {
+      id: 'same_day',
+      title: 'Same Day Delivery',
+      charge: settings.same_day_charge,
+      eta: sameDayEta,
+      badge: sameDayBadge,
+      description: isBeforeSameDayCutoff
+        ? `Order before ${cutoffDisplay} for delivery today`
+        : `Orders placed after ${cutoffDisplay} arrive tomorrow`,
+      available: sameDayEligible,
+      unavailableReason: !isLocalDeliveryEligible ? 'Standard delivery only for this pincode' : undefined,
+      image: '/sameday.webp'
+    },
+    {
+      id: 'standard',
+      title: 'Standard Delivery',
+      charge: settings.standard_charge,
+      eta: standardEta,
+      badge: 'Standard',
+      description: 'Tracked express courier delivery across India',
+      available: standardEligible,
+      image: '/standarddel.webp'
+    }
+  ];
 }
 

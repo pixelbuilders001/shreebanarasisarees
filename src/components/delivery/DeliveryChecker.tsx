@@ -367,7 +367,9 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
                   <div className="p-4 bg-emerald-50/90 border border-emerald-300 rounded-xl text-xs space-y-2.5 text-emerald-950 shadow-xs">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5 font-extrabold text-emerald-800 text-sm font-serif">
-                        <DeliveryRiderIcon className="w-10 h-10 flex-shrink-0" />
+                        <div className="w-10 h-10 rounded-xl bg-white border border-emerald-200 p-1 flex items-center justify-center shrink-0 shadow-2xs">
+                          <img src="/expressdel.webp" alt="Express Delivery" className="w-full h-full object-contain" />
+                        </div>
                         <span>Express Delivery Available</span>
                       </div>
                       <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 font-serif">
@@ -398,7 +400,9 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
                 <div className="p-4 bg-emerald-50/90 border border-emerald-300 rounded-xl text-xs space-y-2.5 text-emerald-950 shadow-xs">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5 font-extrabold text-emerald-800 text-sm font-serif">
-                      <DeliveryRiderIcon className="w-10 h-10 flex-shrink-0" />
+                      <div className="w-10 h-10 rounded-xl bg-white border border-emerald-200 p-1 flex items-center justify-center shrink-0 shadow-2xs">
+                        <img src="/expressdel.webp" alt="Express Delivery" className="w-full h-full object-contain" />
+                      </div>
                       <span>Express Delivery Available</span>
                     </div>
                     <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
@@ -426,7 +430,9 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
             <div className="p-4 bg-[#FAF7F0] border border-[#B08A3C]/30 rounded-xl text-xs space-y-2.5 text-[#292524] shadow-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5 font-extrabold text-[#6B1725] text-sm font-serif">
-                  <DeliveryRiderIcon className="w-10 h-10 flex-shrink-0" />
+                  <div className="w-10 h-10 rounded-xl bg-white border border-[#E5DEC9] p-1 flex items-center justify-center shrink-0 shadow-2xs">
+                    <img src="/standarddel.webp" alt="Standard Delivery" className="w-full h-full object-contain" />
+                  </div>
                   <span>Standard Delivery Available</span>
                 </div>
                 <span className="text-[10px] font-bold text-[#6B1725] bg-[#6B1725]/10 px-2.5 py-0.5 rounded-full border border-[#6B1725]/20 font-serif">

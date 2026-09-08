@@ -118,7 +118,14 @@ Deno.serve(async (req) => {
           shop_latitude,
           shop_longitude,
           express_max_km,
+          same_day_max_km,
+          standard_max_km,
+          express_charge,
+          same_day_charge,
+          standard_charge,
+          express_min_minutes,
           express_max_minutes,
+          same_day_cutoff_time,
           express_packing_buffer_minutes,
           express_delivery_buffer_minutes,
           is_express_20min_enabled,
@@ -143,6 +150,14 @@ Deno.serve(async (req) => {
     const shopLat = Number(settings?.shop_latitude ?? 25.855802);
     const shopLng = Number(settings?.shop_longitude ?? 85.779337);
     const maxDistanceKm = Number(settings?.express_max_km ?? 5.0);
+    const sameDayMaxKm = Number(settings?.same_day_max_km ?? 10.0);
+    const standardMaxKm = Number(settings?.standard_max_km ?? 20.0);
+    const expressCharge = Number(settings?.express_charge ?? 29);
+    const sameDayCharge = Number(settings?.same_day_charge ?? 49);
+    const standardCharge = Number(settings?.standard_charge ?? 69);
+    const expressMinMinutes = Number(settings?.express_min_minutes ?? 60);
+    const expressMaxMinutes = Number(settings?.express_max_minutes ?? 120);
+    const sameDayCutoffTime = String(settings?.same_day_cutoff_time ?? "17:00:00");
     const maxEtaMinutes = Number(settings?.express_max_minutes ?? 20);
     const packingBufferMinutes = Number(settings?.express_packing_buffer_minutes ?? 3);
     const deliveryBufferMinutes = Number(settings?.express_delivery_buffer_minutes ?? 3);
@@ -284,6 +299,78 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------
+    // BUILD DELIVERY OPTIONS BASED ON DELIVERY SETTINGS & DISTANCE
+    // ------------------------------------------
+
+    let sameDayCutoffHour = 17;
+    let sameDayCutoffMinute = 0;
+    if (sameDayCutoffTime) {
+      const parts = sameDayCutoffTime.split(":");
+      if (parts.length >= 2) {
+        sameDayCutoffHour = parseInt(parts[0], 10) || 17;
+        sameDayCutoffMinute = parseInt(parts[1], 10) || 0;
+      }
+    }
+    const istMinuteString = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Kolkata",
+      minute: "numeric",
+    }).format(new Date());
+    const istMinute = parseInt(istMinuteString, 10);
+    const isBeforeSameDayCutoff =
+      istHour < sameDayCutoffHour ||
+      (istHour === sameDayCutoffHour && istMinute <= sameDayCutoffMinute);
+
+    const cutoffDisplay = `${sameDayCutoffHour > 12 ? sameDayCutoffHour - 12 : sameDayCutoffHour}:${sameDayCutoffMinute < 10 ? "0" + sameDayCutoffMinute : sameDayCutoffMinute} ${sameDayCutoffHour >= 12 ? "PM" : "AM"}`;
+
+    // Condition:
+    // If distanceKm <= sameDayMaxKm (within local delivery radius for same day or express):
+    // ALL 3 delivery options (express, same_day, standard) are AVAILABLE so the customer can choose.
+    // If distanceKm > sameDayMaxKm (standard delivery only pincode across India):
+    // Express and same day are DISABLED (available: false), and ONLY standard delivery is available.
+    const isLocalDeliveryEligible = distanceKm <= sameDayMaxKm && isActive;
+
+    const options = [
+      {
+        id: "express",
+        title: isExpressEnabled && isNormalHours ? "20-Min Express Delivery" : "Express Delivery",
+        charge: expressCharge,
+        eta: isExpressEnabled && isNormalHours ? `~${totalEtaMinutes} mins` : formattedDelivery,
+        badge: isExpressEnabled && isNormalHours ? "⚡ 20-Min Express" : "⚡ Express",
+        description: `Direct hand delivery from our showroom (within ${maxDistanceKm} km)`,
+        available: isLocalDeliveryEligible,
+        unavailableReason: !isLocalDeliveryEligible
+          ? "Standard delivery only for this pincode"
+          : undefined,
+        image: "/expressdel.webp",
+      },
+      {
+        id: "same_day",
+        title: "Same Day Delivery",
+        charge: sameDayCharge,
+        eta: isBeforeSameDayCutoff ? "Today by 9:00 PM" : "Tomorrow by 9:00 PM",
+        badge: isBeforeSameDayCutoff ? "Today Evening" : "Tomorrow",
+        description: isBeforeSameDayCutoff
+          ? `Order before ${cutoffDisplay} for delivery today`
+          : `Orders placed after ${cutoffDisplay} arrive tomorrow`,
+        available: isLocalDeliveryEligible,
+        unavailableReason: !isLocalDeliveryEligible
+          ? "Standard delivery only for this pincode"
+          : undefined,
+        image: "/sameday.webp",
+      },
+      {
+        id: "standard",
+        title: "Standard Delivery",
+        charge: standardCharge,
+        eta: "3–5 Business Days",
+        badge: "Standard",
+        description: "Tracked express courier delivery across India",
+        available: isActive,
+        image: "/standarddel.webp",
+      },
+    ];
+
+    // ------------------------------------------
     // RESPONSE (Unified for all client specifications)
     // ------------------------------------------
 
@@ -309,6 +396,10 @@ Deno.serve(async (req) => {
       packingBufferMinutes,
       deliveryBufferMinutes,
       customerEtaMinutes: totalEtaMinutes,
+
+      options,
+      deliverySettings: settings,
+      delivery_settings: settings,
 
       distance: {
         km: distanceKm,

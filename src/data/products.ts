@@ -26,6 +26,9 @@ export interface Product {
   designCode?: string;
   barcode?: string | null;
   item_status?: string;
+  hsn_code?: string | null;
+  gst_rate?: number | null;
+  price_includes_gst?: boolean | null;
 }
 
 export const PRODUCTS: Product[] = [

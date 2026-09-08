@@ -19,6 +19,8 @@ export interface DeliveryCheckResult {
   state?: string;
   error?: string;
   message?: string;
+  options?: any[];
+  deliverySettings?: any;
 }
 
 export interface CustomerLocation {
