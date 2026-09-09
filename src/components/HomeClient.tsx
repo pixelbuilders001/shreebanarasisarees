@@ -14,7 +14,7 @@ import { ProductCard } from './ProductCard';
 import { Footer } from './Footer';
 import { Product, PRODUCTS } from '../data/products';
 import { ArrowLeft, ArrowRight, ShieldCheck, PackageCheck, Truck, CreditCard, Banknote, MessageCircle, Sparkles, CheckCircle2 } from 'lucide-react';
-import { DbCampaign, DbHeroBanner } from '../data/supabase';
+import { DbCampaign, DbHeroBanner, DbCategory } from '../data/supabase';
 import { ProductCardSkeleton } from './ProductCardSkeleton';
 import { useRecentlyViewed } from '../utils/useRecentlyViewed';
 
@@ -35,6 +35,7 @@ interface HomeClientProps {
   allProducts?: Product[];
   activeCampaigns?: DbCampaign[];
   heroBanners?: DbHeroBanner[];
+  categories?: DbCategory[];
 }
 
 export default function HomeClient({
@@ -42,7 +43,8 @@ export default function HomeClient({
   newArrivals,
   allProducts,
   activeCampaigns = [],
-  heroBanners
+  heroBanners,
+  categories
 }: HomeClientProps) {
   // Use server-provided bestsellers (8 items max) or derive from allProducts fallback
   const displayBestsellers = bestsellers && bestsellers.length > 0
@@ -94,7 +96,7 @@ export default function HomeClient({
         <DeliveryMarquee />
 
         {/* 3. Shop by Category (Preserved 4-col Mobile / Expanded 8-col Desktop) */}
-        <CategoryCard />
+        <CategoryCard initialCategories={categories} />
 
         {/* 2. Top Campaign Banner (if active) */}
         <CampaignSection slot="top" initialCampaign={activeCampaigns[0] || null} />

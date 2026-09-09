@@ -1,7 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import HomeClient from '../components/HomeClient';
-import { fetchHomePageProducts, fetchActiveCampaigns, fetchActiveHeroBanners } from '../data/supabase';
+import { fetchHomePageProducts, fetchActiveCampaigns, fetchActiveHeroBanners, fetchCategories } from '../data/supabase';
 
 export const revalidate = 60;
 
@@ -36,10 +36,11 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const [{ bestsellers, newArrivals }, activeCampaigns, heroBanners] = await Promise.all([
+  const [{ bestsellers, newArrivals }, activeCampaigns, heroBanners, categories] = await Promise.all([
     fetchHomePageProducts(),
     fetchActiveCampaigns(),
-    fetchActiveHeroBanners()
+    fetchActiveHeroBanners(),
+    fetchCategories()
   ]);
 
   // 1. WebSite Schema (Enables Google Sitelinks Searchbox)
@@ -136,6 +137,7 @@ export default async function Home() {
         newArrivals={newArrivals}
         activeCampaigns={activeCampaigns}
         heroBanners={heroBanners}
+        categories={categories}
       />
     </>
   );

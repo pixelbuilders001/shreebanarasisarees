@@ -407,7 +407,7 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
                         <div
                           className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 p-0.5 group-hover:scale-105 transition-all shadow-2xs ${item.isExploreAll
                             ? 'border-[#6B1725] bg-[#6B1725] flex items-center justify-center text-white'
-                            : 'border-[#D4B870] group-hover:border-[#6B1725] bg-white'
+                            : 'border-[#D4B870] group-hover:border-[#6B1725] bg-[#FAF6EE]'
                             }`}
                         >
                           {item.isExploreAll ? (

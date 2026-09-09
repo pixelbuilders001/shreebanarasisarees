@@ -3,6 +3,7 @@ import { Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { StoreProvider } from "../context/StoreContext";
 import { CartDrawer } from "../components/CartDrawer";
+import { DeliveryPincodeSheet } from "../components/DeliveryPincodeBar";
 import { MobileBottomNav } from "../components/MobileBottomNav";
 import { WhatsAppButton } from "../components/WhatsAppButton";
 import PWARegistration from "../components/PWARegistration";
@@ -134,6 +135,7 @@ export default function RootLayout({
             {children}
           </div>
           <CartDrawer />
+          <DeliveryPincodeSheet />
           <MobileBottomNav />
         </StoreProvider>
       </body>

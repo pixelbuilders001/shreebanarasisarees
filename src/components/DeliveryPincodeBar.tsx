@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { MapPin, X, Loader2, AlertCircle, Plus, Check, Home, Building, Sparkles, ChevronRight } from 'lucide-react';
+import { MapPin, X, Loader2, AlertCircle, Plus, Check, Home, Building, ChevronRight } from 'lucide-react';
 import { useCustomerLocation } from '../hooks/useCustomerLocation';
-import { DeliveryRiderIcon } from './delivery/DeliveryIcons';
 import { useStore } from '../context/StoreContext';
 import { AddNewAddressModal } from './delivery/AddNewAddressModal';
 import { getStandardDeliveryDateInfo } from '../lib/deliveryDates';
@@ -20,9 +19,17 @@ const SUGGESTED_PINCODES = [
   { pin: '560001', city: 'Bengaluru', label: 'Bengaluru' }
 ];
 
-export const openPincodeSheet = () => {
+export const openPincodeSheet = (pincode?: any) => {
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('open-pincode-sheet'));
+    // Guard against React SyntheticEvent objects passed when openPincodeSheet is used directly in onClick
+    const validPin = typeof pincode === 'string' && /^\d{6}$/.test(pincode.trim()) ? pincode.trim() : undefined;
+    window.dispatchEvent(new CustomEvent('open-pincode-sheet', { detail: { pincode: validPin } }));
+  }
+};
+
+export const closePincodeSheet = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('close-pincode-sheet'));
   }
 };
 
@@ -91,31 +98,59 @@ export const DeliveryPincodeSkeleton: React.FC<{ variant?: 'mobile' | 'desktop' 
   );
 };
 
-interface DeliveryPincodeBarProps {
+// Helper to determine if a pincode is eligible for 20-min express
+// Note: Only Samastipur store pincodes (848101, 848102) qualify. All other Indian pincodes are Standard Delivery!
+export const checkIsExpress = (pin: string, deliveryRes?: any) => {
+  const clean = pin?.trim() || '';
+  if (!clean) return false;
+
+  const isSamastipurExpressPin = clean === '848101' || clean === '848102';
+  if (!isSamastipurExpressPin) {
+    return false; // ANY other pincode across India is Standard Delivery (3–5 Days)!
+  }
+
+  if (deliveryRes && deliveryRes.pincode === clean) {
+    if (deliveryRes.isExpress === false || deliveryRes.eligible === false) {
+      return false;
+    }
+    return Boolean(deliveryRes.is20MinDelivery || deliveryRes.isExpress);
+  }
+
+  return true;
+};
+
+export const sanitizePincode = (val: any): string => {
+  if (typeof val === 'string') {
+    const digits = val.trim().replace(/\D/g, '').slice(0, 6);
+    if (digits.length === 6) return digits;
+  }
+  return '';
+};
+
+export interface DeliveryPincodeBarProps {
   hideBar?: boolean;
   variant?: 'mobile' | 'desktop';
 }
 
+/**
+ * Lean delivery pincode bar / chip component for header and navigation.
+ * Tapping opens the centralized singleton DeliveryPincodeSheet.
+ */
 export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar = false, variant = 'mobile' }) => {
-  const { user, shippingAddresses, setIsAuthModalOpen, currentPincode, setCurrentPincode, defaultDeliveryPincode, isHydrated } = useStore();
-  const activePin = currentPincode || defaultDeliveryPincode || '848101';
+  const { currentPincode, defaultDeliveryPincode, isHydrated } = useStore();
+  const activePin = sanitizePincode(currentPincode) || sanitizePincode(defaultDeliveryPincode) || '848101';
   const [city, setCity] = useState<string>(() => getQuickCity(activePin) || 'Samastipur');
-  const [isSheetOpen, setIsSheetOpen] = useState<boolean>(false);
-  const [inputPincode, setInputPincode] = useState<string>(activePin);
   const [mounted, setMounted] = useState<boolean>(false);
-  const [selectedAddressId, setSelectedAddressId] = useState<string>('');
-  const [isAddressModalOpen, setIsAddressModalOpen] = useState<boolean>(false);
 
-  const { isLoading, result, errorMsg, checkPincode } = useCustomerLocation();
+  const { result, checkPincode } = useCustomerLocation();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Synchronize input pincode, resolve city, and check location whenever activePin changes
+  // Synchronize city and check location whenever activePin changes
   useEffect(() => {
     if (activePin) {
-      setInputPincode(activePin);
       checkPincode(activePin);
 
       // Instant 0ms synchronous quick city lookup
@@ -138,23 +173,184 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
     }
   }, [activePin, checkPincode]);
 
+  const is20Min = checkIsExpress(activePin, result);
+
+  const locationCity =
+    city ||
+    getQuickCity(activePin) ||
+    (result as any)?.city ||
+    result?.district ||
+    (activePin === '848101' || activePin === '848102' ? 'Samastipur' : '');
+  const locationLabel = locationCity
+    ? `${locationCity}, ${activePin}`
+    : activePin
+      ? activePin
+      : 'Select Location';
+
+  if (hideBar) return null;
+
+  if (!mounted || !isHydrated) {
+    return <DeliveryPincodeSkeleton variant={variant} />;
+  }
+
+  if (variant === 'desktop') {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          triggerHaptic('light');
+          openPincodeSheet(activePin);
+        }}
+        aria-label={`Deliver to ${locationLabel}. Click to change.`}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#4A121A] text-[#FAF7F0] hover:bg-[#5E1722] border border-[#B08A3C]/35 text-xs font-sans transition-all cursor-pointer shadow-2xs group shrink-0"
+      >
+        <MapPin size={13} className="text-[#D4B870] shrink-0 group-hover:scale-110 transition-transform" />
+        <div className="flex items-center gap-1.5 truncate text-left">
+          <span className="text-[#FAF7F0]/80 text-[11px] font-medium">Deliver to</span>
+          <span className="font-bold text-white text-xs truncate">
+            {locationCity ? `${locationCity}, ${activePin}` : activePin}
+          </span>
+        </div>
+        {is20Min && (
+          <span className="text-[9px] font-bold text-emerald-200 bg-emerald-900/80 border border-emerald-500/30 px-1.5 py-0.5 rounded-md shrink-0">
+            ⚡ 20-Min
+          </span>
+        )}
+        <ChevronRight size={12} className="text-[#D4B870] group-hover:translate-x-0.5 transition-transform" />
+      </button>
+    );
+  }
+
+  return (
+    <div
+      onClick={() => {
+        triggerHaptic('light');
+        openPincodeSheet(activePin);
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Deliver to ${locationLabel}. Tap to change.`}
+      className="w-full bg-[#4A121A] text-[#FAF7F0] border border-[#B08A3C]/25 rounded-xl px-3 py-1.5 flex items-center justify-between gap-2 shadow-2xs active:scale-[0.99] transition-all cursor-pointer select-none"
+    >
+      {/* Left: Map Pin + Deliver to [City, Pincode] */}
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <MapPin size={13} className="text-[#D4B870] shrink-0" />
+        <span className="font-sans text-xs font-medium text-[#FAF7F0] truncate">
+          Deliver to{' '}
+          {locationCity ? (
+            <>
+              <strong className="font-bold text-white">{locationCity}</strong>
+              {activePin ? <span className="font-mono text-white/90">, {activePin}</span> : ''}
+            </>
+          ) : (
+            <strong className="font-bold text-white font-mono tracking-wide">{activePin || 'Select Location'}</strong>
+          )}
+        </span>
+        {is20Min && (
+          <span className="text-[9.5px] font-bold text-emerald-200 bg-emerald-900/80 border border-emerald-500/30 px-1.5 py-0.5 rounded-md shrink-0">
+            ⚡ 20-Min
+          </span>
+        )}
+      </div>
+
+      {/* Right: Change Link */}
+      <div className="flex items-center gap-0.5 text-[11px] font-semibold text-[#D4B870] hover:text-white transition-colors shrink-0">
+        <span>Change</span>
+        <ChevronRight size={12} />
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Singleton Bottom Sheet Drawer for checking & selecting delivery pincode.
+ * Mount once globally in RootLayout to prevent duplicate overlapping sheets.
+ */
+export const DeliveryPincodeSheet: React.FC = () => {
+  const { user, shippingAddresses, setIsAuthModalOpen, currentPincode, setCurrentPincode, defaultDeliveryPincode } = useStore();
+  const activePin = sanitizePincode(currentPincode) || sanitizePincode(defaultDeliveryPincode) || '848101';
+  const [city, setCity] = useState<string>(() => getQuickCity(activePin) || 'Samastipur');
+  const [isSheetOpen, setIsSheetOpen] = useState<boolean>(false);
+  const [inputPincode, setInputPincode] = useState<string>(activePin);
+  const [mounted, setMounted] = useState<boolean>(false);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('');
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState<boolean>(false);
+  const isSavingRef = useRef<boolean>(false);
+
+  const { isLoading, result, errorMsg, checkPincode } = useCustomerLocation();
+
   useEffect(() => {
-    const handleOpenSheet = () => {
-      const pin = currentPincode || defaultDeliveryPincode || '848101';
-      if (pin) {
-        setInputPincode(pin);
-        checkPincode(pin);
-        const quick = getQuickCity(pin);
-        if (quick) setCity(quick);
-      }
+    setMounted(true);
+  }, []);
+
+  // Synchronize city and check delivery when activePin changes from outside
+  useEffect(() => {
+    if (activePin) {
+      const quick = getQuickCity(activePin);
+      if (quick) setCity(quick);
+
+      let isSubscribed = true;
+      fetchPincodeDetails(activePin).then((details) => {
+        if (isSubscribed && details?.city) {
+          setCity(details.city);
+        }
+      }).catch(() => {});
+
+      return () => {
+        isSubscribed = false;
+      };
+    }
+  }, [activePin]);
+
+  // Listen to open-pincode-sheet and close-pincode-sheet events
+  useEffect(() => {
+    const handleOpenSheet = (e?: any) => {
+      const specifiedPin = sanitizePincode(e?.detail?.pincode);
+      const currentPin = sanitizePincode(currentPincode);
+      const defaultPin = sanitizePincode(defaultDeliveryPincode);
+      const pin = specifiedPin || currentPin || defaultPin || '848101';
+
+      setInputPincode(pin);
+      checkPincode(pin);
+      const quick = getQuickCity(pin);
+      if (quick) setCity(quick);
+      fetchPincodeDetails(pin).then((details) => {
+        if (details?.city) setCity(details.city);
+      }).catch(() => {});
+
       setIsSheetOpen(true);
     };
 
+    const handleCloseSheet = () => {
+      setIsSheetOpen(false);
+    };
+
     window.addEventListener('open-pincode-sheet', handleOpenSheet);
+    window.addEventListener('close-pincode-sheet', handleCloseSheet);
     return () => {
       window.removeEventListener('open-pincode-sheet', handleOpenSheet);
+      window.removeEventListener('close-pincode-sheet', handleCloseSheet);
     };
   }, [currentPincode, defaultDeliveryPincode, checkPincode]);
+
+  // Close on Escape key & lock background scroll while sheet is open
+  useEffect(() => {
+    if (!isSheetOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsSheetOpen(false);
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSheetOpen]);
 
   const handleInputChange = (val: string) => {
     const clean = val.replace(/\D/g, '').slice(0, 6);
@@ -198,6 +394,12 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
     if (quick) {
       setCity(quick);
     }
+
+    // Dismiss virtual keyboard by blurring active element immediately
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
     // 1. Immediately close the sheet synchronously on the very first click / tap
     setIsSheetOpen(false);
 
@@ -206,37 +408,22 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
     checkPincode(clean);
   };
 
-  // Helper to determine if a pincode is eligible for 20-min express
-  // Note: Only Samastipur store pincodes (848101, 848102) qualify. All other Indian pincodes are Standard Delivery!
-  const checkIsExpress = (pin: string, deliveryRes?: any) => {
-    const clean = pin?.trim() || '';
-    if (!clean) return false;
-
-    const isSamastipurExpressPin = clean === '848101' || clean === '848102';
-    if (!isSamastipurExpressPin) {
-      return false; // ANY other pincode across India is Standard Delivery (3–5 Days)!
-    }
-
-    if (deliveryRes && deliveryRes.pincode === clean) {
-      if (deliveryRes.isExpress === false || deliveryRes.eligible === false) {
-        return false;
-      }
-      return Boolean(deliveryRes.is20MinDelivery || deliveryRes.isExpress);
-    }
-
-    return true;
+  const executeSave = () => {
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
+    handleSavePincode(inputPincode);
+    setTimeout(() => {
+      isSavingRef.current = false;
+    }, 400);
   };
 
-  // 20-Min express status for the active saved pincode displayed on the header bar
-  const is20Min = checkIsExpress(activePin, result);
-
-  // 20-Min express status for the pincode currently entered in the sheet drawer
   const isInput20Min = checkIsExpress(inputPincode, result);
-
   const timingStatus = getExpressTimingStatus(result);
   const deliveryDateInfo = getStandardDeliveryDateInfo();
 
-  const sheetContent = isSheetOpen ? (
+  if (!mounted || !isSheetOpen) return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs transition-opacity animate-fadeIn p-0 sm:p-4">
       {/* Backdrop click to close */}
       <div className="absolute inset-0" onClick={() => setIsSheetOpen(false)} />
@@ -274,7 +461,7 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && inputPincode.length === 6) {
                     e.preventDefault();
-                    handleSavePincode(inputPincode);
+                    executeSave();
                   }
                 }}
                 placeholder="Enter 6-digit pincode"
@@ -438,112 +625,21 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
         <div className="pt-1">
           <button
             type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => handleSavePincode(inputPincode)}
+            onClick={executeSave}
+            onPointerUp={(e) => {
+              if (e.pointerType === 'touch') {
+                executeSave();
+              }
+            }}
             disabled={inputPincode.length !== 6}
-            className="w-full py-3 bg-[#6B1725] hover:bg-[#52111C] active:scale-[0.99] disabled:opacity-50 text-white rounded-full font-serif font-bold text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+            className="w-full py-3 bg-[#6B1725] hover:bg-[#52111C] active:scale-[0.99] disabled:opacity-50 text-white rounded-full font-serif font-bold text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 select-none"
           >
             Deliver to {inputPincode}
           </button>
         </div>
       </div>
-    </div>
-  ) : null;
 
-  const locationCity =
-    city ||
-    getQuickCity(activePin) ||
-    (result as any)?.city ||
-    result?.district ||
-    (activePin === '848101' || activePin === '848102' ? 'Samastipur' : '');
-  const locationLabel = locationCity
-    ? `${locationCity}, ${activePin}`
-    : activePin
-      ? activePin
-      : 'Select Location';
-
-  if (!mounted || !isHydrated) {
-    if (hideBar) return null;
-    return <DeliveryPincodeSkeleton variant={variant} />;
-  }
-
-  return (
-    <>
-      {/* ── 1. SHORT & PRECISE DARK MAROON PINCODE BAR / CHIP ── */}
-      {!hideBar && (
-        variant === 'desktop' ? (
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('light');
-              setInputPincode(activePin);
-              checkPincode(activePin);
-              setIsSheetOpen(true);
-            }}
-            aria-label={`Deliver to ${locationLabel}. Click to change.`}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#4A121A] text-[#FAF7F0] hover:bg-[#5E1722] border border-[#B08A3C]/35 text-xs font-sans transition-all cursor-pointer shadow-2xs group shrink-0"
-          >
-            <MapPin size={13} className="text-[#D4B870] shrink-0 group-hover:scale-110 transition-transform" />
-            <div className="flex items-center gap-1.5 truncate text-left">
-              <span className="text-[#FAF7F0]/80 text-[11px] font-medium">Deliver to</span>
-              <span className="font-bold text-white text-xs truncate">
-                {locationCity ? `${locationCity}, ${activePin}` : activePin}
-              </span>
-            </div>
-            {is20Min && (
-              <span className="text-[9px] font-bold text-emerald-200 bg-emerald-900/80 border border-emerald-500/30 px-1.5 py-0.5 rounded-md shrink-0">
-                ⚡ 20-Min
-              </span>
-            )}
-            <ChevronRight size={12} className="text-[#D4B870] group-hover:translate-x-0.5 transition-transform" />
-          </button>
-        ) : (
-          <div
-            onClick={() => {
-              triggerHaptic('light');
-              setInputPincode(activePin);
-              checkPincode(activePin);
-              setIsSheetOpen(true);
-            }}
-            role="button"
-            tabIndex={0}
-            aria-label={`Deliver to ${locationLabel}. Tap to change.`}
-            className="w-full bg-[#4A121A] text-[#FAF7F0] border border-[#B08A3C]/25 rounded-xl px-3 py-1.5 flex items-center justify-between gap-2 shadow-2xs active:scale-[0.99] transition-all cursor-pointer select-none"
-          >
-            {/* Left: Map Pin + Deliver to [City, Pincode] */}
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <MapPin size={13} className="text-[#D4B870] shrink-0" />
-              <span className="font-sans text-xs font-medium text-[#FAF7F0] truncate">
-                Deliver to{' '}
-                {locationCity ? (
-                  <>
-                    <strong className="font-bold text-white">{locationCity}</strong>
-                    {activePin ? <span className="font-mono text-white/90">, {activePin}</span> : ''}
-                  </>
-                ) : (
-                  <strong className="font-bold text-white font-mono tracking-wide">{activePin || 'Select Location'}</strong>
-                )}
-              </span>
-              {is20Min && (
-                <span className="text-[9.5px] font-bold text-emerald-200 bg-emerald-900/80 border border-emerald-500/30 px-1.5 py-0.5 rounded-md shrink-0">
-                  ⚡ 20-Min
-                </span>
-              )}
-            </div>
-
-            {/* Right: Change Link */}
-            <div className="flex items-center gap-0.5 text-[11px] font-semibold text-[#D4B870] hover:text-white transition-colors shrink-0">
-              <span>Change</span>
-              <ChevronRight size={12} />
-            </div>
-          </div>
-        )
-      )}
-
-      {/* ── 2. BOTTOM SHEET DRAWER VIA PORTAL ── */}
-      {mounted && sheetContent && createPortal(sheetContent, document.body)}
-
-      {/* ── 3. ADD NEW ADDRESS MODAL ── */}
+      {/* ── ADD NEW ADDRESS MODAL ── */}
       <AddNewAddressModal
         isOpen={isAddressModalOpen}
         onClose={() => setIsAddressModalOpen(false)}
@@ -554,11 +650,11 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
             setCurrentPincode(cleanPin);
             if (savedAddr.id) setSelectedAddressId(savedAddr.id);
             checkPincode(cleanPin);
-            // Keep pincode sheet open so user sees updated address list & timing!
             setIsSheetOpen(true);
           }
         }}
       />
-    </>
+    </div>,
+    document.body
   );
 };

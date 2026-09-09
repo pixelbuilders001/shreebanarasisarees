@@ -1,13 +1,29 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useStore } from '../context/StoreContext';
 import { ArrowRight, Plus } from 'lucide-react';
+import { DbCategory } from '../data/supabase';
 
-export const CategoryCard: React.FC = () => {
-  const { categories, isCategoriesLoading, products } = useStore();
+interface CategoryCardProps {
+  initialCategories?: DbCategory[];
+}
+
+export const CategoryCard: React.FC<CategoryCardProps> = ({ initialCategories }) => {
+  const { categories: storeCategories, isCategoriesLoading: storeLoading, products } = useStore();
+
+  const [imagesLoaded, setImagesLoaded] = useState<boolean>(false);
+  const [individualLoadedMap, setIndividualLoadedMap] = useState<Record<string, boolean>>({});
+
+  const categories = (storeCategories && storeCategories.length > 0)
+    ? storeCategories
+    : (initialCategories && initialCategories.length > 0)
+      ? initialCategories
+      : [];
+
+  const isCategoriesLoading = storeLoading && categories.length === 0;
 
   // Dynamically derive category cards using ONLY real API data (category image_url or product images)
   const weaves = useMemo(() => {
@@ -49,9 +65,52 @@ export const CategoryCard: React.FC = () => {
     return [];
   }, [categories, products]);
 
-  if (isCategoriesLoading && (!categories || categories.length === 0)) {
+  // Preload category images: purely event-driven without any hardcoded timeouts
+  useEffect(() => {
+    if (weaves.length === 0) return;
+
+    const imageUrls = weaves
+      .slice(0, 7)
+      .map((w) => w.image)
+      .filter(Boolean);
+
+    if (imageUrls.length === 0) {
+      setImagesLoaded(true);
+      return;
+    }
+
+    let isMounted = true;
+    let loadedCount = 0;
+    const total = imageUrls.length;
+
+    const checkComplete = () => {
+      loadedCount++;
+      if (loadedCount >= total && isMounted) {
+        setImagesLoaded(true);
+      }
+    };
+
+    imageUrls.forEach((url) => {
+      const img = new window.Image();
+      img.src = url;
+      if (img.complete) {
+        checkComplete();
+      } else {
+        img.onload = checkComplete;
+        img.onerror = checkComplete;
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [weaves]);
+
+  const showSkeleton = isCategoriesLoading || !imagesLoaded || weaves.length === 0;
+
+  if (showSkeleton) {
     return (
-      <section className="py-4 md:py-12 px-4 md:px-6 bg-[#FAF6EE] border-b border-[#B08A3C]/15 animate-pulse">
+      <section className="py-4 md:py-12 px-4 md:px-6 bg-[#FAF6EE] border-b border-[#B08A3C]/15 animate-pulse min-h-[140px] md:min-h-[220px]">
         <div className="max-w-7xl mx-auto">
           {/* Header Skeleton */}
           <div className="flex items-center justify-between mb-6">
@@ -75,8 +134,6 @@ export const CategoryCard: React.FC = () => {
       </section>
     );
   }
-
-  if (weaves.length === 0) return null;
 
   return (
     <>
@@ -102,16 +159,23 @@ export const CategoryCard: React.FC = () => {
               href={`/sarees?category=${encodeURIComponent(weave.query)}`}
               className="flex flex-col items-center gap-1.5 group"
             >
-              <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border border-[#D5CBB3] p-0.5 group-hover:border-[#6B1725] transition-colors shadow-2xs bg-white">
+              <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border border-[#D5CBB3] p-0.5 group-hover:border-[#6B1725] transition-colors shadow-2xs bg-[#FAF6EE]">
                 {weave.image ? (
-                  <Image
-                    src={weave.image}
-                    alt={weave.name}
-                    fill
-                    // unoptimized
-                    sizes="80px"
-                    className="object-cover rounded-full group-hover:scale-105 transition-transform duration-300"
-                  />
+                  <>
+                    {!individualLoadedMap[weave.id] && (
+                      <div className="absolute inset-0 rounded-full bg-[#E5DEC9] animate-pulse z-10" />
+                    )}
+                    <Image
+                      src={weave.image}
+                      alt={weave.name}
+                      fill
+                      sizes="80px"
+                      onLoad={() => setIndividualLoadedMap((prev) => ({ ...prev, [weave.id]: true }))}
+                      className={`object-cover rounded-full group-hover:scale-105 transition-transform duration-300 ${
+                        individualLoadedMap[weave.id] ? 'opacity-100' : 'opacity-0'
+                      }`}
+                    />
+                  </>
                 ) : (
                   <div className="w-full h-full rounded-full bg-[#E5DEC9] animate-pulse" />
                 )}
@@ -154,7 +218,7 @@ export const CategoryCard: React.FC = () => {
             </div>
             <Link
               href="/sarees"
-              className="py-2.5 px-5 bg-white border border-[#B08A3C]/30 hover:border-[#6B1725] text-[#6B1725] font-serif font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-[#6B1725] hover:text-white flex items-center gap-2 transition-all shadow-2xs group"
+              className="py-2.5 px-5 bg-[#FAF6EE] border border-[#B08A3C]/30 hover:border-[#6B1725] text-[#6B1725] font-serif font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-[#6B1725] hover:text-white flex items-center gap-2 transition-all shadow-2xs group"
             >
               <span>Explore All Weaves</span>
               <ArrowRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
@@ -169,15 +233,23 @@ export const CategoryCard: React.FC = () => {
                 href={`/sarees?category=${encodeURIComponent(weave.query)}`}
                 className="flex flex-col items-center gap-3 group text-center cursor-pointer"
               >
-                <div className="relative w-24 h-24 lg:w-28 lg:h-28 rounded-full overflow-hidden border-2 border-[#D4B870] p-1 group-hover:border-[#6B1725] group-hover:scale-108 transition-all duration-500 shadow-md group-hover:shadow-xl bg-white">
+                <div className="relative w-24 h-24 lg:w-28 lg:h-28 rounded-full overflow-hidden border-2 border-[#D4B870] p-1 group-hover:border-[#6B1725] group-hover:scale-108 transition-all duration-500 shadow-md group-hover:shadow-xl bg-[#FAF6EE]">
                   {weave.image ? (
-                    <Image
-                      src={weave.image}
-                      alt={weave.name}
-                      fill
-                      sizes="120px"
-                      className="object-cover rounded-full group-hover:scale-105 transition-transform duration-500"
-                    />
+                    <>
+                      {!individualLoadedMap[weave.id] && (
+                        <div className="absolute inset-0 rounded-full bg-[#E5DEC9] animate-pulse z-10" />
+                      )}
+                      <Image
+                        src={weave.image}
+                        alt={weave.name}
+                        fill
+                        sizes="120px"
+                        onLoad={() => setIndividualLoadedMap((prev) => ({ ...prev, [weave.id]: true }))}
+                        className={`object-cover rounded-full group-hover:scale-105 transition-transform duration-500 ${
+                          individualLoadedMap[weave.id] ? 'opacity-100' : 'opacity-0'
+                        }`}
+                      />
+                    </>
                   ) : (
                     <div className="w-full h-full rounded-full bg-[#E5DEC9] animate-pulse" />
                   )}
@@ -198,7 +270,7 @@ export const CategoryCard: React.FC = () => {
               href="/sarees"
               className="flex flex-col items-center gap-3 group text-center cursor-pointer"
             >
-              <div className="w-24 h-24 lg:w-28 lg:h-28 rounded-full border-2 border-dashed border-[#B08A3C] flex flex-col items-center justify-center bg-white group-hover:bg-[#6B1725] group-hover:border-[#6B1725] group-hover:scale-108 transition-all duration-500 shadow-md group-hover:shadow-xl">
+              <div className="w-24 h-24 lg:w-28 lg:h-28 rounded-full border-2 border-dashed border-[#B08A3C] flex flex-col items-center justify-center bg-[#FAF6EE] group-hover:bg-[#6B1725] group-hover:border-[#6B1725] group-hover:scale-108 transition-all duration-500 shadow-md group-hover:shadow-xl">
                 <Plus size={24} className="text-[#B08A3C] group-hover:text-white transition-colors" />
               </div>
               <div className="space-y-0.5">
