@@ -160,7 +160,7 @@ interface StoreContextType {
   shippingAddressesLoading: boolean;
   shippingAddressesLoaded: boolean;
   fetchShippingAddresses: (userId: string) => Promise<any[]>;
-  saveShippingAddress: (address: any) => Promise<void>;
+  saveShippingAddress: (address: any) => Promise<any>;
   deleteShippingAddress: (id: string) => Promise<void>;
   setDefaultShippingAddress: (id: string) => Promise<void>;
   isHydrated: boolean;
@@ -1441,6 +1441,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       }
     }
+
+    return result.data;
   };
 
   const deleteShippingAddress = async (id: string) => {

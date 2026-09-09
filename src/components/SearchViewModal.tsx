@@ -230,19 +230,19 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
   );
 
   const modalContent = (
-    <div className="fixed inset-0 z-[100] bg-[#FAF7F0] md:bg-black/60 md:backdrop-blur-sm overflow-y-auto flex flex-col md:items-center md:justify-start md:p-4 md:pt-16 animate-fadeIn">
+    <div className="fixed inset-0 z-[100] bg-[#FCF9F4] md:bg-black/50 md:backdrop-blur-sm overflow-y-auto flex flex-col md:items-center md:justify-start md:p-4 md:pt-16 animate-fadeIn">
       {/* ── MODAL CONTAINER (Full-screen on Mobile / Centered Floating Card on Desktop) ── */}
-      <div className="w-full h-full md:h-auto md:max-w-4xl bg-[#FAF7F0] md:border md:border-[#B08A3C]/40 md:rounded-3xl md:shadow-2xl overflow-hidden flex flex-col md:max-h-[85vh]">
+      <div className="w-full h-full md:h-auto md:max-w-4xl bg-[#FCF9F4] md:border md:border-[#E9DED1] md:rounded-3xl md:shadow-2xl overflow-hidden flex flex-col md:max-h-[85vh]">
 
         {/* ── 1. SEARCH HEADER BAR ── */}
         <div
           style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.875rem)' }}
-          className="sticky top-0 z-20 bg-[#FAF7F0] px-4 md:px-6 pb-3.5 border-b border-[#E5DEC9] flex items-center gap-3 shadow-2xs"
+          className="sticky top-0 z-20 bg-[#FFFDF9]/96 backdrop-blur-xl px-4 md:px-6 pb-3.5 border-b border-[#E9DED1] flex items-center gap-3 shadow-[0_3px_12px_rgba(41,37,36,0.04)]"
         >
           {/* Mobile Chevron Back Arrow */}
           <button
             onClick={onClose}
-            className="p-1.5 -ml-1 text-[#292524] hover:bg-[#E5DEC9]/40 rounded-full transition-colors cursor-pointer md:hidden"
+            className="native-press p-2 -ml-1 text-[#292524] hover:bg-[#F5EDE5] rounded-xl cursor-pointer md:hidden"
             aria-label="Back"
           >
             <ChevronLeft size={24} />
@@ -250,7 +250,7 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
 
           {/* Search Input Container */}
           <form onSubmit={handleSearchSubmit} className="flex-1 flex items-center relative">
-            <div className="w-full bg-[#FAF6EE] border border-[#E5DEC9] rounded-full px-4 py-2.5 md:py-3 flex items-center gap-3 focus-within:border-[#6B1725] transition-colors shadow-2xs">
+            <div className="w-full bg-[#F5EDE5]/75 border border-[#E9DED1] rounded-2xl px-4 py-2.5 md:py-3 flex items-center gap-3 focus-within:border-[#6B1725] focus-within:bg-white transition-colors shadow-sm">
               <Search size={18} className="text-[#292524]/50 shrink-0" />
               <input
                 ref={inputRef}

@@ -92,11 +92,11 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
         is_default: isDefault
       };
 
-      await saveShippingAddress(newAddress);
+      const saved = await saveShippingAddress(newAddress);
       showToast("Address saved successfully!", "info");
       
       if (onAddressSaved) {
-        onAddressSaved(newAddress);
+        onAddressSaved(saved || newAddress);
       }
       onClose();
     } catch (err: any) {

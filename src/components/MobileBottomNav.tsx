@@ -30,30 +30,32 @@ export const MobileBottomNav: React.FC = () => {
 
   return (
     <>
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FAF7F0]/95 backdrop-blur-md border-t border-[#F3ECE0] shadow-[0_-4px_16px_rgba(41,37,36,0.06)] px-2 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] no-select">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FFFDF9]/94 backdrop-blur-xl border-t border-[#E9DED1] shadow-[0_-8px_28px_rgba(41,37,36,0.09)] px-2 py-1.5 pb-[calc(0.45rem+env(safe-area-inset-bottom,0px))] no-select">
         <div className="flex items-center justify-around max-w-md mx-auto">
           {/* Home */}
           <Link
             href="/"
             onClick={() => triggerHaptic('selection')}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all active:scale-95 select-none ${
-              pathname === '/' ? 'text-[#6B1725] font-bold scale-105' : 'text-[#6B625D] hover:text-[#6B1725]'
+            className={`native-press relative flex min-w-13 flex-col items-center justify-center py-1.5 px-3 rounded-xl select-none ${
+              pathname === '/' ? 'text-[#6B1725] font-bold' : 'text-[#6B625D] hover:text-[#6B1725]'
             }`}
           >
             <Home size={20} className={pathname === '/' ? 'text-[#6B1725] stroke-[2.5]' : ''} />
-            <span className="text-[10px] font-sans mt-1 tracking-tight">Home</span>
+            <span className="text-[10px] font-sans mt-0.5 tracking-tight">Home</span>
+            {pathname === '/' && <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-[#B08A3C]" />}
           </Link>
 
           {/* Shop / Sarees */}
           <Link
             href="/sarees"
             onClick={() => triggerHaptic('selection')}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all active:scale-95 select-none ${
-              pathname.startsWith('/sarees') ? 'text-[#6B1725] font-bold scale-105' : 'text-[#6B625D] hover:text-[#6B1725]'
+            className={`native-press relative flex min-w-13 flex-col items-center justify-center py-1.5 px-3 rounded-xl select-none ${
+              pathname.startsWith('/sarees') ? 'text-[#6B1725] font-bold' : 'text-[#6B625D] hover:text-[#6B1725]'
             }`}
           >
             <Grid size={20} className={pathname.startsWith('/sarees') ? 'text-[#6B1725] stroke-[2.5]' : ''} />
-            <span className="text-[10px] font-sans mt-1 tracking-tight">Sarees</span>
+            <span className="text-[10px] font-sans mt-0.5 tracking-tight">Sarees</span>
+            {pathname.startsWith('/sarees') && <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-[#B08A3C]" />}
           </Link>
 
           {/* Search (Replaces Wishlist) */}
@@ -62,21 +64,22 @@ export const MobileBottomNav: React.FC = () => {
               triggerHaptic('selection');
               setIsSearchOpen(true);
             }}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all active:scale-95 select-none cursor-pointer ${
-              isSearchOpen ? 'text-[#6B1725] font-bold scale-105' : 'text-[#6B625D] hover:text-[#6B1725]'
+            className={`native-press relative flex min-w-13 flex-col items-center justify-center py-1.5 px-3 rounded-xl select-none cursor-pointer ${
+              isSearchOpen ? 'text-[#6B1725] font-bold' : 'text-[#6B625D] hover:text-[#6B1725]'
             }`}
             aria-label="Search sarees"
           >
             <Search size={20} className={isSearchOpen ? 'text-[#6B1725] stroke-[2.5]' : ''} />
-            <span className="text-[10px] font-sans mt-1 tracking-tight">Search</span>
+            <span className="text-[10px] font-sans mt-0.5 tracking-tight">Search</span>
+            {isSearchOpen && <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-[#B08A3C]" />}
           </button>
 
           {/* Cart Page */}
           <Link
             href="/cart"
             onClick={() => triggerHaptic('selection')}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all active:scale-95 select-none relative ${
-              pathname === '/cart' ? 'text-[#6B1725] font-bold scale-105' : 'text-[#6B625D] hover:text-[#6B1725]'
+            className={`native-press relative flex min-w-13 flex-col items-center justify-center py-1.5 px-3 rounded-xl select-none ${
+              pathname === '/cart' ? 'text-[#6B1725] font-bold' : 'text-[#6B625D] hover:text-[#6B1725]'
             }`}
           >
             <div className="relative">
@@ -87,7 +90,8 @@ export const MobileBottomNav: React.FC = () => {
                 </span>
               )}
             </div>
-            <span className="text-[10px] font-sans mt-1 tracking-tight">Cart</span>
+            <span className="text-[10px] font-sans mt-0.5 tracking-tight">Cart</span>
+            {pathname === '/cart' && <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-[#B08A3C]" />}
           </Link>
 
           {/* Account / Profile */}
@@ -95,8 +99,8 @@ export const MobileBottomNav: React.FC = () => {
             <Link
               href="/account"
               onClick={() => triggerHaptic('selection')}
-              className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all active:scale-95 select-none ${
-                pathname.startsWith('/account') ? 'text-[#6B1725] font-bold scale-105' : 'text-[#6B625D] hover:text-[#6B1725]'
+              className={`native-press relative flex min-w-13 flex-col items-center justify-center py-1.5 px-3 rounded-xl select-none ${
+                pathname.startsWith('/account') ? 'text-[#6B1725] font-bold' : 'text-[#6B625D] hover:text-[#6B1725]'
               }`}
             >
               {userAvatar ? (
@@ -110,7 +114,8 @@ export const MobileBottomNav: React.FC = () => {
               ) : (
                 <User size={20} className={pathname.startsWith('/account') ? 'text-[#6B1725] stroke-[2.5]' : ''} />
               )}
-              <span className="text-[10px] font-sans mt-1 tracking-tight">Account</span>
+              <span className="text-[10px] font-sans mt-0.5 tracking-tight">Account</span>
+              {pathname.startsWith('/account') && <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-[#B08A3C]" />}
             </Link>
           ) : (
             <button
@@ -118,11 +123,11 @@ export const MobileBottomNav: React.FC = () => {
                 triggerHaptic('selection');
                 setIsAuthModalOpen(true);
               }}
-              className="flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[#6B625D] hover:text-[#6B1725] transition-all active:scale-95 select-none cursor-pointer"
+              className="native-press flex min-w-13 flex-col items-center justify-center py-1.5 px-3 rounded-xl text-[#6B625D] hover:text-[#6B1725] select-none cursor-pointer"
               aria-label="Login or Register"
             >
               <User size={20} />
-              <span className="text-[10px] font-sans mt-1 tracking-tight">Account</span>
+              <span className="text-[10px] font-sans mt-0.5 tracking-tight">Account</span>
             </button>
           )}
         </div>

@@ -213,7 +213,7 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
         style={{
           paddingTop: `calc(env(safe-area-inset-top, 0px) + ${isHeaderCollapsed ? '0.25rem' : isScrolled ? '0.375rem' : '0.5rem'})`
         }}
-        className={`${hideOnMobile ? "hidden lg:block" : ""} sticky top-0 z-40 w-full transition-all duration-300 bg-[#FAF7F0]/95 backdrop-blur-md border-b border-[#F3ECE0] ${
+        className={`${hideOnMobile ? "hidden lg:block" : ""} sticky top-0 z-40 w-full transition-all duration-200 bg-[#FFFDF9]/94 backdrop-blur-xl border-b border-[#E9DED1] ${
           isHeaderCollapsed
             ? 'shadow-sm pb-1 sm:pb-1.5'
             : isScrolled
@@ -385,7 +385,7 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
                   triggerHaptic('light');
                   openMobileMenu();
                 }}
-                className="p-2 text-[#292524] hover:text-[#6B1725] active:scale-90 transition-transform cursor-pointer"
+                className="native-press p-2.5 rounded-xl bg-[#F5EDE5]/65 text-[#292524] hover:text-[#6B1725] cursor-pointer"
                 aria-label="Open navigation menu"
               >
                 <Menu size={24} />
@@ -407,7 +407,7 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
                   <Link
                     href="/wishlist"
                     onClick={() => triggerHaptic('selection')}
-                    className="relative p-2 text-[#292524] hover:text-[#6B1725] active:scale-90 transition-transform"
+                    className="native-press relative p-2.5 rounded-xl bg-[#F5EDE5]/65 text-[#292524] hover:text-[#6B1725]"
                     aria-label="Wishlist"
                   >
                     <Heart size={21} />
@@ -423,7 +423,7 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
                       triggerHaptic('light');
                       setIsAuthModalOpen(true);
                     }}
-                    className="relative p-2 text-[#292524] hover:text-[#6B1725] active:scale-90 transition-transform cursor-pointer"
+                    className="native-press relative p-2.5 rounded-xl bg-[#F5EDE5]/65 text-[#292524] hover:text-[#6B1725] cursor-pointer"
                     aria-label="Wishlist (Sign in required)"
                   >
                     <Heart size={21} />
@@ -435,12 +435,12 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
                     triggerHaptic('selection');
                     setIsCartOpen(true);
                   }}
-                  className="relative p-2 text-[#6B1725] hover:text-[#52111C] active:scale-90 transition-transform cursor-pointer"
+                  className="native-press relative p-2.5 rounded-xl bg-[#6B1725] text-[#FFFDF9] shadow-[0_4px_12px_rgba(107,23,37,0.2)] cursor-pointer"
                   aria-label="Shopping Cart"
                 >
                   <ShoppingBag size={21} />
                   {cartCount > 0 && (
-                    <span className="absolute top-0.5 right-0.5 bg-[#B08A3C] text-[#292524] text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[#FAF7F0]">
+                      <span className="absolute -top-1 -right-1 bg-[#B08A3C] text-[#292524] text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-[#FFFDF9]">
                       {cartCount}
                     </span>
                   )}
@@ -454,8 +454,8 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
             <div
               className={`transition-all duration-300 ease-out flex flex-col gap-1.5 overflow-hidden ${
                 isHeaderCollapsed
-                  ? 'max-h-0 opacity-0 pointer-events-none'
-                  : 'max-h-72 opacity-100 pt-1 pb-0.5'
+                  ? 'max-h-0 opacity-0 pointer-events-none -translate-y-1'
+                  : 'max-h-72 opacity-100 pt-1 pb-0.5 translate-y-0'
               }`}
             >
               {/* MOBILE PINCODE DELIVERY BAR */}

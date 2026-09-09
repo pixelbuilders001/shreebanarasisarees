@@ -688,22 +688,22 @@ export const SareesClient: React.FC<SareesClientProps> = ({
       </main>
 
       {/* ── 1. FLOATING PILL BAR (SORT & FILTER) - MOBILE ONLY (lg:hidden) ── */}
-      <div className="lg:hidden fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 z-[45]">
-        <div className="bg-white/95 backdrop-blur-md border border-[#E5DEC9] rounded-full shadow-2xl px-6 py-2.5 flex items-center gap-6 text-sm font-sans font-semibold text-[#292524] select-none transition-all hover:scale-105 active:scale-95 no-select">
+      <div className="lg:hidden fixed bottom-[calc(4.85rem+env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 z-[45]">
+        <div className="bg-[#FFFDF9]/95 backdrop-blur-xl border border-[#E9DED1] rounded-2xl shadow-[0_10px_26px_rgba(41,37,36,0.16)] px-2 py-1.5 flex items-center gap-1 text-sm font-sans font-semibold text-[#292524] select-none no-select">
           {/* SORT BUTTON */}
           <button
             onClick={() => {
               triggerHaptic('selection');
               setIsSortModalOpen(true);
             }}
-            className="flex items-center gap-2 hover:text-[#6B1725] transition-colors cursor-pointer active:scale-95"
+            className="native-press flex min-h-10 items-center gap-2 rounded-xl px-3 hover:bg-[#F5EDE5] hover:text-[#6B1725] cursor-pointer"
           >
             <ArrowUpDown size={16} className="text-[#292524]" />
             <span>Sort</span>
           </button>
 
           {/* DIVIDER */}
-          <div className="w-px h-5 bg-[#E5DEC9]" />
+          <div className="w-px h-5 bg-[#E9DED1]" />
 
           {/* FILTER BUTTON */}
           <button
@@ -711,7 +711,7 @@ export const SareesClient: React.FC<SareesClientProps> = ({
               triggerHaptic('selection');
               setIsFilterModalOpen(true);
             }}
-            className="flex items-center gap-2 hover:text-[#6B1725] transition-colors cursor-pointer relative active:scale-95"
+            className="native-press flex min-h-10 items-center gap-2 rounded-xl px-3 hover:bg-[#F5EDE5] hover:text-[#6B1725] cursor-pointer relative"
           >
             <SlidersHorizontal size={16} className="text-[#292524]" />
             <span>Filter</span>
@@ -724,11 +724,12 @@ export const SareesClient: React.FC<SareesClientProps> = ({
 
       {/* ── 2. "SORT BY" BOTTOM SHEET / MODAL (MOBILE ONLY) ── */}
       {isSortModalOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end items-center p-0 animate-fadeIn">
+        <div className="lg:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex flex-col justify-end items-center p-0 animate-fadeIn">
           {/* BACKDROP CLICK */}
           <div className="absolute inset-0" onClick={() => setIsSortModalOpen(false)} />
 
-          <div className="relative w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl z-10 animate-slideUp">
+          <div className="native-bottom-sheet relative w-full max-w-md bg-[#FFFDF9] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] z-10 animate-slideUp">
+            <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-[#D7CABB]" />
             {/* Header */}
             <div className="flex items-center justify-between border-b border-[#F3ECE0] pb-3 mb-2">
               <h2 className="font-serif text-xl font-bold text-[#292524]">Sort by</h2>
@@ -768,14 +769,15 @@ export const SareesClient: React.FC<SareesClientProps> = ({
 
       {/* ── 3. "FILTERS" BOTTOM SHEET / DRAWER (MOBILE ONLY) ── */}
       {isFilterModalOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end items-center p-0 animate-fadeIn">
+        <div className="lg:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex flex-col justify-end items-center p-0 animate-fadeIn">
           {/* BACKDROP CLICK */}
           <div className="absolute inset-0" onClick={() => setIsFilterModalOpen(false)} />
 
-          <div className="relative w-full max-w-lg bg-[#FAF7F0] rounded-t-3xl flex flex-col max-h-[85vh] shadow-2xl z-10 overflow-hidden animate-slideUp">
+          <div className="native-bottom-sheet relative w-full max-w-lg bg-[#FCF9F4] flex flex-col max-h-[85dvh] z-10 overflow-hidden animate-slideUp">
+            <div className="mx-auto mt-2.5 h-1.5 w-10 rounded-full bg-[#D7CABB] shrink-0" />
             
             {/* Header */}
-            <div className="px-5 py-4 bg-white border-b border-[#E5DEC9] flex items-center justify-between shrink-0">
+            <div className="px-5 py-4 bg-[#FFFDF9] border-b border-[#E9DED1] flex items-center justify-between shrink-0">
               <h2 className="font-serif text-xl font-bold text-[#292524]">Filters</h2>
               <button
                 onClick={() => setIsFilterModalOpen(false)}
@@ -918,16 +920,16 @@ export const SareesClient: React.FC<SareesClientProps> = ({
             </div>
 
             {/* Sticky Action Footer */}
-            <div className="p-4 bg-white border-t border-[#E5DEC9] flex items-center gap-3 shadow-md shrink-0">
+            <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] bg-[#FFFDF9] border-t border-[#E9DED1] flex items-center gap-3 shadow-[0_-6px_16px_rgba(41,37,36,0.06)] shrink-0">
               <button
                 onClick={resetAllFilters}
-                className="py-3 px-6 rounded-full border border-[#E5DEC9] text-[#292524] hover:border-[#6B1725] text-xs font-sans font-bold transition-all cursor-pointer flex-1 text-center"
+                className="native-press min-h-11 py-3 px-6 rounded-2xl border border-[#E9DED1] text-[#292524] hover:border-[#6B1725] text-xs font-sans font-bold cursor-pointer flex-1 text-center"
               >
                 Clear all
               </button>
               <button
                 onClick={() => setIsFilterModalOpen(false)}
-                className="py-3 px-6 rounded-full bg-[#6B1725] hover:bg-[#52111C] text-white text-xs font-sans font-bold transition-all cursor-pointer flex-[1.5] text-center shadow-md"
+                className="native-press min-h-11 py-3 px-6 rounded-2xl bg-[#6B1725] hover:bg-[#52111C] text-white text-xs font-sans font-bold cursor-pointer flex-[1.5] text-center shadow-[0_5px_14px_rgba(107,23,37,0.22)]"
               >
                 Show {filteredProducts.length} {filteredProducts.length === 1 ? 'saree' : 'sarees'}
               </button>

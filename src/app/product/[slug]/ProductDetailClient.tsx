@@ -1000,7 +1000,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
       <Footer />
 
       {/* ── STICKY BOTTOM ACTION BAR (ONLY ON MOBILE - DOCKED TO SCREEN BOTTOM) ── */}
-      <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E5DEC9] px-4 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] shadow-[0_-4px_20px_rgba(41,37,36,0.08)] flex items-center justify-between select-none md:hidden gap-3">
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-[#FFFDF9]/96 backdrop-blur-xl border-t border-[#E9DED1] px-4 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] shadow-[0_-8px_28px_rgba(41,37,36,0.12)] flex items-center justify-between select-none md:hidden gap-3">
         {/* Left: Quick Wishlist toggle + Price */}
         <div className="flex items-center gap-2.5 shrink-0">
           <button
@@ -1008,7 +1008,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
               triggerHaptic('light');
               toggleWishlist(product);
             }}
-            className="w-10 h-10 rounded-full border border-[#E5DEC9] bg-[#FAF7F0] flex items-center justify-center text-[#292524] active:scale-90 transition-transform cursor-pointer shrink-0 shadow-2xs"
+            className="native-press w-11 h-11 rounded-2xl border border-[#E9DED1] bg-[#FAF7F0] flex items-center justify-center text-[#292524] cursor-pointer shrink-0 shadow-sm"
             aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
           >
             <Heart size={18} className={isWishlisted ? 'fill-[#6B1725] text-[#6B1725]' : 'text-[#292524]'} />
@@ -1034,7 +1034,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
           {product.stock === 0 ? (
             <button
               onClick={handleNotifyMe}
-              className="flex-1 bg-[#292524] hover:bg-black text-white py-3 px-5 rounded-full text-xs font-bold shadow-md cursor-pointer transition-colors flex items-center justify-center gap-1.5 active:scale-95"
+              className="native-press flex-1 bg-[#292524] hover:bg-black text-white min-h-11 py-3 px-5 rounded-2xl text-xs font-bold shadow-md cursor-pointer flex items-center justify-center gap-1.5"
             >
               <Bell size={14} />
               Notify Me
@@ -1044,7 +1044,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
               <button
                 onClick={handleAddToCart}
                 disabled={isAddingToCart}
-                className="bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-85 text-white py-2.5 px-4 rounded-full text-xs font-bold shadow-md cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1.5 min-w-[95px]"
+                className="native-press bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-85 text-white min-h-11 py-2.5 px-4 rounded-2xl text-xs font-bold shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-1.5 min-w-[95px]"
               >
                 {isAddingToCart ? (
                   <>
@@ -1059,7 +1059,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
               <button
                 onClick={handleBuyNow}
                 disabled={isBuyingNow}
-                className="bg-white border border-[#6B1725] disabled:opacity-85 text-[#6B1725] py-2.5 px-4 rounded-full text-xs font-bold hover:bg-[#6B1725]/5 cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1.5 min-w-[85px]"
+                className="native-press bg-white border border-[#6B1725] disabled:opacity-85 text-[#6B1725] min-h-11 py-2.5 px-4 rounded-2xl text-xs font-bold hover:bg-[#6B1725]/5 cursor-pointer flex items-center justify-center gap-1.5 min-w-[85px]"
               >
                 {isBuyingNow ? (
                   <>

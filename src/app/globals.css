@@ -20,8 +20,15 @@
 }
 
 :root {
-  --background: #FAF7F0;
+  --background: #FCF9F4;
   --foreground: #292524;
+  --surface: #FFFFFF;
+  --surface-muted: #F5EDE5;
+  --surface-elevated: #FFFDF9;
+  --line: #E9DED1;
+  --brand: #6B1725;
+  --brand-pressed: #52111C;
+  --ease-native: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 html,
@@ -31,6 +38,13 @@ body {
   font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: contain;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100dvh;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Native App Feel: Remove 300ms double-tap delay on interactive controls */
@@ -42,6 +56,20 @@ textarea,
 label,
 [role="button"] {
   touch-action: manipulation;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--brand) 32%, transparent);
+  outline-offset: 2px;
 }
 
 /* Native App Protection: Prevent accidental text selection and iOS magnifier on UI controls */
@@ -87,6 +115,7 @@ nav,
 /* Smooth Scrolling */
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
 }
 
 /* Hide scrollbar utility */
@@ -212,4 +241,42 @@ html {
   animation: float 3s ease-in-out infinite;
 }
 
+/* Mobile commerce primitives: quietly elevated, large enough to tap, and fast to respond. */
+.native-surface {
+  background: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 28px rgba(56, 37, 29, 0.06);
+}
+
+.native-press {
+  transition: transform 180ms var(--ease-native), box-shadow 180ms var(--ease-native), background-color 180ms var(--ease-native);
+}
+
+.native-press:active {
+  transform: scale(0.97);
+}
+
+.native-bottom-sheet {
+  border-radius: 1.5rem 1.5rem 0 0;
+  box-shadow: 0 -12px 40px rgba(41, 37, 36, 0.18);
+}
+
+@media (max-width: 1023px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 

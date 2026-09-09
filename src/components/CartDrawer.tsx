@@ -39,7 +39,7 @@ export const CartDrawer: React.FC = () => {
 
       {/* Drawer Container */}
       <div className="absolute inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
-        <div className="w-screen max-w-md sm:max-w-lg bg-[#FAF7F0] flex flex-col h-full shadow-2xl animate-slide-in overflow-hidden pt-[env(safe-area-inset-top,0px)]">
+        <div className="w-screen max-w-md sm:max-w-lg bg-[#FFFDF9] flex flex-col h-full shadow-2xl animate-slide-in overflow-hidden pt-[env(safe-area-inset-top,0px)]">
           <CartView isDrawer={true} onBack={() => setIsCartOpen(false)} />
         </div>
       </div>

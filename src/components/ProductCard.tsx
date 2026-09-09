@@ -35,9 +35,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   return (
     <>
-    <div className="group relative bg-[#FFF9F0]/65 border border-gold/15 hover:border-gold/45 rounded-xl md:hover:shadow-[0_8px_24px_rgba(212,175,55,0.12)] md:hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden">
+    <div className="group relative bg-[#FFFDF9] border border-[#E9DED1] hover:border-gold/45 rounded-2xl md:hover:shadow-[0_12px_28px_rgba(73,42,27,0.11)] md:hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-[0_3px_12px_rgba(73,42,27,0.045)]">
       {/* Image Container with Luxury Full-bleed Top */}
-      <div className={`relative w-full aspect-[3/4] overflow-hidden border-b border-gold/10 ${imageLoaded ? 'bg-cream/20' : 'bg-cream animate-pulse'}`}>
+      <div className={`relative w-full aspect-[4/5] overflow-hidden border-b border-[#E9DED1]/75 ${imageLoaded ? 'bg-cream/20' : 'bg-cream animate-pulse'}`}>
         <Link href={`/product/${product.slug}`} className="block w-full h-full active:opacity-90 transition-opacity">
           <Image
             src={imageError || !product.images?.[0] ? NO_IMAGE_PLACEHOLDER : product.images[0]}
@@ -85,7 +85,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             triggerHaptic('light');
             toggleWishlist(product);
           }}
-          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-xs shadow-md hover:scale-108 transition-all z-10 flex items-center justify-center border border-[#E5DEC9]/50 active:scale-90 select-none cursor-pointer"
+          className="native-press absolute top-2.5 right-2.5 w-9 h-9 rounded-full bg-white/92 backdrop-blur-md shadow-md z-10 flex items-center justify-center border border-[#E9DED1] select-none cursor-pointer"
           aria-label="Add to Wishlist"
         >
           <Heart
@@ -98,16 +98,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       </div>
 
       {/* Info Area */}
-      <div className="p-1.5 sm:p-2 flex-grow flex flex-col justify-between">
+      <div className="p-2.5 sm:p-3 flex-grow flex flex-col justify-between">
         <div className="space-y-1.5">
           {/* Category / Fabric Subtitle matching Design Screenshot */}
-          <span className="text-[10px] sm:text-[11px] font-serif font-semibold text-[#B08A3C] uppercase tracking-widest block">
+          <span className="text-[9px] sm:text-[11px] font-sans font-bold text-[#B08A3C] uppercase tracking-[0.12em] block">
             {product.fabric ? `${product.fabric.toUpperCase()}` : 'BANARASI'}
           </span>
 
           {/* Product Title matching Design Screenshot */}
           <Link href={`/product/${product.slug}`} className="block group-hover:text-maroon transition-colors">
-            <h3 className="font-sans text-xs sm:text-sm font-medium text-[#292524] line-clamp-2 leading-snug">
+            <h3 className="font-sans text-[13px] sm:text-sm font-semibold text-[#292524] line-clamp-2 leading-snug">
               {product.name}
             </h3>
           </Link>
@@ -199,7 +199,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           ) : product.stock === 0 ? (
             <button
               onClick={handleNotifyMe}
-              className="w-full py-1.5 sm:py-2 rounded border border-maroon/30 bg-[#FFF9F0]/40 text-maroon font-bold text-[10px] sm:text-[11px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+              className="native-press w-full min-h-9 py-1.5 sm:py-2 rounded-xl border border-maroon/30 bg-[#FFF9F0]/40 text-maroon font-bold text-[10px] sm:text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
               aria-label={`Notify me when ${product.name} is back in stock`}
             >
               <Bell size={11} />
@@ -213,7 +213,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 triggerHaptic('medium');
                 addToCart(product, 1);
               }}
-              className="w-full py-1.5 sm:py-2 rounded border border-maroon/30 hover:border-maroon/80 bg-[#FFF9F0]/40 hover:bg-[#FFF9F0]/90 text-maroon font-bold text-[10px] sm:text-[11px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.96] hover:scale-[1.01] cursor-pointer"
+              className="native-press w-full min-h-9 py-1.5 sm:py-2 rounded-xl border border-maroon/25 hover:border-maroon/80 bg-[#6B1725] hover:bg-[#52111C] text-[#FFFDF9] font-bold text-[10px] sm:text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_5px_12px_rgba(107,23,37,0.18)] cursor-pointer"
               aria-label="Add to Cart"
             >
               <ShoppingBag size={11} className="transition-colors" />
