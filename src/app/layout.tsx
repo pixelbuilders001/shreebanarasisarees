@@ -12,6 +12,7 @@ import React, { Suspense } from "react";
 import GoogleAnalytics from "../components/GoogleAnalytics";
 import MicrosoftClarity from "../components/MicrosoftClarity";
 import RouteTransitionLoader from "../components/RouteTransitionLoader";
+import { OfflineDetector } from "../components/offline/OfflineDetector";
 
 const playfair = Playfair_Display({
   variable: "--font-serif",
@@ -126,6 +127,7 @@ export default function RootLayout({
         <GoogleAnalytics />
         <MicrosoftClarity />
         <StoreProvider>
+          <OfflineDetector />
           <PWARegistration />
           <NotificationPrompt />
           <Suspense fallback={null}>

@@ -1,9 +1,10 @@
-const CACHE_NAME = 'sbs-pwa-cache-v8';
+const CACHE_NAME = 'sbs-pwa-cache-v9';
 
 // Core assets to cache immediately on installation
 const PRECACHE_ASSETS = [
   '/',
   '/offline.html',
+  '/brand_logo.webp',
   '/brand_logo.png',
   '/icon-192x192.png',
   '/icon-512x512.png',
@@ -70,7 +71,13 @@ self.addEventListener('fetch', (event) => {
 
   // Handle page navigation requests (HTML docs)
   if (request.mode === 'navigate') {
-    // Do NOT intercept page navigations — let the browser handle them natively.
+    event.respondWith(
+      fetch(request).catch(() => {
+        return caches.match('/offline.html').then((offlineResponse) => {
+          return offlineResponse || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
+        });
+      })
+    );
     return;
   }
 

@@ -2,140 +2,377 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Offline | Shree Banarasi Sarees</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <style>
     :root {
-      --background: #FFF9F0;
-      --text: #2D211D;
-      --maroon: #801F32;
-      --gold: #C9A45C;
-      --cream: #F7EEDF;
+      --background: #FAF7F0;
+      --foreground: #292524;
+      --maroon: #6B1725;
+      --maroon-dark: #52111C;
+      --maroon-light: #8C2234;
+      --gold: #B08A3C;
+      --gold-light: #D4B870;
+      --cream: #F3ECE0;
+      --muted: #6B625D;
     }
     
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      -webkit-tap-highlight-color: transparent;
     }
 
     body {
       background-color: var(--background);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Georgia, serif;
+      color: var(--foreground);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 24px;
+      padding: 20px;
     }
 
     .container {
-      max-width: 450px;
-      background: white;
-      padding: 40px 32px;
-      border-radius: 24px;
-      border: 1px solid rgba(201, 164, 92, 0.25);
-      box-shadow: 0 10px 30px rgba(45, 33, 29, 0.05);
+      max-width: 440px;
+      width: 100%;
+      background: #FFFFFF;
+      border-radius: 28px;
+      border: 1px solid rgba(176, 138, 60, 0.35);
+      box-shadow: 0 16px 40px rgba(41, 37, 36, 0.08);
+      overflow: hidden;
     }
 
-    .logo-container {
-      margin-bottom: 24px;
+    .banner {
+      background: linear-gradient(135deg, var(--maroon-dark) 0%, var(--maroon) 50%, var(--maroon-dark) 100%);
+      padding: 32px 24px;
+      color: #FAF7F0;
+      position: relative;
+      border-bottom: 1px solid rgba(176, 138, 60, 0.3);
+    }
+
+    .logo-wrapper {
+      position: relative;
+      display: inline-block;
+      margin-bottom: 14px;
     }
 
     .logo {
-      width: 90px;
-      height: 90px;
+      width: 76px;
+      height: 76px;
       object-fit: contain;
       border-radius: 50%;
       border: 2px solid var(--gold);
-      padding: 2px;
+      background: #FFFFFF;
+      padding: 4px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    }
+
+    .offline-badge {
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      background: var(--maroon-light);
+      border: 2px solid #FFFFFF;
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .offline-badge svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: var(--gold-light);
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .tagline {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gold-light);
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+      margin-bottom: 6px;
     }
 
     h1 {
       font-size: 24px;
-      font-weight: 700;
-      color: var(--maroon);
-      margin-bottom: 12px;
-      font-family: Georgia, serif;
+      font-weight: 800;
+      font-family: Georgia, "Playfair Display", serif;
+      letter-spacing: 0.02em;
+      margin-bottom: 4px;
+      color: #FAF7F0;
+    }
+
+    .hindi-title {
+      font-size: 13px;
+      color: rgba(250, 247, 240, 0.82);
+      font-weight: 400;
+    }
+
+    .content {
+      padding: 28px 24px;
     }
 
     p {
-      font-size: 14px;
-      color: #665b57;
+      font-size: 13.5px;
+      color: var(--muted);
       line-height: 1.6;
-      margin-bottom: 28px;
+      margin-bottom: 24px;
+      font-weight: 400;
     }
 
-    .btn {
-      display: inline-block;
+    .btn-retry {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
       width: 100%;
       background-color: var(--maroon);
-      color: var(--background);
+      color: #FAF7F0;
       border: none;
-      padding: 14px 28px;
+      padding: 14px 24px;
       font-size: 13px;
       font-weight: 700;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      border-radius: 12px;
+      border-radius: 14px;
       cursor: pointer;
       transition: all 0.2s ease;
-      box-shadow: 0 4px 12px rgba(128, 31, 50, 0.15);
+      box-shadow: 0 4px 14px rgba(107, 23, 37, 0.25);
     }
 
-    .btn:hover {
-      background-color: #6E1725;
+    .btn-retry:hover {
+      background-color: var(--maroon-dark);
       transform: translateY(-1px);
     }
 
-    .btn:active {
+    .btn-retry:active {
       transform: translateY(1px);
     }
 
-    .connection-status {
+    .btn-retry svg {
+      width: 16px;
+      height: 16px;
+      stroke: var(--gold-light);
+      stroke-width: 2.2;
+      fill: none;
+    }
+
+    .spinning svg {
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
+    .divider {
+      height: 1px;
+      background: rgba(176, 138, 60, 0.2);
+      margin: 20px 0;
+    }
+
+    .support-box {
+      background: var(--cream);
+      border-radius: 16px;
+      padding: 14px;
+      border: 1px solid rgba(176, 138, 60, 0.25);
+      text-align: left;
+    }
+
+    .support-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--maroon);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .support-text {
+      font-size: 11.5px;
+      color: var(--muted);
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+
+    .btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn-sec {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
-      font-size: 11px;
+      padding: 9px 12px;
+      font-size: 12px;
       font-weight: 600;
-      color: var(--gold);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 16px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: background-color 0.15s;
     }
 
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      background-color: var(--gold);
-      border-radius: 50%;
-      animation: pulse 1.5s infinite;
+    .btn-whatsapp {
+      background: rgba(37, 211, 102, 0.12);
+      color: #128C7E;
+      border: 1px solid rgba(37, 211, 102, 0.35);
     }
 
-    @keyframes pulse {
-      0% { transform: scale(0.9); opacity: 0.6; }
-      50% { transform: scale(1.1); opacity: 1; }
-      100% { transform: scale(0.9); opacity: 0.6; }
+    .btn-whatsapp:hover {
+      background: rgba(37, 211, 102, 0.2);
+    }
+
+    .btn-call {
+      background: rgba(107, 23, 37, 0.08);
+      color: var(--maroon);
+      border: 1px solid rgba(107, 23, 37, 0.25);
+    }
+
+    .btn-call:hover {
+      background: rgba(107, 23, 37, 0.15);
+    }
+
+    .status-alert {
+      display: none;
+      margin-top: 14px;
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-alert.error {
+      display: block;
+      background: #FEF2F2;
+      color: #991B1B;
+      border: 1px solid #FCA5A5;
+    }
+
+    .status-alert.success {
+      display: block;
+      background: #ECFDF5;
+      color: #065F46;
+      border: 1px solid #6EE7B7;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="logo-container">
-      <img src="/brand_logo.png" alt="Shree Banarasi Sarees Logo" class="logo">
+    <div class="banner">
+      <div class="logo-wrapper">
+        <img src="/brand_logo.webp" alt="Shree Banarasi Sarees" class="logo" onerror="this.src='/brand_logo.png'">
+        <div class="offline-badge">
+          <svg viewBox="0 0 24 24">
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+            <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+            <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+            <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+            <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+            <line x1="12" y1="20" x2="12.01" y2="20"></line>
+          </svg>
+        </div>
+      </div>
+      <div class="tagline">Heritage Handloom Silk • Samastipur</div>
+      <h1>No Internet Connection</h1>
+      <div class="hindi-title">इंटरनेट कनेक्शन उपलब्ध नहीं है</div>
     </div>
-    <div class="connection-status">
-      <span class="status-dot"></span>
-      Offline Mode
+
+    <div class="content">
+      <p>Please verify your Wi-Fi or cellular network connection. Shree Banarasi Sarees will automatically reconnect once your internet is active.</p>
+
+      <button id="retryBtn" class="btn-retry" onclick="retryConnection()">
+        <svg id="retryIcon" viewBox="0 0 24 24">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span id="retryLabel">Retry Connection</span>
+      </button>
+
+      <div id="statusAlert" class="status-alert"></div>
+
+      <div class="divider"></div>
+
+      <div class="support-box">
+        <div class="support-title">
+          <span>Showroom Support</span>
+        </div>
+        <div class="support-text">
+          Station Road, Opp. Kali Mandir, Samastipur, Bihar. Direct telephone and WhatsApp lines are open for orders.
+        </div>
+        <div class="btn-group">
+          <a href="https://wa.me/919155111777?text=Hello%2C%20I%20need%20assistance%20with%20Shree%20Banarasi%20Sarees" target="_blank" rel="noopener noreferrer" class="btn-sec btn-whatsapp">
+            WhatsApp
+          </a>
+          <a href="tel:+919155111777" class="btn-sec btn-call">
+            Call Store
+          </a>
+        </div>
+      </div>
     </div>
-    <h1>You're Offline</h1>
-    <p>Please check your internet connection. Shree Banarasi Sarees website needs an active connection to browse and order. Once you are back online, click below to retry.</p>
-    <button class="btn" onclick="window.location.reload()">Retry Connection</button>
   </div>
+
+  <script>
+    function retryConnection() {
+      const btn = document.getElementById('retryBtn');
+      const label = document.getElementById('retryLabel');
+      const alertBox = document.getElementById('statusAlert');
+      
+      btn.classList.add('spinning');
+      label.textContent = 'Checking...';
+      alertBox.className = 'status-alert';
+      alertBox.textContent = '';
+
+      // Test active reachability
+      fetch('/favicon.ico?_t=' + Date.now(), { method: 'HEAD', cache: 'no-store' })
+        .then(function(res) {
+          if (res.ok || res.type === 'opaque') {
+            btn.classList.remove('spinning');
+            label.textContent = 'Connected!';
+            alertBox.className = 'status-alert success';
+            alertBox.textContent = 'Connection restored! Reloading...';
+            setTimeout(function() {
+              window.location.reload();
+            }, 600);
+          } else {
+            throw new Error('Offline');
+          }
+        })
+        .catch(function() {
+          btn.classList.remove('spinning');
+          label.textContent = 'Retry Connection';
+          alertBox.className = 'status-alert error';
+          alertBox.textContent = 'Still offline. Please check your data connection.';
+        });
+    }
+
+    // Auto-reload when connection returns
+    window.addEventListener('online', function() {
+      const alertBox = document.getElementById('statusAlert');
+      alertBox.className = 'status-alert success';
+      alertBox.textContent = 'Connection detected! Reloading...';
+      setTimeout(function() {
+        window.location.reload();
+      }, 700);
+    });
+  </script>
 </body>
 </html>
