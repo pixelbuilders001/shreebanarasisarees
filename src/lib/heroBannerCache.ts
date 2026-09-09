@@ -100,10 +100,17 @@ export async function reconcileBannersInDexie(
       await db.heroBanners.bulkPut(toPut);
     }
 
-    // 3. Update table sync metadata
+    // 3. Update table sync metadata including latest updated_at
+    const latestUpdatedAt = freshBanners.reduce<string | null>((max, b) => {
+      if (!b.updated_at) return max;
+      if (!max) return b.updated_at;
+      return b.updated_at > max ? b.updated_at : max;
+    }, null);
+
     await db.cacheMeta.put({
       key: HERO_BANNERS_META_KEY,
       lastSyncAt: nowTimestamp,
+      latestUpdatedAt,
       count: freshBanners.length,
     });
   });
@@ -253,3 +260,91 @@ export async function syncHeroBanners(options: { force?: boolean } = {}): Promis
 
   return inFlightSyncPromise;
 }
+
+/**
+ * Query only the latest updated_at timestamp and exact banner count from Supabase.
+ * Extremely lightweight request (a few bytes) to verify if data has changed.
+ */
+export async function getLatestSupabaseUpdatedAtAndCount(): Promise<{
+  latestUpdatedAt: string | null;
+  count: number;
+} | null> {
+  try {
+    const { data, count, error } = await supabase
+      .from('hero_banners')
+      .select('updated_at', { count: 'exact' })
+      .order('updated_at', { ascending: false })
+      .limit(1);
+
+    if (error || !data) {
+      return null;
+    }
+
+    return {
+      latestUpdatedAt: data[0]?.updated_at ?? null,
+      count: count ?? 0,
+    };
+  } catch (err) {
+    console.warn('[heroBannerCache] Error fetching latest updated_at from Supabase:', err);
+    return null;
+  }
+}
+
+let inFlightCheckPromise: Promise<DbHeroBanner[] | null> | null = null;
+
+/**
+ * Checks if Supabase has newer changes using the `updated_at` column.
+ * If Supabase's latest updated_at differs from what's stored in IndexedDB
+ * (e.g. admin toggled is_active, edited details, created banner, or deleted a banner),
+ * it immediately triggers syncHeroBanners({ force: true }) to refresh the UI and Dexie.
+ */
+export async function checkForSupabaseUpdatesAndSync(force: boolean = false): Promise<DbHeroBanner[] | null> {
+  if (typeof window === 'undefined') return null;
+
+  const db = getDb();
+  if (!db) return null;
+
+  if (inFlightCheckPromise) {
+    return inFlightCheckPromise;
+  }
+
+  inFlightCheckPromise = (async () => {
+    try {
+      const meta = await db.cacheMeta.get(HERO_BANNERS_META_KEY);
+
+      if (!meta || force) {
+        return await syncHeroBanners({ force: true });
+      }
+
+      const remote = await getLatestSupabaseUpdatedAtAndCount();
+      if (!remote) {
+        // Offline or network error - gracefully keep existing cached banners
+        return null;
+      }
+
+      // Check if updated_at changed or total count changed (e.g. is_active toggled, banner deleted/added)
+      const hasChanged =
+        meta.latestUpdatedAt !== remote.latestUpdatedAt ||
+        meta.count !== remote.count;
+
+      if (hasChanged) {
+        return await syncHeroBanners({ force: true });
+      } else {
+        // Data is identical! Update lastSyncAt to prevent repeated checks
+        await db.cacheMeta.put({
+          ...meta,
+          lastSyncAt: Date.now(),
+        });
+        return null;
+      }
+    } catch (err) {
+      console.warn('[heroBannerCache] Error in checkForSupabaseUpdatesAndSync:', err);
+      return null;
+    } finally {
+      inFlightCheckPromise = null;
+    }
+  })();
+
+  return inFlightCheckPromise;
+}
+

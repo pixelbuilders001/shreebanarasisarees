@@ -23,6 +23,12 @@ import {
   fetchDefaultDeliveryPincode,
   updateProfileDefaultPincode
 } from '../data/supabase';
+import {
+  getValidCachedCategories,
+  syncCategories,
+  checkForCategorySupabaseUpdatesAndSync,
+  subscribeToCategoryUpdates
+} from '../lib/categoryCache';
 import { trackAddToCart, trackRemoveFromCart, trackAddToWishlist } from '../lib/gtag';
 import { parseSearchQuery, scoreProducts } from '../lib/searchEngine';
 
@@ -252,8 +258,34 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>(PRODUCTS);
-  const [categories, setCategories] = useState<DbCategory[]>([]);
-  const [isCategoriesLoading, setIsCategoriesLoading] = useState<boolean>(true);
+  const [categories, setCategories] = useState<DbCategory[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('sbs_categories_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+    return [];
+  });
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('sbs_categories_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return false;
+          }
+        }
+      } catch {}
+    }
+    return true;
+  });
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -578,17 +610,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     });
 
-    // Fetch dynamic categories from Supabase
-    fetchCategories().then(dbCategories => {
-      if (dbCategories && dbCategories.length > 0) {
-        setCategories(dbCategories);
-      }
-      setIsCategoriesLoading(false);
-    }).catch(err => {
-      console.error('Error fetching categories:', err);
-      setIsCategoriesLoading(false);
-    });
-
     // Fetch default pincode from delivery_settings
     fetchDefaultDeliveryPincode().then(defPin => {
       const pinSetting = defPin || '';
@@ -763,6 +784,88 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return () => {
       subscription.unsubscribe();
+    };
+  }, []);
+
+  // ── Categories Dexie.js + IndexedDB Cache-First Synchronization ─────────────
+  useEffect(() => {
+    let isCategoryMounted = true;
+
+    // 1. Subscribe to reactive category cache updates
+    const unsubscribeCategories = subscribeToCategoryUpdates((updatedCategories) => {
+      if (isCategoryMounted && updatedCategories.length > 0) {
+        setCategories(updatedCategories);
+        setIsCategoriesLoading(false);
+        try {
+          localStorage.setItem('sbs_categories_cache', JSON.stringify(updatedCategories));
+        } catch {}
+      }
+    });
+
+    // 2. Load cached categories immediately with 0ms delay
+    getValidCachedCategories()
+      .then((cached) => {
+        if (!isCategoryMounted) return;
+        if (cached && cached.length > 0) {
+          setCategories(cached);
+          setIsCategoriesLoading(false);
+          try {
+            localStorage.setItem('sbs_categories_cache', JSON.stringify(cached));
+          } catch {}
+          // Background check: verify if Supabase has newer updated_at / changes
+          checkForCategorySupabaseUpdatesAndSync().catch(() => {});
+        } else {
+          // Cache miss (first visit): fetch from Supabase and save to Dexie & localStorage
+          syncCategories({ force: true })
+            .then((freshCategories) => {
+              if (isCategoryMounted && freshCategories.length > 0) {
+                setCategories(freshCategories);
+                try {
+                  localStorage.setItem('sbs_categories_cache', JSON.stringify(freshCategories));
+                } catch {}
+              }
+              setIsCategoriesLoading(false);
+            })
+            .catch((err) => {
+              console.error('Error syncing categories:', err);
+              setIsCategoriesLoading(false);
+            });
+        }
+      })
+      .catch((err) => {
+        console.error('Error reading cached categories:', err);
+        fetchCategories()
+          .then((cats) => {
+            if (isCategoryMounted && cats.length > 0) {
+              setCategories(cats);
+              try {
+                localStorage.setItem('sbs_categories_cache', JSON.stringify(cats));
+              } catch {}
+            }
+            setIsCategoriesLoading(false);
+          })
+          .catch(() => setIsCategoriesLoading(false));
+      });
+
+    // 3. Tab visibility / focus listener to detect admin updates
+    const handleCategoryVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        checkForCategorySupabaseUpdatesAndSync().catch(() => {});
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('visibilitychange', handleCategoryVisibility);
+      window.addEventListener('focus', handleCategoryVisibility);
+    }
+
+    return () => {
+      isCategoryMounted = false;
+      unsubscribeCategories();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('visibilitychange', handleCategoryVisibility);
+        window.removeEventListener('focus', handleCategoryVisibility);
+      }
     };
   }, []);
 

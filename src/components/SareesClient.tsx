@@ -379,7 +379,7 @@ export const SareesClient: React.FC<SareesClientProps> = ({
         <h3 className="text-xs font-bold text-[#7A6E65] uppercase tracking-wider font-serif mb-2.5">
           Category
         </h3>
-        {isCategoriesLoading ? (
+        {isCategoriesLoading && (!categories || categories.length === 0) ? (
           <div className="space-y-2 animate-pulse">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="h-8 bg-[#E5DEC9]/40 rounded-xl w-full" />

@@ -49,7 +49,7 @@ export const CategoryCard: React.FC = () => {
     return [];
   }, [categories, products]);
 
-  if (isCategoriesLoading) {
+  if (isCategoriesLoading && (!categories || categories.length === 0)) {
     return (
       <section className="py-4 md:py-12 px-4 md:px-6 bg-[#FAF6EE] border-b border-[#B08A3C]/15 animate-pulse">
         <div className="max-w-7xl mx-auto">

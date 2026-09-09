@@ -8,6 +8,7 @@ import {
   syncHeroBanners,
   seedDexieIfEmpty,
   subscribeToHeroBannerUpdates,
+  checkForSupabaseUpdatesAndSync,
 } from '../lib/heroBannerCache';
 
 export interface UseHeroBannersResult {
@@ -20,14 +21,15 @@ export interface UseHeroBannersResult {
 /**
  * Hook for managing hero banners with Dexie.js + IndexedDB caching.
  *
- * Cache-First Architecture:
+ * Cache-First Architecture with updated_at change detection:
  * 1. Checks IndexedDB on mount.
  * 2. If cached banners exist: displays them instantly (zero wait time).
- * 3. If cache is stale (> 10 mins): triggers background refresh from Supabase without blocking UI.
- * 4. If cache is fresh (< 10 mins): no network request is made.
- * 5. If no cache exists: fetches from Supabase, saves to Dexie, and displays.
- * 6. Deduplicates requests across StrictMode, remounts, and fast page navigation.
- * 7. Offline safe: gracefully uses cached banners if network is disconnected.
+ * 3. In background: inspects latest updated_at from Supabase.
+ *    If an admin made changes (e.g. toggled is_active, edited banners),
+ *    immediately synchronizes fresh data into IndexedDB and updates the UI.
+ * 4. Deduplicates requests across StrictMode, remounts, and fast page navigation.
+ * 5. Re-checks updated_at when the browser tab regains focus or visibility.
+ * 6. Offline safe: gracefully uses cached banners if network is disconnected.
  */
 export function useHeroBanners(initialBanners?: DbHeroBanner[]): UseHeroBannersResult {
   const [banners, setBanners] = useState<DbHeroBanner[]>(initialBanners ?? []);
@@ -48,11 +50,10 @@ export function useHeroBanners(initialBanners?: DbHeroBanner[]): UseHeroBannersR
       }
     });
 
-    // 2. Cache-first resolution
+    // 2. Cache-first resolution with updated_at detection
     const loadBanners = async () => {
       try {
         const cached = await getValidCachedHeroBanners();
-        const fresh = await isCacheFresh();
 
         if (cached && cached.length > 0) {
           // Instant display from IndexedDB cache
@@ -62,10 +63,8 @@ export function useHeroBanners(initialBanners?: DbHeroBanner[]): UseHeroBannersR
             setIsFromCache(true);
           }
 
-          // If cache is older than TTL, perform background refresh from Supabase
-          if (!fresh) {
-            syncHeroBanners().catch(() => {});
-          }
+          // Check if Supabase has newer updated_at in the background
+          checkForSupabaseUpdatesAndSync().catch(() => {});
         } else {
           // No cached banners exist in IndexedDB yet
           const initBanners = initialBannersRef.current;
@@ -76,6 +75,8 @@ export function useHeroBanners(initialBanners?: DbHeroBanner[]): UseHeroBannersR
               setBanners(initBanners);
               setIsLoading(false);
             }
+            // Check in background if server data is already older than Supabase
+            checkForSupabaseUpdatesAndSync().catch(() => {});
           } else {
             // Fetch from Supabase, save to Dexie, and render
             const freshData = await syncHeroBanners({ force: true });
@@ -95,9 +96,25 @@ export function useHeroBanners(initialBanners?: DbHeroBanner[]): UseHeroBannersR
 
     loadBanners();
 
+    // 3. Re-check on tab focus / visibility change (e.g. returning from admin tab)
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        checkForSupabaseUpdatesAndSync().catch(() => {});
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.addEventListener('focus', handleVisibilityOrFocus);
+    }
+
     return () => {
       isMounted = false;
       unsubscribe();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+        window.removeEventListener('focus', handleVisibilityOrFocus);
+      }
     };
   }, []);
 

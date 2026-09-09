@@ -16,6 +16,8 @@ export interface DbCategory {
   image_url: string | null;
   status: string;
   sort_order: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface DbInventory {
@@ -230,9 +232,23 @@ export async function fetchDesignVariants(designCode?: string | null): Promise<P
 }
 
 /**
- * Fetch all active categories from Supabase.
+ * Fetch all active categories from Supabase (or Dexie client cache when in browser).
  */
 export async function fetchCategories(): Promise<DbCategory[]> {
+  if (typeof window !== 'undefined') {
+    try {
+      const { getValidCachedCategories, checkForCategorySupabaseUpdatesAndSync, syncCategories } = await import('../lib/categoryCache');
+      const cached = await getValidCachedCategories();
+      if (cached.length > 0) {
+        checkForCategorySupabaseUpdatesAndSync().catch(() => {});
+        return cached;
+      }
+      return await syncCategories();
+    } catch (err) {
+      console.warn('Client category cache failed, falling back to direct Supabase:', err);
+    }
+  }
+
   try {
     const { data, error } = await supabase
       .from('categories')

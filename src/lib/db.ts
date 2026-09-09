@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import { DbHeroBanner } from '../data/supabase';
+import { DbHeroBanner, DbCategory } from '../data/supabase';
 
 /**
  * Local hero banner record stored in IndexedDB.
@@ -12,22 +12,39 @@ export interface LocalHeroBanner extends DbHeroBanner {
 }
 
 /**
+ * Local category record stored in IndexedDB.
+ * Mirrors existing Supabase categories fields with client-only metadata.
+ * Note: Never store image Blobs here; only image_url metadata.
+ */
+export interface LocalCategory extends DbCategory {
+  cachedAt?: number;
+  lastSyncAt?: number;
+}
+
+/**
  * Cache metadata table in IndexedDB to track table-level sync timestamps.
  */
 export interface CacheMetadata {
   key: string;
   lastSyncAt: number;
+  latestUpdatedAt?: string | null;
   count?: number;
 }
 
 export class ShreeBanarasiDatabase extends Dexie {
   heroBanners!: EntityTable<LocalHeroBanner, 'id'>;
+  categories!: EntityTable<LocalCategory, 'id'>;
   cacheMeta!: EntityTable<CacheMetadata, 'key'>;
 
   constructor() {
     super('ShreeBanarasiDB');
     this.version(1).stores({
       heroBanners: 'id, sort_order, is_active, updated_at',
+      cacheMeta: 'key'
+    });
+    this.version(2).stores({
+      heroBanners: 'id, sort_order, is_active, updated_at',
+      categories: 'id, category_id, slug, status, sort_order, updated_at',
       cacheMeta: 'key'
     });
   }

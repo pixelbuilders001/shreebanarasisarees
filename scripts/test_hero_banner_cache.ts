@@ -227,6 +227,30 @@ async function runTests() {
   assert.strictEqual(cachedImmediate.length, res1.length, 'Immediate cache return must match');
   console.log('✓ Immediate cache return verified');
 
+  // Test 8: updated_at change detection
+  console.log('\nTest 8: updated_at change detection via checkForSupabaseUpdatesAndSync');
+  const { checkForSupabaseUpdatesAndSync, getLatestSupabaseUpdatedAtAndCount } = await import('../src/lib/heroBannerCache');
+  
+  // 1. When up-to-date, should return null (no full re-fetch)
+  const noUpdateResult = await checkForSupabaseUpdatesAndSync();
+  assert.strictEqual(noUpdateResult, null, 'When updated_at is identical, no full sync needed');
+  console.log('✓ When updated_at matches, unnecessary full sync is skipped');
+
+  // 2. Simulate an admin change by artificially setting an older updated_at in cacheMeta
+  const currentMeta = await db.cacheMeta.get(HERO_BANNERS_META_KEY);
+  assert(currentMeta !== undefined, 'cacheMeta must exist');
+  await db.cacheMeta.put({
+    ...currentMeta,
+    latestUpdatedAt: '2020-01-01T00:00:00.000Z' // older timestamp
+  });
+
+  // Now call checkForSupabaseUpdatesAndSync - it should detect the newer updated_at in Supabase and trigger sync!
+  const updatedResult = await checkForSupabaseUpdatesAndSync();
+  assert(Array.isArray(updatedResult) && updatedResult.length > 0, 'Should trigger fresh sync when updated_at differs');
+  const refreshedMeta = await db.cacheMeta.get(HERO_BANNERS_META_KEY);
+  assert.notStrictEqual(refreshedMeta?.latestUpdatedAt, '2020-01-01T00:00:00.000Z', 'latestUpdatedAt must be updated to fresh timestamp');
+  console.log('✓ Admin update detected via updated_at, successfully triggered fresh sync and updated IndexedDB');
+
   console.log('\n--- ALL UNIT & INTEGRATION TESTS PASSED SUCCESSFULLY! ---');
   await db.close();
 }

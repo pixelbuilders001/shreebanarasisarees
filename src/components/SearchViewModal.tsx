@@ -387,7 +387,7 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
                     <ChevronRight size={14} />
                   </button>
                 </div>
-                {isCategoriesLoading ? (
+                {isCategoriesLoading && (!categories || categories.length === 0) ? (
                   <div className="grid grid-cols-4 md:grid-cols-8 gap-y-6 gap-x-3 text-center animate-pulse">
                     {Array.from({ length: 8 }).map((_, i) => (
                       <div key={i} className="flex flex-col items-center gap-2">
