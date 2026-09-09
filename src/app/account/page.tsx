@@ -358,7 +358,7 @@ function AccountContent() {
       const targetUserId = user?.id || null;
       const targetPhone = userProfile?.phone_number
         ? String(userProfile.phone_number)
-        : (userPhone && /^\d{10}$/.test(userPhone) ? userPhone : (user?.phone || null));
+        : (userPhone && /^[6-9]\d{9}$/.test(userPhone) ? userPhone : (user?.phone || null));
 
       const has10DigitPhone = targetPhone && targetPhone.replace(/\D/g, '').length >= 10;
       // If user is neither logged in via Google OAuth (UUID) nor has a valid 10-digit phone, show no orders

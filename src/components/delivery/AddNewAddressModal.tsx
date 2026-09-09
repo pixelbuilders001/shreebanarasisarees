@@ -67,8 +67,8 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
       return;
     }
 
-    if (!/^\d{10}$/.test(phone.trim())) {
-      setFormError('Please enter a valid 10-digit mobile number.');
+    if (!/^[6-9]\d{9}$/.test(phone.trim())) {
+      setFormError('Please enter a valid Indian mobile number (starts with 6–9, 10 digits).');
       return;
     }
 
@@ -154,11 +154,20 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
               <input
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
+                  setPhone(digits);
+                }}
                 placeholder="10-digit mobile"
                 required
                 className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-xs rounded-xl p-2.5 outline-none font-mono"
               />
+              {phone.length > 0 && !/^[6-9]\d{9}$/.test(phone) && (
+                <p className="mt-1 text-[10px] text-amber-700 font-sans">
+                  Enter a valid Indian mobile number (starts with 6, 7, 8 or 9)
+                </p>
+              )}
             </div>
           </div>
 
@@ -261,7 +270,7 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
                   type="button"
                   key={type}
                   onClick={() => setAddressLabel(type)}
-                  className={`px-3 py-1 rounded-xl text-xs font-serif font-bold transition-all ${
+                  className={`px-3 py-1 rounded-xl text-xs font-sans font-bold transition-all ${
                     addressLabel === type
                       ? 'bg-[#6B1725] text-white shadow-xs'
                       : 'bg-[#FAF7F0] text-[#6B625D] border border-[#B08A3C]/30 hover:border-[#6B1725]'
@@ -278,14 +287,14 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl border border-[#B08A3C]/40 text-xs font-serif font-bold text-[#6B625D] hover:bg-[#FAF7F0] cursor-pointer"
+              className="flex-1 py-2.5 rounded-xl border border-[#B08A3C]/40 text-xs font-sans font-bold text-[#6B625D] hover:bg-[#FAF7F0] cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 py-2.5 rounded-xl bg-[#6B1725] hover:bg-[#52111C] text-white text-xs font-serif font-bold tracking-wider shadow-sm disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+              className="flex-1 py-2.5 rounded-xl bg-[#6B1725] hover:bg-[#52111C] text-white text-xs font-sans font-bold tracking-wider shadow-sm disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
             >
               {isSaving ? (
                 <>

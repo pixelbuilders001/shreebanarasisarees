@@ -170,8 +170,8 @@ function CheckoutContent() {
   const [hasPrefilled, setHasPrefilled] = useState(false);
 
   // Form Fields - Dynamic initialization
-  const isPhoneValid = userPhone && /^\d{10}$/.test(userPhone);
-  const [mobileNumber, setMobileNumber] = useState(isPhoneValid ? userPhone : '');
+  const isPhoneValid = Boolean(userPhone && /^[6-9]\d{9}$/.test(userPhone));
+  const [mobileNumber, setMobileNumber] = useState<string>((isPhoneValid && userPhone) ? userPhone : '');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
@@ -277,7 +277,7 @@ function CheckoutContent() {
 
       if (targetAddr) {
         setFullName(targetAddr.full_name || '');
-        setMobileNumber(targetAddr.phone || (isPhoneValid ? userPhone : ''));
+        setMobileNumber(targetAddr.phone || ((isPhoneValid && userPhone) ? userPhone : '') || '');
         setAddress(targetAddr.address_line1 + (targetAddr.address_line2 ? ', ' + targetAddr.address_line2 : ''));
         setLandmark(targetAddr.landmark || '');
         setCity(targetAddr.city || '');
@@ -651,8 +651,8 @@ function CheckoutContent() {
     if (isSubmitting) return;
 
     // Inline validations
-    if (!/^\d{10}$/.test(mobileNumber)) {
-      setErrorMsg('Please enter a valid 10-digit mobile number.');
+    if (!/^[6-9]\d{9}$/.test(mobileNumber)) {
+      setErrorMsg('Please enter a valid Indian mobile number (starts with 6–9, 10 digits).');
       return;
     }
 
@@ -792,7 +792,7 @@ function CheckoutContent() {
 
   // Step validation
   const canAdvanceStep1 = Boolean(
-    fullName.trim() && mobileNumber.length === 10 && address.trim() && city.trim() && pinCode.length === 6
+    fullName.trim() && /^[6-9]\d{9}$/.test(mobileNumber) && address.trim() && city.trim() && pinCode.length === 6
   );
   const canAdvanceStep2 = Boolean(
     selectedDeliveryOption &&
@@ -808,6 +808,14 @@ function CheckoutContent() {
   };
 
   const handleContinueStep1 = () => {
+    if (!mobileNumber.trim()) {
+      setErrorMsg('Mobile number is required for order delivery.');
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(mobileNumber)) {
+      setErrorMsg('Please enter a valid Indian mobile number (starts with 6–9, 10 digits).');
+      return;
+    }
     if (!canAdvanceStep1) {
       setErrorMsg('Please fill in all required address fields (name, phone, address, city, PIN).');
       return;
@@ -1547,10 +1555,20 @@ function CheckoutContent() {
                             <input
                               type="tel"
                               value={mobileNumber}
-                              onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                              onChange={(e) => {
+                                const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                // Allow clearing; if first digit is typed, enforce 6-9
+                                if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
+                                setMobileNumber(digits);
+                              }}
                               placeholder="10-digit mobile number"
                               className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] focus:bg-white transition-all font-mono"
                             />
+                            {mobileNumber.length > 0 && !/^[6-9]\d{9}$/.test(mobileNumber) && (
+                              <p className="mt-1 text-[10px] text-amber-700 font-sans">
+                                Enter a valid Indian mobile number (starts with 6, 7, 8 or 9)
+                              </p>
+                            )}
                           </div>
                         </div>
 

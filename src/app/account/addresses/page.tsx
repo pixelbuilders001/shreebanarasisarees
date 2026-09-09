@@ -141,8 +141,8 @@ export default function AddressesPage() {
       setFormError('Please enter full name.');
       return;
     }
-    if (!phone.trim() || phone.replace(/\D/g, '').length !== 10) {
-      setFormError('Please provide a valid 10-digit mobile number.');
+    if (!phone.trim() || !/^[6-9]\d{9}$/.test(phone.trim())) {
+      setFormError('Please enter a valid Indian mobile number (starts with 6–9, 10 digits).');
       return;
     }
     if (!addressLine1.trim()) {
@@ -455,11 +455,20 @@ export default function AddressesPage() {
                     required
                     maxLength={10}
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
+                      setPhone(digits);
+                    }}
                     placeholder="10-digit mobile number"
                     className="w-full bg-[#FAF7F0]/60 border border-[#E5DEC9] focus:border-[#6B1725] focus:bg-white text-sm text-[#292524] rounded-xl pl-12 pr-3.5 py-2.5 outline-none transition-all font-sans"
                   />
                 </div>
+                {phone.length > 0 && !/^[6-9]\d{9}$/.test(phone) && (
+                  <p className="mt-1 text-[10px] text-amber-700 font-sans">
+                    Enter a valid Indian mobile number (starts with 6, 7, 8 or 9)
+                  </p>
+                )}
               </div>
 
               {/* Address Line 1 */}

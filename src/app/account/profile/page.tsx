@@ -58,8 +58,8 @@ export default function ProfilePage() {
       let parsedPhone: number | null = null;
       if (editPhone.trim()) {
         const cleanDigits = editPhone.replace(/\D/g, '');
-        if (cleanDigits.length !== 10) {
-          throw new Error('Please enter a valid 10-digit mobile number.');
+        if (!/^[6-9]\d{9}$/.test(cleanDigits)) {
+          throw new Error('Please enter a valid Indian mobile number (starts with 6–9, 10 digits).');
         }
         parsedPhone = parseInt(cleanDigits, 10);
       }
@@ -173,11 +173,20 @@ export default function ProfilePage() {
                     type="tel"
                     maxLength={10}
                     value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
+                      setEditPhone(digits);
+                    }}
                     placeholder="10-digit mobile number"
                     className="w-full bg-[#FAF8F5]/60 border border-[#E5DEC9] focus:border-[#6B1725] focus:bg-white text-sm text-[#1C1917] rounded-xl pl-12 pr-3.5 py-2.5 outline-none transition-all font-sans"
                   />
                 </div>
+                {editPhone.length > 0 && !/^[6-9]\d{9}$/.test(editPhone) && (
+                  <p className="mt-1 text-[10px] text-amber-700 font-sans">
+                    Enter a valid Indian mobile number (starts with 6, 7, 8 or 9)
+                  </p>
+                )}
                 <p className="text-[11px] text-[#78716C] mt-1 font-sans">
                   Used for instant delivery coordination and order updates.
                 </p>

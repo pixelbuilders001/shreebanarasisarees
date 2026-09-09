@@ -789,7 +789,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
             <button
               onClick={handleProceedToCheckout}
               disabled={isNavigatingToCheckout}
-              className="native-press min-h-11 py-3.5 px-8 sm:px-10 bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-80 text-white rounded-2xl font-serif font-bold text-sm tracking-wide uppercase shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-2 min-w-[140px]"
+              className="native-press min-h-11 py-3.5 px-8 sm:px-10 bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-80 text-white rounded-2xl font-sans font-bold text-sm tracking-wide uppercase shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-2 min-w-[140px]"
             >
               {isNavigatingToCheckout ? (
                 <>
@@ -877,7 +877,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
                   setItemToRemove(null);
                   setTimeout(() => setWishlistToastMsg(null), 4000);
                 }}
-                className="native-press w-full min-h-11 py-3 bg-[#6B1725] hover:bg-[#52111C] text-white rounded-2xl font-serif font-bold text-xs uppercase tracking-wider shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-2"
+                className="native-press w-full min-h-11 py-3 bg-[#6B1725] hover:bg-[#52111C] text-white rounded-2xl font-sans font-bold text-xs uppercase tracking-wider shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-2"
               >
                 <Heart size={14} className="fill-white" />
                 <span>Move to Wishlist & Remove</span>
@@ -888,7 +888,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
                   handleRemoveItem(itemToRemove.item, itemToRemove.index);
                   setItemToRemove(null);
                 }}
-                className="native-press w-full min-h-11 py-2.5 bg-white hover:bg-stone-50 text-[#7A6E65] hover:text-[#292524] border border-[#E9DED1] rounded-2xl font-serif font-bold text-xs uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2"
+                className="native-press w-full min-h-11 py-2.5 bg-white hover:bg-stone-50 text-[#7A6E65] hover:text-[#292524] border border-[#E9DED1] rounded-2xl font-sans font-bold text-xs uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2"
               >
                 <Trash2 size={13} />
                 <span>Remove Only</span>

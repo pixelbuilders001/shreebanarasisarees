@@ -218,7 +218,7 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
               type="button"
               onClick={handleGpsClick}
               disabled={isLoading}
-              className="text-[11px] font-serif font-bold text-[#6B1725] hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50 transition-all"
+              className="text-[11px] font-sans font-bold text-[#6B1725] hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50 transition-all"
               title="Detect location automatically via GPS"
             >
               <Navigation size={12} className={loadingState === 'locating' ? 'animate-spin text-[#6B1725]' : 'text-[#6B1725]'} />
@@ -242,7 +242,7 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
             <button
               type="submit"
               disabled={isLoading || pincodeInput.length !== 6}
-              className="bg-[#6B1725] hover:bg-[#52111C] text-[#FAF7F0] text-xs font-serif font-bold tracking-wider px-4 py-2.5 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-xs whitespace-nowrap flex items-center justify-center gap-1.5 min-w-[110px]"
+              className="bg-[#6B1725] hover:bg-[#52111C] text-[#FAF7F0] text-xs font-sans font-bold tracking-wider px-4 py-2.5 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-xs whitespace-nowrap flex items-center justify-center gap-1.5 min-w-[110px]"
             >
               {isLoading ? (
                 <>
@@ -265,7 +265,7 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
             <button
               type="button"
               onClick={() => setIsAddressModalOpen(true)}
-              className="text-[11px] font-serif font-bold text-[#6B1725] hover:underline flex items-center gap-0.5 cursor-pointer"
+              className="text-[11px] font-sans font-bold text-[#6B1725] hover:underline flex items-center gap-0.5 cursor-pointer"
             >
               <Plus size={12} /> Add New Address
             </button>
@@ -334,7 +334,7 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
           <button
             type="button"
             onClick={resetState}
-            className="text-[11px] font-serif font-bold text-[#6B1725] hover:underline flex items-center gap-1 cursor-pointer pt-0.5"
+            className="text-[11px] font-sans font-bold text-[#6B1725] hover:underline flex items-center gap-1 cursor-pointer pt-0.5"
           >
             <RefreshCw size={12} />
             Try Again
@@ -458,7 +458,7 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
           <button
             type="button"
             onClick={resetState}
-            className="text-[10px] font-serif font-bold text-[#6B625D] hover:text-[#6B1725] underline cursor-pointer pt-1 block ml-auto"
+            className="text-[10px] font-sans font-bold text-[#6B625D] hover:text-[#6B1725] underline cursor-pointer pt-1 block ml-auto"
           >
             Check another location
           </button>
