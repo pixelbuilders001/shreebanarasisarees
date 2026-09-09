@@ -156,7 +156,7 @@ function ReviewContent() {
         {
           method: 'POST',
           headers: {
-            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_6chwvgIpbfCpeEZrkS9VYg_IO__zSpY',
+            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
             'Authorization': `Bearer ${token || ''}`,
             'Content-Type': 'application/json'
           },

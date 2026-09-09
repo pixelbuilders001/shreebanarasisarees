@@ -34,7 +34,7 @@ export function useCustomerLocation() {
     if (error) {
       // Fallback: direct HTTP fetch to edge function if invoke has client issue
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzqlsawxvvyvsstyzzff.supabase.co';
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_6chwvgIpbfCpeEZrkS9VYg_IO__zSpY';
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
       
       const response = await fetch(`${supabaseUrl}/functions/v1/calculate-delivery`, {
         method: 'POST',

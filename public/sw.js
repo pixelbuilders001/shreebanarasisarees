@@ -54,7 +54,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Skip all third-party domain requests (Google Analytics, GTM, Clarity, Supabase, Firebase, Cashfree, etc.)
+  // Skip all third-party domain requests (Google Analytics, GTM, Clarity, Supabase, Firebase, etc.)
   // Only intercept same-origin requests or Google Fonts
   const isSameOrigin = url.origin === self.location.origin;
   const isGoogleFont = url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com');
@@ -71,9 +71,6 @@ self.addEventListener('fetch', (event) => {
   // Handle page navigation requests (HTML docs)
   if (request.mode === 'navigate') {
     // Do NOT intercept page navigations — let the browser handle them natively.
-    // Intercepting navigations here has repeatedly broken the Cashfree payment
-    // round-trip (back button / close / return_url), showing either the offline
-    // page or ERR_FAILED even though the user is fully online.
     return;
   }
 

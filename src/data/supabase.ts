@@ -1376,54 +1376,6 @@ export async function checkDeliveryServiceability(
   }
 }
 
-export async function createCashfreeOrder(params: {
-  orderId: string;
-  customerName: string;
-  customerPhone: string;
-  customerEmail?: string;
-  userId?: string | null;
-}): Promise<{ payment_session_id: string; cf_order_id: string } | null> {
-  try {
-    const { data, error } = await supabase.functions.invoke('create-payment-order', {
-      body: params
-    });
-
-    if (error) {
-      console.error('Error invoking create-payment-order edge function:', error);
-      return null;
-    }
-
-    if (!data || !data.payment_session_id) {
-      console.error('Invalid response from create-payment-order:', data);
-      return null;
-    }
-
-    return data;
-  } catch (err) {
-    console.error('Exception in createCashfreeOrder:', err);
-    return null;
-  }
-}
-
-export async function verifyCashfreePayment(
-  orderId: string
-): Promise<{ order_status: string; cf_order_id?: string; order_amount?: number } | null> {
-  try {
-    const { data, error } = await supabase.functions.invoke('verify-payment', {
-      body: { orderId }
-    });
-
-    if (error) {
-      console.error('Error invoking verify-payment edge function:', error);
-      return null;
-    }
-
-    return data;
-  } catch (err) {
-    console.error('Exception in verifyCashfreePayment:', err);
-    return null;
-  }
-}
 
 export async function triggerOrderNotificationEmail(
   action: 'ORDER_PLACED' | 'ORDER_CONFIRMED' | 'ORDER_DELIVERED',

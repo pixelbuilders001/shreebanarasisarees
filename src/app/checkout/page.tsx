@@ -37,7 +37,6 @@ import {
 } from 'lucide-react';
 import {
   checkDeliveryServiceability,
-  createCashfreeOrder,
   fetchDeliverySettings,
   calculateDeliveryOptions,
   DeliverySettings,
@@ -46,7 +45,6 @@ import {
   getProductSlug,
   supabase
 } from '../../data/supabase';
-import { load } from '@cashfreepayments/cashfree-js';
 import { trackBeginCheckout, trackPurchase } from '../../lib/gtag';
 import { fetchPincodeDetails } from '../../lib/pincodeLookup';
 import { AddNewAddressModal } from '../../components/delivery/AddNewAddressModal';
@@ -128,14 +126,7 @@ const getExpressTimingStatus = (result?: any) => {
 
 function CheckoutContent() {
   const router = useRouter();
-  const [cashfreeSDK, setCashfreeSDK] = useState<any>(null);
   const deliveryDateInfo = useMemo(() => getStandardDeliveryDateInfo(), []);
-
-  useEffect(() => {
-    load({ mode: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox' })
-      .then((cf: any) => setCashfreeSDK(cf))
-      .catch((err: any) => console.error('Failed to load Cashfree SDK:', err));
-  }, []);
 
   const {
     cart,
@@ -201,7 +192,7 @@ function CheckoutContent() {
     }
     return 'express';
   });
-  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Cash on Delivery' | 'Card' | 'Net Banking'>('Cash on Delivery');
+  const [paymentMethod, setPaymentMethod] = useState<'Cash on Delivery'>('Cash on Delivery');
 
   // Saved Addresses selection
   const [selectedAddressId, setSelectedAddressId] = useState<string | 'new'>('new');
@@ -640,8 +631,8 @@ function CheckoutContent() {
     };
 
     const orderNotes = isGift && giftMessage.trim()
-      ? `Gift for: ${giftRecipientName.trim() || 'Recipient'}. Message: ${giftMessage.trim()}. Payment method: ${paymentMethod}`
-      : `Payment method: ${paymentMethod}`;
+      ? `Gift for: ${giftRecipientName.trim() || 'Recipient'}. Message: ${giftMessage.trim()}. Payment method: Cash on Delivery`
+      : `Payment method: Cash on Delivery`;
 
     const chosenMethodTitle = deliveryMethod === 'Store Pickup'
       ? 'Store Pickup'
@@ -663,7 +654,7 @@ function CheckoutContent() {
       discount: couponDiscountAmount,
       shipping: shippingFee,
       total: grandTotal,
-      paymentMethod: paymentMethod === 'Cash on Delivery' ? 'Cash on Delivery' : 'Online Payment',
+      paymentMethod: 'Cash on Delivery',
       is_gift: isGift,
       gift_recipient_name: isGift ? (giftRecipientName.trim() || null) : null,
       gift_message: isGift ? (giftMessage.trim() || null) : null,
@@ -691,66 +682,26 @@ function CheckoutContent() {
         });
       }
 
-      // Handle Online Payment (UPI / Card / Net Banking) via Cashfree
-      if (paymentMethod !== 'Cash on Delivery' && orderDetails?.orderId) {
-        createCashfreeOrder({
-          orderId: orderDetails.orderId,
-          customerName: fullName.trim(),
-          customerPhone: mobileNumber,
-          customerEmail: email.trim() || undefined,
-          userId: user?.id || null
-        }).then((cfData) => {
-          if (cfData && cfData.payment_session_id && cashfreeSDK) {
-            cashfreeSDK.checkout({
-              paymentSessionId: cfData.payment_session_id,
-              redirectTarget: '_self'
-            });
-          } else {
-            console.warn('Cashfree session failed, displaying order confirmation view');
-            setCreatedOrder(orderDetails);
-            setIsOrdered(true);
-
-            if (typeof window !== 'undefined' && orderDetails?.orderId) {
-              const pKey = `sbs_ga_purchased_${orderDetails.orderId}`;
-              if (!sessionStorage.getItem(pKey)) {
-                sessionStorage.setItem(pKey, 'true');
-                trackPurchase({
-                  orderId: orderDetails.orderId,
-                  total: orderDetails.total,
-                  shipping: orderDetails.shipping,
-                  paymentMethod: orderDetails.paymentMethod,
-                  items: orderDetails.items || cart
-                });
-              }
-            }
-            clearCart();
-          }
-        }).catch((err) => {
-          console.error('Cashfree order creation error:', err);
-          setErrorMsg('Online payment initialization failed. Please try Cash on Delivery or retry.');
-        });
-      } else {
-        // Cash on Delivery
-        setCreatedOrder(orderDetails);
-        setIsOrdered(true);
-        if (typeof window !== 'undefined' && orderDetails?.orderId) {
-          const pKey = `sbs_ga_purchased_${orderDetails.orderId}`;
-          if (!sessionStorage.getItem(pKey)) {
-            sessionStorage.setItem(pKey, 'true');
-            trackPurchase({
-              orderId: orderDetails.orderId,
-              total: orderDetails.total,
-              shipping: orderDetails.shipping,
-              paymentMethod: orderDetails.paymentMethod,
-              items: orderDetails.items || cart
-            });
-          }
+      // Cash on Delivery - Order Confirmed
+      setCreatedOrder(orderDetails);
+      setIsOrdered(true);
+      if (typeof window !== 'undefined' && orderDetails?.orderId) {
+        const pKey = `sbs_ga_purchased_${orderDetails.orderId}`;
+        if (!sessionStorage.getItem(pKey)) {
+          sessionStorage.setItem(pKey, 'true');
+          trackPurchase({
+            orderId: orderDetails.orderId,
+            total: orderDetails.total,
+            shipping: orderDetails.shipping,
+            paymentMethod: orderDetails.paymentMethod,
+            items: orderDetails.items || cart
+          });
         }
-        clearCart();
       }
+      clearCart();
     }).catch((err) => {
-      console.error(err);
-      setErrorMsg('Failed to place order. Please try again.');
+      console.error('Order creation error:', err);
+      setErrorMsg(err?.message || 'Failed to place order. Please check your connection and try again.');
     }).finally(() => {
       setIsSubmitting(false);
     });
@@ -769,9 +720,7 @@ function CheckoutContent() {
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
   };
 
-  const ctaText = paymentMethod === 'Cash on Delivery'
-    ? `PLACE COD ORDER — ₹${grandTotal.toLocaleString('en-IN')}`
-    : `PAY ₹${grandTotal.toLocaleString('en-IN')}`;
+  const ctaText = `PLACE COD ORDER — ₹${grandTotal.toLocaleString('en-IN')}`;
 
   // ==========================================
   // 0. HYDRATION LOADER VIEW
@@ -1513,14 +1462,9 @@ function CheckoutContent() {
                 PAYMENT METHOD
               </span>
 
-              {/* Option 1: Cash on delivery */}
+              {/* Cash on delivery */}
               <div
-                onClick={() => setPaymentMethod('Cash on Delivery')}
-                className={`bg-white rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all ${
-                  paymentMethod === 'Cash on Delivery'
-                    ? 'border-2 border-[#6B1725] shadow-2xs'
-                    : 'border border-[#E5DEC9] hover:border-[#6B1725]/40'
-                }`}
+                className="bg-white rounded-2xl p-4 flex items-center justify-between border-2 border-[#6B1725] shadow-2xs"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-[#6B1725]/10 flex items-center justify-center text-[#6B1725] shrink-0">
@@ -1535,80 +1479,10 @@ function CheckoutContent() {
                     </p>
                   </div>
                 </div>
-                {paymentMethod === 'Cash on Delivery' ? (
-                  <div className="w-5 h-5 rounded-full bg-[#6B1725] flex items-center justify-center text-white text-[10px]">
-                    <Check size={12} strokeWidth={3} />
-                  </div>
-                ) : (
-                  <div className="w-5 h-5 rounded-full border border-[#D4C39D]" />
-                )}
-              </div>
-
-              {/* Option 2: UPI (Commented out for now) */}
-              {/*
-              <div
-                onClick={() => setPaymentMethod('UPI')}
-                className={`bg-white rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all ${
-                  paymentMethod === 'UPI'
-                    ? 'border-2 border-[#6B1725] shadow-2xs'
-                    : 'border border-[#E5DEC9] hover:border-[#6B1725]/40'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[#FAF7F0] flex items-center justify-center text-[#6B625D] shrink-0 border border-[#E5DEC9]">
-                    <Smartphone size={18} />
-                  </div>
-                  <div>
-                    <h4 className="font-sans font-bold text-xs sm:text-sm text-[#292524]">
-                      UPI
-                    </h4>
-                    <p className="text-[11px] text-[#7A6E65]">
-                      GPay, PhonePe, Paytm
-                    </p>
-                  </div>
+                <div className="w-5 h-5 rounded-full bg-[#6B1725] flex items-center justify-center text-white text-[10px]">
+                  <Check size={12} strokeWidth={3} />
                 </div>
-                {paymentMethod === 'UPI' ? (
-                  <div className="w-5 h-5 rounded-full bg-[#6B1725] flex items-center justify-center text-white text-[10px]">
-                    <Check size={12} strokeWidth={3} />
-                  </div>
-                ) : (
-                  <div className="w-5 h-5 rounded-full border border-[#D4C39D]" />
-                )}
               </div>
-              */}
-
-              {/* Option 3: Card (Commented out for now) */}
-              {/*
-              <div
-                onClick={() => setPaymentMethod('Card')}
-                className={`bg-white rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all ${
-                  paymentMethod === 'Card'
-                    ? 'border-2 border-[#6B1725] shadow-2xs'
-                    : 'border border-[#E5DEC9] hover:border-[#6B1725]/40'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[#FAF7F0] flex items-center justify-center text-[#6B625D] shrink-0 border border-[#E5DEC9]">
-                    <CreditCard size={18} />
-                  </div>
-                  <div>
-                    <h4 className="font-sans font-bold text-xs sm:text-sm text-[#292524]">
-                      Card
-                    </h4>
-                    <p className="text-[11px] text-[#7A6E65]">
-                      Credit or debit
-                    </p>
-                  </div>
-                </div>
-                {paymentMethod === 'Card' ? (
-                  <div className="w-5 h-5 rounded-full bg-[#6B1725] flex items-center justify-center text-white text-[10px]">
-                    <Check size={12} strokeWidth={3} />
-                  </div>
-                ) : (
-                  <div className="w-5 h-5 rounded-full border border-[#D4C39D]" />
-                )}
-              </div>
-              */}
 
               <p className="text-xs text-[#7A6E65] leading-relaxed font-sans pt-1">
                 Cash on delivery is how most of Samastipur buys from us. Open the packet in front of the rider &mdash; if the weave isn&apos;t what you saw, send it straight back.
@@ -1929,9 +1803,7 @@ function CheckoutContent() {
 
               <div className="text-center pt-1">
                 <p className="text-[11px] text-[#7A6E65] font-sans">
-                  {paymentMethod === 'Cash on Delivery'
-                    ? '✓ Cash on Delivery &middot; Pay at your doorstep'
-                    : '✓ 256-bit Encrypted SSL &middot; Safe & Instant'}
+                  ✓ Cash on Delivery &middot; Pay at your doorstep
                 </p>
               </div>
             </div>

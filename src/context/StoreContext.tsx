@@ -1093,18 +1093,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return dbOrder;
     }
 
-    // Fallback: If DB insert fails, create client-only fallback order
-    const orderId = `SBS-ORD-${Math.floor(100000 + Math.random() * 900000)}`;
-    const fallbackOrder: Order = {
-      ...orderData,
-      orderId,
-      orderStatus: 'Order Placed',
-      paymentStatus: orderData.paymentMethod === 'Online Payment' ? 'Paid' : 'Pending',
-      createdAt: new Date().toISOString()
-    };
-    
-    setOrders((prev) => [fallbackOrder, ...prev]);
-    return fallbackOrder;
+    // If DB insert fails, throw error so user is notified and cart is preserved
+    throw new Error('We were unable to confirm your order with the server. Please check your connection and try again.');
   };
 
   // Instantly mark an order as cancelled in local state without full page reload
@@ -1272,9 +1262,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Auth sync helper
   const loginUser = async (userId: string) => {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-    if (!isUuid) return;
+    const cleanDigits = userId ? userId.replace(/\D/g, '') : '';
+    const isPhone = cleanDigits.length === 10;
+    if (!isUuid && !isPhone) return;
 
-    setUserPhone(userId);
+    setUserPhone(isPhone ? cleanDigits : userId);
+    if (!isUuid) return;
 
     // Sync local storage cart to DB
     const currentCart = [...cart];

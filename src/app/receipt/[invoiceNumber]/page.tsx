@@ -17,7 +17,7 @@ const SHOP = {
     address: 'Rudauli Chowk, Samastipur, Bihar – 848101',
     email: 'shreebanarasi180@gmail.com',
     phone: '+91-6203909946',
-    gstin: '10AAACS1234F1Z9',
+    gstin: '10AGAFS4190H1Z8',
 };
 
 const TERMS = [
@@ -42,7 +42,6 @@ export default function ReceiptPage() {
     const autoPrint = searchParams?.get('print') === 'true';
 
     const [receipt, setReceipt] = useState<ReceiptData | null>(null);
-    console.log(receipt);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
