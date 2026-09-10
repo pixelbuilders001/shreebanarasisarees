@@ -390,6 +390,9 @@ export const Footer: React.FC = () => {
 
           <div className="text-center md:text-right space-y-1">
             <p>&copy; 2026 Shree Banarasi Sarees. All rights reserved.</p>
+            <p className="text-[10px] text-[#FAF7F0]/45">
+              GSTIN: <span className="text-[#FAF7F0]/60">10AGAFS4190H1Z8</span>
+            </p>
             <p className="text-[10px] text-[#FAF7F0]/45 flex items-center justify-center md:justify-end gap-1">
               Samastipur, Bihar, India <span className="text-[#B08A3C]">•</span> Woven with <Heart size={10} className="fill-[#6B1725] text-[#6B1725] inline" />
             </p>
