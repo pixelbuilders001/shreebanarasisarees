@@ -213,3 +213,44 @@ export const disassociateFCMTokenInSupabase = async (token: string): Promise<boo
     return false;
   }
 };
+
+/**
+ * Unified helper to request notification permission, obtain FCM token via service worker,
+ * and register it in Supabase for the current user.
+ */
+export const requestAndSavePushToken = async (
+  userId?: string | null
+): Promise<{ success: boolean; status: 'granted' | 'denied' | 'unsupported' | 'error' }> => {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return { success: false, status: 'unsupported' };
+  }
+
+  const supported = await isMessagingSupported();
+  if (!supported) {
+    return { success: false, status: 'unsupported' };
+  }
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      return { success: false, status: permission as 'denied' };
+    }
+
+    if (!('serviceWorker' in navigator)) {
+      return { success: false, status: 'unsupported' };
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+    const token = await getFCMToken(registration);
+    if (!token) {
+      return { success: false, status: 'error' };
+    }
+
+    const saved = await saveFCMTokenToSupabase(token, userId || null);
+    return { success: saved, status: saved ? 'granted' : 'error' };
+  } catch (err) {
+    console.error('[FCM] Error in requestAndSavePushToken:', err);
+    return { success: false, status: 'error' };
+  }
+};
+

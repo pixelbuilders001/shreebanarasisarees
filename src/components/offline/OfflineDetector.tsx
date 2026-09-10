@@ -256,12 +256,15 @@ export const OfflineDetector: React.FC = () => {
 
               {/* Urgent Inquiries - Showroom Contact */}
               <div className="border-t border-[#B08A3C]/20 pt-4">
-                <p className="text-[11px] text-[#6B625D] text-center mb-2.5">
-                  Need immediate bridal or saree order assistance?
-                </p>
-                <div className="grid grid-cols-2 gap-2">
+<p className="text-[11px] text-[#6B625D] text-center mb-2.5">
+                    Need immediate bridal or saree order assistance?
+                  </p>
+                  <p className="text-[11px] text-[#6B625D] text-center mb-2.5">
+                    Rudauli Chowk, Harpur Aloth, Samastipur, Bihar – 848103
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
                   <a
-                    href="https://wa.me/919155111777?text=Hello%2C%20I%20am%20shopping%20at%20Shree%20Banarasi%20Sarees%20and%20need%20assistance"
+                    href="https://wa.me/+916203909946?text=Hello%2C%20I%20am%20shopping%20at%20Shree%20Banarasi%20Sarees%20and%20need%20assistance"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 py-2 px-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] font-semibold text-xs rounded-xl border border-[#25D366]/30 transition-colors"
@@ -270,7 +273,7 @@ export const OfflineDetector: React.FC = () => {
                     <span>WhatsApp</span>
                   </a>
                   <a
-                    href="tel:+919155111777"
+                    href="tel:+916203909946"
                     className="flex items-center justify-center gap-2 py-2 px-3 bg-[#6B1725]/10 hover:bg-[#6B1725]/20 text-[#6B1725] font-semibold text-xs rounded-xl border border-[#6B1725]/30 transition-colors"
                   >
                     <Phone className="w-3.5 h-3.5 text-[#6B1725]" />

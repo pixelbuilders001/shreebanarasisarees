@@ -54,6 +54,7 @@ import { DeliveryRiderIcon } from '../../components/delivery/DeliveryIcons';
 import { CheckoutSkeleton } from '../../components/CheckoutSkeleton';
 import { getStandardDeliveryDateInfo } from '../../lib/deliveryDates';
 import { buildReceiptDataFromOrder, downloadInvoicePdf } from '../../lib/invoicePdf';
+import ContextualNotificationBanner from '../../components/notifications/ContextualNotificationBanner';
 
 const FREE_SHIPPING_THRESHOLD = 999;
 const STANDARD_SHIPPING_FEE = 99;
@@ -1043,6 +1044,13 @@ function CheckoutContent() {
               </div>
             </>
           )}
+
+          {/* Real-time Push Notification Delivery Alerts Card */}
+          <ContextualNotificationBanner
+            variant="order_success"
+            orderId={createdOrder.orderId}
+            className="mb-4"
+          />
 
           {/* Tax Invoice & GST Summary Card */}
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5DEC9] shadow-2xs mb-4 space-y-2.5">

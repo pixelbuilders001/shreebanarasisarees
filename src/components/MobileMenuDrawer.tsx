@@ -11,10 +11,15 @@ import {
   MessageCircle,
   MapPin,
   Flame,
-  Star
+  Star,
+  Bell,
+  Download
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { triggerHaptic } from '../utils/haptics';
+import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
+import { event as trackGAEvent } from '@/lib/gtag';
+import { recordPwaInstall } from '@/data/supabase';
 
 interface MobileMenuDrawerProps {
   isOpen: boolean;
@@ -40,6 +45,116 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
 
   const drawerRef = useRef<HTMLElement | null>(null);
   const wishlistCount = wishlist.length;
+
+  // Notification toggle state
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [notifSupported, setNotifSupported] = useState(true);
+  const [notifLoading, setNotifLoading] = useState(false);
+
+  // Download App strip state
+  const isPwaInstalled = useIsPwaInstalled();
+  const [appStripDismissed, setAppStripDismissed] = useState<boolean>(true);
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
+  const [isInstalling, setIsInstalling] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const isDismissed = sessionStorage.getItem('sbs_drawer_pwa_dismissed') === 'true';
+      setAppStripDismissed(isDismissed);
+    } catch {
+      setAppStripDismissed(false);
+    }
+  }, []);
+
+  const handleAppStripDismiss = () => {
+    triggerHaptic('light');
+    setAppStripDismissed(true);
+    try {
+      sessionStorage.setItem('sbs_drawer_pwa_dismissed', 'true');
+    } catch (e) {
+      console.warn('Could not save app strip dismissal', e);
+    }
+  };
+
+  const handleInstallApp = async () => {
+    if (typeof window === 'undefined') return;
+
+    const ua = window.navigator.userAgent.toLowerCase();
+    const isIOS = /iphone|ipad|ipod/.test(ua);
+
+    if (isIOS) {
+      setShowInstallHelp(true);
+      return;
+    }
+
+    const promptEvent = (window as any).deferredPwaPrompt;
+    if (promptEvent) {
+      setIsInstalling(true);
+      try {
+        await promptEvent.prompt();
+        const { outcome } = await promptEvent.userChoice;
+        if (outcome === 'accepted') {
+          (window as any).deferredPwaPrompt = null;
+          markPwaAsInstalled();
+          trackGAEvent('app_installed', {
+            event_category: 'App',
+            source: 'mobile_drawer_strip'
+          });
+          await recordPwaInstall('mobile_drawer_strip');
+        }
+      } catch (err) {
+        console.error('App install prompt error:', err);
+      } finally {
+        setIsInstalling(false);
+      }
+    } else {
+      setShowInstallHelp(true);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      setNotifSupported(false);
+      return;
+    }
+    import('../lib/firebase/messaging').then(({ isMessagingSupported }) => {
+      isMessagingSupported().then((supported) => {
+        setNotifSupported(supported);
+        if (supported) setNotifEnabled(Notification.permission === 'granted');
+      });
+    });
+  }, []);
+
+  const handleNotifToggle = async () => {
+    if (notifLoading) return;
+
+    if (notifEnabled) {
+      // Turn OFF — mark inactive in Supabase
+      setNotifLoading(true);
+      try {
+        const { getFCMToken, disableFCMTokenInSupabase } = await import('../lib/firebase/messaging');
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          const token = await getFCMToken(reg);
+          if (token) await disableFCMTokenInSupabase(token);
+        }
+        setNotifEnabled(false);
+      } catch (err) {
+        console.error('[FCM] Error disabling notifications:', err);
+      } finally {
+        setNotifLoading(false);
+      }
+    } else {
+      // Turn ON — close drawer first, request permission in background
+      onClose();
+      import('../lib/firebase/messaging').then(({ requestAndSavePushToken }) => {
+        requestAndSavePushToken(user?.id || null).then((res) => {
+          if (res.status === 'granted') setNotifEnabled(true);
+        });
+      });
+    }
+  };
 
   // Ultra-smooth mount/unmount animation lifecycle
   useEffect(() => {
@@ -420,8 +535,101 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
                   Live
                 </span>
               </a>
+
+              {user && notifSupported && (
+                <div
+                  className={`flex items-center justify-between px-3.5 py-2.5 text-xs font-medium text-[#292524] transition-colors ${
+                    Notification.permission !== 'denied' ? 'hover:bg-[#FAF7F0] active:bg-[#F3ECE0]' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Bell size={15} className="text-[#6B1725]" />
+                    <span>Push Notifications</span>
+                  </div>
+                  {Notification.permission === 'denied' ? (
+                    <span className="text-[10px] font-medium text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md">
+                      Blocked
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleNotifToggle}
+                      disabled={notifLoading}
+                      className={`relative inline-flex h-[22px] w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        notifEnabled ? 'bg-[#6B1725]' : 'bg-[#E5DEC9]'
+                      } ${notifLoading ? 'opacity-55 cursor-not-allowed' : ''}`}
+                      role="switch"
+                      aria-checked={notifEnabled}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none inline-block h-[18px] w-[18px] transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          notifEnabled ? 'translate-x-[18px]' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Download App Strip */}
+          {!isPwaInstalled && !appStripDismissed && (
+            <div
+              className="bg-white rounded-xl border border-[#E7DFC9] p-3 shadow-2xs hover:border-[#6B1725]/30 transition-all"
+              role="region"
+              aria-label="Download Mobile App"
+            >
+              <div className="flex items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-lg bg-[#FAF8F5] border border-[#E7DFC9] p-1 flex items-center justify-center shrink-0">
+                    <img
+                      src="/brand_logo.webp"
+                      alt="Shree Banarasi Sarees"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-serif font-bold text-[11px] sm:text-xs text-[#1C1917] truncate">
+                      Download Our App
+                    </p>
+                    <p className="text-[10px] text-[#78716C] truncate">
+                      Order tracking, exclusive offers &amp; instant alerts
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleInstallApp}
+                    disabled={isInstalling}
+                    className="bg-[#6B1725] hover:bg-[#52111D] active:scale-98 text-[#FAF7F0] rounded-full px-3 py-1.5 text-[11px] font-serif font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs disabled:opacity-60 whitespace-nowrap"
+                  >
+                    <Download size={12} />
+                    <span>{isInstalling ? 'Installing…' : 'Install'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAppStripDismiss}
+                    className="p-1 text-[#A8A29E] hover:text-[#1C1917] rounded-full hover:bg-[#FAF8F5] transition-colors cursor-pointer"
+                    aria-label="Dismiss app prompt"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {showInstallHelp && (
+                <div className="mt-2.5 bg-[#F3ECE0] rounded-lg p-2.5 text-[10px] text-[#292524] leading-relaxed">
+                  <p className="font-semibold text-[#6B1725] mb-1">Install the app:</p>
+                  <p>&bull; Android: Tap the browser menu (&vellip;) and select &quot;Install App&quot; or &quot;Add to Home screen&quot;.</p>
+                  <p>&bull; iPhone/iPad: In Safari, tap Share (&#8999;) and select &quot;Add to Home Screen&quot;.</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Correct Showroom Address & Contact */}
           <div className="pt-2 pb-4 border-t border-[#E5DEC9] space-y-1.5 text-center">

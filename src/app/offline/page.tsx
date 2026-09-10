@@ -137,11 +137,11 @@ export default function OfflinePage() {
                   <span>Visit Our Samastipur Showroom</span>
                 </div>
                 <p className="text-xs text-[#6B625D] leading-relaxed mb-3">
-                  Station Road, Opp. Kali Mandir, Samastipur, Bihar - 848101. Open all 7 days for authentic silk saree shopping.
+                  Rudauli Chowk, Harpur Aloth, Samastipur, Bihar - 848103. Open all 7 days for authentic silk saree shopping.
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   <a
-                    href="https://wa.me/919155111777?text=Hello%2C%20I%20am%20shopping%20on%20Shree%20Banarasi%20Sarees"
+                    href="https://wa.me/+916203909946?text=Hello%2C%20I%20am%20shopping%20on%20Shree%20Banarasi%20Sarees"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 py-2 px-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] font-semibold text-xs rounded-xl border border-[#25D366]/30 transition-colors"
@@ -150,7 +150,7 @@ export default function OfflinePage() {
                     <span>WhatsApp</span>
                   </a>
                   <a
-                    href="tel:+919155111777"
+                    href="tel:+916203909946"
                     className="flex items-center justify-center gap-2 py-2 px-3 bg-[#6B1725]/10 hover:bg-[#6B1725]/20 text-[#6B1725] font-semibold text-xs rounded-xl border border-[#6B1725]/30 transition-colors"
                   >
                     <Phone className="w-3.5 h-3.5 text-[#6B1725]" />

@@ -8,6 +8,7 @@ import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 import { decodeReceiptData, ReceiptData, ReceiptItem } from '@/lib/receiptUtils';
 import { downloadInvoicePdf } from '@/lib/invoicePdf';
 import { PRODUCTS } from '@/data/products';
+import ContextualNotificationBanner from '@/components/notifications/ContextualNotificationBanner';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzqlsawxvvyvsstyzzff.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -484,6 +485,14 @@ export default function ReceiptPage() {
                         </div>
                     </div>
                 )}
+
+                {/* Real-time Push Notification Delivery Alerts Card */}
+                <div className="no-print w-full max-w-[760px] mb-4">
+                    <ContextualNotificationBanner
+                        variant="order_success"
+                        orderId={receipt?.invoiceNumber || invoiceNumber}
+                    />
+                </div>
 
                 <div className="no-print" style={{ marginBottom: '20px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     <button

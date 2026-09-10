@@ -8,6 +8,7 @@ import { ProductCard } from '../../components/ProductCard';
 import { useStore } from '../../context/StoreContext';
 import { Heart, ShoppingBag } from 'lucide-react';
 import WishlistLoading from './loading';
+import ContextualNotificationBanner from '../../components/notifications/ContextualNotificationBanner';
 
 function WishlistContent() {
   const { wishlist } = useStore();
@@ -50,11 +51,14 @@ function WishlistContent() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-            {wishlist.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          <>
+            <ContextualNotificationBanner variant="wishlist" />
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+              {wishlist.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          </>
         )}
 
       </main>
