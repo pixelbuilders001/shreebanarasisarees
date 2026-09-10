@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { Product, PRODUCTS } from './products';
 import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
+import { getStandardDeliveryDateInfo } from '../lib/deliveryDates';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzqlsawxvvyvsstyzzff.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -2719,7 +2720,8 @@ export function calculateDeliveryOptions(
   // 3. Standard Option: Always available across India when active
   const standardEligible = settings.is_active;
   const stdDays = Number(settings.standard_delivery_days ?? 3);
-  const standardEta = `${stdDays}–${stdDays + 2} Business Days`;
+  const standardDateInfo = getStandardDeliveryDateInfo(new Date(), stdDays);
+  const standardEta = standardDateInfo.deliveryByText;
 
   return [
     {

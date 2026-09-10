@@ -293,12 +293,16 @@ Deno.serve(async (req) => {
       }
     } else if (!distanceEligible) {
       const stdDays = Number(settings?.standard_delivery_days ?? 3);
-      message = `20-minute delivery is available within ${maxDistanceKm} km. Your location is approximately ${distanceKm} km away by road. Standard delivery available (${stdDays}–${stdDays + 2} Business Days).`;
-      formattedDelivery = `${stdDays}–${stdDays + 2} Business Days`;
+      const stdStartDate = new Date(Date.now() + stdDays * 24 * 60 * 60 * 1000);
+      const stdDateStr = stdStartDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' });
+      message = `20-minute delivery is available within ${maxDistanceKm} km. Your location is approximately ${distanceKm} km away by road. Delivery by ${stdDateStr}.`;
+      formattedDelivery = `Delivery by ${stdDateStr}`;
     } else {
       const stdDays = Number(settings?.standard_delivery_days ?? 3);
-      message = `20-minute delivery is not available for this location. Estimated delivery time is about ${totalEtaMinutes} minutes. Standard delivery available (${stdDays}–${stdDays + 2} Business Days).`;
-      formattedDelivery = `${stdDays}–${stdDays + 2} Business Days`;
+      const stdStartDate = new Date(Date.now() + stdDays * 24 * 60 * 60 * 1000);
+      const stdDateStr = stdStartDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' });
+      message = `20-minute delivery is not available for this location. Estimated delivery time is about ${totalEtaMinutes} minutes. Delivery by ${stdDateStr}.`;
+      formattedDelivery = `Delivery by ${stdDateStr}`;
     }
 
     // ------------------------------------------
@@ -365,7 +369,11 @@ Deno.serve(async (req) => {
         id: "standard",
         title: "Standard Delivery",
         charge: standardCharge,
-        eta: `${Number(settings?.standard_delivery_days ?? 3)}–${Number(settings?.standard_delivery_days ?? 3) + 2} Business Days`,
+        eta: (() => {
+          const stdDays = Number(settings?.standard_delivery_days ?? 3);
+          const d = new Date(Date.now() + stdDays * 24 * 60 * 60 * 1000);
+          return `Delivery by ${d.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' })}`;
+        })(),
         badge: "Standard",
         description: "Tracked express courier delivery across India",
         available: isActive,
