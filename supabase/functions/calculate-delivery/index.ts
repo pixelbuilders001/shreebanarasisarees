@@ -129,7 +129,8 @@ Deno.serve(async (req) => {
           express_packing_buffer_minutes,
           express_delivery_buffer_minutes,
           is_express_20min_enabled,
-          is_active
+          is_active,
+          standard_delivery_days
         `)
         .eq("id", "default")
         .maybeSingle();
@@ -291,11 +292,13 @@ Deno.serve(async (req) => {
         formattedDelivery = "Tomorrow Morning (by 10:00 AM)";
       }
     } else if (!distanceEligible) {
-      message = `20-minute delivery is available within ${maxDistanceKm} km. Your location is approximately ${distanceKm} km away by road. Standard delivery available (3–5 Business Days).`;
-      formattedDelivery = "3–5 Business Days";
+      const stdDays = Number(settings?.standard_delivery_days ?? 3);
+      message = `20-minute delivery is available within ${maxDistanceKm} km. Your location is approximately ${distanceKm} km away by road. Standard delivery available (${stdDays}–${stdDays + 2} Business Days).`;
+      formattedDelivery = `${stdDays}–${stdDays + 2} Business Days`;
     } else {
-      message = `20-minute delivery is not available for this location. Estimated delivery time is about ${totalEtaMinutes} minutes. Standard delivery available (3–5 Business Days).`;
-      formattedDelivery = "3–5 Business Days";
+      const stdDays = Number(settings?.standard_delivery_days ?? 3);
+      message = `20-minute delivery is not available for this location. Estimated delivery time is about ${totalEtaMinutes} minutes. Standard delivery available (${stdDays}–${stdDays + 2} Business Days).`;
+      formattedDelivery = `${stdDays}–${stdDays + 2} Business Days`;
     }
 
     // ------------------------------------------
@@ -362,7 +365,7 @@ Deno.serve(async (req) => {
         id: "standard",
         title: "Standard Delivery",
         charge: standardCharge,
-        eta: "3–5 Business Days",
+        eta: `${Number(settings?.standard_delivery_days ?? 3)}–${Number(settings?.standard_delivery_days ?? 3) + 2} Business Days`,
         badge: "Standard",
         description: "Tracked express courier delivery across India",
         available: isActive,

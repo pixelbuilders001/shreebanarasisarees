@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MapPin, Navigation, Clock, CheckCircle2, AlertCircle, RefreshCw, PackageX, Sparkles, ChevronDown, Plus, Moon, Loader2 } from 'lucide-react';
 import { useCustomerLocation } from '../../hooks/useCustomerLocation';
 import { DeliveryRiderIcon } from './DeliveryIcons';
 import { useStore } from '../../context/StoreContext';
 import { AddNewAddressModal } from './AddNewAddressModal';
 import { getStandardDeliveryDateInfo } from '../../lib/deliveryDates';
+import { fetchDeliverySettings, DeliverySettings } from '../../data/supabase';
 
 // Helper to check current IST operating hours window:
 // - 9 AM to 8 PM (09:00 - 19:59): Normal 20-min express flow
@@ -70,7 +71,16 @@ export function DeliveryChecker({ initialPincode = '', onResultChange, className
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const { loadingState, isLoading, result, errorMsg, checkGpsLocation, checkPincode, resetState } = useCustomerLocation();
-  const deliveryDateInfo = getStandardDeliveryDateInfo();
+
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
+
+  useEffect(() => {
+    fetchDeliverySettings().then(setDeliverySettings).catch(console.error);
+  }, []);
+
+  const deliveryDateInfo = useMemo(() => {
+    return getStandardDeliveryDateInfo(new Date(), deliverySettings?.standard_delivery_days ?? 3);
+  }, [deliverySettings?.standard_delivery_days]);
 
   // Retrieve saved shipping addresses safely from StoreContext
   let shippingAddresses: any[] = [];

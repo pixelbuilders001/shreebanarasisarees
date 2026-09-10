@@ -1311,6 +1311,7 @@ export interface DeliverySettings {
   express_delivery_buffer_minutes?: number;
   is_express_20min_enabled?: boolean;
   default_pincode?: string | null;
+  standard_delivery_days?: number;
 }
 
 export interface DeliveryCheckResult {
@@ -2550,7 +2551,8 @@ export async function fetchDeliverySettings(): Promise<DeliverySettings> {
     express_packing_buffer_minutes: 3,
     express_delivery_buffer_minutes: 3,
     is_express_20min_enabled: true,
-    default_pincode: '848101'
+    default_pincode: '848101',
+    standard_delivery_days: 3
   };
 
   try {
@@ -2592,7 +2594,8 @@ export async function fetchDeliverySettings(): Promise<DeliverySettings> {
         express_packing_buffer_minutes: Number(anyData.express_packing_buffer_minutes ?? 3),
         express_delivery_buffer_minutes: Number(anyData.express_delivery_buffer_minutes ?? 3),
         is_express_20min_enabled: anyData.is_express_20min_enabled !== false,
-        default_pincode: anyData.default_pincode || '848101'
+        default_pincode: anyData.default_pincode || '848101',
+        standard_delivery_days: Number(anyData.standard_delivery_days ?? 3)
       };
       return cachedDeliverySettings;
     }
@@ -2616,7 +2619,8 @@ export async function fetchDeliverySettings(): Promise<DeliverySettings> {
       express_packing_buffer_minutes: Number(data.express_packing_buffer_minutes ?? 3),
       express_delivery_buffer_minutes: Number(data.express_delivery_buffer_minutes ?? 3),
       is_express_20min_enabled: data.is_express_20min_enabled !== false,
-      default_pincode: data.default_pincode || '848101'
+      default_pincode: data.default_pincode || '848101',
+      standard_delivery_days: Number(data.standard_delivery_days ?? 3)
     };
 
     return cachedDeliverySettings;
@@ -2714,7 +2718,8 @@ export function calculateDeliveryOptions(
 
   // 3. Standard Option: Always available across India when active
   const standardEligible = settings.is_active;
-  const standardEta = '3–5 Business Days';
+  const stdDays = Number(settings.standard_delivery_days ?? 3);
+  const standardEta = `${stdDays}–${stdDays + 2} Business Days`;
 
   return [
     {

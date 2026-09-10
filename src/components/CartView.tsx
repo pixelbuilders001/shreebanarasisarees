@@ -213,10 +213,6 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
     return getExpressTimingStatus(result);
   }, [result]);
 
-  const deliveryDateInfo = useMemo(() => {
-    return getStandardDeliveryDateInfo();
-  }, []);
-
   // Delivery settings loaded dynamically from public.delivery_settings table
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
   const [selectedDeliveryMethod, setSelectedDeliveryMethod] = useState<DeliveryOptionType>(() => {
@@ -233,6 +229,10 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
   useEffect(() => {
     fetchDeliverySettings().then(setDeliverySettings).catch(console.error);
   }, []);
+
+  const deliveryDateInfo = useMemo(() => {
+    return getStandardDeliveryDateInfo(new Date(), deliverySettings?.standard_delivery_days ?? 3);
+  }, [deliverySettings?.standard_delivery_days]);
 
   const deliveryOptions = useMemo<CalculatedDeliveryOption[]>(() => {
     const dist = result?.distanceKm;
@@ -256,7 +256,8 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
       express_packing_buffer_minutes: 3,
       express_delivery_buffer_minutes: 3,
       is_express_20min_enabled: true,
-      default_pincode: '848101'
+      default_pincode: '848101',
+      standard_delivery_days: 3
     };
 
     return calculateDeliveryOptions(dist, settings, etaMins, pincode);

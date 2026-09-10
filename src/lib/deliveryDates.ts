@@ -1,5 +1,5 @@
 /**
- * Utility to calculate standard delivery dates from the current date (3-4 days range),
+ * Utility to calculate standard delivery dates from the current date,
  * displaying the exact expected delivery date like Flipkart / Amazon.
  */
 
@@ -18,10 +18,10 @@ export interface StandardDeliveryDateInfo {
   deliveryByText: string;
 }
 
-export function getStandardDeliveryDateInfo(baseDate: Date = new Date()): StandardDeliveryDateInfo {
+export function getStandardDeliveryDateInfo(baseDate: Date = new Date(), deliveryDays: number = 3): StandardDeliveryDateInfo {
   const time = baseDate.getTime();
-  const startDate = new Date(time + 3 * 24 * 60 * 60 * 1000);
-  const endDate = new Date(time + 4 * 24 * 60 * 60 * 1000);
+  const startDate = new Date(time + deliveryDays * 24 * 60 * 60 * 1000);
+  const endDate = new Date(time + (deliveryDays + 2) * 24 * 60 * 60 * 1000);
 
   const timeZone = 'Asia/Kolkata';
 

@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { MapPin, X, Loader2, AlertCircle, Plus, Check, Home, Building, ChevronRight } from 'lucide-react';
 import { useCustomerLocation } from '../hooks/useCustomerLocation';
 import { useStore } from '../context/StoreContext';
 import { AddNewAddressModal } from './delivery/AddNewAddressModal';
 import { getStandardDeliveryDateInfo } from '../lib/deliveryDates';
+import { fetchDeliverySettings, DeliverySettings } from '../data/supabase';
 import { triggerHaptic } from '../utils/haptics';
 
 import { getQuickCity, fetchPincodeDetails } from '../lib/pincodeLookup';
@@ -144,8 +145,11 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
 
   const { result, checkPincode } = useCustomerLocation();
 
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
+
   useEffect(() => {
     setMounted(true);
+    fetchDeliverySettings().then(setDeliverySettings).catch(console.error);
   }, []);
 
   // Synchronize city and check location whenever activePin changes
@@ -279,8 +283,11 @@ export const DeliveryPincodeSheet: React.FC = () => {
 
   const { isLoading, result, errorMsg, checkPincode } = useCustomerLocation();
 
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
+
   useEffect(() => {
     setMounted(true);
+    fetchDeliverySettings().then(setDeliverySettings).catch(console.error);
   }, []);
 
   // Synchronize city and check delivery when activePin changes from outside
@@ -419,7 +426,7 @@ export const DeliveryPincodeSheet: React.FC = () => {
 
   const isInput20Min = checkIsExpress(inputPincode, result);
   const timingStatus = getExpressTimingStatus(result);
-  const deliveryDateInfo = getStandardDeliveryDateInfo();
+  const deliveryDateInfo = getStandardDeliveryDateInfo(new Date(), deliverySettings?.standard_delivery_days ?? 3);
 
   if (!mounted || !isSheetOpen) return null;
 

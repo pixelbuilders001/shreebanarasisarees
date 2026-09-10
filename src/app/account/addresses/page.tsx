@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useStore } from '../../../context/StoreContext';
@@ -19,6 +19,7 @@ import {
 import { fetchPincodeDetails } from '../../../lib/pincodeLookup';
 import { AddressesTabSkeleton } from '../../../components/TabSkeletons';
 import { getStandardDeliveryDateInfo } from '../../../lib/deliveryDates';
+import { fetchDeliverySettings, DeliverySettings } from '../../../data/supabase';
 
 function is20MinPincode(pincode?: string): boolean {
   const clean = pincode?.trim();
@@ -27,7 +28,6 @@ function is20MinPincode(pincode?: string): boolean {
 
 export default function AddressesPage() {
   const router = useRouter();
-  const deliveryDateInfo = getStandardDeliveryDateInfo();
   const { 
     shippingAddresses, 
     shippingAddressesLoading,
@@ -39,6 +39,16 @@ export default function AddressesPage() {
     isHydrated,
     setIsAuthModalOpen
   } = useStore();
+
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
+
+  useEffect(() => {
+    fetchDeliverySettings().then(setDeliverySettings).catch(console.error);
+  }, []);
+
+  const deliveryDateInfo = useMemo(() => {
+    return getStandardDeliveryDateInfo(new Date(), deliverySettings?.standard_delivery_days ?? 3);
+  }, [deliverySettings?.standard_delivery_days]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editAddressId, setEditAddressId] = useState<string | null>(null);

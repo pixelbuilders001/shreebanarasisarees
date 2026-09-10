@@ -22,7 +22,7 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react';
-import { supabase, fetchDbOrderWithItems, fetchDbOrders, mapDbOrderToOrder, OrderStatusHistoryEntry } from '../../data/supabase';
+import { supabase, fetchDbOrderWithItems, fetchDbOrders, mapDbOrderToOrder, OrderStatusHistoryEntry, fetchDeliverySettings, DeliverySettings } from '../../data/supabase';
 import { OrdersTabSkeleton } from '../../components/TabSkeletons';
 import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 import { generateReceiptUrl, ReceiptData, ReceiptItem } from '@/lib/receiptUtils';
@@ -319,7 +319,6 @@ function resolveOrderItem(item: any, products: any[] = []): ResolvedOrderItem {
 function AccountContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const deliveryDateInfo = useMemo(() => getStandardDeliveryDateInfo(), []);
 
   const {
     orders,
@@ -341,6 +340,16 @@ function AccountContent() {
   const [standaloneOrder, setStandaloneOrder] = useState<Order | null>(null);
   const [dbOrders, setDbOrders] = useState<Order[]>([]);
   const [isLoadingDbOrders, setIsLoadingDbOrders] = useState<boolean>(true);
+
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
+
+  useEffect(() => {
+    fetchDeliverySettings().then(setDeliverySettings).catch(console.error);
+  }, []);
+
+  const deliveryDateInfo = useMemo(() => {
+    return getStandardDeliveryDateInfo(new Date(), deliverySettings?.standard_delivery_days ?? 3);
+  }, [deliverySettings?.standard_delivery_days]);
 
   const [cancelStatus, setCancelStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [cancelErrorMessage, setCancelErrorMessage] = useState<string | null>(null);

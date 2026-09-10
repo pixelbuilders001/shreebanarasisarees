@@ -130,7 +130,6 @@ const getExpressTimingStatus = (result?: any) => {
 
 function CheckoutContent() {
   const router = useRouter();
-  const deliveryDateInfo = useMemo(() => getStandardDeliveryDateInfo(), []);
 
   const {
     cart,
@@ -263,6 +262,10 @@ function CheckoutContent() {
   useEffect(() => {
     fetchDeliverySettings().then(setDeliverySettings).catch(console.error);
   }, []);
+
+  const deliveryDateInfo = useMemo(() => {
+    return getStandardDeliveryDateInfo(new Date(), deliverySettings?.standard_delivery_days ?? 3);
+  }, [deliverySettings?.standard_delivery_days]);
 
   // Sync pincode from centralized context
   useEffect(() => {
@@ -429,7 +432,8 @@ function CheckoutContent() {
       express_packing_buffer_minutes: 3,
       express_delivery_buffer_minutes: 3,
       is_express_20min_enabled: true,
-      default_pincode: '848101'
+      default_pincode: '848101',
+      standard_delivery_days: 3
     };
 
     return calculateDeliveryOptions(dist, settings, etaMins, cleanPin);

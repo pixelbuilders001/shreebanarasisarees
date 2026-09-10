@@ -100,13 +100,15 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     return getExpressTimingStatus(result);
   }, [result]);
 
-  const deliveryDateInfo = useMemo(() => getStandardDeliveryDateInfo(), []);
-
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
 
   useEffect(() => {
     fetchDeliverySettings().then(setDeliverySettings).catch(console.error);
   }, []);
+
+  const deliveryDateInfo = useMemo(() => {
+    return getStandardDeliveryDateInfo(new Date(), deliverySettings?.standard_delivery_days ?? 3);
+  }, [deliverySettings?.standard_delivery_days]);
 
   const activeDeliveryCharge = useMemo(() => {
     if (result?.options && Array.isArray(result.options)) {
