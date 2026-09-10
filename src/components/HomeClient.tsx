@@ -17,6 +17,8 @@ import { ArrowLeft, ArrowRight, ShieldCheck, PackageCheck, Truck, CreditCard, Ba
 import { DbCampaign, DbHeroBanner, DbCategory } from '../data/supabase';
 import { ProductCardSkeleton } from './ProductCardSkeleton';
 import { useRecentlyViewed } from '../utils/useRecentlyViewed';
+import { HomepageSection as HomepageSectionType } from '../types/homepage-sections';
+import { HomepageSection } from './homepage-sections';
 
 // Dynamically imported below-the-fold components
 const TestimonialSection = dynamic(() => import('./TestimonialSection').then(m => m.TestimonialSection), {
@@ -36,6 +38,7 @@ interface HomeClientProps {
   activeCampaigns?: DbCampaign[];
   heroBanners?: DbHeroBanner[];
   categories?: DbCategory[];
+  dynamicSections?: HomepageSectionType[];
 }
 
 export default function HomeClient({
@@ -44,7 +47,8 @@ export default function HomeClient({
   allProducts,
   activeCampaigns = [],
   heroBanners,
-  categories
+  categories,
+  dynamicSections
 }: HomeClientProps) {
   // Use server-provided bestsellers (8 items max) or derive from allProducts fallback
   const displayBestsellers = bestsellers && bestsellers.length > 0
@@ -101,6 +105,15 @@ export default function HomeClient({
         {/* 2. Top Campaign Banner (if active) */}
         <CampaignSection slot="top" initialCampaign={activeCampaigns[0] || null} />
 
+        {/* Dynamic Homepage Sections configured via Supabase */}
+        {dynamicSections && dynamicSections.length > 0 && (
+          <>
+            {dynamicSections.map((section) => (
+              <HomepageSection key={section.id} section={section} />
+            ))}
+          </>
+        )}
+
         {/* 4. Bestsellers Section */}
         <section className="py-10 sm:py-16 px-4 md:px-8 bg-[#FFFFFF] border-b border-[#B08A3C]/15">
           <div className="max-w-7xl mx-auto">
@@ -126,11 +139,13 @@ export default function HomeClient({
               </Link>
             </div>
 
-            {/* Product Grid: 4 items desktop, 2 items mobile */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
+            {/* Product Slider on mobile, 4 items grid on desktop */}
+            <div className="flex sm:grid sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 lg:gap-8 overflow-x-auto sm:overflow-x-visible no-scrollbar pb-3 sm:pb-0 scroll-smooth snap-x snap-mandatory sm:snap-none -mx-4 px-4 sm:mx-0 sm:px-0">
               {displayBestsellers.length > 0 ? (
                 displayBestsellers.map((prod) => (
-                  <ProductCard key={prod.id} product={prod} />
+                  <div key={prod.id} className="w-[165px] sm:w-auto shrink-0 sm:shrink snap-start sm:snap-align-none">
+                    <ProductCard product={prod} />
+                  </div>
                 ))
               ) : (
                 <ProductCardSkeleton count={8} />
@@ -350,13 +365,13 @@ export default function HomeClient({
 
           <div
             ref={scrollRef}
-            className="flex gap-4 sm:gap-6 overflow-x-auto no-scrollbar pb-4 scroll-smooth snap-x snap-mandatory"
+            className="flex gap-3 sm:gap-6 overflow-x-auto no-scrollbar pb-3 sm:pb-4 scroll-smooth snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0"
           >
             {displayNewArrivals.length > 0 ? (
               displayNewArrivals.map((prod) => (
                 <div
                   key={prod.id}
-                  className="w-[240px] sm:w-[280px] lg:w-[300px] flex-shrink-0 snap-start relative"
+                  className="w-[165px] sm:w-[280px] lg:w-[300px] shrink-0 snap-start relative"
                 >
                   <ProductCard product={prod} />
                 </div>

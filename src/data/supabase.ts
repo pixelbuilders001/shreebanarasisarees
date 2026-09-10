@@ -1946,13 +1946,13 @@ export async function fetchCampaignBySlug(slug: string): Promise<DbCampaign | nu
       .from('campaigns')
       .select('*')
       .eq('slug', slug)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
+    if (error) {
       console.error('Error fetching campaign by slug:', error);
       return null;
     }
-    return data as DbCampaign;
+    return (data as DbCampaign) || null;
   } catch (err) {
     console.error('Exception in fetchCampaignBySlug:', err);
     return null;
@@ -2760,4 +2760,7 @@ export function calculateDeliveryOptions(
     }
   ];
 }
+
+export * from '../types/homepage-sections';
+export { fetchDynamicHomepageSections } from './homepage-sections';
 

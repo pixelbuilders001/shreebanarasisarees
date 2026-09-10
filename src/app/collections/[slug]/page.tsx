@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { Header } from '../../../components/Header';
 import { Footer } from '../../../components/Footer';
 import { ProductCard } from '../../../components/ProductCard';
-import { fetchCampaignBySlug, fetchCampaignProducts } from '../../../data/supabase';
+import { fetchResolvedCollectionBySlug } from '../../../data/homepage-sections';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -12,73 +12,53 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const resolvedParams = await params;
-  const campaign = await fetchCampaignBySlug(resolvedParams.slug);
+  const collection = await fetchResolvedCollectionBySlug(resolvedParams.slug);
 
-  if (!campaign) {
+  if (!collection) {
     return {
       title: 'Collection Not Found',
     };
   }
 
-  // Check if active
-  const now = new Date();
-  const startDate = new Date(campaign.start_date);
-  const endDate = new Date(campaign.end_date);
-  const isActive = campaign.status === 'active' && now >= startDate && now <= endDate;
-
-  if (!isActive) {
-    return {
-      title: 'Collection Not Found',
-    };
-  }
+  const title = collection.title || collection.name;
+  const desc = collection.subtitle || collection.description || `Shop exclusive collection of traditional sarees from ${collection.name} at Shree Banarasi Sarees.`;
 
   return {
-    title: `${campaign.name} | Shree Banarasi Sarees`,
-    description: campaign.subtitle || campaign.title || `Shop exclusive collection of traditional sarees from ${campaign.name} at Shree Banarasi Sarees.`,
+    title: `${title} | Shree Banarasi Sarees`,
+    description: desc,
     alternates: {
-      canonical: `https://shreebanarasisarees.in/collections/${campaign.slug}`,
+      canonical: `https://shreebanarasisarees.in/collections/${collection.slug}`,
     },
     openGraph: {
-      title: `${campaign.name} | Shree Banarasi Sarees`,
-      description: campaign.subtitle || campaign.title || `Shop exclusive collection of traditional sarees from ${campaign.name} at Shree Banarasi Sarees.`,
-      url: `https://shreebanarasisarees.in/collections/${campaign.slug}`,
+      title: `${title} | Shree Banarasi Sarees`,
+      description: desc,
+      url: `https://shreebanarasisarees.in/collections/${collection.slug}`,
       type: "website",
-      images: campaign.desktop_banner_url ? [
+      images: collection.desktop_banner_url ? [
         {
-          url: campaign.desktop_banner_url,
-          alt: campaign.title || campaign.name,
+          url: collection.desktop_banner_url,
+          alt: title,
         }
       ] : [],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${campaign.name} | Shree Banarasi Sarees`,
-      description: campaign.subtitle || campaign.title || `Shop exclusive collection of traditional sarees from ${campaign.name} at Shree Banarasi Sarees.`,
-      images: campaign.desktop_banner_url ? [campaign.desktop_banner_url] : [],
+      title: `${title} | Shree Banarasi Sarees`,
+      description: desc,
+      images: collection.desktop_banner_url ? [collection.desktop_banner_url] : [],
     }
   };
 }
 
 export default async function CollectionPage({ params }: PageProps) {
   const resolvedParams = await params;
-  const campaign = await fetchCampaignBySlug(resolvedParams.slug);
+  const collection = await fetchResolvedCollectionBySlug(resolvedParams.slug);
 
-  if (!campaign) {
+  if (!collection) {
     notFound();
   }
 
-  // Verify dates and status
-  const now = new Date();
-  const startDate = new Date(campaign.start_date);
-  const endDate = new Date(campaign.end_date);
-  const isActive = campaign.status === 'active' && now >= startDate && now <= endDate;
-
-  if (!isActive) {
-    notFound();
-  }
-
-  // Fetch campaign products
-  const products = await fetchCampaignProducts(campaign.id);
+  const products = collection.products || [];
 
   // Schema for Breadcrumbs
   const breadcrumbJsonLd = {
@@ -100,8 +80,8 @@ export default async function CollectionPage({ params }: PageProps) {
       {
         "@type": "ListItem",
         "position": 3,
-        "name": campaign.name,
-        "item": `https://shreebanarasisarees.in/collections/${campaign.slug}`
+        "name": collection.name,
+        "item": `https://shreebanarasisarees.in/collections/${collection.slug}`
       }
     ]
   };
@@ -109,8 +89,8 @@ export default async function CollectionPage({ params }: PageProps) {
   const itemListJsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    "name": campaign.name,
-    "description": campaign.subtitle || campaign.title,
+    "name": collection.name,
+    "description": collection.subtitle || collection.title,
     "numberOfItems": products.length,
     "itemListElement": products.map((p, index) => ({
       "@type": "ListItem",
@@ -135,37 +115,37 @@ export default async function CollectionPage({ params }: PageProps) {
       <Header />
       
       <main className="pb-16 bg-[#FFF9F0] min-h-screen">
-        {/* Campaign Hero Banner */}
-        {campaign.desktop_banner_url ? (
-          <div className="max-w-7xl mx-auto px-4 pt-6">
-            <section className="relative w-full h-[160px] sm:h-[220px] md:h-[280px] overflow-hidden rounded-xl sm:rounded-2xl bg-dark-brown border border-gold/15 shadow-md">
+        {/* Collection Hero Banner - Curved on Mobile, Full Width on Desktop */}
+        {collection.desktop_banner_url ? (
+          <div className="w-full px-3 pt-3 sm:px-0 sm:pt-0">
+            <section className="relative w-full h-[140px] sm:h-[180px] md:h-[220px] lg:h-[240px] overflow-hidden rounded-2xl sm:rounded-none bg-dark-brown border border-gold/20 sm:border-0 sm:border-b sm:border-gold/15 shadow-sm">
               {/* Background Image with Fallbacks/Responsiveness */}
               <picture className="absolute inset-0 w-full h-full">
-                {campaign.mobile_banner_url && (
-                  <source media="(max-width: 640px)" srcSet={campaign.mobile_banner_url} />
+                {collection.mobile_banner_url && (
+                  <source media="(max-width: 640px)" srcSet={collection.mobile_banner_url} />
                 )}
                 <img
-                  src={campaign.desktop_banner_url}
-                  alt={campaign.name}
-                  className="w-full h-full object-cover"
+                  src={collection.desktop_banner_url}
+                  alt={collection.name}
+                  className="w-full h-full object-cover object-center"
                 />
               </picture>
               
               {/* Subtle premium dark gradients overlay for readable text */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent z-10" />
               
-              {/* Text Overlay (Premium Styling) */}
-              <div className="absolute inset-0 z-20 flex flex-col justify-end p-6 sm:p-8 md:p-10 w-full">
-                <div className="space-y-1.5 max-w-2xl text-ivory">
-                  <span className="text-[9px] sm:text-xs font-bold tracking-[0.25em] text-gold uppercase block font-serif">
-                    —— Exclusive Collection ——
+              {/* Text Overlay - Aligned within max-w-[1650px] to match product grid */}
+              <div className="absolute inset-0 z-20 flex flex-col justify-end max-w-[1650px] mx-auto p-4 sm:p-6 md:p-8 w-full">
+                <div className="space-y-1 max-w-2xl text-ivory">
+                  <span className="text-[9px] sm:text-[10px] font-bold tracking-[0.22em] text-gold uppercase block font-serif">
+                    —— Curated Collection ——
                   </span>
-                  <h1 className="font-serif text-lg sm:text-2xl md:text-3xl font-extrabold tracking-wide drop-shadow-md">
-                    {campaign.title}
+                  <h1 className="font-serif text-lg sm:text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-wide drop-shadow-md leading-tight">
+                    {collection.title || collection.name}
                   </h1>
-                  {campaign.subtitle && (
-                    <p className="text-[10px] sm:text-xs md:text-sm text-ivory/80 leading-relaxed font-light font-sans max-w-xl drop-shadow-sm line-clamp-2">
-                      {campaign.subtitle}
+                  {collection.subtitle && (
+                    <p className="text-[10px] sm:text-xs md:text-sm text-ivory/85 leading-snug font-light font-sans max-w-xl drop-shadow-sm line-clamp-1 sm:line-clamp-2">
+                      {collection.subtitle}
                     </p>
                   )}
                 </div>
@@ -173,19 +153,19 @@ export default async function CollectionPage({ params }: PageProps) {
             </section>
           </div>
         ) : (
-          /* Fallback Elegant Header if no Banner Image is present */
-          <section className="bg-gradient-to-b from-[#FFF0DB] to-[#FFF9F0] border-b border-cream py-12 px-4 text-center">
+          /* Fallback Sleek Header if no Banner Image is present */
+          <section className="bg-gradient-to-b from-[#FFF0DB] to-[#FFF9F0] border-b border-cream py-8 sm:py-10 px-4 text-center">
             <div className="max-w-3xl mx-auto space-y-4">
               <span className="text-xs text-gold uppercase tracking-[0.2em] font-bold block">
-                Exclusive Collection
+                Curated Collection
               </span>
               <h1 className="font-serif text-3xl sm:text-5xl font-extrabold text-dark-brown">
-                {campaign.title || campaign.name}
+                {collection.title || collection.name}
               </h1>
               <div className="w-16 h-0.5 bg-maroon mx-auto"></div>
-              {campaign.subtitle && (
+              {collection.subtitle && (
                 <p className="text-sm text-dark-brown/70 leading-relaxed max-w-lg mx-auto font-light">
-                  {campaign.subtitle}
+                  {collection.subtitle}
                 </p>
               )}
             </div>
@@ -200,7 +180,7 @@ export default async function CollectionPage({ params }: PageProps) {
             <span>/</span>
             <span className="text-dark-brown/50">Collections</span>
             <span>/</span>
-            <span className="text-dark-brown font-semibold">{campaign.name}</span>
+            <span className="text-dark-brown font-semibold">{collection.name}</span>
           </nav>
 
           {/* Collection Count Header */}
