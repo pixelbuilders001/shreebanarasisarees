@@ -1,14 +1,15 @@
 import { MetadataRoute } from 'next';
-import { fetchCategories, fetchProducts, fetchActiveCampaigns } from '../data/supabase';
+import { supabase, fetchCategories, fetchProducts, fetchActiveCampaigns } from '../data/supabase';
 import { BLOG_POSTS } from '../data/blog';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://shreebanarasisarees.in';
 
-  const [products, categories, campaigns] = await Promise.all([
+  const [products, categories, campaigns, collectionsRes] = await Promise.all([
     fetchProducts(),
     fetchCategories(),
-    fetchActiveCampaigns()
+    fetchActiveCampaigns(),
+    supabase.from('collections').select('id, name, slug, updated_at').eq('is_active', true)
   ]);
 
   // 1. Static Pages
@@ -163,10 +164,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }));
 
-  // 3. Campaign Collections Pages
-  const campaignPages = (campaigns || []).map((c) => ({
-    url: `${baseUrl}/collections/${c.slug}`,
-    lastModified: new Date(),
+  // 3. Curated Collections & Campaign Pages
+  const collectionSlugMap = new Map<string, Date>();
+
+  (campaigns || []).forEach((c) => {
+    if (c.slug) {
+      collectionSlugMap.set(c.slug.toLowerCase().trim(), c.updated_at ? new Date(c.updated_at) : new Date());
+    }
+  });
+
+  const dynamicCollections = (collectionsRes?.data as any[]) || [];
+  dynamicCollections.forEach((col) => {
+    const slug = col.slug || col.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    if (slug) {
+      const clean = slug.toLowerCase().trim();
+      if (!collectionSlugMap.has(clean)) {
+        collectionSlugMap.set(clean, col.updated_at ? new Date(col.updated_at) : new Date());
+      }
+    }
+  });
+
+  const collectionPages = Array.from(collectionSlugMap.entries()).map(([slug, lastModified]) => ({
+    url: `${baseUrl}/collections/${slug}`,
+    lastModified,
     changeFrequency: 'daily' as const,
     priority: 0.85,
   }));
@@ -187,6 +207,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.65,
   }));
 
-  return [...staticPages, ...categoryPages, ...campaignPages, ...productPages, ...blogPages];
+  return [...staticPages, ...categoryPages, ...collectionPages, ...productPages, ...blogPages];
 }
 
