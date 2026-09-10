@@ -115,15 +115,12 @@ export default async function CollectionPage({ params }: PageProps) {
       <Header />
       
       <main className="pb-16 bg-[#FFF9F0] min-h-screen">
-        {/* Collection Hero Banner - Curved on Mobile, Full Width on Desktop */}
+        {/* Collection Hero Banner - Hidden on Mobile, Full Width on Desktop */}
         {collection.desktop_banner_url ? (
-          <div className="w-full px-3 pt-3 sm:px-0 sm:pt-0">
-            <section className="relative w-full h-[140px] sm:h-[180px] md:h-[220px] lg:h-[240px] overflow-hidden rounded-2xl sm:rounded-none bg-dark-brown border border-gold/20 sm:border-0 sm:border-b sm:border-gold/15 shadow-sm">
-              {/* Background Image with Fallbacks/Responsiveness */}
+          <div className="hidden sm:block w-full">
+            <section className="relative w-full h-[180px] md:h-[220px] lg:h-[240px] overflow-hidden bg-dark-brown border-b border-gold/15 shadow-sm">
+              {/* Background Image */}
               <picture className="absolute inset-0 w-full h-full">
-                {collection.mobile_banner_url && (
-                  <source media="(max-width: 640px)" srcSet={collection.mobile_banner_url} />
-                )}
                 <img
                   src={collection.desktop_banner_url}
                   alt={collection.name}
@@ -135,16 +132,16 @@ export default async function CollectionPage({ params }: PageProps) {
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent z-10" />
               
               {/* Text Overlay - Aligned within max-w-[1650px] to match product grid */}
-              <div className="absolute inset-0 z-20 flex flex-col justify-end max-w-[1650px] mx-auto p-4 sm:p-6 md:p-8 w-full">
+              <div className="absolute inset-0 z-20 flex flex-col justify-end max-w-[1650px] mx-auto p-6 md:p-8 w-full">
                 <div className="space-y-1 max-w-2xl text-ivory">
-                  <span className="text-[9px] sm:text-[10px] font-bold tracking-[0.22em] text-gold uppercase block font-serif">
+                  <span className="text-[10px] font-bold tracking-[0.22em] text-gold uppercase block font-serif">
                     —— Curated Collection ——
                   </span>
-                  <h1 className="font-serif text-lg sm:text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-wide drop-shadow-md leading-tight">
+                  <h1 className="font-serif text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-wide drop-shadow-md leading-tight">
                     {collection.title || collection.name}
                   </h1>
                   {collection.subtitle && (
-                    <p className="text-[10px] sm:text-xs md:text-sm text-ivory/85 leading-snug font-light font-sans max-w-xl drop-shadow-sm line-clamp-1 sm:line-clamp-2">
+                    <p className="text-xs md:text-sm text-ivory/85 leading-snug font-light font-sans max-w-xl drop-shadow-sm line-clamp-2">
                       {collection.subtitle}
                     </p>
                   )}
@@ -154,7 +151,7 @@ export default async function CollectionPage({ params }: PageProps) {
           </div>
         ) : (
           /* Fallback Sleek Header if no Banner Image is present */
-          <section className="bg-gradient-to-b from-[#FFF0DB] to-[#FFF9F0] border-b border-cream py-8 sm:py-10 px-4 text-center">
+          <section className="hidden sm:block bg-gradient-to-b from-[#FFF0DB] to-[#FFF9F0] border-b border-cream py-8 sm:py-10 px-4 text-center">
             <div className="max-w-3xl mx-auto space-y-4">
               <span className="text-xs text-gold uppercase tracking-[0.2em] font-bold block">
                 Curated Collection
@@ -173,24 +170,40 @@ export default async function CollectionPage({ params }: PageProps) {
         )}
 
         {/* Collection Products Grid */}
-        <section className="max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <section className="max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-12">
           {/* Breadcrumb Navigation */}
-          <nav className="text-xs text-dark-brown/50 font-medium mb-6 flex items-center gap-1 select-none">
+          <nav className="text-xs text-dark-brown/50 font-medium mb-4 sm:mb-6 flex items-center gap-1 select-none">
             <a href="/" className="hover:text-maroon">Home</a>
             <span>/</span>
             <span className="text-dark-brown/50">Collections</span>
             <span>/</span>
-            <span className="text-dark-brown font-semibold">{collection.name}</span>
+            <span className="text-dark-brown font-semibold truncate max-w-[200px]">{collection.name}</span>
           </nav>
 
-          {/* Collection Count Header */}
-          <div className="flex items-center justify-between border-b border-cream pb-4 mb-8">
-            <h2 className="font-serif text-lg sm:text-2xl font-extrabold text-dark-brown">
-              Sarees in this Collection
-              <span className="text-xs font-semibold text-dark-brown/40 font-sans ml-2">
-                ({products.length} {products.length === 1 ? 'Saree' : 'Sarees'})
-              </span>
-            </h2>
+          {/* Collection Header */}
+          <div className="border-b border-cream pb-3 sm:pb-4 mb-6 sm:mb-8">
+            <div className="flex items-baseline justify-between">
+              {/* On mobile, show collection title directly since hero banner is hidden */}
+              <h1 className="sm:hidden font-serif text-xl font-extrabold text-dark-brown">
+                {collection.title || collection.name}
+                <span className="text-xs font-semibold text-dark-brown/40 font-sans ml-2">
+                  ({products.length} {products.length === 1 ? 'Saree' : 'Sarees'})
+                </span>
+              </h1>
+
+              {/* On desktop, banner already has the H1 collection title */}
+              <h2 className="hidden sm:block font-serif text-2xl font-extrabold text-dark-brown">
+                Sarees in this Collection
+                <span className="text-xs font-semibold text-dark-brown/40 font-sans ml-2">
+                  ({products.length} {products.length === 1 ? 'Saree' : 'Sarees'})
+                </span>
+              </h2>
+            </div>
+            {collection.subtitle && (
+              <p className="sm:hidden text-xs text-dark-brown/70 mt-1 font-light">
+                {collection.subtitle}
+              </p>
+            )}
           </div>
 
           {products.length === 0 ? (
