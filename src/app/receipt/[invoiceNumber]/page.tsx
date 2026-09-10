@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Loader2, Printer, AlertTriangle, Smartphone, Sparkles, Download } from 'lucide-react';
 import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 import { decodeReceiptData, ReceiptData, ReceiptItem } from '@/lib/receiptUtils';
+import { downloadInvoicePdf } from '@/lib/invoicePdf';
 import { PRODUCTS } from '@/data/products';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzqlsawxvvyvsstyzzff.supabase.co';
@@ -313,6 +314,21 @@ export default function ReceiptPage() {
     const totalSavings = totalItemDiscount + billDiscount + Number(receipt.appliedVoucherAmount || 0);
     const totalSavingsPercent = totalMrp > 0 ? (totalSavings / totalMrp) * 100 : 0;
 
+    const [isDownloading, setIsDownloading] = useState(false);
+
+    const handleDownloadPdf = async () => {
+        if (!receipt || isDownloading) return;
+        try {
+            setIsDownloading(true);
+            await downloadInvoicePdf(receipt);
+        } catch (err) {
+            console.error('Direct PDF download failed, falling back to print dialog:', err);
+            handlePrint();
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     const handlePrint = () => {
         const orig = document.title;
         document.title = `Receipt_${receipt.invoiceNumber}`;
@@ -469,13 +485,21 @@ export default function ReceiptPage() {
                     </div>
                 )}
 
-                <div className="no-print" style={{ marginBottom: '20px' }}>
+                <div className="no-print" style={{ marginBottom: '20px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <button
+                        onClick={handleDownloadPdf}
+                        disabled={isDownloading}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 22px', borderRadius: '8px', background: '#800000', color: '#fff', fontFamily: 'Arial, sans-serif', fontWeight: 'bold', fontSize: '13px', border: 'none', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.18)', opacity: isDownloading ? 0.7 : 1 }}
+                    >
+                        {isDownloading ? <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} /> : <Download style={{ width: 16, height: 16 }} />}
+                        {isDownloading ? 'Downloading PDF...' : 'Download Invoice PDF'}
+                    </button>
                     <button
                         onClick={handlePrint}
-                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 22px', borderRadius: '8px', background: '#800000', color: '#fff', fontFamily: 'Arial, sans-serif', fontWeight: 'bold', fontSize: '13px', border: 'none', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.18)' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '8px', background: '#fff', color: '#444', fontFamily: 'Arial, sans-serif', fontWeight: '600', fontSize: '13px', border: '1px solid #ccc', cursor: 'pointer' }}
                     >
                         <Printer style={{ width: 16, height: 16 }} />
-                        Save as PDF / Print
+                        Print
                     </button>
                 </div>
 
@@ -745,13 +769,21 @@ export default function ReceiptPage() {
                     </div>
                 </div>
 
-                <div className="no-print" style={{ marginTop: '24px' }}>
+                <div className="no-print" style={{ marginTop: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <button
+                        onClick={handleDownloadPdf}
+                        disabled={isDownloading}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 22px', borderRadius: '8px', background: '#800000', color: '#fff', fontFamily: 'Arial, sans-serif', fontWeight: 'bold', fontSize: '13px', border: 'none', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.18)', opacity: isDownloading ? 0.7 : 1 }}
+                    >
+                        {isDownloading ? <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} /> : <Download style={{ width: 16, height: 16 }} />}
+                        {isDownloading ? 'Downloading PDF...' : 'Download Invoice PDF'}
+                    </button>
                     <button
                         onClick={handlePrint}
-                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 22px', borderRadius: '8px', background: '#800000', color: '#fff', fontFamily: 'Arial, sans-serif', fontWeight: 'bold', fontSize: '13px', border: 'none', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.18)' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '8px', background: '#fff', color: '#444', fontFamily: 'Arial, sans-serif', fontWeight: '600', fontSize: '13px', border: '1px solid #ccc', cursor: 'pointer' }}
                     >
                         <Printer style={{ width: 16, height: 16 }} />
-                        Save as PDF / Print
+                        Print
                     </button>
                 </div>
             </div>

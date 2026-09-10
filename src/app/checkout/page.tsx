@@ -53,6 +53,7 @@ import { AddNewAddressModal } from '../../components/delivery/AddNewAddressModal
 import { DeliveryRiderIcon } from '../../components/delivery/DeliveryIcons';
 import { CheckoutSkeleton } from '../../components/CheckoutSkeleton';
 import { getStandardDeliveryDateInfo } from '../../lib/deliveryDates';
+import { buildReceiptDataFromOrder, downloadInvoicePdf } from '../../lib/invoicePdf';
 
 const FREE_SHIPPING_THRESHOLD = 999;
 const STANDARD_SHIPPING_FEE = 99;
@@ -150,7 +151,8 @@ function CheckoutContent() {
     user,
     userProfile,
     isHydrated,
-    setIsAuthModalOpen
+    setIsAuthModalOpen,
+    products
   } = useStore();
 
   const fallbackTiming = useMemo(() => getExpressTimingStatus(deliveryInfo), [deliveryInfo]);
@@ -168,6 +170,26 @@ function CheckoutContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveToProfile, setSaveToProfile] = useState(false);
   const [hasPrefilled, setHasPrefilled] = useState(false);
+
+  // Invoice direct download states
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
+  const [isInvoiceDownloaded, setIsInvoiceDownloaded] = useState(false);
+
+  const handleDownloadInvoice = async () => {
+    if (!createdOrder || isDownloadingInvoice) return;
+    try {
+      setIsDownloadingInvoice(true);
+      const receiptData = buildReceiptDataFromOrder(createdOrder, products);
+      await downloadInvoicePdf(receiptData);
+      setIsInvoiceDownloaded(true);
+      setTimeout(() => setIsInvoiceDownloaded(false), 4000);
+    } catch (err) {
+      console.error('Failed to download invoice:', err);
+      alert('Failed to generate invoice PDF. Please try again.');
+    } finally {
+      setIsDownloadingInvoice(false);
+    }
+  };
 
   // Form Fields - Dynamic initialization
   const isPhoneValid = Boolean(userPhone && /^[6-9]\d{9}$/.test(userPhone));
@@ -1077,14 +1099,29 @@ function CheckoutContent() {
             </div>
 
             <div className="pt-2 border-t border-[#F3ECE0]">
-              <Link
-                href={`/receipt/${encodeURIComponent(createdOrder.invoice_number || createdOrder.orderId)}`}
-                target="_blank"
-                className="text-xs font-semibold text-[#6B1725] hover:text-[#52111C] flex items-center justify-center gap-1.5 py-2 bg-[#FAF7F0] hover:bg-[#F3ECE0] rounded-xl transition-colors font-sans"
+              <button
+                type="button"
+                onClick={handleDownloadInvoice}
+                disabled={isDownloadingInvoice}
+                className="w-full text-xs font-semibold text-[#6B1725] hover:text-[#52111C] flex items-center justify-center gap-1.5 py-2 bg-[#FAF7F0] hover:bg-[#F3ECE0] rounded-xl transition-colors font-sans cursor-pointer disabled:opacity-60"
               >
-                <Download size={13} />
-                <span>View & Download Tax Invoice</span>
-              </Link>
+                {isDownloadingInvoice ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" />
+                    <span>Downloading Invoice...</span>
+                  </>
+                ) : isInvoiceDownloaded ? (
+                  <>
+                    <Check size={13} className="text-emerald-600" />
+                    <span className="text-emerald-700 font-medium">Invoice Downloaded</span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={13} />
+                    <span>Download Tax Invoice</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
 

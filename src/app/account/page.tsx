@@ -26,6 +26,7 @@ import { supabase, fetchDbOrderWithItems, fetchDbOrders, mapDbOrderToOrder, Orde
 import { OrdersTabSkeleton } from '../../components/TabSkeletons';
 import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 import { generateReceiptUrl, ReceiptData, ReceiptItem } from '@/lib/receiptUtils';
+import { buildReceiptDataFromOrder, downloadInvoicePdf } from '@/lib/invoicePdf';
 import { getStandardDeliveryDateInfo } from '../../lib/deliveryDates';
 
 // Format date into "Today, 6:12 pm" or "12 Feb 2026"
@@ -343,6 +344,29 @@ function AccountContent() {
 
   const [cancelStatus, setCancelStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [cancelErrorMessage, setCancelErrorMessage] = useState<string | null>(null);
+
+  // Direct Invoice PDF Download states & handler
+  const [downloadingOrderId, setDownloadingOrderId] = useState<string | null>(null);
+  const [downloadedOrderId, setDownloadedOrderId] = useState<string | null>(null);
+
+  const handleDownloadInvoice = async (order: any, orderDisplayItems?: any[]) => {
+    const invKey = order.invoice_number || order.orderId;
+    if (!order || downloadingOrderId === invKey) return;
+    try {
+      setDownloadingOrderId(invKey);
+      const itemsToUse = orderDisplayItems && orderDisplayItems.length > 0 ? orderDisplayItems : order.items;
+      const orderForReceipt = { ...order, items: itemsToUse };
+      const receiptData = buildReceiptDataFromOrder(orderForReceipt, products);
+      await downloadInvoicePdf(receiptData);
+      setDownloadedOrderId(invKey);
+      setTimeout(() => setDownloadedOrderId(null), 4000);
+    } catch (err) {
+      console.error('Failed to download invoice:', err);
+      alert('Failed to generate invoice PDF. Please try again.');
+    } finally {
+      setDownloadingOrderId(null);
+    }
+  };
 
   // Helper: Only show cancel button for placed, confirmed, and processing orders
   const isOrderCancellable = (status?: string | null): boolean => {
@@ -1519,14 +1543,29 @@ function AccountContent() {
           </div>
 
           <div className="border-t border-[#F3ECE0] pt-3 flex items-center justify-between">
-            <Link
-              href={receiptDownloadUrl}
-              target="_blank"
-              className="text-xs font-semibold text-[#B08A3C] hover:text-[#8E6C29] transition-colors flex items-center gap-1.5 cursor-pointer font-sans"
+            <button
+              type="button"
+              onClick={() => handleDownloadInvoice(activeOrder, displayItems)}
+              disabled={downloadingOrderId === (activeOrder.invoice_number || activeOrder.orderId)}
+              className="text-xs font-semibold text-[#B08A3C] hover:text-[#8E6C29] transition-colors flex items-center gap-1.5 cursor-pointer font-sans disabled:opacity-60"
             >
-              <Download size={14} />
-              <span>Download invoice</span>
-            </Link>
+              {downloadingOrderId === (activeOrder.invoice_number || activeOrder.orderId) ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Downloading invoice...</span>
+                </>
+              ) : downloadedOrderId === (activeOrder.invoice_number || activeOrder.orderId) ? (
+                <>
+                  <Check size={14} className="text-emerald-600" />
+                  <span className="text-emerald-700 font-medium">Invoice Downloaded</span>
+                </>
+              ) : (
+                <>
+                  <Download size={14} />
+                  <span>Download invoice</span>
+                </>
+              )}
+            </button>
             <span className="text-[11px] text-[#78716C] font-sans font-medium uppercase tracking-wider">
               {activeOrder.paymentMethod}
             </span>
