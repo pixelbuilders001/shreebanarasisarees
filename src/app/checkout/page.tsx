@@ -2208,6 +2208,27 @@ function CheckoutContent() {
                       )}
                       <p className="text-[11px] text-[#7A6E65]">Prices include applicable GST</p>
                     </div>
+
+                    {/* Legal Confirmation Notice for Mobile */}
+                    <p className="pt-2 text-center text-[11px] text-[#7A6E65] leading-relaxed">
+                      By placing your order, you agree to our{' '}
+                      <Link href="/terms-and-conditions" target="_blank" className="text-[#6B1725] underline font-medium hover:text-[#52111C]">
+                        Terms &amp; Conditions
+                      </Link>
+                      ,{' '}
+                      <Link href="/privacy-policy" target="_blank" className="text-[#6B1725] underline font-medium hover:text-[#52111C]">
+                        Privacy Policy
+                      </Link>
+                      ,{' '}
+                      <Link href="/returns-refunds" target="_blank" className="text-[#6B1725] underline font-medium hover:text-[#52111C]">
+                        Returns &amp; Refunds
+                      </Link>
+                      , and{' '}
+                      <Link href="/shipping-policy" target="_blank" className="text-[#6B1725] underline font-medium hover:text-[#52111C]">
+                        Shipping Policy
+                      </Link>
+                      .
+                    </p>
                   </div>
 
                   {/* Desktop Step 3 Primary Action */}
@@ -2229,6 +2250,25 @@ function CheckoutContent() {
                     </button>
                     <p className="text-center text-[11px] text-[#7A6E65]">
                       ✓ Cash on Delivery &middot; Open-box doorstep inspection guaranteed
+                    </p>
+                    <p className="text-center text-[10.5px] text-[#7A6E65] leading-relaxed">
+                      By placing your order, you agree to our{' '}
+                      <Link href="/terms-and-conditions" target="_blank" className="text-[#6B1725] underline hover:text-[#52111C]">
+                        Terms &amp; Conditions
+                      </Link>
+                      ,{' '}
+                      <Link href="/privacy-policy" target="_blank" className="text-[#6B1725] underline hover:text-[#52111C]">
+                        Privacy Policy
+                      </Link>
+                      ,{' '}
+                      <Link href="/returns-refunds" target="_blank" className="text-[#6B1725] underline hover:text-[#52111C]">
+                        Returns &amp; Refunds
+                      </Link>
+                      , and{' '}
+                      <Link href="/shipping-policy" target="_blank" className="text-[#6B1725] underline hover:text-[#52111C]">
+                        Shipping Policy
+                      </Link>
+                      .
                     </p>
                   </div>
                 </div>

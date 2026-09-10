@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MessageCircle, Phone, MapPin, Heart, ShieldCheck, Truck, Sparkles, Headset, ChevronDown, ExternalLink, Smartphone, Download } from 'lucide-react';
+import { MessageCircle, Phone, MapPin, Heart, ShieldCheck, Truck, Sparkles, Headset, ChevronDown, ExternalLink, Smartphone, Download, Scale } from 'lucide-react';
 import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 import { useStore } from '../context/StoreContext';
 
@@ -40,10 +40,10 @@ export const Footer: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* ── DESKTOP FOOTER GRID (Hidden on mobile for accordions) ── */}
-        <div className="hidden md:grid grid-cols-5 gap-8 lg:gap-10 pb-12 border-b border-[#B08A3C]/15">
+        <div className="hidden md:grid grid-cols-6 gap-6 lg:gap-8 pb-12 border-b border-[#B08A3C]/15">
 
           {/* Brand Info & Socials (Col 1 - wider) */}
-          <div className="col-span-1 space-y-4">
+          <div className="col-span-1 lg:col-span-1 space-y-4">
             <Link href="/" className="flex items-center gap-3 group">
               <img
                 src="/brand_logo.webp"
@@ -120,10 +120,12 @@ export const Footer: React.FC = () => {
               Customer Care
             </h4>
             <ul className="space-y-2.5 text-xs text-[#FAF7F0]/80 font-medium">
-              <li><Link href="/contact" className="hover:text-[#B08A3C] transition-colors">Contact Us</Link></li>
-              <li><Link href="/shipping" className="hover:text-[#B08A3C] transition-colors">Shipping & Delivery</Link></li>
-              <li><Link href="/returns" className="hover:text-[#B08A3C] transition-colors">Returns & Exchanges</Link></li>
-              <li><Link href="/refund-policy" className="hover:text-[#B08A3C] transition-colors">Refund Policy</Link></li>
+              <li><Link href="/contact-us" className="hover:text-[#B08A3C] transition-colors">Contact Us</Link></li>
+              <li><Link href="/faq" className="hover:text-[#B08A3C] transition-colors">FAQ</Link></li>
+              <li><Link href="/shipping-policy" className="hover:text-[#B08A3C] transition-colors">Shipping &amp; Delivery</Link></li>
+              <li><Link href="/returns-refunds" className="hover:text-[#B08A3C] transition-colors">Returns &amp; Refunds</Link></li>
+              <li><Link href="/cancellation-policy" className="hover:text-[#B08A3C] transition-colors">Cancellation Policy</Link></li>
+              <li><Link href="/payment-policy" className="hover:text-[#B08A3C] transition-colors">Payment Policy</Link></li>
               <li>
                 {user ? (
                   <Link href="/account" className="hover:text-[#B08A3C] transition-colors">Track Order</Link>
@@ -134,10 +136,24 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Col 4: About */}
+          {/* Col 4: Legal */}
           <div>
             <h4 className="text-xs font-serif font-bold text-[#B08A3C] uppercase tracking-widest mb-4">
-              About
+              Legal
+            </h4>
+            <ul className="space-y-2.5 text-xs text-[#FAF7F0]/80 font-medium">
+              <li><Link href="/terms-and-conditions" className="hover:text-[#B08A3C] transition-colors">Terms &amp; Conditions</Link></li>
+              <li><Link href="/privacy-policy" className="hover:text-[#B08A3C] transition-colors">Privacy Policy</Link></li>
+              <li><Link href="/cookie-policy" className="hover:text-[#B08A3C] transition-colors">Cookie Policy</Link></li>
+              <li><Link href="/disclaimer" className="hover:text-[#B08A3C] transition-colors">Disclaimer</Link></li>
+              <li><Link href="/grievance-redressal" className="hover:text-[#B08A3C] transition-colors">Grievance Redressal</Link></li>
+            </ul>
+          </div>
+
+          {/* Col 5: Company */}
+          <div>
+            <h4 className="text-xs font-serif font-bold text-[#B08A3C] uppercase tracking-widest mb-4">
+              Company
             </h4>
             <ul className="space-y-2.5 text-xs text-[#FAF7F0]/80 font-medium">
               <li><Link href="/about-us" className="hover:text-[#B08A3C] transition-colors">About Us</Link></li>
@@ -145,7 +161,7 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Col 5: Visit Our Store */}
+          {/* Col 6: Visit Our Store */}
           <div className="space-y-3.5">
             <h4 className="text-xs font-serif font-bold text-[#B08A3C] uppercase tracking-widest border-b border-[#B08A3C]/15 pb-1 inline-block">
               Visit Our Store
@@ -163,7 +179,7 @@ export const Footer: React.FC = () => {
               </p>
               <div className="pt-2">
                 <a
-                  href="https://maps.google.com/?q=Shree+Banarasi+Sarees+Rudauli+Chowk+Samastipur+Bihar"
+                  href="https://www.google.com/maps/search/?api=1&query=Shree%20Banarasi%20Sarees%2C%20Rudauli%20Chowk%2C%20Harpur%20Aloth%2C%20Samastipur%2C%20Bihar%20848103"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#D4B870] hover:text-[#FAF7F0] transition-colors underline"
@@ -236,10 +252,12 @@ export const Footer: React.FC = () => {
             </button>
             {openSection === 'care' && (
               <ul className="space-y-2.5 pb-4 pt-1 text-xs text-[#FAF7F0]/80 font-medium animate-fadeIn">
-                <li><Link href="/contact" className="block py-1">Contact Us</Link></li>
-                <li><Link href="/shipping" className="block py-1">Shipping & Delivery</Link></li>
-                <li><Link href="/returns" className="block py-1">Returns & Exchanges</Link></li>
-                <li><Link href="/refund-policy" className="block py-1">Refund Policy</Link></li>
+                <li><Link href="/contact-us" className="block py-1">Contact Us</Link></li>
+                <li><Link href="/faq" className="block py-1">FAQ</Link></li>
+                <li><Link href="/shipping-policy" className="block py-1">Shipping &amp; Delivery</Link></li>
+                <li><Link href="/returns-refunds" className="block py-1">Returns &amp; Refunds</Link></li>
+                <li><Link href="/cancellation-policy" className="block py-1">Cancellation Policy</Link></li>
+                <li><Link href="/payment-policy" className="block py-1">Payment Policy</Link></li>
                 <li>
                   {user ? (
                     <Link href="/account" className="block py-1">Track Order</Link>
@@ -251,17 +269,38 @@ export const Footer: React.FC = () => {
             )}
           </div>
 
-          {/* Accordion 3: ABOUT */}
+          {/* Accordion 3: LEGAL */}
           <div className="border-b border-[#B08A3C]/15 py-1">
             <button
-              onClick={() => toggleSection('about')}
+              onClick={() => toggleSection('legal')}
               className="w-full flex items-center justify-between min-h-[44px] py-2 text-left font-serif text-sm font-bold text-[#B08A3C] uppercase tracking-wider focus:outline-none"
-              aria-expanded={openSection === 'about'}
+              aria-expanded={openSection === 'legal'}
             >
-              <span>ABOUT</span>
-              <ChevronDown size={16} className={`transition-transform duration-300 ${openSection === 'about' ? 'rotate-180 text-[#FAF7F0]' : 'text-[#B08A3C]'}`} />
+              <span>LEGAL</span>
+              <ChevronDown size={16} className={`transition-transform duration-300 ${openSection === 'legal' ? 'rotate-180 text-[#FAF7F0]' : 'text-[#B08A3C]'}`} />
             </button>
-            {openSection === 'about' && (
+            {openSection === 'legal' && (
+              <ul className="space-y-2.5 pb-4 pt-1 text-xs text-[#FAF7F0]/80 font-medium animate-fadeIn">
+                <li><Link href="/terms-and-conditions" className="block py-1">Terms &amp; Conditions</Link></li>
+                <li><Link href="/privacy-policy" className="block py-1">Privacy Policy</Link></li>
+                <li><Link href="/cookie-policy" className="block py-1">Cookie Policy</Link></li>
+                <li><Link href="/disclaimer" className="block py-1">Disclaimer</Link></li>
+                <li><Link href="/grievance-redressal" className="block py-1">Grievance Redressal</Link></li>
+              </ul>
+            )}
+          </div>
+
+          {/* Accordion 4: COMPANY */}
+          <div className="border-b border-[#B08A3C]/15 py-1">
+            <button
+              onClick={() => toggleSection('company')}
+              className="w-full flex items-center justify-between min-h-[44px] py-2 text-left font-serif text-sm font-bold text-[#B08A3C] uppercase tracking-wider focus:outline-none"
+              aria-expanded={openSection === 'company'}
+            >
+              <span>COMPANY</span>
+              <ChevronDown size={16} className={`transition-transform duration-300 ${openSection === 'company' ? 'rotate-180 text-[#FAF7F0]' : 'text-[#B08A3C]'}`} />
+            </button>
+            {openSection === 'company' && (
               <ul className="space-y-2.5 pb-4 pt-1 text-xs text-[#FAF7F0]/80 font-medium animate-fadeIn">
                 <li><Link href="/about-us" className="block py-1">About Us</Link></li>
                 <li><Link href="/our-store" className="block py-1">Our Showroom</Link></li>
@@ -269,7 +308,7 @@ export const Footer: React.FC = () => {
             )}
           </div>
 
-          {/* Accordion 4: VISIT OUR STORE */}
+          {/* Accordion 5: VISIT OUR STORE */}
           <div className="border-b border-[#B08A3C]/15 py-1">
             <button
               onClick={() => toggleSection('store')}
@@ -286,14 +325,14 @@ export const Footer: React.FC = () => {
                   <MapPin size={15} className="text-[#B08A3C] shrink-0 mt-0.5" />
                   <span>Rudauli Chowk, Harpur Aloth, Samastipur, Bihar – 848103</span>
                 </p>
-                <p className="text-[11px] text-[#FAF7F0]/60">10:00 AM – 9:00 PM</p>
+                <p className="text-[11px] text-[#FAF7F0]/60">10:00 AM – 9:00 PM (Daily)</p>
                 <p className="flex items-center gap-2">
                   <Phone size={14} className="text-[#B08A3C] shrink-0" />
                   <a href="tel:+916203909946">+91 62039 09946</a>
                 </p>
                 <div>
                   <a
-                    href="https://maps.google.com/?q=Shree+Banarasi+Sarees+Rudauli+Chowk+Samastipur+Bihar"
+                    href="https://www.google.com/maps/search/?api=1&query=Shree%20Banarasi%20Sarees%2C%20Rudauli%20Chowk%2C%20Harpur%20Aloth%2C%20Samastipur%2C%20Bihar%20848103"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-xs text-[#D4B870] underline font-semibold mt-1"
@@ -355,26 +394,26 @@ export const Footer: React.FC = () => {
 
             <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-[#FAF7F0]/5 border border-[#B08A3C]/10">
               <ShieldCheck size={20} className="text-[#B08A3C]" />
-              <span className="text-xs font-serif font-bold text-[#FAF7F0]">Secure Payments</span>
-              <span className="text-[10px] text-[#FAF7F0]/60">100% Encrypted Transactions</span>
+              <span className="text-xs font-serif font-bold text-[#FAF7F0]">Secure Transactions</span>
+              <span className="text-[10px] text-[#FAF7F0]/60">COD &bull; 256-Bit SSL Encrypted</span>
             </div>
 
             <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-[#FAF7F0]/5 border border-[#B08A3C]/10">
               <Truck size={20} className="text-[#B08A3C]" />
-              <span className="text-xs font-serif font-bold text-[#FAF7F0]">Pan-India Delivery</span>
-              <span className="text-[10px] text-[#FAF7F0]/60">Safe &amp; Insured Shipping</span>
+              <span className="text-xs font-serif font-bold text-[#FAF7F0]">20-Min Local / Pan-India</span>
+              <span className="text-[10px] text-[#FAF7F0]/60">Safe &amp; Insured Express Shipping</span>
             </div>
 
             <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-[#FAF7F0]/5 border border-[#B08A3C]/10">
               <Sparkles size={20} className="text-[#B08A3C]" />
               <span className="text-xs font-serif font-bold text-[#FAF7F0]">Quality Checked</span>
-              <span className="text-[10px] text-[#FAF7F0]/60">Handcrafted &amp; Verified</span>
+              <span className="text-[10px] text-[#FAF7F0]/60">Handcrafted Handloom Certified</span>
             </div>
 
             <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-[#FAF7F0]/5 border border-[#B08A3C]/10">
               <Headset size={20} className="text-[#B08A3C]" />
-              <span className="text-xs font-serif font-bold text-[#FAF7F0]">Customer Support</span>
-              <span className="text-[10px] text-[#FAF7F0]/60">Dedicated Local Assistance</span>
+              <span className="text-xs font-serif font-bold text-[#FAF7F0]">Customer Care &amp; Redressal</span>
+              <span className="text-[10px] text-[#FAF7F0]/60">Samastipur Desk: 10 AM &ndash; 9 PM</span>
             </div>
 
           </div>
@@ -382,14 +421,18 @@ export const Footer: React.FC = () => {
 
         {/* ── FOOTER POLICIES & COPYRIGHT ── */}
         <div className="pt-4 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-[#FAF7F0]/60 font-medium">
-          <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
-            <Link href="/refund-policy" className="hover:text-[#B08A3C] transition-colors">Privacy Policy</Link>
-            <Link href="/refund-policy" className="hover:text-[#B08A3C] transition-colors">Terms &amp; Conditions</Link>
-            <Link href="/refund-policy" className="hover:text-[#B08A3C] transition-colors">Refund Policy</Link>
+          <div className="flex flex-wrap justify-center gap-3 sm:gap-5">
+            <Link href="/terms-and-conditions" className="hover:text-[#B08A3C] transition-colors">Terms &amp; Conditions</Link>
+            <Link href="/privacy-policy" className="hover:text-[#B08A3C] transition-colors">Privacy Policy</Link>
+            <Link href="/returns-refunds" className="hover:text-[#B08A3C] transition-colors">Returns &amp; Refunds</Link>
+            <Link href="/shipping-policy" className="hover:text-[#B08A3C] transition-colors">Shipping Policy</Link>
+            <Link href="/cookie-policy" className="hover:text-[#B08A3C] transition-colors">Cookie Policy</Link>
+            <Link href="/disclaimer" className="hover:text-[#B08A3C] transition-colors">Disclaimer</Link>
+            <Link href="/grievance-redressal" className="hover:text-[#B08A3C] transition-colors">Grievance Redressal</Link>
           </div>
 
           <div className="text-center md:text-right space-y-1">
-            <p>&copy; 2026 Shree Banarasi Sarees. All rights reserved.</p>
+            <p>&copy; {currentYear} Shree Banarasi Sarees. All rights reserved.</p>
             <p className="text-[10px] text-[#FAF7F0]/45">
               GSTIN: <span className="text-[#FAF7F0]/60">10AGAFS4190H1Z8</span>
             </p>

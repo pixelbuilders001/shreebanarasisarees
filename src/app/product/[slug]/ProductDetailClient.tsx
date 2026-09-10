@@ -28,7 +28,8 @@ import {
   AlertCircle,
   ShoppingBag,
   Bell,
-  Loader2
+  Loader2,
+  Truck
 } from 'lucide-react';
 import { fetchDesignVariants, fetchDeliverySettings, DeliverySettings, supabase } from '../../../data/supabase';
 import { RecentlyViewed } from '../../../components/RecentlyViewed';
@@ -711,14 +712,24 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                 </button>
               </div>
 
-              <div className="flex items-center gap-5 text-xs text-[#7A6E65] pt-1">
-                <span className="flex items-center gap-1.5">
+              <div className="flex items-center flex-wrap gap-4 sm:gap-5 text-xs text-[#7A6E65] pt-1">
+                <Link
+                  href="/returns-refunds"
+                  className="flex items-center gap-1.5 text-[#7A6E65] hover:text-[#6B1725] transition-colors underline-offset-2 hover:underline"
+                >
                   <RotateCcw size={13} className="text-[#B08A3C]" />
-                  7-day return
-                </span>
+                  <span>3-day return</span>
+                </Link>
+                <Link
+                  href="/shipping-policy"
+                  className="flex items-center gap-1.5 text-[#7A6E65] hover:text-[#6B1725] transition-colors underline-offset-2 hover:underline"
+                >
+                  <Truck size={13} className="text-[#B08A3C]" />
+                  <span>Shipping Policy</span>
+                </Link>
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 size={13} className="text-[#B08A3C]" />
-                  Silk Mark verified
+                  <span>Silk Mark verified</span>
                 </span>
               </div>
             </div>
