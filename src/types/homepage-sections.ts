@@ -2,7 +2,7 @@ import { Product } from '../data/products';
 import { DbInventory } from '../data/supabase';
 
 export type CollectionType = 'automatic' | 'manual';
-export type DisplayStyle = 'horizontal' | 'grid' | 'category_cards' | 'banner' | 'banners_showcase' | 'banner_showcase' | string;
+export type DisplayStyle = 'horizontal' | 'grid' | 'category_cards' | 'banner' | 'banners_showcase' | 'banner_showcase' | 'pinterest_grid' | string;
 export type SectionType = 'products' | 'categories' | 'banner' | string;
 
 export interface CollectionRule {

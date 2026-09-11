@@ -6,6 +6,7 @@ import { HorizontalSection } from './HorizontalSection';
 import { GridSection } from './GridSection';
 import { BannerSection } from './BannerSection';
 import { CategoryCardsSection } from './CategoryCardsSection';
+import { PinterestGrid } from './PinterestGrid';
 
 interface SectionErrorBoundaryProps {
   children: ReactNode;
@@ -60,6 +61,8 @@ export const HomepageSection: React.FC<HomepageSectionProps> = ({ section }) => 
         return <BannerSection section={section} />;
       case 'category_cards':
         return <CategoryCardsSection section={section} />;
+      case 'pinterest_grid':
+        return <PinterestGrid section={section} />;
       default:
         return <HorizontalSection section={section} />;
     }

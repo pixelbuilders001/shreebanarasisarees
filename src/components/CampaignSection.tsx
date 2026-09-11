@@ -95,10 +95,10 @@ export const CampaignSection: React.FC<CampaignSectionProps> = ({ slot, initialC
   }
 
   return (
-    <section className="my-1 sm:my-3 max-w-7xl mx-auto px-4 animate-fade-in">
-      {/* Campaign Header Details (Centered) - Only render if title is provided */}
+    <section className="my-8 sm:my-12 md:my-14 lg:my-16 w-full max-w-7xl mx-auto px-4 md:max-w-none md:px-0 md:mx-0 animate-fade-in">
+      {/* Campaign Header Details - Only render if title is provided */}
       {campaign.title && campaign.title.trim() !== '' && (
-        <div className="text-center mb-2 sm:mb-4 px-2">
+        <div className="text-center mb-4 sm:mb-6 px-4 max-w-7xl mx-auto">
           <div className="flex items-center justify-center gap-3 mb-1">
             <div className="w-8 h-px bg-[#B08A3C]/50" />
             <span className="text-[10px] sm:text-xs text-[#B08A3C] uppercase tracking-[0.2em] font-bold block font-sans">
@@ -120,7 +120,7 @@ export const CampaignSection: React.FC<CampaignSectionProps> = ({ slot, initialC
 
       <Link
         href={`/collections/${campaign.slug}`}
-        className="group block relative overflow-hidden rounded-xl sm:rounded-2xl border border-[#B08A3C]/20 hover:border-[#B08A3C]/50 hover:shadow-[0_12px_28px_rgba(107,23,37,0.15)] transition-all duration-300"
+        className="group block relative w-full overflow-hidden rounded-xl sm:rounded-2xl md:rounded-none border border-[#B08A3C]/20 md:border-x-0 md:border-y md:border-[#B08A3C]/20 hover:border-[#B08A3C]/50 hover:shadow-[0_12px_28px_rgba(107,23,37,0.15)] transition-all duration-300"
       >
         <picture className="block w-full">
           {campaign.mobile_banner_url && (
@@ -129,7 +129,7 @@ export const CampaignSection: React.FC<CampaignSectionProps> = ({ slot, initialC
           <img
             src={campaign.desktop_banner_url || campaign.mobile_banner_url || NO_IMAGE_PLACEHOLDER}
             alt={campaign.name || campaign.title || "Active Campaign Banner"}
-            className="w-full h-auto sm:aspect-[1024/331] object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.015]"
+            className="w-full h-auto sm:aspect-[1024/331] object-cover object-center block transition-transform duration-700 ease-out group-hover:scale-[1.01]"
           />
         </picture>
         {/* Gold Glow Overlay */}
