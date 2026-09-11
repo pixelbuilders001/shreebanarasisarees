@@ -278,28 +278,18 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
             <div className="flex items-center gap-4">
 
               {/* Wishlist */}
-              {user ? (
-                <Link
-                  href="/wishlist"
-                  className="relative p-2 text-[#292524] hover:text-[#6B1725] transition-colors"
-                  aria-label="Wishlist"
-                >
-                  <Heart size={21} />
-                  {wishlistCount > 0 && (
-                    <span className="absolute top-0 right-0 bg-[#6B1725] text-[#FAF7F0] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-[#FAF7F0]">
-                      {wishlistCount}
-                    </span>
-                  )}
-                </Link>
-              ) : (
-                <button
-                  onClick={() => setIsAuthModalOpen(true)}
-                  className="relative p-2 text-[#292524] hover:text-[#6B1725] transition-colors cursor-pointer"
-                  aria-label="Wishlist (Sign in required)"
-                >
-                  <Heart size={21} />
-                </button>
-              )}
+              <Link
+                href="/wishlist"
+                className="relative p-2 text-[#292524] hover:text-[#6B1725] transition-colors"
+                aria-label="Wishlist"
+              >
+                <Heart size={21} />
+                {wishlistCount > 0 && (
+                  <span className="absolute top-0 right-0 bg-[#6B1725] text-[#FAF7F0] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-[#FAF7F0]">
+                    {wishlistCount}
+                  </span>
+                )}
+              </Link>
 
               {/* Account Dropdown */}
               <div className="relative">
@@ -403,32 +393,19 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
               {/* Mobile Right Icons (Wishlist & Cart) */}
               <div className="flex items-center gap-1 sm:gap-2">
 
-                {user ? (
-                  <Link
-                    href="/wishlist"
-                    onClick={() => triggerHaptic('selection')}
-                    className="native-press relative p-2.5 rounded-xl bg-[#F5EDE5]/65 text-[#292524] hover:text-[#6B1725]"
-                    aria-label="Wishlist"
-                  >
-                    <Heart size={21} />
-                    {wishlistCount > 0 && (
-                      <span className="absolute top-0.5 right-0.5 bg-[#6B1725] text-[#FAF7F0] text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[#FAF7F0]">
-                        {wishlistCount}
-                      </span>
-                    )}
-                  </Link>
-                ) : (
-                  <button
-                    onClick={() => {
-                      triggerHaptic('light');
-                      setIsAuthModalOpen(true);
-                    }}
-                    className="native-press relative p-2.5 rounded-xl bg-[#F5EDE5]/65 text-[#292524] hover:text-[#6B1725] cursor-pointer"
-                    aria-label="Wishlist (Sign in required)"
-                  >
-                    <Heart size={21} />
-                  </button>
-                )}
+                <Link
+                  href="/wishlist"
+                  onClick={() => triggerHaptic('selection')}
+                  className="native-press relative p-2.5 rounded-xl bg-[#F5EDE5]/65 text-[#292524] hover:text-[#6B1725]"
+                  aria-label="Wishlist"
+                >
+                  <Heart size={21} />
+                  {wishlistCount > 0 && (
+                    <span className="absolute top-0.5 right-0.5 bg-[#6B1725] text-[#FAF7F0] text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[#FAF7F0]">
+                      {wishlistCount}
+                    </span>
+                  )}
+                </Link>
 
                 <button
                   onClick={() => {

@@ -467,43 +467,26 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
                 </button>
               )}
 
-              {user ? (
-                <Link
-                  href="/wishlist"
-                  onClick={() => {
-                    triggerHaptic('selection');
-                    onClose();
-                  }}
-                  className="flex items-center justify-between px-3.5 py-2.5 hover:bg-[#FAF7F0] text-xs font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Heart size={15} className="text-[#6B1725]" />
-                    <span>Saved Wishlist</span>
-                  </div>
-                  {wishlistCount > 0 ? (
-                    <span className="text-[10px] font-bold bg-[#6B1725] text-white px-2 py-0.2 rounded-full">
-                      {wishlistCount}
-                    </span>
-                  ) : (
-                    <ChevronRight size={14} className="text-[#7A6E65]/60" />
-                  )}
-                </Link>
-              ) : (
-                <button
-                  onClick={() => {
-                    triggerHaptic('light');
-                    onClose();
-                    setIsAuthModalOpen(true);
-                  }}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-[#FAF7F0] text-xs font-medium text-[#292524] transition-colors active:bg-[#F3ECE0] text-left cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Heart size={15} className="text-[#6B1725]" />
-                    <span>Saved Wishlist</span>
-                  </div>
+              <Link
+                href="/wishlist"
+                onClick={() => {
+                  triggerHaptic('selection');
+                  onClose();
+                }}
+                className="flex items-center justify-between px-3.5 py-2.5 hover:bg-[#FAF7F0] text-xs font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Heart size={15} className="text-[#6B1725]" />
+                  <span>Saved Wishlist</span>
+                </div>
+                {wishlistCount > 0 ? (
+                  <span className="text-[10px] font-bold bg-[#6B1725] text-white px-2 py-0.2 rounded-full">
+                    {wishlistCount}
+                  </span>
+                ) : (
                   <ChevronRight size={14} className="text-[#7A6E65]/60" />
-                </button>
-              )}
+                )}
+              </Link>
 
               <Link
                 href="/our-store"

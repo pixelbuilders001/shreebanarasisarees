@@ -1019,6 +1019,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!exists) {
       // GA4 Event: add_to_wishlist
       trackAddToWishlist(product);
+      showToast(`Added "${product.name}" to your wishlist!`, 'info');
+    } else {
+      showToast(`Removed "${product.name}" from your wishlist.`, 'info');
     }
 
     setWishlist((prev) => {

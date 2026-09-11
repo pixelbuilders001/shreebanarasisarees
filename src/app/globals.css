@@ -241,6 +241,27 @@ html {
   animation: float 3s ease-in-out infinite;
 }
 
+@keyframes riderRide {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-2.5px) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(0.8px) rotate(1.5deg);
+  }
+  75% {
+    transform: translateY(-1.2px) rotate(-1deg);
+  }
+}
+
+.animate-rider {
+  animation: riderRide 1.5s ease-in-out infinite;
+  display: inline-block;
+  will-change: transform;
+}
+
 /* Mobile commerce primitives: quietly elevated, large enough to tap, and fast to respond. */
 .native-surface {
   background: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
