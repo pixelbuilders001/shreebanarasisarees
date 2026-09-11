@@ -102,9 +102,6 @@ export default function HomeClient({
         {/* 3. Shop by Category (Preserved 4-col Mobile / Expanded 8-col Desktop) */}
         <CategoryCard initialCategories={categories} />
 
-        {/* 2. Top Campaign Banner (if active) */}
-        <CampaignSection slot="top" initialCampaign={activeCampaigns[0] || null} />
-
         {/* Dynamic Homepage Sections configured via Supabase */}
         {dynamicSections && dynamicSections.length > 0 && (
           <>
@@ -113,6 +110,9 @@ export default function HomeClient({
             ))}
           </>
         )}
+
+        {/* Campaign Banner (if active) */}
+        <CampaignSection slot="top" initialCampaign={activeCampaigns[0] || null} />
 
         {/* 4. Bestsellers Section */}
         <section className="py-10 sm:py-16 px-4 md:px-8 bg-[#FFFFFF] border-b border-[#B08A3C]/15">

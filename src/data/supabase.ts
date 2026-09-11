@@ -404,7 +404,7 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
           .from('storefront_products')
           .select(PUBLIC_INVENTORY_SELECT)
           .eq('id', idCandidate)
-          .single(),
+          .maybeSingle(),
         fetchProductRatingsMap()
       ]);
 
@@ -1919,13 +1919,11 @@ export interface DbCampaign {
 
 export async function fetchActiveCampaigns(): Promise<DbCampaign[]> {
   try {
-    const now = new Date().toISOString();
+    const now = new Date();
     const { data, error } = await supabase
       .from('campaigns')
       .select('*')
-      .eq('status', 'active')
-      .lte('start_date', now)
-      .gte('end_date', now)
+      .ilike('status', 'active')
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
 
@@ -1933,7 +1931,17 @@ export async function fetchActiveCampaigns(): Promise<DbCampaign[]> {
       console.error('Error fetching active campaigns:', error);
       return [];
     }
-    return (data || []) as DbCampaign[];
+
+    // Keep campaigns whose scheduling window is valid or open-ended (null end_date)
+    const active = (data || []).filter((c: any) => {
+      const startDate = c.start_date ? new Date(c.start_date) : null;
+      const endDate = c.end_date ? new Date(c.end_date) : null;
+      if (startDate && !isNaN(startDate.getTime()) && now < startDate) return false;
+      if (endDate && !isNaN(endDate.getTime()) && now > endDate) return false;
+      return true;
+    });
+
+    return active as DbCampaign[];
   } catch (err) {
     console.error('Exception in fetchActiveCampaigns:', err);
     return [];
@@ -2223,7 +2231,7 @@ export async function fetchOrderDetailsForReview(orderIdOrNumber: string): Promi
       query = query.ilike('order_number', target);
     }
 
-    const { data: orderRow, error: orderError } = await query.single();
+    const { data: orderRow, error: orderError } = await query.maybeSingle();
 
     if (orderError || !orderRow) {
       console.error('Error fetching order for review:', orderError);

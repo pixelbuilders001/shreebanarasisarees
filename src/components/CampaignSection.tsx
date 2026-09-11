@@ -24,7 +24,7 @@ export const CampaignSection: React.FC<CampaignSectionProps> = ({ slot, initialC
           .from('homepage_campaign_slots')
           .select('campaign_id, is_visible')
           .eq('slot_key', slot)
-          .single();
+          .maybeSingle();
 
         const now = new Date();
 
@@ -34,7 +34,7 @@ export const CampaignSection: React.FC<CampaignSectionProps> = ({ slot, initialC
             .select('*')
             .eq('id', slotData.campaign_id)
             .eq('status', 'active')
-            .single();
+            .maybeSingle();
 
           if (campaignData) {
             const startDate = new Date(campaignData.start_date);
