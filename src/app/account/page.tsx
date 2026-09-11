@@ -377,11 +377,11 @@ function AccountContent() {
     }
   };
 
-  // Helper: Only show cancel button for placed, confirmed, and processing orders
+  // Helper: Only show cancel button for placed, confirmed, processing, and packed orders
   const isOrderCancellable = (status?: string | null): boolean => {
     if (!status) return false;
     const s = status.toLowerCase().trim();
-    return s === 'placed' || s === 'order placed' || s === 'confirmed' || s === 'processing';
+    return s === 'placed' || s === 'order placed' || s === 'confirmed' || s === 'processing' || s === 'packed';
   };
 
   // Fetch only the authenticated user's orders (by user.id or profile/phone number)
@@ -862,7 +862,7 @@ function AccountContent() {
   });
   const targetItemName = targetItemObj ? resolveOrderItem(targetItemObj, products).name : '';
 
-  // Only allow cancellation if order is placed, confirmed, or processing
+  // Only allow cancellation if order is placed, confirmed, processing, or packed
   const isCancellable = isOrderCancellable(activeOrder?.orderStatus);
 
   // Filter orders

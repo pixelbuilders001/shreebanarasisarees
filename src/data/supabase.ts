@@ -1757,6 +1757,7 @@ export async function cancelDbOrderItem(orderNumber: string, productId: string):
 
     const currentStatus = orderRow.order_status?.toLowerCase();
     if (
+      currentStatus === 'shipped' ||
       currentStatus === 'out_for_delivery' ||
       currentStatus === 'delivered' ||
       currentStatus === 'cancelled'

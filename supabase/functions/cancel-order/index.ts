@@ -123,14 +123,14 @@ serve(async (req) => {
       );
     }
 
-    // Only allow cancellation for placed, confirmed, or processing orders
-    const cancellableStatuses = ["placed", "order placed", "confirmed", "processing"];
+    // Only allow cancellation for placed, confirmed, processing, or packed orders
+    const cancellableStatuses = ["placed", "order placed", "confirmed", "processing", "packed"];
     const isCancellable = cancellableStatuses.includes(rawStatus);
 
     if (!isCancellable) {
       return new Response(
         JSON.stringify({
-          error: `Cannot cancel order in status: ${order.order_status}. Only placed, confirmed, and processing orders can be cancelled.`
+          error: `Cannot cancel order in status: ${order.order_status}. Only placed, confirmed, processing, and packed orders can be cancelled.`
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
