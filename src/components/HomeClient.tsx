@@ -13,7 +13,7 @@ import { CampaignSection } from './CampaignSection';
 import { ProductCard } from './ProductCard';
 import { Footer } from './Footer';
 import { Product, PRODUCTS } from '../data/products';
-import { ArrowLeft, ArrowRight, ShieldCheck, PackageCheck, Truck, CreditCard, Banknote, MessageCircle, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ShieldCheck, PackageCheck, Truck, CreditCard, Banknote, MessageCircle, CheckCircle2 } from 'lucide-react';
 import { DbCampaign, DbHeroBanner, DbCategory } from '../data/supabase';
 import { ProductCardSkeleton } from './ProductCardSkeleton';
 import { useRecentlyViewed } from '../utils/useRecentlyViewed';
@@ -165,59 +165,6 @@ export default function HomeClient({
           </div>
         </section>
 
-        {/* 7. Editorial Storytelling Section ("Crafted for Celebrations") */}
-        <section className="py-16 sm:py-24 px-4 md:px-8 bg-gradient-to-r from-[#52111C] via-[#6B1725] to-[#52111C] text-[#FAF7F0] relative overflow-hidden border-y border-[#B08A3C]/30 shadow-2xl">
-          <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-8 sm:gap-14 items-center">
-            {/* Left Image Composition */}
-            <div className="relative rounded-3xl overflow-hidden aspect-[4/3] sm:aspect-[16/10] md:aspect-[4/3] border-2 border-[#B08A3C]/40 shadow-2xl group">
-              <Image
-                src="/occasions/crafted_for_celebrations.png"
-                alt="Crafted for Celebrations - Shree Banarasi Sarees"
-                fill
-                sizes="(max-width: 768px) 100vw, 650px"
-                className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-700"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-              <div className="absolute bottom-4 left-4 right-4 sm:bottom-6 sm:left-6 sm:right-6 p-3.5 sm:p-4 bg-black/40 backdrop-blur-md rounded-2xl border border-white/15">
-                <span className="text-[10px] sm:text-xs text-[#D4B870] uppercase font-bold tracking-widest font-serif block">AUTHENTIC BANARASI</span>
-                <p className="text-xs sm:text-sm text-white/90 font-light mt-0.5">Handwoven with pure Katan silk and authentic gold zari motifs.</p>
-              </div>
-            </div>
-
-            {/* Right Editorial Copy */}
-            <div className="space-y-4 sm:space-y-6 text-center md:text-left">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#B08A3C]/20 border border-[#B08A3C]/40 backdrop-blur-md">
-                <Sparkles size={14} className="text-[#B08A3C]" />
-                <span className="text-[10px] sm:text-xs font-bold text-[#D4B870] tracking-[0.2em] uppercase font-sans">
-                  HERITAGE CRAFTSMANSHIP
-                </span>
-              </div>
-
-              <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-wide leading-tight">
-                Crafted for Celebrations
-              </h2>
-
-              <p className="text-xs sm:text-base text-[#FAF7F0]/85 font-light leading-relaxed max-w-lg mx-auto md:mx-0">
-                From wedding rituals to festive evenings, discover sarees that carry the timeless beauty of Indian weaving traditions into every occasion. Each piece is hand-inspected to guarantee authentic texture and zari luster.
-              </p>
-
-              <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-4">
-                <Link
-                  href="/sarees"
-                  className="py-3.5 px-8 bg-[#B08A3C] hover:bg-[#D4B870] text-[#292524] rounded-xl font-serif font-bold text-xs sm:text-sm tracking-wider uppercase transition-all shadow-xl hover:scale-105 active:scale-95"
-                >
-                  EXPLORE THE COLLECTION →
-                </Link>
-                <Link
-                  href="/about-us"
-                  className="py-3.5 px-7 bg-white/10 hover:bg-white/20 text-[#FAF7F0] border border-white/20 rounded-xl font-serif font-bold text-xs sm:text-sm tracking-wider uppercase transition-all backdrop-blur-xs"
-                >
-                  OUR HERITAGE
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* 9. Brand Story ("From Samastipur, With Love.") */}
         <section className="py-14 sm:py-20 px-4 md:px-8 bg-[#FFFFFF] border-b border-[#B08A3C]/15">
