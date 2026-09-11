@@ -279,9 +279,11 @@ export const DeliveryPincodeSheet: React.FC = () => {
   const [mounted, setMounted] = useState<boolean>(false);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [isAddressModalOpen, setIsAddressModalOpen] = useState<boolean>(false);
+  const [isCityLoading, setIsCityLoading] = useState<boolean>(false);
   const isSavingRef = useRef<boolean>(false);
 
   const { isLoading, result, errorMsg, checkPincode } = useCustomerLocation();
+  const isPincodeLoading = isLoading || isCityLoading;
 
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
 
@@ -321,9 +323,12 @@ export const DeliveryPincodeSheet: React.FC = () => {
       checkPincode(pin);
       const quick = getQuickCity(pin);
       if (quick) setCity(quick);
+      setIsCityLoading(true);
       fetchPincodeDetails(pin).then((details) => {
         if (details?.city) setCity(details.city);
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => {
+        setIsCityLoading(false);
+      });
 
       setIsSheetOpen(true);
     };
@@ -369,11 +374,14 @@ export const DeliveryPincodeSheet: React.FC = () => {
       if (quick) {
         setCity(quick);
       }
+      setIsCityLoading(true);
       fetchPincodeDetails(clean).then((details) => {
         if (details?.city) {
           setCity(details.city);
         }
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => {
+        setIsCityLoading(false);
+      });
     }
   };
 
@@ -416,7 +424,7 @@ export const DeliveryPincodeSheet: React.FC = () => {
   };
 
   const executeSave = () => {
-    if (isSavingRef.current) return;
+    if (isSavingRef.current || isPincodeLoading || inputPincode.length !== 6) return;
     isSavingRef.current = true;
     handleSavePincode(inputPincode);
     setTimeout(() => {
@@ -466,7 +474,7 @@ export const DeliveryPincodeSheet: React.FC = () => {
                 value={inputPincode}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && inputPincode.length === 6) {
+                  if (e.key === 'Enter' && inputPincode.length === 6 && !isPincodeLoading) {
                     e.preventDefault();
                     executeSave();
                   }
@@ -474,7 +482,7 @@ export const DeliveryPincodeSheet: React.FC = () => {
                 placeholder="Enter 6-digit pincode"
                 className="w-full bg-[#FAF6EE] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 text-xs font-sans font-medium text-[#292524] focus:outline-none focus:border-[#6B1725] transition-colors font-mono"
               />
-              {isLoading && (
+              {isPincodeLoading && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B1725]">
                   <Loader2 size={14} className="animate-spin" />
                 </div>
@@ -482,10 +490,10 @@ export const DeliveryPincodeSheet: React.FC = () => {
             </div>
             <button
               onClick={() => checkPincode(inputPincode)}
-              disabled={inputPincode.length !== 6 || isLoading}
+              disabled={inputPincode.length !== 6 || isPincodeLoading}
               className="bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-50 text-white text-xs font-bold px-4 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 min-w-[70px]"
             >
-              {isLoading ? (
+              {isPincodeLoading ? (
                 <>
                   <Loader2 size={13} className="animate-spin text-white" />
                   <span>...</span>
@@ -634,14 +642,25 @@ export const DeliveryPincodeSheet: React.FC = () => {
             type="button"
             onClick={executeSave}
             onPointerUp={(e) => {
-              if (e.pointerType === 'touch') {
+              if (e.pointerType === 'touch' && !isPincodeLoading && inputPincode.length === 6) {
                 executeSave();
               }
             }}
-            disabled={inputPincode.length !== 6}
-            className="w-full py-3 bg-[#6B1725] hover:bg-[#52111C] active:scale-[0.99] disabled:opacity-50 text-white rounded-full font-serif font-bold text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 select-none"
+            disabled={inputPincode.length !== 6 || isPincodeLoading}
+            className={`w-full py-3 bg-[#6B1725] hover:bg-[#52111C] active:scale-[0.99] text-white rounded-full font-serif font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2 select-none ${
+              inputPincode.length !== 6 || isPincodeLoading
+                ? 'opacity-50 cursor-not-allowed pointer-events-none'
+                : 'cursor-pointer'
+            }`}
           >
-            Deliver to {inputPincode}
+            {isPincodeLoading ? (
+              <>
+                <Loader2 size={15} className="animate-spin text-white" />
+                <span>Checking Delivery...</span>
+              </>
+            ) : (
+              <span>Deliver to {inputPincode}</span>
+            )}
           </button>
         </div>
       </div>

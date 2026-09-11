@@ -50,41 +50,9 @@ export default function HomeClient({
   categories,
   dynamicSections
 }: HomeClientProps) {
-  // Use server-provided bestsellers (8 items max) or derive from allProducts fallback
-  const displayBestsellers = bestsellers && bestsellers.length > 0
-    ? bestsellers.slice(0, 8)
-    : (() => {
-        const prods = allProducts || PRODUCTS;
-        const filtered = prods.filter(p => p.bestseller).slice(0, 8);
-        return filtered.length > 0 ? filtered : prods.slice(0, 8);
-      })();
-
-  // Use server-provided new arrivals (8 items max) or derive from allProducts fallback
-  const displayNewArrivals = newArrivals && newArrivals.length > 0
-    ? newArrivals.slice(0, 8)
-    : (() => {
-        const prods = allProducts || PRODUCTS;
-        const filtered = prods.filter(p => p.newArrival).slice(0, 8);
-        return filtered.length > 0 ? filtered : prods.slice(0, 8);
-      })();
 
   // Recently viewed hook
   const { viewedIds } = useRecentlyViewed();
-
-  // Scroll ref for New Arrivals carousel
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  const scrollRight = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: 340, behavior: 'smooth' });
-    }
-  };
-
-  const scrollLeft = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: -340, behavior: 'smooth' });
-    }
-  };
 
   return (
     <>
@@ -114,45 +82,7 @@ export default function HomeClient({
         {/* Campaign Banner (if active) - temporarily commented out */}
         {/* <CampaignSection slot="top" initialCampaign={activeCampaigns[0] || null} /> */}
 
-        {/* 4. Bestsellers Section */}
-        <section className="py-10 sm:py-16 px-4 md:px-8 bg-[#FFFFFF] border-b border-[#B08A3C]/15">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-end justify-between mb-6 sm:mb-10 gap-4">
-              <div>
-                <span className="text-[10px] sm:text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-0.5 sm:mb-1">
-                  POPULAR FAVORITES
-                </span>
-                <h2 className="font-serif text-2xl sm:text-4xl font-extrabold text-[#292524] tracking-wide">
-                  Bestsellers
-                </h2>
-                <p className="text-xs sm:text-sm text-[#6B625D] font-light mt-1 hidden sm:block">
-                  Some of our most-loved sarees chosen by our customers across India.
-                </p>
-              </div>
-              <Link
-                href="/sarees"
-                className="text-xs font-serif font-bold text-[#6B1725] hover:text-[#52111C] flex items-center gap-1 group transition-colors shrink-0 py-1"
-              >
-                <span className="hidden sm:inline">View All Bestsellers</span>
-                <span className="sm:hidden">View All</span>
-                <ArrowRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </div>
-
-            {/* Product Slider on mobile, 4 items grid on desktop */}
-            <div className="flex sm:grid sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 lg:gap-8 overflow-x-auto sm:overflow-x-visible no-scrollbar pb-3 sm:pb-0 scroll-smooth snap-x snap-mandatory sm:snap-none -mx-4 px-4 sm:mx-0 sm:px-0">
-              {displayBestsellers.length > 0 ? (
-                displayBestsellers.map((prod) => (
-                  <div key={prod.id} className="w-[165px] sm:w-auto shrink-0 sm:shrink snap-start sm:snap-align-none">
-                    <ProductCard product={prod} />
-                  </div>
-                ))
-              ) : (
-                <ProductCardSkeleton count={8} />
-              )}
-            </div>
-          </div>
-        </section>
+        {/* 4. Bestsellers Section - removed frontend static section in favor of dynamic sections */}
 
         {/* 6. Shop by Occasion Section */}
         <section className="py-12 sm:py-20 px-4 md:px-8 bg-[#FAF7F0] border-b border-[#B08A3C]/15">
@@ -320,75 +250,10 @@ export default function HomeClient({
           </div>
         </section>
 
-        {/* 10. New Arrivals Section */}
-        <section className="py-14 sm:py-20 px-4 md:px-8 bg-gradient-to-b from-[#FAF4E8] via-[#F5EAD4] to-[#EFE0C5] border-b border-[#B08A3C]/20 relative overflow-hidden">
-          {/* Luxury ambient glow accents matching royal Banarasi heritage aesthetic */}
-          <div className="absolute -top-24 -right-24 w-96 h-96 bg-[#B08A3C]/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-[#6B1725]/[0.06] rounded-full blur-3xl pointer-events-none" />
+        {/* 10. New Arrivals Section - removed frontend static section in favor of dynamic sections */}
 
-          <div className="max-w-7xl mx-auto relative z-10">
-            <div className="flex items-end justify-between gap-4 mb-6 sm:mb-10">
-              <div>
-                <span className="text-[10px] sm:text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-0.5 sm:mb-1">
-                  JUST ARRIVED ON THE LOOM
-                </span>
-                <h2 className="font-serif text-2xl sm:text-4xl font-extrabold text-[#292524] tracking-wide">
-                  New Arrivals
-                </h2>
-                <p className="text-xs sm:text-sm text-[#6B625D] font-light mt-1 hidden sm:block">
-                  Fresh colours, new weaves and timeless favourites.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <Link
-                  href="/sarees?filter=new"
-                  className="text-xs font-serif font-bold text-[#6B1725] hover:text-[#52111C] flex items-center gap-1 group transition-colors mr-1 sm:mr-2"
-                >
-                  <span className="hidden sm:inline">View All New Arrivals</span>
-                  <span className="sm:hidden">View All</span>
-                  <ArrowRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <div className="hidden sm:flex items-center gap-2">
-                  <button
-                    onClick={scrollLeft}
-                    className="p-3 rounded-full border border-[#B08A3C]/30 bg-white hover:bg-[#6B1725] hover:text-white text-[#292524] transition-all shadow-sm active:scale-95 cursor-pointer"
-                    aria-label="Scroll left"
-                  >
-                    <ArrowLeft size={18} />
-                  </button>
-                  <button
-                    onClick={scrollRight}
-                    className="p-3 rounded-full border border-[#B08A3C]/30 bg-white hover:bg-[#6B1725] hover:text-white text-[#292524] transition-all shadow-sm active:scale-95 cursor-pointer"
-                    aria-label="Scroll right"
-                  >
-                    <ArrowRight size={18} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div
-              ref={scrollRef}
-              className="flex gap-3 sm:gap-6 overflow-x-auto no-scrollbar pb-3 sm:pb-4 scroll-smooth snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0"
-            >
-              {displayNewArrivals.length > 0 ? (
-                displayNewArrivals.map((prod) => (
-                  <div
-                    key={prod.id}
-                    className="w-[165px] sm:w-[280px] lg:w-[300px] shrink-0 snap-start relative"
-                  >
-                    <ProductCard product={prod} />
-                  </div>
-                ))
-              ) : (
-                <ProductCardSkeleton count={6} />
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* 11. Shop by Fabric Collection */}
+        {/* 11. Shop by Fabric Collection - temporarily commented out */}
+        {/*
         <section className="py-14 sm:py-20 px-4 md:px-8 bg-[#FFFFFF] border-b border-[#B08A3C]/15">
           <div className="max-w-7xl mx-auto">
             <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
@@ -444,6 +309,7 @@ export default function HomeClient({
             </div>
           </div>
         </section>
+        */}
 
         {/* 12. Trust & Service Benefits */}
         <section className="py-10 sm:py-16 px-4 md:px-8 bg-[#FAF7F0] border-b border-[#B08A3C]/15">
