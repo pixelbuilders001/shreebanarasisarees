@@ -111,8 +111,8 @@ export default function HomeClient({
           </>
         )}
 
-        {/* Campaign Banner (if active) */}
-        <CampaignSection slot="top" initialCampaign={activeCampaigns[0] || null} />
+        {/* Campaign Banner (if active) - temporarily commented out */}
+        {/* <CampaignSection slot="top" initialCampaign={activeCampaigns[0] || null} /> */}
 
         {/* 4. Bestsellers Section */}
         <section className="py-10 sm:py-16 px-4 md:px-8 bg-[#FFFFFF] border-b border-[#B08A3C]/15">
@@ -321,64 +321,70 @@ export default function HomeClient({
         </section>
 
         {/* 10. New Arrivals Section */}
-        <section className="py-14 sm:py-20 px-4 md:px-8 max-w-7xl mx-auto border-b border-[#B08A3C]/15">
-          <div className="flex items-end justify-between gap-4 mb-6 sm:mb-10">
-            <div>
-              <span className="text-[10px] sm:text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-0.5 sm:mb-1">
-                JUST ARRIVED ON THE LOOM
-              </span>
-              <h2 className="font-serif text-2xl sm:text-4xl font-extrabold text-[#292524] tracking-wide">
-                New Arrivals
-              </h2>
-              <p className="text-xs sm:text-sm text-[#6B625D] font-light mt-1 hidden sm:block">
-                Fresh colours, new weaves and timeless favourites.
-              </p>
-            </div>
+        <section className="py-14 sm:py-20 px-4 md:px-8 bg-gradient-to-b from-[#FAF4E8] via-[#F5EAD4] to-[#EFE0C5] border-b border-[#B08A3C]/20 relative overflow-hidden">
+          {/* Luxury ambient glow accents matching royal Banarasi heritage aesthetic */}
+          <div className="absolute -top-24 -right-24 w-96 h-96 bg-[#B08A3C]/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-[#6B1725]/[0.06] rounded-full blur-3xl pointer-events-none" />
 
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <Link
-                href="/sarees?filter=new"
-                className="text-xs font-serif font-bold text-[#6B1725] hover:text-[#52111C] flex items-center gap-1 group transition-colors mr-1 sm:mr-2"
-              >
-                <span className="hidden sm:inline">View All New Arrivals</span>
-                <span className="sm:hidden">View All</span>
-                <ArrowRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <div className="hidden sm:flex items-center gap-2">
-                <button
-                  onClick={scrollLeft}
-                  className="p-3 rounded-full border border-[#B08A3C]/30 bg-white hover:bg-[#6B1725] hover:text-white text-[#292524] transition-all shadow-sm active:scale-95 cursor-pointer"
-                  aria-label="Scroll left"
+          <div className="max-w-7xl mx-auto relative z-10">
+            <div className="flex items-end justify-between gap-4 mb-6 sm:mb-10">
+              <div>
+                <span className="text-[10px] sm:text-xs font-bold text-[#B08A3C] uppercase tracking-[0.2em] font-sans block mb-0.5 sm:mb-1">
+                  JUST ARRIVED ON THE LOOM
+                </span>
+                <h2 className="font-serif text-2xl sm:text-4xl font-extrabold text-[#292524] tracking-wide">
+                  New Arrivals
+                </h2>
+                <p className="text-xs sm:text-sm text-[#6B625D] font-light mt-1 hidden sm:block">
+                  Fresh colours, new weaves and timeless favourites.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <Link
+                  href="/sarees?filter=new"
+                  className="text-xs font-serif font-bold text-[#6B1725] hover:text-[#52111C] flex items-center gap-1 group transition-colors mr-1 sm:mr-2"
                 >
-                  <ArrowLeft size={18} />
-                </button>
-                <button
-                  onClick={scrollRight}
-                  className="p-3 rounded-full border border-[#B08A3C]/30 bg-white hover:bg-[#6B1725] hover:text-white text-[#292524] transition-all shadow-sm active:scale-95 cursor-pointer"
-                  aria-label="Scroll right"
-                >
-                  <ArrowRight size={18} />
-                </button>
+                  <span className="hidden sm:inline">View All New Arrivals</span>
+                  <span className="sm:hidden">View All</span>
+                  <ArrowRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
+                </Link>
+                <div className="hidden sm:flex items-center gap-2">
+                  <button
+                    onClick={scrollLeft}
+                    className="p-3 rounded-full border border-[#B08A3C]/30 bg-white hover:bg-[#6B1725] hover:text-white text-[#292524] transition-all shadow-sm active:scale-95 cursor-pointer"
+                    aria-label="Scroll left"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                  <button
+                    onClick={scrollRight}
+                    className="p-3 rounded-full border border-[#B08A3C]/30 bg-white hover:bg-[#6B1725] hover:text-white text-[#292524] transition-all shadow-sm active:scale-95 cursor-pointer"
+                    aria-label="Scroll right"
+                  >
+                    <ArrowRight size={18} />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div
-            ref={scrollRef}
-            className="flex gap-3 sm:gap-6 overflow-x-auto no-scrollbar pb-3 sm:pb-4 scroll-smooth snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0"
-          >
-            {displayNewArrivals.length > 0 ? (
-              displayNewArrivals.map((prod) => (
-                <div
-                  key={prod.id}
-                  className="w-[165px] sm:w-[280px] lg:w-[300px] shrink-0 snap-start relative"
-                >
-                  <ProductCard product={prod} />
-                </div>
-              ))
-            ) : (
-              <ProductCardSkeleton count={6} />
-            )}
+            <div
+              ref={scrollRef}
+              className="flex gap-3 sm:gap-6 overflow-x-auto no-scrollbar pb-3 sm:pb-4 scroll-smooth snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0"
+            >
+              {displayNewArrivals.length > 0 ? (
+                displayNewArrivals.map((prod) => (
+                  <div
+                    key={prod.id}
+                    className="w-[165px] sm:w-[280px] lg:w-[300px] shrink-0 snap-start relative"
+                  >
+                    <ProductCard product={prod} />
+                  </div>
+                ))
+              ) : (
+                <ProductCardSkeleton count={6} />
+              )}
+            </div>
           </div>
         </section>
 

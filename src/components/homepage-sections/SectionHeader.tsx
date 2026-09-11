@@ -13,6 +13,8 @@ interface SectionHeaderProps {
   onScrollLeft?: () => void;
   onScrollRight?: () => void;
   showScrollArrows?: boolean;
+  canScrollLeft?: boolean;
+  canScrollRight?: boolean;
   className?: string;
 }
 
@@ -25,6 +27,8 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   onScrollLeft,
   onScrollRight,
   showScrollArrows = false,
+  canScrollLeft = true,
+  canScrollRight = true,
   className = "mb-6 sm:mb-10",
 }) => {
   const hasSubtitle = subtitle && subtitle.trim().length > 0;
@@ -66,7 +70,12 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
             <button
               type="button"
               onClick={onScrollLeft}
-              className="p-3 rounded-full border border-[#B08A3C]/30 bg-white hover:bg-[#6B1725] hover:text-white text-[#292524] transition-all shadow-sm active:scale-95 cursor-pointer"
+              disabled={!canScrollLeft}
+              className={`p-3 rounded-full border border-[#B08A3C]/30 bg-white text-[#292524] transition-all shadow-sm active:scale-95 ${
+                !canScrollLeft
+                  ? 'opacity-30 cursor-not-allowed pointer-events-none'
+                  : 'hover:bg-[#6B1725] hover:text-white cursor-pointer'
+              }`}
               aria-label="Scroll left"
             >
               <ArrowLeft size={18} />
@@ -74,7 +83,12 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
             <button
               type="button"
               onClick={onScrollRight}
-              className="p-3 rounded-full border border-[#B08A3C]/30 bg-white hover:bg-[#6B1725] hover:text-white text-[#292524] transition-all shadow-sm active:scale-95 cursor-pointer"
+              disabled={!canScrollRight}
+              className={`p-3 rounded-full border border-[#B08A3C]/30 bg-white text-[#292524] transition-all shadow-sm active:scale-95 ${
+                !canScrollRight
+                  ? 'opacity-30 cursor-not-allowed pointer-events-none'
+                  : 'hover:bg-[#6B1725] hover:text-white cursor-pointer'
+              }`}
               aria-label="Scroll right"
             >
               <ArrowRight size={18} />

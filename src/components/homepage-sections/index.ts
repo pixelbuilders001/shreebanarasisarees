@@ -5,4 +5,5 @@ export { BannerSection } from './BannerSection';
 export { CategoryCardsSection } from './CategoryCardsSection';
 export { PinterestGrid } from './PinterestGrid';
 export { FeaturedSection } from './FeaturedSection';
+export { CarouselSection } from './CarouselSection';
 export { SectionHeader } from './SectionHeader';
