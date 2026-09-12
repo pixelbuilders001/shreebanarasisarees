@@ -93,6 +93,7 @@ export default function PWARegistration() {
         trackGAEvent("pwa_installed", {
           event_category: "PWA",
           platform: platform,
+          source: "appinstalled_event"
         });
 
         // 2. Record event in Supabase pwa_installs table
@@ -101,6 +102,33 @@ export default function PWARegistration() {
     };
 
     window.addEventListener('appinstalled', handleAppInstalled);
+
+    // 2.5. Track iOS & Standalone Launch:
+    // On iOS Safari, the browser does not support 'beforeinstallprompt' or 'appinstalled'.
+    // When the user taps Share -> "Add to Home Screen", the app launches in standalone mode.
+    // Detect standalone launch and record the installation once.
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as any).standalone === true ||
+      document.referrer.includes('android-app://');
+
+    if (isStandalone) {
+      markPwaAsInstalled();
+      const alreadyRecorded = localStorage.getItem('pwa_install_recorded');
+      if (!alreadyRecorded) {
+        localStorage.setItem('pwa_install_recorded', Date.now().toString());
+        const platform = getPlatform();
+
+        trackGAEvent("pwa_installed", {
+          event_category: "PWA",
+          platform: platform,
+          source: "standalone_launch"
+        });
+
+        recordPwaInstall(platform);
+      }
+      return;
+    }
 
     // 3. PWA Install Prompt Banner Handling
     if (checkIsPwaInstalled()) return;
@@ -150,10 +178,14 @@ export default function PWARegistration() {
 
       if (outcome === 'accepted') {
         markPwaAsInstalled();
-        const platform = getPlatform();
-        trackGAEvent("pwa_installed", { event_category: "PWA", platform });
-        await recordPwaInstall(platform);
-        localStorage.setItem('pwa_install_recorded', Date.now().toString());
+        // Synchronously record flag before async network call to prevent race condition with 'appinstalled'
+        const alreadyRecorded = localStorage.getItem('pwa_install_recorded');
+        if (!alreadyRecorded) {
+          localStorage.setItem('pwa_install_recorded', Date.now().toString());
+          const platform = getPlatform();
+          trackGAEvent("pwa_installed", { event_category: "PWA", platform });
+          await recordPwaInstall(platform);
+        }
       }
 
       (window as any).deferredPwaPrompt = null;

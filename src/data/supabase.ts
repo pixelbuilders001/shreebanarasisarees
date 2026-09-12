@@ -2348,8 +2348,22 @@ export async function fetchOrderDetailsForReview(orderIdOrNumber: string): Promi
 
 /**
  * Record a PWA installation event into Supabase pwa_installs table.
+ * Includes concurrency lock and time-window debounce to prevent duplicate records.
  */
+let isPwaRecordingInProgress = false;
+let lastPwaRecordedTimestamp = 0;
+
 export async function recordPwaInstall(platform?: string): Promise<boolean> {
+  const now = Date.now();
+  // Prevent duplicate concurrent or rapid repeated calls within 15 seconds
+  if (isPwaRecordingInProgress || (now - lastPwaRecordedTimestamp < 15000)) {
+    console.log('[Supabase] Duplicate PWA install recording suppressed');
+    return true;
+  }
+
+  isPwaRecordingInProgress = true;
+  lastPwaRecordedTimestamp = now;
+
   try {
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData?.session?.user?.id || null;
@@ -2372,6 +2386,8 @@ export async function recordPwaInstall(platform?: string): Promise<boolean> {
   } catch (err) {
     console.error('[Supabase] Exception recording PWA install:', err);
     return false;
+  } finally {
+    isPwaRecordingInProgress = false;
   }
 }
 

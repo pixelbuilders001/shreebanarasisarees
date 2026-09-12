@@ -97,11 +97,17 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
         if (outcome === 'accepted') {
           (window as any).deferredPwaPrompt = null;
           markPwaAsInstalled();
-          trackGAEvent('app_installed', {
-            event_category: 'App',
-            source: 'mobile_drawer_strip'
-          });
-          await recordPwaInstall('mobile_drawer_strip');
+          const alreadyRecorded = localStorage.getItem('pwa_install_recorded');
+          if (!alreadyRecorded) {
+            localStorage.setItem('pwa_install_recorded', Date.now().toString());
+            trackGAEvent('app_installed', {
+              event_category: 'App',
+              source: 'mobile_drawer_strip'
+            });
+            const ua = typeof window !== 'undefined' ? window.navigator.userAgent.toLowerCase() : '';
+            const platform = /android/.test(ua) ? 'android' : /win/.test(ua) ? 'windows' : /mac/.test(ua) ? 'mac' : 'other';
+            await recordPwaInstall(platform);
+          }
         }
       } catch (err) {
         console.error('App install prompt error:', err);

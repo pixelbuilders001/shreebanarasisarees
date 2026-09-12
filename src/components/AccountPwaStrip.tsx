@@ -60,11 +60,16 @@ export default function AccountPwaStrip({ className = '' }: AccountPwaStripProps
         if (outcome === 'accepted') {
           (window as any).deferredPwaPrompt = null;
           markPwaAsInstalled();
-          trackGAEvent('app_installed', {
-            event_category: 'App',
-            source: 'account_bottom_strip'
-          });
-          await recordPwaInstall('account_strip');
+          const alreadyRecorded = localStorage.getItem('pwa_install_recorded');
+          if (!alreadyRecorded) {
+            localStorage.setItem('pwa_install_recorded', Date.now().toString());
+            trackGAEvent('app_installed', {
+              event_category: 'App',
+              source: 'account_bottom_strip'
+            });
+            const platform = /android/.test(ua) ? 'android' : /win/.test(ua) ? 'windows' : /mac/.test(ua) ? 'mac' : 'other';
+            await recordPwaInstall(platform);
+          }
         }
       } catch (err) {
         console.error('App install prompt error:', err);
