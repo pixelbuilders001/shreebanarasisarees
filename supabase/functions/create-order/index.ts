@@ -41,6 +41,7 @@ interface RequestBody {
   delivery_option?: 'express' | 'same_day' | 'standard';
   delivery_method?: string;
   shipping_charge?: number;
+  estimated_delivery_date?: string | null;
   is_gift?: boolean;
   gift_recipient_name?: string | null;
   gift_message?: string | null;
@@ -480,13 +481,17 @@ Deno.serve(async (req) => {
     // --------------------------------------------------
     const { data: delSettings } = await admin
       .from("delivery_settings")
-      .select("express_charge, same_day_charge, standard_charge, is_active")
+      .select("express_charge, same_day_charge, standard_charge, is_active, standard_delivery_days")
       .eq("id", "default")
       .maybeSingle();
 
     const expressCharge = Number(delSettings?.express_charge ?? 29);
     const sameDayCharge = Number(delSettings?.same_day_charge ?? 49);
     const standardCharge = Number(delSettings?.standard_charge ?? 69);
+    const standardDeliveryDays = Number(delSettings?.standard_delivery_days ?? 3);
+
+    const calculatedEstDate = new Date(Date.now() + standardDeliveryDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const finalEstimatedDeliveryDate = body.estimated_delivery_date || calculatedEstDate;
 
     const chosenOption = body.delivery_option || shipping_address?.delivery_option || "standard";
     const isPickup =
@@ -634,6 +639,7 @@ Deno.serve(async (req) => {
       shipping_fee: shippingFee,
       shipping_charge: shippingFee, // Newly added column
       delivery_method: finalDeliveryMethod, // Newly added column
+      estimated_delivery_date: finalEstimatedDeliveryDate, // Newly added column
       total_amount: totalPayable,
       payment_method: cleanPaymentMethod,
       payment_status: "pending",
@@ -662,12 +668,13 @@ Deno.serve(async (req) => {
     if (
       orderInsertErr &&
       (orderInsertErr.message?.includes("shipping_charge") ||
-        orderInsertErr.message?.includes("delivery_method"))
+        orderInsertErr.message?.includes("delivery_method") ||
+        orderInsertErr.message?.includes("estimated_delivery_date"))
     ) {
       console.warn(
         "Retrying orders insert without newly added delivery columns in case schema cache is reloading..."
       );
-      const { shipping_charge, delivery_method, ...fallbackPayload } = orderInsertPayload;
+      const { shipping_charge, delivery_method, estimated_delivery_date, ...fallbackPayload } = orderInsertPayload;
       const retryRes = await admin.from("orders").insert([fallbackPayload]).select().single();
       createdOrder = retryRes.data;
       orderInsertErr = retryRes.error;

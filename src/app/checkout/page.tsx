@@ -50,7 +50,6 @@ import {
 import { trackBeginCheckout, trackPurchase } from '../../lib/gtag';
 import { fetchPincodeDetails } from '../../lib/pincodeLookup';
 import { AddNewAddressModal } from '../../components/delivery/AddNewAddressModal';
-import { DeliveryRiderIcon } from '../../components/delivery/DeliveryIcons';
 import { CheckoutSkeleton } from '../../components/CheckoutSkeleton';
 import { getStandardDeliveryDateInfo } from '../../lib/deliveryDates';
 import { buildReceiptDataFromOrder, downloadInvoicePdf } from '../../lib/invoicePdf';
@@ -733,6 +732,10 @@ function CheckoutContent() {
       ? 'Store Pickup'
       : (activeDeliveryOption?.title || 'Standard Delivery');
 
+    const estimatedDeliveryDate = deliveryDateInfo?.startDate
+      ? deliveryDateInfo.startDate.toISOString().split('T')[0]
+      : new Date(Date.now() + (deliverySettings?.standard_delivery_days ?? 3) * 86400000).toISOString().split('T')[0];
+
     // Execute order creation
     placeOrder({
       customer: customerDetails,
@@ -744,6 +747,7 @@ function CheckoutContent() {
       delivery_option: selectedDeliveryOption,
       delivery_method: chosenMethodTitle,
       shipping_charge: shippingFee,
+      estimated_delivery_date: estimatedDeliveryDate,
       items: cart,
       subtotal,
       discount: couponDiscountAmount,
@@ -897,13 +901,6 @@ function CheckoutContent() {
   if (isOrdered && createdOrder) {
     const isCod = createdOrder.paymentMethod === 'Cash on Delivery';
     const cleanPin = (createdOrder.customer?.pinCode || pinCode || '').trim();
-    const isLocal20MinDelivery = Boolean(
-      cleanPin === '848101' ||
-      cleanPin === '848114' ||
-      (deliveryInfo && (deliveryInfo.is20MinDelivery || deliveryInfo.isExpress)) ||
-      createdOrder.customer?.deliveryMethod === 'Store Pickup'
-    );
-
     const orderItems = createdOrder.items || [];
 
     return (
@@ -919,135 +916,91 @@ function CheckoutContent() {
             Order placed
           </h1>
 
-          {/* Subtitle - Ramesh picking ONLY for 20-min local delivery */}
+          {/* Subtitle */}
           <p className="text-xs sm:text-sm text-[#7A6E65] text-center max-w-sm mx-auto leading-relaxed mb-6 font-sans">
-            {isLocal20MinDelivery
-              ? "Ramesh is picking your saree off the shelf now. He'll be at your door in about 20 minutes."
-              : "Thank you for your order. We are carefully inspecting and preparing your saree for dispatch."}
+            Thank you for your order. We are carefully inspecting and preparing your saree for dispatch.
           </p>
 
-          {/* Card 1 & Timeline: Conditional based on 20-min local vs standard */}
-          {isLocal20MinDelivery ? (
-            /* Local 20-Min Delivery: Card with 20-min delivery line */
-            <div className="bg-white rounded-2xl p-5 border border-[#E5DEC9] shadow-2xs mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-sans font-medium text-[#7A6E65] uppercase tracking-wider">
-                  ORDER
-                </span>
-                <span className="font-bold text-sm text-[#292524]">
-                  {createdOrder.orderId}
-                </span>
+          {/* Order Summary Card */}
+          <div className="bg-white rounded-2xl p-5 border border-[#E5DEC9] shadow-2xs mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-sans font-medium text-[#7A6E65] uppercase tracking-wider">
+                ORDER
+              </span>
+              <span className="font-bold text-sm text-[#292524]">
+                {createdOrder.orderId}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-sans font-medium text-[#7A6E65] uppercase tracking-wider">
+                PAYING
+              </span>
+              <span className="font-bold text-sm text-[#292524]">
+                ₹{createdOrder.total.toLocaleString('en-IN')} · {isCod ? 'cash on delivery' : 'paid online'}
+              </span>
+            </div>
+          </div>
+
+          {/* Delivery Timeline Card */}
+          <div className="bg-white rounded-2xl p-5 border border-[#E5DEC9] shadow-2xs mb-4">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[11px] font-sans font-medium text-[#7A6E65] uppercase tracking-wider">
+                DELIVERY TIMELINE
+              </span>
+              <span className="text-xs font-semibold text-[#6B1725] bg-[#FAF6EE] border border-[#E5DEC9] px-2.5 py-0.5 rounded-full">
+                {deliveryDateInfo.deliveryByText}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-4 text-center relative pt-1">
+              {/* Horizontal connecting line behind circles */}
+              <div className="absolute top-4.5 left-[12.5%] right-[12.5%] h-0.5 bg-[#E5DEC9] z-0" />
+
+              {/* Step 1: Placed */}
+              <div className="flex flex-col items-center gap-1.5 relative z-10">
+                <div className="w-7 h-7 rounded-full bg-[#6B1725] text-white flex items-center justify-center text-xs shadow-xs">
+                  <Check size={14} strokeWidth={3} />
+                </div>
+                <span className="text-[11px] font-bold text-[#292524] leading-tight">Order Placed</span>
+                <span className="text-[10px] text-[#7A6E65]">Confirmed</span>
               </div>
 
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-sans font-medium text-[#7A6E65] uppercase tracking-wider">
-                  PAYING
-                </span>
-                <span className="font-bold text-sm text-[#292524]">
-                  ₹{createdOrder.total.toLocaleString('en-IN')} · {isCod ? 'cash on delivery' : 'paid online'}
-                </span>
+              {/* Step 2: Quality Check */}
+              <div className="flex flex-col items-center gap-1.5 relative z-10">
+                <div className="w-7 h-7 rounded-full bg-[#FAF7F0] border-2 border-[#E5DEC9] text-[#7A6E65] flex items-center justify-center text-[10px] font-bold">
+                  2
+                </div>
+                <span className="text-[11px] font-medium text-[#7A6E65] leading-tight">Quality Check</span>
+                <span className="text-[10px] text-[#7A6E65]">Silk test</span>
               </div>
 
-              <div className="border-t border-[#F3ECE0] my-3.5" />
+              {/* Step 3: Packed */}
+              <div className="flex flex-col items-center gap-1.5 relative z-10">
+                <div className="w-7 h-7 rounded-full bg-[#FAF7F0] border-2 border-[#E5DEC9] text-[#7A6E65] flex items-center justify-center text-[10px] font-bold">
+                  3
+                </div>
+                <span className="text-[11px] font-medium text-[#7A6E65] leading-tight">Packed</span>
+                <span className="text-[10px] text-[#7A6E65]">Care box</span>
+              </div>
 
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#FAF6EE] border border-[#E5DEC9] p-0.5 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
-                  <img src="/expressdel.webp" alt="Express Delivery" className="w-full h-full object-contain" />
+              {/* Step 4: Shipped */}
+              <div className="flex flex-col items-center gap-1.5 relative z-10">
+                <div className="w-7 h-7 rounded-full bg-[#FAF7F0] border-2 border-[#E5DEC9] text-[#7A6E65] flex items-center justify-center text-[10px] font-bold">
+                  4
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-[#292524]">
-                    Arriving in about 20 minutes
-                  </p>
-                  <p className="text-xs text-[#7A6E65] mt-0.5">
-                    To {cleanPin || defaultDeliveryPincode || ''}{createdOrder.customer?.city ? `, ${createdOrder.customer.city}` : ', Samastipur'}
-                  </p>
-                </div>
+                <span className="text-[11px] font-medium text-[#7A6E65] leading-tight">Shipped</span>
+                <span className="text-[10px] text-[#7A6E65]">{deliveryDateInfo.shortFormat}</span>
               </div>
             </div>
-          ) : (
-            /* Standard Delivery: Simple Order Summary Card + Delivery Timeline Card */
-            <>
-              <div className="bg-white rounded-2xl p-5 border border-[#E5DEC9] shadow-2xs mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-sans font-medium text-[#7A6E65] uppercase tracking-wider">
-                    ORDER
-                  </span>
-                  <span className="font-bold text-sm text-[#292524]">
-                    {createdOrder.orderId}
-                  </span>
-                </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-sans font-medium text-[#7A6E65] uppercase tracking-wider">
-                    PAYING
-                  </span>
-                  <span className="font-bold text-sm text-[#292524]">
-                    ₹{createdOrder.total.toLocaleString('en-IN')} · {isCod ? 'cash on delivery' : 'paid online'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Delivery Timeline Card */}
-              <div className="bg-white rounded-2xl p-5 border border-[#E5DEC9] shadow-2xs mb-4">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-[11px] font-sans font-medium text-[#7A6E65] uppercase tracking-wider">
-                    DELIVERY TIMELINE
-                  </span>
-                  <span className="text-xs font-semibold text-[#6B1725] bg-[#FAF6EE] border border-[#E5DEC9] px-2.5 py-0.5 rounded-full">
-                    {deliveryDateInfo.deliveryByText}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-4 text-center relative pt-1">
-                  {/* Horizontal connecting line behind circles */}
-                  <div className="absolute top-4.5 left-[12.5%] right-[12.5%] h-0.5 bg-[#E5DEC9] z-0" />
-
-                  {/* Step 1: Placed */}
-                  <div className="flex flex-col items-center gap-1.5 relative z-10">
-                    <div className="w-7 h-7 rounded-full bg-[#6B1725] text-white flex items-center justify-center text-xs shadow-xs">
-                      <Check size={14} strokeWidth={3} />
-                    </div>
-                    <span className="text-[11px] font-bold text-[#292524] leading-tight">Order Placed</span>
-                    <span className="text-[10px] text-[#7A6E65]">Confirmed</span>
-                  </div>
-
-                  {/* Step 2: Quality Check */}
-                  <div className="flex flex-col items-center gap-1.5 relative z-10">
-                    <div className="w-7 h-7 rounded-full bg-[#FAF7F0] border-2 border-[#E5DEC9] text-[#7A6E65] flex items-center justify-center text-[10px] font-bold">
-                      2
-                    </div>
-                    <span className="text-[11px] font-medium text-[#7A6E65] leading-tight">Quality Check</span>
-                    <span className="text-[10px] text-[#7A6E65]">Silk test</span>
-                  </div>
-
-                  {/* Step 3: Packed */}
-                  <div className="flex flex-col items-center gap-1.5 relative z-10">
-                    <div className="w-7 h-7 rounded-full bg-[#FAF7F0] border-2 border-[#E5DEC9] text-[#7A6E65] flex items-center justify-center text-[10px] font-bold">
-                      3
-                    </div>
-                    <span className="text-[11px] font-medium text-[#7A6E65] leading-tight">Packed</span>
-                    <span className="text-[10px] text-[#7A6E65]">Care box</span>
-                  </div>
-
-                  {/* Step 4: Shipped */}
-                  <div className="flex flex-col items-center gap-1.5 relative z-10">
-                    <div className="w-7 h-7 rounded-full bg-[#FAF7F0] border-2 border-[#E5DEC9] text-[#7A6E65] flex items-center justify-center text-[10px] font-bold">
-                      4
-                    </div>
-                    <span className="text-[11px] font-medium text-[#7A6E65] leading-tight">Shipped</span>
-                    <span className="text-[10px] text-[#7A6E65]">{deliveryDateInfo.shortFormat}</span>
-                  </div>
-                </div>
-
-                <div className="border-t border-[#F3ECE0] mt-4 pt-3 text-xs text-[#7A6E65] flex items-center justify-between">
-                  <span>Shipping to:</span>
-                  <span className="font-semibold text-[#292524] text-right truncate max-w-[200px]">
-                    {createdOrder.customer?.city || 'Your address'}{cleanPin ? `, ${cleanPin}` : ''}
-                  </span>
-                </div>
-              </div>
-            </>
-          )}
+            <div className="border-t border-[#F3ECE0] mt-4 pt-3 text-xs text-[#7A6E65] flex items-center justify-between">
+              <span>Shipping to:</span>
+              <span className="font-semibold text-[#292524] text-right truncate max-w-[200px]">
+                {createdOrder.customer?.city || 'Your address'}{cleanPin ? `, ${cleanPin}` : ''}
+              </span>
+            </div>
+          </div>
 
           {/* Real-time Push Notification Delivery Alerts Card */}
           <ContextualNotificationBanner
@@ -1201,9 +1154,7 @@ function CheckoutContent() {
 
           {/* Bottom assurance note */}
           <p className="text-center text-xs text-[#7A6E65] max-w-xs mx-auto mt-6 leading-relaxed font-sans">
-            {isLocal20MinDelivery
-              ? "Open the packet in front of the rider. If the weave isn't what you saw, hand it straight back — no questions."
-              : "Authentic handloom guarantee. If the weave isn't what you expected, enjoy 7-day hassle-free doorstep returns."}
+            Authentic handloom guarantee. If the weave isn&apos;t what you expected, enjoy 7-day hassle-free doorstep returns.
           </p>
         </main>
       </div>

@@ -106,6 +106,8 @@ export interface Order {
   orderStatus: 'Order Placed' | 'Confirmed' | 'Processing' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled' | 'Returned';
   createdAt: string;
   statusHistory?: OrderStatusHistoryEntry[];
+  delivery_method?: string;
+  estimated_delivery_date?: string | null;
   // Gift order fields
   is_gift?: boolean;
   gift_recipient_name?: string | null;
@@ -1055,6 +1057,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     delivery_option?: string;
     delivery_method?: string;
     shipping_charge?: number;
+    estimated_delivery_date?: string | null;
   }): Promise<Order> => {
     // 1. Try to create the order in Supabase via create-order Edge Function
     const dbOrder = await createDbOrder({
@@ -1067,6 +1070,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       delivery_option: orderData.delivery_option,
       delivery_method: orderData.delivery_method,
       shipping_charge: orderData.shipping_charge ?? orderData.shipping,
+      estimated_delivery_date: orderData.estimated_delivery_date,
       items: orderData.items,
       subtotal: orderData.subtotal,
       discount: orderData.discount,

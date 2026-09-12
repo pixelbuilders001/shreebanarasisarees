@@ -49,6 +49,38 @@ function formatOrderDate(dateString: string): string {
   });
 }
 
+// Format date and time for timeline milestones: "Today, 6:12 pm", "Yesterday, 3:45 pm", or "12 Sep 2026, 4:30 pm"
+function formatOrderDateTime(dateString?: string | null): string {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '';
+
+  const now = new Date();
+  const timeStr = date.toLocaleTimeString('en-IN', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  if (date.toDateString() === now.toDateString()) {
+    return `Today, ${timeStr}`;
+  }
+
+  const yesterday = new Date();
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) {
+    return `Yesterday, ${timeStr}`;
+  }
+
+  const dateStr = date.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+
+  return `${dateStr}, ${timeStr}`;
+}
+
 // Canonical order status progression (matches the DB enum):
 // placed → confirmed → processing → packed → shipped → out_for_delivery → delivered
 const ORDER_STATUS_STEPS: Array<{ key: string; title: string }> = [
@@ -129,13 +161,45 @@ function getStatusBadge(status?: string | null) {
   };
 }
 
-// Delivery estimate helper matching Image 1
-function getDeliveryEstimate(order: Order): {
+function formatEstimatedDeliveryDate(dateInput: string | Date): string {
+  try {
+    const d = typeof dateInput === 'string'
+      ? new Date(dateInput.includes('T') ? dateInput : `${dateInput}T12:00:00`)
+      : dateInput;
+    if (isNaN(d.getTime())) return '';
+    return new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      weekday: 'long',
+      day: 'numeric',
+      month: 'short'
+    }).format(d);
+  } catch {
+    return '';
+  }
+}
+
+function isOtherThanStandardOrder(order: Order): boolean {
+  const method = (order.delivery_method || order.customer?.deliveryMethod || '').toLowerCase();
+  if (
+    method.includes('express') ||
+    method.includes('same') ||
+    method.includes('20-min') ||
+    method === 'store pickup'
+  ) {
+    return true;
+  }
+  if (order.shipping === 29 || order.shipping === 49) {
+    return true;
+  }
+  return false;
+}
+
+// Delivery estimate helper showing actual date or delivery partner status
+function getDeliveryEstimate(order: Order, standardDeliveryDays: number = 3): {
   type: 'express' | 'standard' | 'return' | 'refund' | 'cancelled';
   label: string;
 } {
   const s = order.orderStatus?.toLowerCase() || '';
-  const isSamastipur = order.customer?.pinCode === '848101' || order.customer?.pinCode === '848114';
 
   if (s.includes('cancel')) {
     return { type: 'cancelled', label: 'Order cancelled' };
@@ -152,22 +216,30 @@ function getDeliveryEstimate(order: Order): {
       : '7 days';
     return { type: 'return', label: `Return window closes ${returnStr}` };
   }
-  if (s.includes('out') || s.includes('transit')) {
+
+  // Other than standard: Express, 20-min, Same Day, Local delivery
+  if (isOtherThanStandardOrder(order)) {
     return {
       type: 'express',
-      label: isSamastipur ? 'Arriving by 6:45 pm' : 'Arriving today'
+      label: 'Delivery partner is on the way'
     };
   }
-  if (s.includes('pack') || s.includes('ship') || s.includes('confirm') || s.includes('placed')) {
-    const orderDate = new Date(order.createdAt);
-    const fromDate = new Date(orderDate.getTime() + 3 * 24 * 60 * 60 * 1000);
-    const toDate = new Date(orderDate.getTime() + 5 * 24 * 60 * 60 * 1000);
-    const fromStr = !isNaN(fromDate.getTime()) ? fromDate.toLocaleDateString('en-IN', { day: 'numeric' }) : '3';
-    const toStr = !isNaN(toDate.getTime()) ? toDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '5 days';
-    return { type: 'standard', label: `Arriving ${fromStr}–${toStr}` };
+
+  // Standard delivery: Show actual date from estimated_delivery_date (no random days)
+  let formattedDate = '';
+  if (order.estimated_delivery_date) {
+    formattedDate = formatEstimatedDeliveryDate(order.estimated_delivery_date);
+  }
+  if (!formattedDate) {
+    const baseDate = order.createdAt ? new Date(order.createdAt) : new Date();
+    const info = getStandardDeliveryDateInfo(baseDate, standardDeliveryDays);
+    formattedDate = info.formattedDate;
   }
 
-  return { type: 'standard', label: 'In transit' };
+  return {
+    type: 'standard',
+    label: `Delivery by ${formattedDate}`
+  };
 }
 
 // Stepper card uppercase headline matching Image 3
@@ -549,18 +621,12 @@ function AccountContent() {
   };
 
   // Get active order details if one is selected
-  const activeOrder = displayOrders.find(o => o.orderId === selectedOrderId || o.id === selectedOrderId) || standaloneOrder;
+  const activeOrder = standaloneOrder || displayOrders.find(o => o.orderId === selectedOrderId || o.id === selectedOrderId);
   const historyList = activeOrder?.statusHistory || [];
 
-  // If activeOrder is not in `displayOrders` array, fetch it directly
+  // Fetch freshest order details & status history whenever an order is selected
   useEffect(() => {
     if (!selectedOrderId) {
-      setStandaloneOrder(null);
-      return;
-    }
-
-    const inList = displayOrders.find(o => o.orderId === selectedOrderId || o.id === selectedOrderId);
-    if (inList) {
       setStandaloneOrder(null);
       return;
     }
@@ -579,7 +645,7 @@ function AccountContent() {
 
     fetchStandaloneOrder();
     return () => { isMounted = false; };
-  }, [selectedOrderId, orders, dbOrders]);
+  }, [selectedOrderId]);
 
   // Fetch detailed order items using Supabase order_items query
   useEffect(() => {
@@ -1040,40 +1106,51 @@ function AccountContent() {
   if (selectedOrderId && activeOrder) {
     const isDelivered = activeOrder.orderStatus?.toLowerCase().includes('deliver');
     const isCancelled = activeOrder.orderStatus?.toLowerCase().includes('cancel');
-    const isSamastipur = activeOrder.customer?.pinCode === '848101' || activeOrder.customer?.pinCode === '848114';
+    const isOther = isOtherThanStandardOrder(activeOrder);
+    const actualDeliveryDateStr = activeOrder.estimated_delivery_date
+      ? formatEstimatedDeliveryDate(activeOrder.estimated_delivery_date)
+      : deliveryDateInfo.formattedDate;
 
     // Stepper — canonical order statuses (matches DB enum):
     // placed → confirmed → processing → packed → shipped → out_for_delivery → delivered
     const furthestStepIndex = getFurthestStepIndex(activeOrder.orderStatus, historyList);
 
     const stepCopy: Record<string, { current: string; done: string; future: string }> = {
-      placed: { current: 'Your order has been received', done: '', future: '' },
+      placed: { current: 'Your order has been received', done: 'Order placed', future: '' },
       confirmed: { current: 'Verified by master weavers in Samastipur', done: 'Order confirmed', future: 'Awaiting confirmation' },
       processing: { current: 'Being prepared at our workshop', done: 'Processing', future: 'Awaiting processing' },
       packed: { current: 'Safely packed in our authentic fabric pouch', done: 'Packed', future: 'Not yet packed' },
       shipped: { current: 'Dispatched with priority courier', done: 'Shipped', future: 'Not yet shipped' },
-      out_for_delivery: { current: isSamastipur ? 'Ramesh is on the way' : 'Priority courier partner is on the way', done: 'Out for delivery', future: 'Out for delivery soon' },
-      delivered: { current: 'Hand delivered to your doorstep', done: 'Delivered', future: isSamastipur ? 'Arriving by 6:45 pm' : `Expected by ${deliveryDateInfo.formattedDate}` }
+      out_for_delivery: { current: 'Delivery partner is on the way', done: 'Out for delivery', future: 'Out for delivery soon' },
+      delivered: {
+        current: 'Hand delivered to your doorstep',
+        done: 'Delivered',
+        future: isOther
+          ? 'Delivery partner is on the way'
+          : `Expected by ${actualDeliveryDateStr}`
+      }
     };
 
     let timelineSteps: Array<{
       title: string;
       subtitle: string;
+      timestamp?: string | null;
       completed: boolean;
       isCancelled?: boolean;
     }> = [];
 
     if (isCancelled) {
       // Find history entries
-      const cancelHist = historyList.find(h => h.status?.toLowerCase().includes('cancel'));
-      const placedHist = historyList.find(h => h.status?.toLowerCase() === 'placed');
-      const confirmedHist = historyList.find(h => h.status?.toLowerCase() === 'confirmed');
-      const processingHist = historyList.find(h => h.status?.toLowerCase() === 'processing');
+      const cancelHist = historyList.slice().reverse().find(h => normalizeStatusKey(h.status) === 'cancelled');
+      const placedHist = historyList.find(h => normalizeStatusKey(h.status) === 'placed');
+      const confirmedHist = historyList.find(h => normalizeStatusKey(h.status) === 'confirmed');
+      const processingHist = historyList.find(h => normalizeStatusKey(h.status) === 'processing');
 
       // 1. Placed
       timelineSteps.push({
         title: 'Order Placed',
-        subtitle: placedHist?.createdAt ? formatOrderDate(placedHist.createdAt) : formatOrderDate(activeOrder.createdAt),
+        subtitle: placedHist?.note || 'Your order has been received',
+        timestamp: formatOrderDateTime(placedHist?.createdAt || activeOrder.createdAt),
         completed: true
       });
 
@@ -1081,7 +1158,8 @@ function AccountContent() {
       if (confirmedHist) {
         timelineSteps.push({
           title: 'Confirmed',
-          subtitle: confirmedHist.createdAt ? formatOrderDate(confirmedHist.createdAt) : 'Order confirmed',
+          subtitle: confirmedHist.note || 'Order confirmed',
+          timestamp: formatOrderDateTime(confirmedHist.createdAt),
           completed: true
         });
       }
@@ -1090,7 +1168,8 @@ function AccountContent() {
       if (processingHist) {
         timelineSteps.push({
           title: 'Processing',
-          subtitle: processingHist.createdAt ? formatOrderDate(processingHist.createdAt) : 'Processing at workshop',
+          subtitle: processingHist.note || 'Being prepared at workshop',
+          timestamp: formatOrderDateTime(processingHist.createdAt),
           completed: true
         });
       }
@@ -1098,25 +1177,36 @@ function AccountContent() {
       // 4. Cancelled (active final step)
       timelineSteps.push({
         title: 'Order Cancelled',
-        subtitle: cancelHist?.note || (cancelHist?.createdAt ? `Cancelled on ${formatOrderDate(cancelHist.createdAt)}` : 'Order cancelled by customer'),
+        subtitle: cancelHist?.note || 'Order cancelled by customer',
+        timestamp: formatOrderDateTime(cancelHist?.createdAt),
         completed: true,
         isCancelled: true
       });
     } else {
       timelineSteps = ORDER_STATUS_STEPS.map((step, idx) => {
-        const hist = historyList.find(h => h.status === step.key);
+        const hist = historyList.slice().reverse().find(h => normalizeStatusKey(h.status) === step.key);
         let subtitle = '';
+        let timestamp: string | null = null;
+
         if (idx <= furthestStepIndex) {
-          if (hist?.note) subtitle = hist.note;
-          else if (hist?.createdAt) subtitle = formatOrderDate(hist.createdAt);
-          else if (step.key === 'placed' && activeOrder.createdAt) subtitle = formatOrderDate(activeOrder.createdAt);
-          else subtitle = idx === furthestStepIndex ? stepCopy[step.key].current : stepCopy[step.key].done;
+          const rawDate = hist?.createdAt || (step.key === 'placed' ? activeOrder.createdAt : null);
+          if (rawDate) {
+            timestamp = formatOrderDateTime(rawDate);
+          }
+
+          if (hist?.note) {
+            subtitle = hist.note;
+          } else {
+            subtitle = idx === furthestStepIndex ? stepCopy[step.key].current : stepCopy[step.key].done;
+          }
         } else {
           subtitle = stepCopy[step.key].future;
         }
+
         return {
           title: step.title,
           subtitle,
+          timestamp,
           completed: idx <= furthestStepIndex
         };
       });
@@ -1303,22 +1393,31 @@ function AccountContent() {
                   </div>
 
                   <div className="flex-1 min-w-0 pt-0.5">
-                    <span className={`text-xs font-semibold font-sans block ${
-                      isCancelStep
-                        ? 'text-rose-800'
-                        : (isActiveStep && !isCancelled)
-                          ? 'text-[#6B1725]'
-                          : step.completed
-                            ? 'text-[#1C1917]'
-                            : 'text-[#78716C]'
-                    }`}>
-                      {step.title}
-                    </span>
-                    <p className={`text-[11px] font-sans mt-0.5 ${
-                      isCancelStep ? 'text-rose-700/80 font-medium' : 'text-[#78716C]'
-                    }`}>
-                      {step.subtitle}
-                    </p>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className={`text-xs font-semibold font-sans ${
+                        isCancelStep
+                          ? 'text-rose-800'
+                          : (isActiveStep && !isCancelled)
+                            ? 'text-[#6B1725]'
+                            : step.completed
+                              ? 'text-[#1C1917]'
+                              : 'text-[#78716C]'
+                      }`}>
+                        {step.title}
+                      </span>
+                      {step.timestamp && (
+                        <span className="text-[11px] font-medium font-sans text-[#78716C] bg-[#FAF8F5] px-2 py-0.5 rounded border border-[#E7DFC9]/80 shadow-2xs whitespace-nowrap">
+                          {step.timestamp}
+                        </span>
+                      )}
+                    </div>
+                    {step.subtitle && (
+                      <p className={`text-[11px] font-sans mt-0.5 ${
+                        isCancelStep ? 'text-rose-700/80 font-medium' : 'text-[#78716C]'
+                      }`}>
+                        {step.subtitle}
+                      </p>
+                    )}
                   </div>
                 </div>
               );
@@ -1655,7 +1754,7 @@ function AccountContent() {
           </h3>
 
           <p className="font-sans text-xs sm:text-sm text-[#57534E] max-w-[280px] mx-auto text-center leading-relaxed font-normal mb-7">
-            When you order, this is where you&apos;ll track the rider &mdash; and where you start a return.
+            When you order, this is where you&apos;ll track your order &mdash; and where you start a return.
           </p>
 
           <Link
@@ -1672,7 +1771,7 @@ function AccountContent() {
             const activeItem = order.items?.find((i: any) => (i?.item_status || (i as any)?.product?.item_status) !== 'cancelled') || order.items?.[0];
             const resolvedFirstItem = activeItem ? resolveOrderItem(activeItem, products) : null;
             const badge = getStatusBadge(order.orderStatus);
-            const estimate = getDeliveryEstimate(order);
+            const estimate = getDeliveryEstimate(order, deliverySettings?.standard_delivery_days ?? 3);
             const formattedDate = formatOrderDate(order.createdAt);
             const isOutOfDelivery = order.orderStatus?.toLowerCase().includes('out') || order.orderStatus?.toLowerCase().includes('transit');
 

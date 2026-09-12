@@ -91,75 +91,49 @@ export const saveFCMTokenToSupabase = async (token: string, userId: string | nul
     const deviceType = isMobile ? "mobile" : "desktop";
     const now = new Date().toISOString();
 
-    // Query all matching records for this FCM token (avoids maybeSingle PGRST116 error if duplicates exist)
-    const { data: existingList, error: selectError } = await supabase
+    const payload: Record<string, any> = {
+      fcm_token: token,
+      device_type: deviceType,
+      user_agent: userAgent,
+      is_active: true,
+      updated_at: now,
+    };
+
+    if (userId) {
+      payload.user_id = userId;
+    }
+
+    // Use atomic upsert on fcm_token unique constraint to prevent 23505 duplicate key error
+    const { error: upsertError } = await supabase
       .from("push_tokens")
-      .select("id, user_id")
+      .upsert(payload, { onConflict: "fcm_token" });
+
+    if (!upsertError) {
+      return true;
+    }
+
+    // Fallback: If upsert failed due to conflict/RLS, update by fcm_token directly
+    const updatePayload: Record<string, any> = {
+      is_active: true,
+      device_type: deviceType,
+      user_agent: userAgent,
+      updated_at: now,
+    };
+    if (userId) {
+      updatePayload.user_id = userId;
+    }
+
+    const { error: updateError } = await supabase
+      .from("push_tokens")
+      .update(updatePayload)
       .eq("fcm_token", token);
 
-    if (selectError) {
-      console.error("[FCM] Error checking existing token in Supabase:", selectError);
+    if (!updateError) {
+      return true;
     }
 
-    if (existingList && existingList.length > 0) {
-      const primaryRecord = existingList[0];
-
-      // Update primary token record without setting null user_id if column has NOT NULL constraint
-      const updatePayload: Record<string, any> = {
-        is_active: true,
-        device_type: deviceType,
-        user_agent: userAgent,
-        updated_at: now,
-      };
-
-      if (userId) {
-        updatePayload.user_id = userId;
-      }
-
-      const { error: updateError } = await supabase
-        .from("push_tokens")
-        .update(updatePayload)
-        .eq("id", primaryRecord.id);
-
-      if (updateError) {
-        console.error("[FCM] Error updating existing token in Supabase:", updateError);
-        return false;
-      }
-
-      // Clean up any duplicate token records for this exact token
-      if (existingList.length > 1) {
-        const duplicateIds = existingList.slice(1).map((r) => r.id);
-        await supabase
-          .from("push_tokens")
-          .delete()
-          .in("id", duplicateIds);
-      }
-    } else {
-      // Insert a new token record
-      const insertPayload: Record<string, any> = {
-        id: crypto.randomUUID(),
-        fcm_token: token,
-        device_type: deviceType,
-        user_agent: userAgent,
-        is_active: true,
-        created_at: now,
-        updated_at: now,
-      };
-
-      if (userId) {
-        insertPayload.user_id = userId;
-      }
-
-      const { error: insertError } = await supabase
-        .from("push_tokens")
-        .insert(insertPayload);
-
-      if (insertError) {
-        console.error("[FCM] Error inserting new token in Supabase:", insertError);
-        return false;
-      }
-    }
-    return true;
+    console.warn("[FCM] Error saving token to Supabase:", updateError || upsertError);
+    return false;
   } catch (err) {
     console.error("[FCM] Exception in saveFCMTokenToSupabase:", err);
     return false;

@@ -471,6 +471,93 @@ Deno.serve(async (req) => {
     });
 
     // --------------------------------------------------
+    // Trigger FCM Push Notification to Customer
+    // (packed, shipped, out_for_delivery, delivered, confirmed, cancelled)
+    // --------------------------------------------------
+    if (order.user_id) {
+      try {
+        const statusMap: Record<string, { title: string; body: string; imageFallback?: string }> = {
+          confirmed: {
+            title: "Order Confirmed! 🪡",
+            body: `Your order #${order.order_number} has been verified and confirmed by our master weavers.`,
+            imageFallback: "/notifications/order-confirmed.webp",
+          },
+          packed: {
+            title: "Order Packed! 🎁",
+            body: `Your order #${order.order_number} has been inspected and safely packed in our authentic fabric pouch.`,
+            imageFallback: "/notifications/order-confirmed.webp",
+          },
+          shipped: {
+            title: "Order Dispatched! 🚚",
+            body: `Your order #${order.order_number} is on the way! Dispatched with our priority courier partner.`,
+            imageFallback: "/notifications/order-confirmed.webp",
+          },
+          out_for_delivery: {
+            title: "Out for Delivery! 🛵",
+            body: `Your order #${order.order_number} is out for delivery! Our delivery partner will reach your doorstep shortly.`,
+            imageFallback: "/notifications/out-for-delivery.webp",
+          },
+          delivered: {
+            title: "Order Delivered! ✨",
+            body: `Your order #${order.order_number} has been delivered. We hope you love your new Banarasi Saree!`,
+            imageFallback: "/notifications/order-delivered.webp",
+          },
+          cancelled: {
+            title: "Order Cancelled",
+            body: `Your order #${order.order_number} has been cancelled.`,
+          },
+        };
+
+        const notifInfo = statusMap[normalizedStatus];
+        if (notifInfo) {
+          const targetUrl = normalizedStatus === "delivered"
+            ? `/review?orderId=${encodeURIComponent(order.order_number)}`
+            : `/account?orderId=${encodeURIComponent(order.order_number)}`;
+
+          // Find first item image
+          const { data: firstItem } = await adminClient
+            .from("order_items")
+            .select("product_snapshot")
+            .eq("order_id", order.id)
+            .limit(1)
+            .maybeSingle();
+
+          let imageUrl: string | null = null;
+          if (firstItem?.product_snapshot) {
+            const snap = typeof firstItem.product_snapshot === "string"
+              ? JSON.parse(firstItem.product_snapshot)
+              : firstItem.product_snapshot;
+            const snapImgs = snap?.images || [];
+            imageUrl = typeof snapImgs[0] === "string"
+              ? snapImgs[0]
+              : (snapImgs[0]?.image_url || snap?.image || null);
+          }
+          if (!imageUrl && notifInfo.imageFallback) {
+            imageUrl = notifInfo.imageFallback;
+          }
+
+          await adminClient.functions.invoke("send-push", {
+            body: {
+              audience: "user",
+              target_user_id: order.user_id,
+              order_status: normalizedStatus,
+              order_number: order.order_number,
+              customer_name: order.customer_name,
+              total_amount: Number(order.total_amount),
+              title: notifInfo.title,
+              body: notifInfo.body,
+              image_url: imageUrl,
+              notification_type: "order",
+              url: targetUrl,
+            },
+          });
+        }
+      } catch (pushErr) {
+        console.warn("Failed to send push notification from update-order-status:", pushErr);
+      }
+    }
+
+    // --------------------------------------------------
     // SUCCESS
     // --------------------------------------------------
     return new Response(

@@ -686,6 +686,8 @@ export interface Order {
   orderStatus: 'Order Placed' | 'Confirmed' | 'Processing' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled' | 'Returned';
   createdAt: string;
   statusHistory?: OrderStatusHistoryEntry[];
+  delivery_method?: string;
+  estimated_delivery_date?: string | null;
   // Gift order fields
   is_gift?: boolean;
   gift_recipient_name?: string | null;
@@ -716,6 +718,7 @@ export interface CreateDbOrderParams {
   shipping_charge?: number;
   delivery_option?: string;
   delivery_method?: string;
+  estimated_delivery_date?: string | null;
   total?: number;
   paymentMethod?: 'UPI' | 'Cash on Delivery' | 'Online Payment';
   is_gift?: boolean;
@@ -737,6 +740,18 @@ export async function createDbOrder(orderData: CreateDbOrderParams, userId?: str
     );
     const payment_method = orderData.paymentMethod === 'Cash on Delivery' ? 'cod' : 'online';
 
+    // Calculate or forward estimated delivery date from delivery settings
+    let estDeliveryDate = orderData.estimated_delivery_date || null;
+    if (!estDeliveryDate) {
+      try {
+        const delSettings = await fetchDeliverySettings();
+        const stdDays = Number(delSettings?.standard_delivery_days ?? 3);
+        estDeliveryDate = new Date(Date.now() + stdDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      } catch {
+        estDeliveryDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      }
+    }
+
     const orderPayload = {
       items: (orderData.items || []).map(i => ({
         productId: i.product.id,
@@ -751,6 +766,7 @@ export async function createDbOrder(orderData: CreateDbOrderParams, userId?: str
       delivery_option: orderData.delivery_option,
       delivery_method: orderData.delivery_method,
       shipping_charge: orderData.shipping_charge ?? orderData.shipping,
+      estimated_delivery_date: estDeliveryDate,
       payment_method,
       is_gift: orderData.is_gift,
       gift_recipient_name: orderData.gift_recipient_name,
@@ -962,6 +978,8 @@ export async function createDbOrder(orderData: CreateDbOrderParams, userId?: str
       orderStatus,
       createdAt: createdAtStr,
       statusHistory,
+      delivery_method: resOrder.delivery_method || orderData.delivery_method || 'Standard Delivery',
+      estimated_delivery_date: resOrder.estimated_delivery_date || estDeliveryDate,
       is_gift: resOrder.is_gift ?? orderData.is_gift ?? false,
       gift_recipient_name: resOrder.gift_recipient_name || orderData.gift_recipient_name || null,
       gift_message: resOrder.gift_message || orderData.gift_message || null,
@@ -1189,6 +1207,8 @@ export function mapDbOrderToOrder(orderRow: any): Order {
     orderStatus,
     createdAt: orderRow.created_at,
     statusHistory,
+    delivery_method: orderRow.delivery_method || shippingAddr.deliveryMethod || 'Standard Delivery',
+    estimated_delivery_date: orderRow.estimated_delivery_date || null,
     is_gift: orderRow.is_gift ?? false,
     gift_recipient_name: orderRow.gift_recipient_name || null,
     gift_message: orderRow.gift_message || null,
@@ -1436,13 +1456,59 @@ export async function triggerOrderPushNotification(
     customer_name?: string;
     total_amount?: number;
     image_url?: string | null;
+    title?: string;
+    body?: string;
   }
 ) {
   try {
     if (!order || !order.user_id) return;
 
-    // Instant notification on delivery confirms delivery and links to order details
-    const targetUrl = `/account?orderId=${encodeURIComponent(order.order_number)}`;
+    // Instant notification on delivery confirms delivery and links to review or order details
+    const targetUrl = orderStatus === 'delivered'
+      ? `/review?orderId=${encodeURIComponent(order.order_number)}`
+      : `/account?orderId=${encodeURIComponent(order.order_number)}`;
+
+    const statusCopy: Record<string, { title: string; body: string; imageFallback?: string }> = {
+      placed: {
+        title: 'Order Placed Successfully! 🎉',
+        body: `Thank you for ordering with Shree Banarasi Sarees! We received your Order #${order.order_number}.`,
+        imageFallback: '/notifications/order-placed.webp'
+      },
+      confirmed: {
+        title: 'Order Confirmed! 🪡',
+        body: `Your order #${order.order_number} has been verified and confirmed by our master weavers.`,
+        imageFallback: '/notifications/order-confirmed.webp'
+      },
+      packed: {
+        title: 'Order Packed! 🎁',
+        body: `Your order #${order.order_number} has been inspected and safely packed in our authentic fabric pouch.`,
+        imageFallback: '/notifications/order-confirmed.webp'
+      },
+      shipped: {
+        title: 'Order Dispatched! 🚚',
+        body: `Your order #${order.order_number} is on its way! Dispatched with our priority courier partner.`,
+        imageFallback: '/notifications/order-confirmed.webp'
+      },
+      out_for_delivery: {
+        title: 'Out for Delivery! 🛵',
+        body: `Your order #${order.order_number} is out for delivery! Our delivery partner will reach your doorstep shortly.`,
+        imageFallback: '/notifications/out-for-delivery.webp'
+      },
+      delivered: {
+        title: 'Order Delivered! ✨',
+        body: `Your order #${order.order_number} has been delivered. We hope you love your new Banarasi Saree!`,
+        imageFallback: '/notifications/order-delivered.webp'
+      },
+      cancelled: {
+        title: 'Order Cancelled',
+        body: `Your order #${order.order_number} has been cancelled.`,
+      }
+    };
+
+    const copy = statusCopy[orderStatus] || statusCopy.placed;
+    const finalTitle = order.title || copy.title;
+    const finalBody = order.body || copy.body;
+    const finalImage = order.image_url || copy.imageFallback || null;
 
     const { error } = await supabase.functions.invoke('send-push', {
       body: {
@@ -1452,7 +1518,9 @@ export async function triggerOrderPushNotification(
         order_number: order.order_number,
         customer_name: order.customer_name,
         total_amount: order.total_amount,
-        image_url: order.image_url || null,
+        title: finalTitle,
+        body: finalBody,
+        image_url: finalImage,
         notification_type: 'order',
         url: targetUrl,
       },
