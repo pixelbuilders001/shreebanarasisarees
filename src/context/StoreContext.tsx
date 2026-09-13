@@ -473,66 +473,79 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       }
 
+      // Read local cart and wishlist items for merging
+      let localCartItems: CartItem[] = [];
+      try {
+        const stored = typeof window !== 'undefined' ? localStorage.getItem('sbs_cart') : null;
+        if (stored) {
+          localCartItems = JSON.parse(stored);
+        }
+      } catch (e) {
+        console.error('Failed to parse stored cart:', e);
+      }
+      if ((!localCartItems || localCartItems.length === 0) && cart.length > 0) {
+        localCartItems = cart;
+      }
+
+      let localWishlistItems: Product[] = [];
+      try {
+        const stored = typeof window !== 'undefined' ? localStorage.getItem('sbs_wishlist') : null;
+        if (stored) {
+          localWishlistItems = JSON.parse(stored);
+        }
+      } catch (e) {
+        console.error('Failed to parse stored wishlist:', e);
+      }
+      if ((!localWishlistItems || localWishlistItems.length === 0) && wishlist.length > 0) {
+        localWishlistItems = wishlist;
+      }
+
       if (isUuid) {
         dbCartItems = await fetchDbCart(identifier);
         dbWishlistProductIds = await fetchDbWishlist(identifier);
 
-        if (shouldMerge) {
-          // Merge Cart
-          let localCartItems: CartItem[] = [];
-          try {
-            const stored = localStorage.getItem('sbs_cart');
-            if (stored) {
-              localCartItems = JSON.parse(stored);
-            }
-          } catch (e) {
-            console.error('Failed to parse stored cart:', e);
-          }
-
-          if (localCartItems.length > 0) {
-            for (const localItem of localCartItems) {
-              const dbMatch = dbCartItems.find(dbItem => dbItem.product_id === localItem.product.id);
-              if (dbMatch) {
-                const mergedQty = Math.max(dbMatch.quantity, localItem.quantity);
-                await upsertDbCartItem(identifier, localItem.product.id, mergedQty);
-                dbMatch.quantity = mergedQty;
-              } else {
-                await upsertDbCartItem(identifier, localItem.product.id, localItem.quantity);
-                dbCartItems.push({
-                  product_id: localItem.product.id,
-                  quantity: localItem.quantity
-                });
-              }
+        // ALWAYS merge any local cart items into DB
+        if (localCartItems && localCartItems.length > 0) {
+          for (const localItem of localCartItems) {
+            if (!localItem?.product?.id) continue;
+            const dbMatch = dbCartItems.find(dbItem => dbItem.product_id === localItem.product.id);
+            if (dbMatch) {
+              const mergedQty = Math.max(dbMatch.quantity, localItem.quantity);
+              await upsertDbCartItem(identifier, localItem.product.id, mergedQty);
+              dbMatch.quantity = mergedQty;
+            } else {
+              await upsertDbCartItem(identifier, localItem.product.id, localItem.quantity);
+              dbCartItems.push({
+                product_id: localItem.product.id,
+                quantity: localItem.quantity
+              });
             }
           }
+        }
 
-          // Merge Wishlist
-          let localWishlistItems: Product[] = [];
-          try {
-            const stored = localStorage.getItem('sbs_wishlist');
-            if (stored) {
-              localWishlistItems = JSON.parse(stored);
-            }
-          } catch (e) {
-            console.error('Failed to parse stored wishlist:', e);
-          }
-
-          if (localWishlistItems.length > 0) {
-            for (const localItem of localWishlistItems) {
-              const dbMatch = dbWishlistProductIds.includes(localItem.id);
-              if (!dbMatch) {
-                await addToDbWishlist(identifier, localItem.id);
-                dbWishlistProductIds.push(localItem.id);
-              }
+        // ALWAYS merge any local wishlist items into DB
+        if (localWishlistItems && localWishlistItems.length > 0) {
+          for (const localItem of localWishlistItems) {
+            if (!localItem?.id) continue;
+            const dbMatch = dbWishlistProductIds.includes(localItem.id);
+            if (!dbMatch) {
+              await addToDbWishlist(identifier, localItem.id);
+              dbWishlistProductIds.push(localItem.id);
             }
           }
         }
       }
 
+      // Reconstruct final cart items with robust fallbacks
       if (isUuid && dbCartItems && dbCartItems.length > 0) {
         const finalCartItems: CartItem[] = [];
         for (const dbItem of dbCartItems) {
-          const product = activeProds.find(p => p.id === dbItem.product_id);
+          const product =
+            activeProds.find(p => p.id === dbItem.product_id) ||
+            localCartItems.find(l => l.product?.id === dbItem.product_id)?.product ||
+            products.find(p => p.id === dbItem.product_id) ||
+            PRODUCTS.find(p => p.id === dbItem.product_id);
+
           if (product) {
             finalCartItems.push({
               product,
@@ -540,27 +553,64 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             });
           }
         }
-        setCart(finalCartItems);
-        localStorage.setItem('sbs_cart', JSON.stringify(finalCartItems));
+        if (finalCartItems.length > 0) {
+          setCart(finalCartItems);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('sbs_cart', JSON.stringify(finalCartItems));
+          }
+        } else if (localCartItems.length > 0) {
+          setCart(localCartItems);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('sbs_cart', JSON.stringify(localCartItems));
+          }
+        }
+      } else if (isUuid && localCartItems && localCartItems.length > 0) {
+        setCart(localCartItems);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('sbs_cart', JSON.stringify(localCartItems));
+        }
       } else if (isUuid) {
         setCart([]);
-        localStorage.setItem('sbs_cart', JSON.stringify([]));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('sbs_cart', JSON.stringify([]));
+        }
       }
 
-      // Populate wishlist from DB
+      // Populate wishlist from DB with robust fallbacks
       if (isUuid && dbWishlistProductIds && dbWishlistProductIds.length > 0) {
         const finalWishlistItems: Product[] = [];
         for (const pid of dbWishlistProductIds) {
-          const product = activeProds.find(p => p.id === pid);
+          const product =
+            activeProds.find(p => p.id === pid) ||
+            localWishlistItems.find(l => l.id === pid) ||
+            products.find(p => p.id === pid) ||
+            PRODUCTS.find(p => p.id === pid);
+
           if (product) {
             finalWishlistItems.push(product);
           }
         }
-        setWishlist(finalWishlistItems);
-        localStorage.setItem('sbs_wishlist', JSON.stringify(finalWishlistItems));
+        if (finalWishlistItems.length > 0) {
+          setWishlist(finalWishlistItems);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('sbs_wishlist', JSON.stringify(finalWishlistItems));
+          }
+        } else if (localWishlistItems.length > 0) {
+          setWishlist(localWishlistItems);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('sbs_wishlist', JSON.stringify(localWishlistItems));
+          }
+        }
+      } else if (isUuid && localWishlistItems && localWishlistItems.length > 0) {
+        setWishlist(localWishlistItems);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('sbs_wishlist', JSON.stringify(localWishlistItems));
+        }
       } else if (isUuid) {
         setWishlist([]);
-        localStorage.setItem('sbs_wishlist', JSON.stringify([]));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('sbs_wishlist', JSON.stringify([]));
+        }
       }
 
       const phoneLookup = userProfile?.phone_number ? String(userProfile.phone_number) : (user?.phone || null);
@@ -711,15 +761,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Fetch shipping addresses and synchronize pincode according to priority
         const addresses = await fetchShippingAddresses(currentUser.id);
         const activeDefaultPin = defaultDeliveryPincode || await fetchDefaultDeliveryPincode();
-        const shouldMerge = prevUserId === null;
+        const shouldMerge = prevUserId === null || prevUserId !== currentUser.id;
         if (shouldMerge && addresses && addresses.length > 0 && typeof window !== 'undefined') {
           sessionStorage.removeItem('active_delivery_pincode');
         }
         await syncPincodeOnAuth(currentUser, currentProfile, addresses, activeDefaultPin);
 
         // Fetch and merge cart & orders for this user
-        // We only merge if the user just signed in (i.e. transitioned from anonymous to logged-in)
-        await syncUserData(currentUser.id, activeProducts, shouldMerge);
+        await syncUserData(currentUser.id, activeProducts, true);
+
+        // Close auth modal smoothly upon successful login
+        setIsAuthModalOpen(false);
 
         // Sync FCM token if notification permission is granted
         if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
@@ -736,24 +788,33 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           });
         }
 
-        // Clean up URL hash/search and force a reload if redirected from OAuth to sync state cleanly
+        // Clean up URL hash/search without full page reload if redirected from OAuth
         if (typeof window !== 'undefined' && (
           window.location.hash.includes('access_token') || 
           window.location.hash.includes('id_token') ||
           window.location.search.includes('code=')
         )) {
-          window.history.replaceState(null, '', window.location.pathname);
-          window.location.reload();
+          const cleanUrl = new URL(window.location.href);
+          cleanUrl.searchParams.delete('code');
+          cleanUrl.searchParams.delete('state');
+          cleanUrl.hash = '';
+          window.history.replaceState(null, '', cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : ''));
         }
       } else {
         setUser(null);
         setUserProfile(null);
         setShippingAddresses([]);
         setShippingAddressesLoaded(false);
+        currentUserRef.current = null;
         if (prevUserId !== null || event === 'SIGNED_OUT') {
           setOrders([]);
           setCart([]);
           setWishlist([]);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('sbs_cart');
+            localStorage.removeItem('sbs_wishlist');
+            localStorage.removeItem('sbs_user_phone');
+          }
 
           // Reset to Guest Pincode Priority on signout
           if (typeof window !== 'undefined') {

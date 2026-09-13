@@ -10,9 +10,18 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const { loginWithGoogle } = useStore();
+  const { loginWithGoogle, user } = useStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Auto-close modal when user is authenticated
+  React.useEffect(() => {
+    if (user && isOpen) {
+      setIsLoading(false);
+      setError('');
+      onClose();
+    }
+  }, [user, isOpen, onClose]);
 
   if (!isOpen) return null;
 
