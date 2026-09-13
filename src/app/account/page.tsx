@@ -1132,6 +1132,7 @@ function AccountContent() {
     };
 
     let timelineSteps: Array<{
+      key?: string;
       title: string;
       subtitle: string;
       timestamp?: string | null;
@@ -1148,6 +1149,7 @@ function AccountContent() {
 
       // 1. Placed
       timelineSteps.push({
+        key: 'placed',
         title: 'Order Placed',
         subtitle: placedHist?.note || 'Your order has been received',
         timestamp: formatOrderDateTime(placedHist?.createdAt || activeOrder.createdAt),
@@ -1157,6 +1159,7 @@ function AccountContent() {
       // 2. Confirmed (if recorded before cancellation)
       if (confirmedHist) {
         timelineSteps.push({
+          key: 'confirmed',
           title: 'Confirmed',
           subtitle: confirmedHist.note || 'Order confirmed',
           timestamp: formatOrderDateTime(confirmedHist.createdAt),
@@ -1167,6 +1170,7 @@ function AccountContent() {
       // 3. Processing (if recorded before cancellation)
       if (processingHist) {
         timelineSteps.push({
+          key: 'processing',
           title: 'Processing',
           subtitle: processingHist.note || 'Being prepared at workshop',
           timestamp: formatOrderDateTime(processingHist.createdAt),
@@ -1176,6 +1180,7 @@ function AccountContent() {
 
       // 4. Cancelled (active final step)
       timelineSteps.push({
+        key: 'cancelled',
         title: 'Order Cancelled',
         subtitle: cancelHist?.note || 'Order cancelled by customer',
         timestamp: formatOrderDateTime(cancelHist?.createdAt),
@@ -1204,7 +1209,8 @@ function AccountContent() {
         }
 
         return {
-          title: step.title,
+          key: step.key,
+          title: step.key === 'shipped' && activeOrder.shipmentTrackingUpdates && activeOrder.shipmentTrackingUpdates.length > 0 ? 'On the Way' : step.title,
           subtitle,
           timestamp,
           completed: idx <= furthestStepIndex
@@ -1346,10 +1352,16 @@ function AccountContent() {
           isCancelled ? 'bg-[#FFF9F9] border-[#FECDCD]' : 'bg-white border-[#E7DFC9]'
         }`}>
           <div className="flex items-center justify-between">
-            <h3 className={`text-[11px] font-bold uppercase tracking-wider font-sans ${
-              isCancelled ? 'text-rose-700 flex items-center gap-1.5' : 'text-[#78716C]'
+            <h3 className={`text-[11px] font-bold uppercase tracking-wider font-sans flex items-center gap-2 ${
+              isCancelled ? 'text-rose-700' : 'text-[#78716C]'
             }`}>
               {isCancelled && <AlertTriangle size={13} className="text-rose-600 shrink-0" />}
+              {!isCancelled && !isDelivered && (
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#6B1725] opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#6B1725]" />
+                </span>
+              )}
               {getStatusHeadline(activeOrder.orderStatus)}
             </h3>
             {isCancelled && (
@@ -1376,35 +1388,57 @@ function AccountContent() {
                     />
                   )}
 
-                  <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 z-10 transition-all ${
-                      isCancelStep
-                        ? 'bg-rose-600 text-white shadow-2xs'
-                        : step.completed
-                          ? 'bg-[#6B1725] text-white shadow-2xs'
-                          : 'border border-[#D4C39D] bg-[#FAF8F5]'
-                    }`}
-                  >
-                    {isCancelStep ? (
-                      <X size={11} className="stroke-[3]" />
-                    ) : step.completed ? (
-                      <Check size={11} className="stroke-[3]" />
-                    ) : null}
+                  <div className="relative flex items-center justify-center shrink-0 z-10">
+                    {/* Pulsing radar waves for current in-progress status */}
+                    {isActiveStep && !isCancelled && !isDelivered && (
+                      <>
+                        <span className="absolute -inset-1 rounded-full bg-[#6B1725]/30 animate-ping" />
+                        <span className="absolute -inset-1.5 rounded-full bg-[#6B1725]/15 animate-pulse" />
+                      </>
+                    )}
+
+                    <div
+                      className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                        isCancelStep
+                          ? 'bg-rose-600 text-white shadow-2xs'
+                          : isActiveStep && !isCancelled && !isDelivered
+                            ? 'bg-[#6B1725] text-white ring-4 ring-[#6B1725]/20 shadow-md scale-105'
+                            : step.completed
+                              ? 'bg-[#6B1725] text-white shadow-2xs'
+                              : 'border border-[#D4C39D] bg-[#FAF8F5]'
+                      }`}
+                    >
+                      {isCancelStep ? (
+                        <X size={11} className="stroke-[3]" />
+                      ) : isActiveStep && !isCancelled && !isDelivered ? (
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                      ) : step.completed ? (
+                        <Check size={11} className="stroke-[3]" />
+                      ) : null}
+                    </div>
                   </div>
 
                   <div className="flex-1 min-w-0 pt-0.5">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <span className={`text-xs font-semibold font-sans ${
-                        isCancelStep
-                          ? 'text-rose-800'
-                          : (isActiveStep && !isCancelled)
-                            ? 'text-[#6B1725]'
-                            : step.completed
-                              ? 'text-[#1C1917]'
-                              : 'text-[#78716C]'
-                      }`}>
-                        {step.title}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-xs font-semibold font-sans ${
+                          isCancelStep
+                            ? 'text-rose-800'
+                            : (isActiveStep && !isCancelled)
+                              ? 'text-[#6B1725] font-bold'
+                              : step.completed
+                                ? 'text-[#1C1917]'
+                                : 'text-[#78716C]'
+                        }`}>
+                          {step.title}
+                        </span>
+                        {isActiveStep && !isCancelled && !isDelivered && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-[#6B1725]/10 text-[#6B1725] border border-[#6B1725]/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#6B1725] animate-ping" />
+                            Live
+                          </span>
+                        )}
+                      </div>
                       {step.timestamp && (
                         <span className="text-[11px] font-medium font-sans text-[#78716C] bg-[#FAF8F5] px-2 py-0.5 rounded border border-[#E7DFC9]/80 shadow-2xs whitespace-nowrap">
                           {step.timestamp}
@@ -1417,6 +1451,80 @@ function AccountContent() {
                       }`}>
                         {step.subtitle}
                       </p>
+                    )}
+
+                    {/* Granular parcel tracking sub-notes between Shipped and Out for Delivery */}
+                    {step.key === 'shipped' && activeOrder.shipmentTrackingUpdates && activeOrder.shipmentTrackingUpdates.length > 0 && (
+                      <div className="mt-3 space-y-3 pt-2.5 border-t border-[#E7DFC9]/60">
+                        {activeOrder.shipmentTrackingUpdates.map((update, uIdx) => {
+                          const hasDistance = Boolean(update.metadata?.distance);
+                          const hasNextStop = Boolean(update.metadata?.next_stop);
+                          const hasEta = Boolean(update.metadata?.eta);
+
+                          return (
+                            <div key={update.id || uIdx} className="space-y-2.5">
+                              {/* Highlighted milestone card vs standard row */}
+                              {update.isHighlighted ? (
+                                <div className="bg-[#EBF7EE] border border-[#C2E9CA] rounded-xl p-3 space-y-1 shadow-2xs">
+                                  <p className="text-xs font-semibold text-[#1B6334] font-sans">
+                                    {update.title}
+                                  </p>
+                                  {update.subtitle && (
+                                    <p className="text-[11px] text-[#2E7D47] font-sans">
+                                      {update.subtitle}
+                                    </p>
+                                  )}
+                                  <p className="text-[11px] text-[#247A41] font-sans italic">
+                                    {formatOrderDateTime(update.eventTime)}
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="space-y-0.5 pl-0.5">
+                                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                                    <span className="text-xs font-medium text-[#1C1917] font-sans">
+                                      {update.title}
+                                    </span>
+                                    <span className="text-[10.5px] text-[#78716C] font-sans">
+                                      {formatOrderDateTime(update.eventTime)}
+                                    </span>
+                                  </div>
+                                  {update.subtitle && (
+                                    <p className="text-[11px] text-[#78716C] font-sans">
+                                      {update.subtitle}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Dotted connector with Distance Badge (if distance exists) */}
+                              {hasDistance && (
+                                <div className="flex flex-col items-center py-1">
+                                  <div className="border-l border-dashed border-[#A8A29E] h-4" />
+                                  <div className="my-1 px-3 py-1 bg-[#F5F2EC] border border-[#E7DFC9] rounded-full text-[11px] font-semibold text-[#57534E] shadow-2xs flex items-center gap-1 font-sans">
+                                    <span>{update.metadata?.distance}</span>
+                                    <span className="text-[10px] text-[#78716C]">↓</span>
+                                  </div>
+                                  <div className="border-l border-dashed border-[#A8A29E] h-3" />
+                                </div>
+                              )}
+
+                              {/* Next Stop & ETA (if next stop exists) */}
+                              {hasNextStop && (
+                                <div className="pl-0.5 space-y-0.5 text-left">
+                                  <p className="text-xs font-semibold text-[#1C1917] font-sans">
+                                    Next Stop - {update.metadata?.next_stop}
+                                  </p>
+                                  {hasEta && (
+                                    <p className="text-[11px] text-[#78716C] font-sans italic">
+                                      Expected by {update.metadata?.eta}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 </div>

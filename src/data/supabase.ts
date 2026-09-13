@@ -638,6 +638,22 @@ export interface OrderStatusHistoryEntry {
   createdAt: string;
 }
 
+export interface ShipmentTrackingUpdateEntry {
+  id: string;
+  orderId: string;
+  title: string;
+  subtitle?: string | null;
+  eventTime: string;
+  isHighlighted: boolean;
+  metadata?: {
+    next_stop?: string;
+    distance?: string;
+    eta?: string;
+    [key: string]: any;
+  };
+  createdAt: string;
+}
+
 export interface Order {
   id?: string;
   orderId: string;
@@ -686,6 +702,7 @@ export interface Order {
   orderStatus: 'Order Placed' | 'Confirmed' | 'Processing' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled' | 'Returned';
   createdAt: string;
   statusHistory?: OrderStatusHistoryEntry[];
+  shipmentTrackingUpdates?: ShipmentTrackingUpdateEntry[];
   delivery_method?: string;
   estimated_delivery_date?: string | null;
   // Gift order fields
@@ -1173,6 +1190,20 @@ export function mapDbOrderToOrder(orderRow: any): Order {
         }
       ];
 
+  const rawShipmentUpdates = orderRow.shipment_tracking_updates || [];
+  const shipmentTrackingUpdates: ShipmentTrackingUpdateEntry[] = Array.isArray(rawShipmentUpdates)
+    ? rawShipmentUpdates.map((u: any) => ({
+        id: u.id,
+        orderId: u.order_id,
+        title: u.title,
+        subtitle: u.subtitle || null,
+        eventTime: u.event_time,
+        isHighlighted: u.is_highlighted === true,
+        metadata: typeof u.metadata === 'object' && u.metadata !== null ? u.metadata : {},
+        createdAt: u.created_at
+      })).sort((a: any, b: any) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime())
+    : [];
+
   const shippingAddr = typeof orderRow.shipping_address === 'object' && orderRow.shipping_address ? orderRow.shipping_address : {};
 
   return {
@@ -1207,6 +1238,7 @@ export function mapDbOrderToOrder(orderRow: any): Order {
     orderStatus,
     createdAt: orderRow.created_at,
     statusHistory,
+    shipmentTrackingUpdates,
     delivery_method: orderRow.delivery_method || shippingAddr.deliveryMethod || 'Standard Delivery',
     estimated_delivery_date: orderRow.estimated_delivery_date || null,
     is_gift: orderRow.is_gift ?? false,
@@ -1234,7 +1266,7 @@ export async function fetchDbOrders(userId?: string | null, phone?: string | nul
 
     let query = supabase
       .from('orders')
-      .select('*, order_items(*), order_status_history(*)')
+      .select('*, order_items(*), order_status_history(*), shipment_tracking_updates(*)')
       .order('created_at', { ascending: false });
 
     if (isUuid && cleanPhone) {
@@ -1272,7 +1304,7 @@ export async function fetchDbOrderWithItems(orderIdOrNumber: string): Promise<Or
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target);
     let query = supabase
       .from('orders')
-      .select('*, order_items(*), order_status_history(*)');
+      .select('*, order_items(*), order_status_history(*), shipment_tracking_updates(*)');
 
     if (isUuid) {
       query = query.eq('id', target);
