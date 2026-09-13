@@ -523,12 +523,6 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
         isOpen={isMobileMenuOpen}
         onClose={closeMobileMenu}
       />
-
-      {/* AUTH MODAL */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-      />
     </>
   );
 };

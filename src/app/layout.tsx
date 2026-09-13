@@ -13,6 +13,7 @@ import GoogleAnalytics from "../components/GoogleAnalytics";
 import MicrosoftClarity from "../components/MicrosoftClarity";
 import RouteTransitionLoader from "../components/RouteTransitionLoader";
 import { OfflineDetector } from "../components/offline/OfflineDetector";
+import { GlobalAuthModal } from "../components/GlobalAuthModal";
 
 const playfair = Playfair_Display({
   variable: "--font-serif",
@@ -139,6 +140,7 @@ export default function RootLayout({
           <CartDrawer />
           <DeliveryPincodeSheet />
           <MobileBottomNav />
+          <GlobalAuthModal />
         </StoreProvider>
       </body>
     </html>

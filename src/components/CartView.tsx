@@ -176,6 +176,10 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
   const [isNavigatingToCheckout, setIsNavigatingToCheckout] = useState<boolean>(false);
 
   useEffect(() => {
+    setIsNavigatingToCheckout(false);
+  }, []);
+
+  useEffect(() => {
     if (isHydrated) {
       const timer = setTimeout(() => {
         setIsLoading(false);
@@ -357,17 +361,20 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
 
   const handleProceedToCheckout = () => {
     triggerHaptic('medium');
-    setIsNavigatingToCheckout(true);
-    setIsCartOpen(false);
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('selected_delivery_option', selectedDeliveryMethod);
     }
     if (!user) {
       setIsNavigatingToCheckout(false);
       setIsAuthModalOpen(true);
-    } else {
-      router.push('/checkout');
+      return;
     }
+    setIsNavigatingToCheckout(true);
+    setIsCartOpen(false);
+    router.push('/checkout');
+    setTimeout(() => {
+      setIsNavigatingToCheckout(false);
+    }, 4000);
   };
 
   const handleClose = () => {
@@ -790,8 +797,10 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
             </div>
 
             <button
+              type="button"
               onClick={handleProceedToCheckout}
               disabled={isNavigatingToCheckout}
+              aria-label="Proceed to Checkout"
               className="native-press min-h-12 py-3 px-8 sm:px-10 bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-80 text-white rounded-2xl font-sans font-bold text-sm sm:text-base tracking-wide uppercase shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-2 min-w-[145px]"
             >
               {isNavigatingToCheckout ? (
