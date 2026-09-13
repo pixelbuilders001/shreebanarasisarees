@@ -558,29 +558,31 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
                       <div className="flex items-center justify-between pt-2 mt-1 border-t border-[#F3ECE0]">
                         <button
                           onClick={() => setItemToRemove({ item, index })}
-                          className="text-xs font-medium text-[#7A6E65] hover:text-red-700 flex items-center gap-1 transition-colors cursor-pointer"
+                          className="py-1.5 px-2 -ml-1 text-xs font-semibold text-[#7A6E65] hover:text-red-700 flex items-center gap-1.5 transition-colors cursor-pointer rounded-lg hover:bg-stone-100/60"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={14} />
                           <span>Remove</span>
                         </button>
 
-                        <div className="flex items-center border border-[#E5DEC9] rounded-lg bg-[#FAF7F0] p-0.5">
+                        <div className="flex items-center border border-[#E5DEC9] rounded-xl bg-[#FAF7F0] p-0.5 shadow-2xs">
                           <button
                             onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)}
                             disabled={item.quantity <= 1}
-                            className="p-1 text-[#292524] hover:text-[#6B1725] disabled:opacity-30 cursor-pointer"
+                            className="w-8 h-8 flex items-center justify-center text-[#292524] hover:text-[#6B1725] disabled:opacity-30 cursor-pointer active:scale-95 transition-transform"
+                            aria-label="Decrease quantity"
                           >
-                            <Minus size={11} />
+                            <Minus size={13} />
                           </button>
-                          <span className="px-2 text-xs font-bold text-[#292524] min-w-[18px] text-center">
+                          <span className="px-2 text-xs sm:text-sm font-bold text-[#292524] min-w-[20px] text-center select-none">
                             {item.quantity}
                           </span>
                           <button
                             onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)}
                             disabled={item.quantity >= item.product.stock}
-                            className="p-1 text-[#292524] hover:text-[#6B1725] disabled:opacity-30 cursor-pointer"
+                            className="w-8 h-8 flex items-center justify-center text-[#292524] hover:text-[#6B1725] disabled:opacity-30 cursor-pointer active:scale-95 transition-transform"
+                            aria-label="Increase quantity"
                           >
-                            <Plus size={11} />
+                            <Plus size={13} />
                           </button>
                         </div>
                       </div>
@@ -690,12 +692,12 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
                   placeholder="Coupon code"
                   value={couponInput}
                   onChange={(e) => setCouponInput(e.target.value)}
-                  className="text-xs text-[#292524] placeholder:text-[#A89F91] bg-transparent outline-none w-full font-sans uppercase font-medium"
+                  className="text-[16px] sm:text-sm text-[#292524] placeholder:text-[#A89F91] bg-transparent outline-none w-full font-sans uppercase font-semibold tracking-wide"
                 />
               </div>
               <button
                 onClick={handleApplyCoupon}
-                className="text-xs font-bold text-[#6B1725] hover:underline cursor-pointer shrink-0"
+                className="text-xs sm:text-sm font-bold text-[#6B1725] hover:underline cursor-pointer shrink-0 py-1 px-2"
               >
                 {appliedCoupon ? 'Applied' : 'Apply'}
               </button>
@@ -790,7 +792,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
             <button
               onClick={handleProceedToCheckout}
               disabled={isNavigatingToCheckout}
-              className="native-press min-h-11 py-3.5 px-8 sm:px-10 bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-80 text-white rounded-2xl font-sans font-bold text-sm tracking-wide uppercase shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-2 min-w-[140px]"
+              className="native-press min-h-12 py-3 px-8 sm:px-10 bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-80 text-white rounded-2xl font-sans font-bold text-sm sm:text-base tracking-wide uppercase shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-2 min-w-[145px]"
             >
               {isNavigatingToCheckout ? (
                 <>

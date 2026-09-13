@@ -41,7 +41,7 @@ export const MobileBottomNav: React.FC = () => {
             }`}
           >
             <Home size={20} className={pathname === '/' ? 'text-[#6B1725] stroke-[2.5]' : ''} />
-            <span className="text-[10px] font-sans mt-0.5 tracking-tight">Home</span>
+            <span className="text-[11px] font-sans font-medium mt-0.5 tracking-tight">Home</span>
             {pathname === '/' && <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-[#B08A3C]" />}
           </Link>
 
@@ -54,7 +54,7 @@ export const MobileBottomNav: React.FC = () => {
             }`}
           >
             <Grid size={20} className={pathname.startsWith('/sarees') ? 'text-[#6B1725] stroke-[2.5]' : ''} />
-            <span className="text-[10px] font-sans mt-0.5 tracking-tight">Sarees</span>
+            <span className="text-[11px] font-sans font-medium mt-0.5 tracking-tight">Sarees</span>
             {pathname.startsWith('/sarees') && <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-[#B08A3C]" />}
           </Link>
 
@@ -70,7 +70,7 @@ export const MobileBottomNav: React.FC = () => {
             aria-label="Search sarees"
           >
             <Search size={20} className={isSearchOpen ? 'text-[#6B1725] stroke-[2.5]' : ''} />
-            <span className="text-[10px] font-sans mt-0.5 tracking-tight">Search</span>
+            <span className="text-[11px] font-sans font-medium mt-0.5 tracking-tight">Search</span>
             {isSearchOpen && <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-[#B08A3C]" />}
           </button>
 
@@ -85,12 +85,12 @@ export const MobileBottomNav: React.FC = () => {
             <div className="relative">
               <ShoppingBag size={20} className={pathname === '/cart' ? 'text-[#6B1725] stroke-[2.5]' : ''} />
               {cartCount > 0 && (
-                <span className="absolute -top-1.5 -right-2 bg-[#6B1725] text-[#FAF7F0] text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[#FAF7F0]">
+                <span className="absolute -top-1.5 -right-2 bg-[#6B1725] text-[#FAF7F0] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[#FAF7F0]">
                   {cartCount}
                 </span>
               )}
             </div>
-            <span className="text-[10px] font-sans mt-0.5 tracking-tight">Cart</span>
+            <span className="text-[11px] font-sans font-medium mt-0.5 tracking-tight">Cart</span>
             {pathname === '/cart' && <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-[#B08A3C]" />}
           </Link>
 
@@ -114,7 +114,7 @@ export const MobileBottomNav: React.FC = () => {
               ) : (
                 <User size={20} className={pathname.startsWith('/account') ? 'text-[#6B1725] stroke-[2.5]' : ''} />
               )}
-              <span className="text-[10px] font-sans mt-0.5 tracking-tight">Account</span>
+              <span className="text-[11px] font-sans font-medium mt-0.5 tracking-tight">Account</span>
               {pathname.startsWith('/account') && <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-[#B08A3C]" />}
             </Link>
           ) : (
@@ -127,7 +127,7 @@ export const MobileBottomNav: React.FC = () => {
               aria-label="Login or Register"
             >
               <User size={20} />
-              <span className="text-[10px] font-sans mt-0.5 tracking-tight">Account</span>
+              <span className="text-[11px] font-sans font-medium mt-0.5 tracking-tight">Account</span>
             </button>
           )}
         </div>

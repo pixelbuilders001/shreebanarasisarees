@@ -1031,11 +1031,11 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
               ₹{finalPrice.toLocaleString('en-IN')}
             </div>
             {product.stock === 0 ? (
-              <span className="text-[10px] font-bold text-red-700 bg-red-50 px-1.5 py-0.2 rounded border border-red-200 block">
+              <span className="text-[11px] font-bold text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200 block">
                 Out of Stock
               </span>
             ) : (
-              <div className="text-[10px] font-bold text-[#6B1725] leading-tight">
+              <div className="text-[11px] font-bold text-[#6B1725] leading-tight">
                 Only {product.stock} left
               </div>
             )}
@@ -1047,9 +1047,9 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
           {product.stock === 0 ? (
             <button
               onClick={handleNotifyMe}
-              className="native-press flex-1 bg-[#292524] hover:bg-black text-white min-h-11 py-3 px-5 rounded-2xl text-xs font-bold shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+              className="native-press flex-1 bg-[#292524] hover:bg-black text-white min-h-12 py-3 px-5 rounded-2xl text-sm font-bold shadow-md cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <Bell size={14} />
+              <Bell size={15} />
               Notify Me
             </button>
           ) : (
@@ -1057,11 +1057,11 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
               <button
                 onClick={handleAddToCart}
                 disabled={isAddingToCart}
-                className="native-press bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-85 text-white min-h-11 py-2.5 px-4 rounded-2xl text-xs font-bold shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-1.5 min-w-[95px]"
+                className="native-press bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-85 text-white min-h-12 py-3 px-4 rounded-2xl text-sm font-bold shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-1.5 min-w-[105px]"
               >
                 {isAddingToCart ? (
                   <>
-                    <Loader2 size={13} className="animate-spin text-white" />
+                    <Loader2 size={14} className="animate-spin text-white" />
                     <span>Adding...</span>
                   </>
                 ) : (
@@ -1072,11 +1072,11 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
               <button
                 onClick={handleBuyNow}
                 disabled={isBuyingNow}
-                className="native-press bg-white border border-[#6B1725] disabled:opacity-85 text-[#6B1725] min-h-11 py-2.5 px-4 rounded-2xl text-xs font-bold hover:bg-[#6B1725]/5 cursor-pointer flex items-center justify-center gap-1.5 min-w-[85px]"
+                className="native-press bg-white border-2 border-[#6B1725] disabled:opacity-85 text-[#6B1725] min-h-12 py-3 px-4 rounded-2xl text-sm font-bold hover:bg-[#6B1725]/5 cursor-pointer flex items-center justify-center gap-1.5 min-w-[95px]"
               >
                 {isBuyingNow ? (
                   <>
-                    <Loader2 size={13} className="animate-spin text-[#6B1725]" />
+                    <Loader2 size={14} className="animate-spin text-[#6B1725]" />
                     <span>Wait...</span>
                   </>
                 ) : (

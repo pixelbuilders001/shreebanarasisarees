@@ -101,13 +101,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       <div className="p-2.5 sm:p-3 flex-grow flex flex-col justify-between">
         <div className="space-y-1.5">
           {/* Category / Fabric Subtitle matching Design Screenshot */}
-          <span className="text-[9px] sm:text-[11px] font-sans font-bold text-[#B08A3C] uppercase tracking-[0.12em] block">
+          <span className="text-[11px] sm:text-xs font-sans font-bold text-[#B08A3C] uppercase tracking-[0.12em] block">
             {product.fabric ? `${product.fabric.toUpperCase()}` : 'BANARASI'}
           </span>
 
           {/* Product Title matching Design Screenshot */}
           <Link href={`/product/${product.slug}`} className="block group-hover:text-maroon transition-colors">
-            <h3 className="font-sans text-[13px] sm:text-sm font-semibold text-[#292524] line-clamp-2 leading-snug">
+            <h3 className="font-sans text-[13.5px] sm:text-sm font-semibold text-[#292524] line-clamp-2 leading-snug">
               {product.name}
             </h3>
           </Link>
@@ -120,18 +120,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
-                      size={10}
+                      size={11}
                       className={i < Math.round(product.rating) ? 'fill-gold text-gold' : 'text-dark-brown/15'}
                     />
                   ))}
                 </span>
-                <span className="text-[10px] sm:text-[11px] font-semibold text-dark-brown/60">
+                <span className="text-[11px] sm:text-xs font-semibold text-dark-brown/70">
                   {product.rating}
-                  <span className="text-dark-brown/40"> ({product.reviewsCount})</span>
+                  <span className="text-dark-brown/45"> ({product.reviewsCount})</span>
                 </span>
               </>
             ) : (
-              <span className="text-[10px] sm:text-[11px] text-dark-brown/40 font-medium italic">
+              <span className="text-[11px] text-dark-brown/40 font-medium italic">
                 No reviews yet
               </span>
             )}
@@ -157,16 +157,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </div>
 
           {/* Blouse Piece Signal */}
-          <div className="flex items-center gap-1 text-[10px] sm:text-[11px] text-dark-brown/55 font-medium">
-            <Scissors size={11} className="text-gold flex-shrink-0" />
+          <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-dark-brown/65 font-medium">
+            <Scissors size={12} className="text-gold flex-shrink-0" />
             <span className="truncate">Blouse piece included</span>
           </div>
         </div>
 
         {/* Add to Cart Button / Quantity Selector */}
-        <div className="mt-2">
+        <div className="mt-2.5">
           {quantityInCart > 0 ? (
-            <div className="flex items-center justify-between border border-maroon/30 rounded bg-white overflow-hidden shadow-sm h-7.5 sm:h-8">
+            <div className="flex items-center justify-between border border-maroon/30 rounded-xl bg-white overflow-hidden shadow-sm h-9 sm:h-9.5">
               <button
                 onClick={(e) => {
                   e.preventDefault();
@@ -174,12 +174,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                   triggerHaptic('medium');
                   updateCartQuantity(product.id, quantityInCart - 1);
                 }}
-                className="px-2.5 h-full text-xs font-bold text-maroon hover:bg-maroon/5 transition-colors flex items-center justify-center active:scale-90 cursor-pointer"
+                className="w-9 sm:w-10 h-full text-sm font-bold text-maroon hover:bg-maroon/5 transition-colors flex items-center justify-center active:scale-90 cursor-pointer"
                 aria-label="Decrease quantity"
               >
                 -
               </button>
-              <span className="text-[10px] sm:text-xs font-bold text-dark-brown min-w-[15px] text-center select-none font-sans">
+              <span className="text-xs sm:text-sm font-bold text-dark-brown min-w-[20px] text-center select-none font-sans">
                 {quantityInCart}
               </span>
               <button
@@ -190,7 +190,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                   updateCartQuantity(product.id, quantityInCart + 1);
                 }}
                 disabled={product.stock > 0 && quantityInCart >= product.stock}
-                className="px-2.5 h-full text-xs font-bold text-maroon hover:bg-maroon/5 transition-colors disabled:opacity-40 disabled:hover:bg-transparent flex items-center justify-center active:scale-90 cursor-pointer"
+                className="w-9 sm:w-10 h-full text-sm font-bold text-maroon hover:bg-maroon/5 transition-colors disabled:opacity-40 disabled:hover:bg-transparent flex items-center justify-center active:scale-90 cursor-pointer"
                 aria-label="Increase quantity"
               >
                 +
@@ -199,10 +199,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           ) : product.stock === 0 ? (
             <button
               onClick={handleNotifyMe}
-              className="native-press w-full min-h-9 py-1.5 sm:py-2 rounded-xl border border-maroon/30 bg-[#FFF9F0]/40 text-maroon font-bold text-[10px] sm:text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+              className="native-press w-full min-h-10 py-2 sm:py-2.5 rounded-xl border border-maroon/30 bg-[#FFF9F0]/40 text-maroon font-bold text-xs sm:text-[13px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
               aria-label={`Notify me when ${product.name} is back in stock`}
             >
-              <Bell size={11} />
+              <Bell size={13} />
               <span className="font-serif">Notify Me</span>
             </button>
           ) : (
@@ -213,10 +213,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 triggerHaptic('medium');
                 addToCart(product, 1);
               }}
-              className="native-press w-full min-h-9 py-1.5 sm:py-2 rounded-xl border border-maroon/25 hover:border-maroon/80 bg-[#6B1725] hover:bg-[#52111C] text-[#FFFDF9] font-bold text-[10px] sm:text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_5px_12px_rgba(107,23,37,0.18)] cursor-pointer"
+              className="native-press w-full min-h-10 py-2 sm:py-2.5 rounded-xl border border-maroon/25 hover:border-maroon/80 bg-[#6B1725] hover:bg-[#52111C] text-[#FFFDF9] font-bold text-xs sm:text-[13px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_5px_12px_rgba(107,23,37,0.18)] cursor-pointer"
               aria-label="Add to Cart"
             >
-              <ShoppingBag size={11} className="transition-colors" />
+              <ShoppingBag size={13} className="transition-colors" />
               <span className="font-serif">Add to Cart</span>
             </button>
           )}

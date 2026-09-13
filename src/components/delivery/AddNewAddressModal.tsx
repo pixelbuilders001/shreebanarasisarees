@@ -144,7 +144,7 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Receiver's name"
                 required
-                className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-xs rounded-xl p-2.5 outline-none font-medium"
+                className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-[16px] sm:text-sm rounded-xl py-2.5 px-3 min-h-[44px] outline-none font-medium"
               />
             </div>
             <div>
@@ -161,10 +161,10 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
                 }}
                 placeholder="10-digit mobile"
                 required
-                className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-xs rounded-xl p-2.5 outline-none font-mono"
+                className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-[16px] sm:text-sm rounded-xl py-2.5 px-3 min-h-[44px] outline-none font-mono"
               />
               {phone.length > 0 && !/^[6-9]\d{9}$/.test(phone) && (
-                <p className="mt-1 text-[10px] text-amber-700 font-sans">
+                <p className="mt-1 text-[11px] text-amber-700 font-sans">
                   Enter a valid Indian mobile number (starts with 6, 7, 8 or 9)
                 </p>
               )}
@@ -181,7 +181,7 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
               onChange={(e) => setAddressLine1(e.target.value)}
               placeholder="Flat / House No / Building Name"
               required
-              className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-xs rounded-xl p-2.5 outline-none font-medium"
+              className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-[16px] sm:text-sm rounded-xl py-2.5 px-3 min-h-[44px] outline-none font-medium"
             />
           </div>
 
@@ -195,7 +195,7 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
                 value={addressLine2}
                 onChange={(e) => setAddressLine2(e.target.value)}
                 placeholder="Street / Colony / Area"
-                className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-xs rounded-xl p-2.5 outline-none"
+                className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-[16px] sm:text-sm rounded-xl py-2.5 px-3 min-h-[44px] outline-none"
               />
             </div>
             <div>
@@ -207,7 +207,7 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
                 value={landmark}
                 onChange={(e) => setLandmark(e.target.value)}
                 placeholder="e.g. Near Temple"
-                className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-xs rounded-xl p-2.5 outline-none"
+                className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-[16px] sm:text-sm rounded-xl py-2.5 px-3 min-h-[44px] outline-none"
               />
             </div>
           </div>
@@ -226,7 +226,7 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
                 onChange={(e) => handlePincodeChange(e.target.value)}
                 placeholder="6-digit PIN"
                 required
-                className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-xs rounded-xl p-2.5 outline-none font-mono"
+                className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-[16px] sm:text-sm rounded-xl py-2.5 px-3 min-h-[44px] outline-none font-mono"
               />
             </div>
 
@@ -240,7 +240,7 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
                 onChange={(e) => setCity(e.target.value)}
                 placeholder="City / District"
                 required
-                className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-xs rounded-xl p-2.5 outline-none font-medium"
+                className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-[16px] sm:text-sm rounded-xl py-2.5 px-3 min-h-[44px] outline-none font-medium"
               />
             </div>
 
@@ -254,7 +254,7 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
                 onChange={(e) => setStateName(e.target.value)}
                 placeholder="State"
                 required
-                className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-xs rounded-xl p-2.5 outline-none font-medium"
+                className="w-full bg-[#FAF7F0] border border-[#B08A3C]/35 focus:border-[#6B1725] text-[16px] sm:text-sm rounded-xl py-2.5 px-3 min-h-[44px] outline-none font-medium"
               />
             </div>
           </div>
@@ -270,7 +270,7 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
                   type="button"
                   key={type}
                   onClick={() => setAddressLabel(type)}
-                  className={`px-3 py-1 rounded-xl text-xs font-sans font-bold transition-all ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-sans font-bold transition-all min-h-[34px] flex items-center ${
                     addressLabel === type
                       ? 'bg-[#6B1725] text-white shadow-xs'
                       : 'bg-[#FAF7F0] text-[#6B625D] border border-[#B08A3C]/30 hover:border-[#6B1725]'
@@ -287,18 +287,18 @@ export function AddNewAddressModal({ isOpen, onClose, onAddressSaved }: AddNewAd
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl border border-[#B08A3C]/40 text-xs font-sans font-bold text-[#6B625D] hover:bg-[#FAF7F0] cursor-pointer"
+              className="flex-1 py-3 min-h-[46px] rounded-xl border border-[#B08A3C]/40 text-sm font-sans font-bold text-[#6B625D] hover:bg-[#FAF7F0] cursor-pointer flex items-center justify-center"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 py-2.5 rounded-xl bg-[#6B1725] hover:bg-[#52111C] text-white text-xs font-sans font-bold tracking-wider shadow-sm disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+              className="flex-1 py-3 min-h-[46px] rounded-xl bg-[#6B1725] hover:bg-[#52111C] text-white text-sm font-sans font-bold tracking-wider shadow-sm disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
             >
               {isSaving ? (
                 <>
-                  <Loader2 size={13} className="animate-spin" />
+                  <Loader2 size={14} className="animate-spin" />
                   <span>Saving...</span>
                 </>
               ) : (

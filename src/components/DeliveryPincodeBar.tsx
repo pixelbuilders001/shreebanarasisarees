@@ -496,7 +496,7 @@ export const DeliveryPincodeSheet: React.FC = () => {
                   }
                 }}
                 placeholder="848101"
-                className="w-full text-sm sm:text-base font-bold text-gray-900 outline-none bg-transparent font-mono tracking-wider placeholder:text-gray-300"
+                className="w-full text-[16px] sm:text-base font-bold text-gray-900 outline-none bg-transparent font-mono tracking-wider placeholder:text-gray-300"
               />
               {isPincodeLoading ? (
                 <Loader2 size={15} className="animate-spin text-[#6B1725] shrink-0" />

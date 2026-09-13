@@ -375,13 +375,13 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
                 triggerHaptic('selection');
                 onClose();
               }}
-              className="p-2.5 bg-white rounded-xl border border-[#E5DEC9] hover:border-[#6B1725] flex items-center justify-between transition-colors active:scale-98"
+              className="p-3 bg-white rounded-xl border border-[#E5DEC9] hover:border-[#6B1725] flex items-center justify-between transition-colors active:scale-98 min-h-[46px]"
             >
               <div className="flex items-center gap-1.5">
-                <Flame size={14} className="text-[#6B1725]" />
-                <span className="text-xs font-semibold text-[#292524]">New In</span>
+                <Flame size={15} className="text-[#6B1725]" />
+                <span className="text-xs sm:text-sm font-semibold text-[#292524]">New In</span>
               </div>
-              <span className="text-[9px] font-bold bg-[#6B1725] text-white px-1.5 py-0.2 rounded-full">NEW</span>
+              <span className="text-[10px] font-bold bg-[#6B1725] text-white px-1.5 py-0.5 rounded-full">NEW</span>
             </Link>
             <Link
               href="/sarees?filter=bestseller"
@@ -389,20 +389,20 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
                 triggerHaptic('selection');
                 onClose();
               }}
-              className="p-2.5 bg-white rounded-xl border border-[#E5DEC9] hover:border-[#6B1725] flex items-center justify-between transition-colors active:scale-98"
+              className="p-3 bg-white rounded-xl border border-[#E5DEC9] hover:border-[#6B1725] flex items-center justify-between transition-colors active:scale-98 min-h-[46px]"
             >
               <div className="flex items-center gap-1.5">
-                <Star size={14} className="text-amber-500 fill-amber-500" />
-                <span className="text-xs font-semibold text-[#292524]">Bestsellers</span>
+                <Star size={15} className="text-amber-500 fill-amber-500" />
+                <span className="text-xs sm:text-sm font-semibold text-[#292524]">Bestsellers</span>
               </div>
-              <ChevronRight size={14} className="text-[#7A6E65]" />
+              <ChevronRight size={15} className="text-[#7A6E65]" />
             </Link>
           </div>
 
           {/* Saree Weaves Navigation */}
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between px-1 pb-1">
-              <span className="text-[10px] font-bold text-[#B08A3C] uppercase tracking-wider">
+              <span className="text-[11px] font-bold text-[#B08A3C] uppercase tracking-wider font-serif">
                 Shop by Weave
               </span>
               <Link
@@ -411,7 +411,7 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
                   triggerHaptic('selection');
                   onClose();
                 }}
-                className="text-[11px] font-semibold text-[#6B1725] hover:underline"
+                className="text-xs font-semibold text-[#6B1725] hover:underline"
               >
                 All Sarees &rarr;
               </Link>
@@ -426,18 +426,18 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
                     triggerHaptic('selection');
                     onClose();
                   }}
-                  className="flex items-center justify-between px-3.5 py-2.5 hover:bg-[#FAF7F0] text-xs font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
+                  className="flex items-center justify-between px-4 py-3 min-h-[46px] hover:bg-[#FAF7F0] text-sm font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
                 >
                   <span>{cat.name}</span>
-                  <ChevronRight size={14} className="text-[#7A6E65]/60" />
+                  <ChevronRight size={15} className="text-[#7A6E65]/60" />
                 </Link>
               ))}
             </div>
           </div>
 
           {/* Quick Links */}
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-[#B08A3C] uppercase tracking-wider px-1">
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-[#B08A3C] uppercase tracking-wider px-1 font-serif">
               Quick Links
             </span>
             <div className="bg-white rounded-xl border border-[#E5DEC9] divide-y divide-[#F3ECE0] overflow-hidden">
@@ -448,13 +448,13 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
                     triggerHaptic('selection');
                     onClose();
                   }}
-                  className="flex items-center justify-between px-3.5 py-2.5 hover:bg-[#FAF7F0] text-xs font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
+                  className="flex items-center justify-between px-4 py-3 min-h-[46px] hover:bg-[#FAF7F0] text-sm font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
                 >
                   <div className="flex items-center gap-2.5">
-                    <Package size={15} className="text-[#6B1725]" />
+                    <Package size={16} className="text-[#6B1725]" />
                     <span>My Orders</span>
                   </div>
-                  <ChevronRight size={14} className="text-[#7A6E65]/60" />
+                  <ChevronRight size={15} className="text-[#7A6E65]/60" />
                 </Link>
               ) : (
                 <button
@@ -463,13 +463,13 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
                     onClose();
                     setIsAuthModalOpen(true);
                   }}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-[#FAF7F0] text-xs font-medium text-[#292524] transition-colors active:bg-[#F3ECE0] text-left cursor-pointer"
+                  className="w-full flex items-center justify-between px-4 py-3 min-h-[46px] hover:bg-[#FAF7F0] text-sm font-medium text-[#292524] transition-colors active:bg-[#F3ECE0] text-left cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
-                    <Package size={15} className="text-[#6B1725]" />
+                    <Package size={16} className="text-[#6B1725]" />
                     <span>My Orders</span>
                   </div>
-                  <ChevronRight size={14} className="text-[#7A6E65]/60" />
+                  <ChevronRight size={15} className="text-[#7A6E65]/60" />
                 </button>
               )}
 
@@ -479,18 +479,18 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
                   triggerHaptic('selection');
                   onClose();
                 }}
-                className="flex items-center justify-between px-3.5 py-2.5 hover:bg-[#FAF7F0] text-xs font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
+                className="flex items-center justify-between px-4 py-3 min-h-[46px] hover:bg-[#FAF7F0] text-sm font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
               >
                 <div className="flex items-center gap-2.5">
-                  <Heart size={15} className="text-[#6B1725]" />
+                  <Heart size={16} className="text-[#6B1725]" />
                   <span>Saved Wishlist</span>
                 </div>
                 {wishlistCount > 0 ? (
-                  <span className="text-[10px] font-bold bg-[#6B1725] text-white px-2 py-0.2 rounded-full">
+                  <span className="text-[11px] font-bold bg-[#6B1725] text-white px-2 py-0.5 rounded-full">
                     {wishlistCount}
                   </span>
                 ) : (
-                  <ChevronRight size={14} className="text-[#7A6E65]/60" />
+                  <ChevronRight size={15} className="text-[#7A6E65]/60" />
                 )}
               </Link>
 
@@ -500,13 +500,13 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
                   triggerHaptic('selection');
                   onClose();
                 }}
-                className="flex items-center justify-between px-3.5 py-2.5 hover:bg-[#FAF7F0] text-xs font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
+                className="flex items-center justify-between px-4 py-3 min-h-[46px] hover:bg-[#FAF7F0] text-sm font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
               >
                 <div className="flex items-center gap-2.5">
-                  <MapPin size={15} className="text-[#6B1725]" />
+                  <MapPin size={16} className="text-[#6B1725]" />
                   <span>Our Showroom</span>
                 </div>
-                <ChevronRight size={14} className="text-[#7A6E65]/60" />
+                <ChevronRight size={15} className="text-[#7A6E65]/60" />
               </Link>
 
               <a
@@ -514,20 +514,20 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => triggerHaptic('selection')}
-                className="flex items-center justify-between px-3.5 py-2.5 hover:bg-[#FAF7F0] text-xs font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
+                className="flex items-center justify-between px-4 py-3 min-h-[46px] hover:bg-[#FAF7F0] text-sm font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
               >
                 <div className="flex items-center gap-2.5">
-                  <MessageCircle size={15} className="text-[#2EBE5D] fill-[#2EBE5D]" />
+                  <MessageCircle size={16} className="text-[#2EBE5D] fill-[#2EBE5D]" />
                   <span>Chat on WhatsApp</span>
                 </div>
-                <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md">
+                <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md">
                   Live
                 </span>
               </a>
 
               {user && notifSupported && (
                 <div
-                  className={`flex items-center justify-between px-3.5 py-2.5 text-xs font-medium text-[#292524] transition-colors ${
+                  className={`flex items-center justify-between px-4 py-3 min-h-[46px] text-sm font-medium text-[#292524] transition-colors ${
                     Notification.permission !== 'denied' ? 'hover:bg-[#FAF7F0] active:bg-[#F3ECE0]' : ''
                   }`}
                 >

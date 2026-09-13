@@ -258,7 +258,7 @@ export const SearchViewModal: React.FC<SearchViewModalProps> = ({ isOpen, onClos
                 value={searchQuery}
                 onChange={(e) => handleInputChange(e.target.value)}
                 placeholder="Search Katan, Organza, Bridal..."
-                className="w-full bg-transparent text-sm md:text-base font-sans font-medium text-[#292524] placeholder-[#7A6E65] outline-none pr-14"
+                className="w-full bg-transparent text-[16px] md:text-base font-sans font-medium text-[#292524] placeholder-[#7A6E65] outline-none pr-14"
               />
 
               {/* Clear button */}

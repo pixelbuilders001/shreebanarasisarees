@@ -1545,7 +1545,7 @@ function CheckoutContent() {
                               value={fullName}
                               onChange={(e) => setFullName(e.target.value)}
                               placeholder="e.g. Anjali Kumari"
-                              className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] focus:bg-white transition-all"
+                              className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 min-h-[46px] text-[16px] sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] focus:bg-white transition-all font-medium"
                             />
                           </div>
                           <div className="col-span-2 sm:col-span-1">
@@ -1562,10 +1562,10 @@ function CheckoutContent() {
                                 setMobileNumber(digits);
                               }}
                               placeholder="10-digit mobile number"
-                              className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] focus:bg-white transition-all font-mono"
+                              className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 min-h-[46px] text-[16px] sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] focus:bg-white transition-all font-mono"
                             />
                             {mobileNumber.length > 0 && !/^[6-9]\d{9}$/.test(mobileNumber) && (
-                              <p className="mt-1 text-[10px] text-amber-700 font-sans">
+                              <p className="mt-1 text-[11px] text-amber-700 font-sans">
                                 Enter a valid Indian mobile number (starts with 6, 7, 8 or 9)
                               </p>
                             )}
@@ -1581,20 +1581,20 @@ function CheckoutContent() {
                             value={address}
                             onChange={(e) => setAddress(e.target.value)}
                             placeholder="Flat No., House Name, Road, Colony"
-                            className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] focus:bg-white transition-all"
+                            className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 min-h-[46px] text-[16px] sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] focus:bg-white transition-all font-medium"
                           />
                         </div>
 
                         <div>
                           <label className="text-[11px] font-serif font-bold text-[#B08A3C] uppercase tracking-wider block mb-1">
-                            Landmark <span className="font-normal text-[#7A6E65] text-[10px]">(optional)</span>
+                            Landmark <span className="font-normal text-[#7A6E65] text-[11px]">(optional)</span>
                           </label>
                           <input
                             type="text"
                             value={landmark}
                             onChange={(e) => setLandmark(e.target.value)}
                             placeholder="e.g. Near Shiv Mandir / Station Road"
-                            className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] focus:bg-white transition-all"
+                            className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 min-h-[46px] text-[16px] sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] focus:bg-white transition-all"
                           />
                         </div>
 
@@ -1608,7 +1608,7 @@ function CheckoutContent() {
                               value={pinCode}
                               onChange={(e) => handlePinCodeChange(e.target.value)}
                               placeholder="6-digit Indian PIN"
-                              className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] focus:bg-white transition-all font-mono"
+                              className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 min-h-[46px] text-[16px] sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] focus:bg-white transition-all font-mono"
                             />
                           </div>
                           <div>
@@ -1620,7 +1620,7 @@ function CheckoutContent() {
                               value={city}
                               onChange={(e) => setCity(e.target.value)}
                               placeholder="e.g. Samastipur"
-                              className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] focus:bg-white transition-all"
+                              className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 min-h-[46px] text-[16px] sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] focus:bg-white transition-all font-medium"
                             />
                           </div>
                         </div>
@@ -1632,7 +1632,7 @@ function CheckoutContent() {
                           <select
                             value={state}
                             onChange={(e) => setState(e.target.value)}
-                            className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] focus:bg-white transition-all cursor-pointer"
+                            className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 min-h-[46px] text-[16px] sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] focus:bg-white transition-all cursor-pointer font-medium"
                           >
                             {INDIAN_STATES.map((st) => (
                               <option key={st} value={st}>{st}</option>
@@ -2073,14 +2073,14 @@ function CheckoutContent() {
                           value={giftRecipientName}
                           onChange={(e) => setGiftRecipientName(e.target.value)}
                           placeholder="Recipient's Name (e.g. Priyadarshini)"
-                          className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 text-xs text-[#292524] outline-none focus:border-[#6B1725]"
+                          className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 min-h-[46px] text-[16px] sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] font-medium"
                         />
                         <textarea
                           value={giftMessage}
                           onChange={(e) => setGiftMessage(e.target.value)}
                           placeholder="Write a sweet congratulatory or celebratory message to print on our royal greeting card..."
                           rows={2}
-                          className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 text-xs text-[#292524] outline-none focus:border-[#6B1725] resize-none"
+                          className="w-full bg-[#FAF7F0] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5 text-[16px] sm:text-sm text-[#292524] outline-none focus:border-[#6B1725] resize-none"
                         />
                       </div>
                     )}
@@ -2095,12 +2095,12 @@ function CheckoutContent() {
                         placeholder="COUPON CODE"
                         value={couponInput}
                         onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                        className="flex-1 bg-[#FAF7F0] border border-dashed border-[#B08A3C]/60 rounded-xl px-3 py-2.5 text-xs uppercase font-sans font-medium text-[#292524] placeholder:text-[#A89F91] outline-none focus:border-[#6B1725]"
+                        className="flex-1 bg-[#FAF7F0] border border-dashed border-[#B08A3C]/60 rounded-xl px-3 py-2.5 min-h-[44px] text-[16px] sm:text-sm uppercase font-sans font-semibold tracking-wide text-[#292524] placeholder:text-[#A89F91] outline-none focus:border-[#6B1725]"
                       />
                       <button
                         type="button"
                         onClick={handleApplyCoupon}
-                        className="px-4 py-2.5 bg-[#FAF7F0] hover:bg-[#6B1725] hover:text-white text-[#6B1725] border border-[#6B1725]/30 rounded-xl font-sans font-bold text-xs transition-colors cursor-pointer shrink-0"
+                        className="px-4 py-2.5 min-h-[44px] bg-[#FAF7F0] hover:bg-[#6B1725] hover:text-white text-[#6B1725] border border-[#6B1725]/30 rounded-xl font-sans font-bold text-xs sm:text-sm transition-colors cursor-pointer shrink-0"
                       >
                         Apply
                       </button>
@@ -2448,10 +2448,10 @@ function CheckoutContent() {
                 type="button"
                 onClick={handleContinueStep1}
                 disabled={!canAdvanceStep1}
-                className="native-press min-h-11 py-3 px-6 bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-40 text-white rounded-2xl font-sans font-bold text-xs uppercase tracking-wider shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-1.5"
+                className="native-press min-h-12 py-3 px-6 bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-40 text-white rounded-2xl font-sans font-bold text-sm uppercase tracking-wider shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-2 min-w-[120px]"
               >
                 <span>Continue</span>
-                <ArrowRight size={14} />
+                <ArrowRight size={15} />
               </button>
             )}
             {currentStep === 2 && (
@@ -2459,10 +2459,10 @@ function CheckoutContent() {
                 type="button"
                 onClick={handleContinueStep2}
                 disabled={!canAdvanceStep2}
-                className="native-press min-h-11 py-3 px-6 bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-40 text-white rounded-2xl font-sans font-bold text-xs uppercase tracking-wider shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-1.5"
+                className="native-press min-h-12 py-3 px-6 bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-40 text-white rounded-2xl font-sans font-bold text-sm uppercase tracking-wider shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-2 min-w-[120px]"
               >
                 <span>Review</span>
-                <ArrowRight size={14} />
+                <ArrowRight size={15} />
               </button>
             )}
             {currentStep === 3 && (
@@ -2470,11 +2470,11 @@ function CheckoutContent() {
                 type="button"
                 onClick={() => handlePlaceOrder()}
                 disabled={isSubmitting}
-                className="native-press min-h-11 py-3 px-6 bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-80 text-white rounded-2xl font-sans font-bold text-xs uppercase tracking-wider shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-1.5"
+                className="native-press min-h-12 py-3 px-7 bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-80 text-white rounded-2xl font-sans font-bold text-sm uppercase tracking-wider shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-2 min-w-[140px]"
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 size={15} className="animate-spin" />
+                    <Loader2 size={16} className="animate-spin" />
                     <span>Placing&hellip;</span>
                   </>
                 ) : (
