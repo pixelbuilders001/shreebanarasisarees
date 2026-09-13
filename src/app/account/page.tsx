@@ -22,7 +22,7 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react';
-import { supabase, fetchDbOrderWithItems, fetchDbOrders, mapDbOrderToOrder, OrderStatusHistoryEntry, fetchDeliverySettings, DeliverySettings } from '../../data/supabase';
+import { supabase, fetchDbOrderWithItems, fetchDbOrders, mapDbOrderToOrder, OrderStatusHistoryEntry, ShipmentTrackingUpdateEntry, fetchDeliverySettings, DeliverySettings } from '../../data/supabase';
 import { OrdersTabSkeleton } from '../../components/TabSkeletons';
 import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 import { generateReceiptUrl, ReceiptData, ReceiptItem } from '@/lib/receiptUtils';
@@ -1456,7 +1456,7 @@ function AccountContent() {
                     {/* Granular parcel tracking sub-notes between Shipped and Out for Delivery */}
                     {step.key === 'shipped' && activeOrder.shipmentTrackingUpdates && activeOrder.shipmentTrackingUpdates.length > 0 && (
                       <div className="mt-3 space-y-3 pt-2.5 border-t border-[#E7DFC9]/60">
-                        {activeOrder.shipmentTrackingUpdates.map((update, uIdx) => {
+                        {activeOrder.shipmentTrackingUpdates.map((update: ShipmentTrackingUpdateEntry, uIdx: number) => {
                           const hasDistance = Boolean(update.metadata?.distance);
                           const hasNextStop = Boolean(update.metadata?.next_stop);
                           const hasEta = Boolean(update.metadata?.eta);

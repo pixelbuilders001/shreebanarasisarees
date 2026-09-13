@@ -74,6 +74,22 @@ export interface OrderStatusHistoryEntry {
   createdAt: string;
 }
 
+export interface ShipmentTrackingUpdateEntry {
+  id: string;
+  orderId: string;
+  title: string;
+  subtitle?: string | null;
+  eventTime: string;
+  isHighlighted: boolean;
+  metadata?: {
+    next_stop?: string;
+    distance?: string;
+    eta?: string;
+    [key: string]: any;
+  };
+  createdAt: string;
+}
+
 export interface Order {
   id?: string;
   orderId: string;
@@ -106,6 +122,7 @@ export interface Order {
   orderStatus: 'Order Placed' | 'Confirmed' | 'Processing' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled' | 'Returned';
   createdAt: string;
   statusHistory?: OrderStatusHistoryEntry[];
+  shipmentTrackingUpdates?: ShipmentTrackingUpdateEntry[];
   delivery_method?: string;
   estimated_delivery_date?: string | null;
   // Gift order fields
