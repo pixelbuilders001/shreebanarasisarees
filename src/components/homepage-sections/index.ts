@@ -8,3 +8,4 @@ export { FeaturedSection } from './FeaturedSection';
 export { CarouselSection } from './CarouselSection';
 export { SectionHeader } from './SectionHeader';
 export { OfferTimerSection } from './OfferTimerSection';
+export { ImageBannerSection } from './ImageBannerSection';

@@ -10,6 +10,7 @@ import { PinterestGrid } from './PinterestGrid';
 import { FeaturedSection } from './FeaturedSection';
 import { CarouselSection } from './CarouselSection';
 import { OfferTimerSection } from './OfferTimerSection';
+import { ImageBannerSection } from './ImageBannerSection';
 
 const sectionRenderers: Record<string, React.ComponentType<{ section: HomepageSectionType }>> = {
   horizontal: HorizontalSection,
@@ -23,6 +24,7 @@ const sectionRenderers: Record<string, React.ComponentType<{ section: HomepageSe
   carousel: CarouselSection,
   product_carousel: CarouselSection,
   offer_timer: OfferTimerSection,
+  image_banner: ImageBannerSection,
 };
 
 interface SectionErrorBoundaryProps {
