@@ -178,6 +178,12 @@ function formatEstimatedDeliveryDate(dateInput: string | Date): string {
   }
 }
 
+function formatEtaDisplay(rawEta?: string | null): string {
+  if (!rawEta) return '';
+  const cleaned = rawEta.trim().replace(/^(\s*expected\s+(by|on|at)?\s*:?\s*)+/i, '').trim();
+  return cleaned ? `Expected by ${cleaned}` : '';
+}
+
 function isOtherThanStandardOrder(order: Order): boolean {
   const method = (order.delivery_method || order.customer?.deliveryMethod || '').toLowerCase();
   if (
@@ -1456,74 +1462,95 @@ function AccountContent() {
                     {/* Granular parcel tracking sub-notes between Shipped and Out for Delivery */}
                     {step.key === 'shipped' && activeOrder.shipmentTrackingUpdates && activeOrder.shipmentTrackingUpdates.length > 0 && (
                       <div className="mt-3 space-y-3 pt-2.5 border-t border-[#E7DFC9]/60">
-                        {activeOrder.shipmentTrackingUpdates.map((update: ShipmentTrackingUpdateEntry, uIdx: number) => {
-                          const hasDistance = Boolean(update.metadata?.distance);
-                          const hasNextStop = Boolean(update.metadata?.next_stop);
-                          const hasEta = Boolean(update.metadata?.eta);
+                        {[...(activeOrder.shipmentTrackingUpdates || [])]
+                          .sort((a, b) => {
+                            const timeDiff = new Date(a.eventTime || a.createdAt).getTime() - new Date(b.eventTime || b.createdAt).getTime();
+                            if (timeDiff !== 0) return timeDiff;
+                            return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+                          })
+                          .map((update: ShipmentTrackingUpdateEntry, uIdx: number, allUpdates) => {
+                            const hasDistance = Boolean(update.metadata?.distance);
+                            const hasNextStop = Boolean(update.metadata?.next_stop);
+                            const hasEta = Boolean(update.metadata?.eta);
 
-                          return (
-                            <div key={update.id || uIdx} className="space-y-2.5">
-                              {/* Highlighted milestone card vs standard row */}
-                              {update.isHighlighted ? (
-                                <div className="bg-[#EBF7EE] border border-[#C2E9CA] rounded-xl p-3 space-y-1 shadow-2xs">
-                                  <p className="text-xs font-semibold text-[#1B6334] font-sans">
-                                    {update.title}
-                                  </p>
-                                  {update.subtitle && (
-                                    <p className="text-[11px] text-[#2E7D47] font-sans">
-                                      {update.subtitle}
-                                    </p>
-                                  )}
-                                  <p className="text-[11px] text-[#247A41] font-sans italic">
-                                    {formatOrderDateTime(update.eventTime)}
-                                  </p>
-                                </div>
-                              ) : (
-                                <div className="space-y-0.5 pl-0.5">
-                                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                                    <span className="text-xs font-medium text-[#1C1917] font-sans">
+                            return (
+                              <div key={update.id || uIdx} className="space-y-2.5">
+                                {/* Highlighted milestone card vs standard row */}
+                                {update.isHighlighted ? (
+                                  <div className="bg-[#EBF7EE] border border-[#C2E9CA] rounded-xl p-3 space-y-1 shadow-2xs">
+                                    <p className="text-xs font-semibold text-[#1B6334] font-sans">
                                       {update.title}
-                                    </span>
-                                    <span className="text-[10.5px] text-[#78716C] font-sans">
+                                    </p>
+                                    {update.subtitle && (
+                                      <p className="text-[11px] text-[#2E7D47] font-sans">
+                                        {update.subtitle}
+                                      </p>
+                                    )}
+                                    <p className="text-[11px] text-[#247A41] font-sans italic">
                                       {formatOrderDateTime(update.eventTime)}
-                                    </span>
-                                  </div>
-                                  {update.subtitle && (
-                                    <p className="text-[11px] text-[#78716C] font-sans">
-                                      {update.subtitle}
                                     </p>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* Dotted connector with Distance Badge (if distance exists) */}
-                              {hasDistance && (
-                                <div className="flex flex-col items-center py-1">
-                                  <div className="border-l border-dashed border-[#A8A29E] h-4" />
-                                  <div className="my-1 px-3 py-1 bg-[#F5F2EC] border border-[#E7DFC9] rounded-full text-[11px] font-semibold text-[#57534E] shadow-2xs flex items-center gap-1 font-sans">
-                                    <span>{update.metadata?.distance}</span>
-                                    <span className="text-[10px] text-[#78716C]">↓</span>
                                   </div>
-                                  <div className="border-l border-dashed border-[#A8A29E] h-3" />
-                                </div>
-                              )}
+                                ) : (
+                                  <div className="space-y-0.5 pl-0.5">
+                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                      <span className="text-xs font-medium text-[#1C1917] font-sans">
+                                        {update.title}
+                                      </span>
+                                      <span className="text-[10.5px] text-[#78716C] font-sans">
+                                        {formatOrderDateTime(update.eventTime)}
+                                      </span>
+                                    </div>
+                                    {update.subtitle && (
+                                      <p className="text-[11px] text-[#78716C] font-sans">
+                                        {update.subtitle}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
 
-                              {/* Next Stop & ETA (if next stop exists) */}
-                              {hasNextStop && (
-                                <div className="pl-0.5 space-y-0.5 text-left">
-                                  <p className="text-xs font-semibold text-[#1C1917] font-sans">
-                                    Next Stop - {update.metadata?.next_stop}
-                                  </p>
-                                  {hasEta && (
-                                    <p className="text-[11px] text-[#78716C] font-sans italic">
-                                      Expected by {update.metadata?.eta}
+                                {/* Dotted connector (with Distance Badge if distance exists, or clean dotted line if no distance) */}
+                                {hasDistance ? (
+                                  <div className="flex flex-col items-center py-1">
+                                    <div className="border-l-2 border-dotted border-[#A8A29E] h-5" />
+                                    <div className="my-1 px-3 py-1 bg-[#F5F2EC] border border-[#E7DFC9] rounded-full text-[11px] font-semibold text-[#57534E] shadow-2xs flex items-center gap-1 font-sans">
+                                      <span>{update.metadata?.distance}</span>
+                                      <span className="text-[10px] text-[#78716C]">↓</span>
+                                    </div>
+                                    <div className="border-l-2 border-dotted border-[#A8A29E] h-3" />
+                                  </div>
+                                ) : (
+                                  (hasNextStop || uIdx < allUpdates.length - 1) && (
+                                    <div className="flex flex-col items-center py-1">
+                                      <div className="border-l-2 border-dotted border-[#A8A29E] h-6" />
+                                      <span className="text-[10px] text-[#A8A29E] -mt-0.5">↓</span>
+                                    </div>
+                                  )
+                                )}
+
+                                {/* Next Stop & ETA (if next stop exists) */}
+                                {hasNextStop && (
+                                  <div className="pl-0.5 space-y-0.5 text-left">
+                                    <p className="text-xs font-semibold text-[#1C1917] font-sans">
+                                      Next Stop - {update.metadata?.next_stop}
                                     </p>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                                    {hasEta && (
+                                      <p className="text-[11px] text-[#78716C] font-sans italic">
+                                        {formatEtaDisplay(update.metadata?.eta)}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* If next stop was rendered and there's another update after it, show dotted connector */}
+                                {hasNextStop && uIdx < allUpdates.length - 1 && (
+                                  <div className="flex flex-col items-center py-1">
+                                    <div className="border-l-2 border-dotted border-[#A8A29E] h-6" />
+                                    <span className="text-[10px] text-[#A8A29E] -mt-0.5">↓</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                       </div>
                     )}
                   </div>

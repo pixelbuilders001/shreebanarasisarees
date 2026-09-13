@@ -1201,7 +1201,11 @@ export function mapDbOrderToOrder(orderRow: any): Order {
         isHighlighted: u.is_highlighted === true,
         metadata: typeof u.metadata === 'object' && u.metadata !== null ? u.metadata : {},
         createdAt: u.created_at
-      })).sort((a: any, b: any) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime())
+      })).sort((a: any, b: any) => {
+        const timeDiff = new Date(a.eventTime || a.createdAt).getTime() - new Date(b.eventTime || b.createdAt).getTime();
+        if (timeDiff !== 0) return timeDiff;
+        return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+      })
     : [];
 
   const shippingAddr = typeof orderRow.shipping_address === 'object' && orderRow.shipping_address ? orderRow.shipping_address : {};
