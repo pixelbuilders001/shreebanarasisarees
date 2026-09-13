@@ -120,10 +120,11 @@ export const OfferTimerSection: React.FC<OfferTimerSectionProps> = ({ section })
   // RENDER: Premium Promotional Strip (Rich Deep Maroon & High Contrast Typography)
   // --------------------------------------------------------------------------
   return (
-    <section
-      aria-label={title || "Promotional Offer"}
-      className="relative w-full overflow-hidden bg-gradient-to-r from-[#240308] via-[#3B0711] to-[#240308] text-[#FAF7F0] border-y border-[#B08A3C]/50 shadow-lg"
-    >
+    <div className="py-4 sm:py-6 md:py-8 lg:py-10">
+      <section
+        aria-label={title || "Promotional Offer"}
+        className="relative w-full overflow-hidden bg-gradient-to-r from-[#240308] via-[#3B0711] to-[#240308] text-[#FAF7F0] border-y border-[#B08A3C]/50 shadow-lg"
+      >
       {/* 1. Background Image: Subtle Watermark Overlay (Only 15% opacity so Deep Maroon color dominates) */}
       {section.image_url ? (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -255,5 +256,6 @@ export const OfferTimerSection: React.FC<OfferTimerSectionProps> = ({ section })
         </div>
       </div>
     </section>
-  );
+  </div>
+);
 };
