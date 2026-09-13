@@ -300,6 +300,7 @@ export async function fetchDynamicHomepageSections(): Promise<HomepageSection[]>
           section.display_style === 'banner_showcase' ||
           section.display_style === 'banners_showcase' ||
           section.display_style === 'category_cards' ||
+          section.display_style === 'offer_timer' ||
           Boolean(section.image_url);
 
         if (!isVisualShowcase && resolvedProducts.length === 0) {

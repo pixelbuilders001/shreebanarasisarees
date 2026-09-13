@@ -473,8 +473,10 @@ Deno.serve(async (req) => {
     // --------------------------------------------------
     // Trigger FCM Push Notification to Customer
     // (packed, shipped, out_for_delivery, delivered, confirmed, cancelled)
+    // Never send push for 'processing', or when send_push is false
     // --------------------------------------------------
-    if (order.user_id) {
+    const shouldSendPush = body.send_push !== false && normalizedStatus !== "processing";
+    if (order.user_id && shouldSendPush) {
       try {
         const statusMap: Record<string, { title: string; body: string; imageFallback?: string }> = {
           confirmed: {

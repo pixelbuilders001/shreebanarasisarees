@@ -9,6 +9,21 @@ import { CategoryCardsSection } from './CategoryCardsSection';
 import { PinterestGrid } from './PinterestGrid';
 import { FeaturedSection } from './FeaturedSection';
 import { CarouselSection } from './CarouselSection';
+import { OfferTimerSection } from './OfferTimerSection';
+
+const sectionRenderers: Record<string, React.ComponentType<{ section: HomepageSectionType }>> = {
+  horizontal: HorizontalSection,
+  grid: GridSection,
+  banner: BannerSection,
+  banner_showcase: BannerSection,
+  banners_showcase: BannerSection,
+  category_cards: CategoryCardsSection,
+  pinterest_grid: PinterestGrid,
+  featured: FeaturedSection,
+  carousel: CarouselSection,
+  product_carousel: CarouselSection,
+  offer_timer: OfferTimerSection,
+};
 
 interface SectionErrorBoundaryProps {
   children: ReactNode;
@@ -52,27 +67,8 @@ export const HomepageSection: React.FC<HomepageSectionProps> = ({ section }) => 
   // Render by display_style
   const renderContent = () => {
     const style = (section.display_style || '').toLowerCase().replace(/[\s-]+/g, '_');
-    switch (style) {
-      case 'horizontal':
-        return <HorizontalSection section={section} />;
-      case 'grid':
-        return <GridSection section={section} />;
-      case 'banner':
-      case 'banner_showcase':
-      case 'banners_showcase':
-        return <BannerSection section={section} />;
-      case 'category_cards':
-        return <CategoryCardsSection section={section} />;
-      case 'pinterest_grid':
-        return <PinterestGrid section={section} />;
-      case 'featured':
-        return <FeaturedSection section={section} />;
-      case 'carousel':
-      case 'product_carousel':
-        return <CarouselSection section={section} />;
-      default:
-        return <HorizontalSection section={section} />;
-    }
+    const Renderer = sectionRenderers[style] || HorizontalSection;
+    return <Renderer section={section} />;
   };
 
   return (
