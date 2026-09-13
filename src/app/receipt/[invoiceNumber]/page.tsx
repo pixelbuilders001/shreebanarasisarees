@@ -42,10 +42,13 @@ export default function ReceiptPage() {
     const searchParams = useSearchParams();
     const invoiceNumber = params?.invoiceNumber as string;
     const autoPrint = searchParams?.get('print') === 'true';
+    const autoDownload = searchParams?.get('download') === 'true';
 
     const [receipt, setReceipt] = useState<ReceiptData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isDownloading, setIsDownloading] = useState(false);
+    const [downloadDone, setDownloadDone] = useState(false);
 
     const [isStandalone] = useState(false);
     const isPwaInstalled = useIsPwaInstalled();
@@ -77,6 +80,23 @@ export default function ReceiptPage() {
         }, 800);
         return () => clearTimeout(timer);
     }, [autoPrint, receipt]);
+
+    useEffect(() => {
+        if (!autoDownload || !receipt || downloadDone) return;
+        let isMounted = true;
+        (async () => {
+            try {
+                setIsDownloading(true);
+                await downloadInvoicePdf(receipt);
+                if (isMounted) setDownloadDone(true);
+            } catch (err) {
+                console.error('Auto download invoice PDF failed:', err);
+            } finally {
+                if (isMounted) setIsDownloading(false);
+            }
+        })();
+        return () => { isMounted = false; };
+    }, [autoDownload, receipt, downloadDone]);
 
     useEffect(() => {
         // 1. Check for encoded zero-API payload parameter in URL (?d=... or ?data=...)
@@ -315,13 +335,12 @@ export default function ReceiptPage() {
     const totalSavings = totalItemDiscount + billDiscount + Number(receipt.appliedVoucherAmount || 0);
     const totalSavingsPercent = totalMrp > 0 ? (totalSavings / totalMrp) * 100 : 0;
 
-    const [isDownloading, setIsDownloading] = useState(false);
-
     const handleDownloadPdf = async () => {
         if (!receipt || isDownloading) return;
         try {
             setIsDownloading(true);
             await downloadInvoicePdf(receipt);
+            setDownloadDone(true);
         } catch (err) {
             console.error('Direct PDF download failed, falling back to print dialog:', err);
             handlePrint();
@@ -336,6 +355,77 @@ export default function ReceiptPage() {
         window.print();
         setTimeout(() => { document.title = orig; }, 2000);
     };
+
+    if (autoDownload && !searchParams?.get('preview')) {
+        return (
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fcf9f3', padding: '24px 16px', fontFamily: 'sans-serif' }}>
+                <div style={{ maxWidth: '440px', width: '100%', background: '#ffffff', border: '1px solid #c9a45c', borderRadius: '16px', padding: '36px 24px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.06)' }}>
+                    {loading || isDownloading ? (
+                        <>
+                            <Loader2 className="w-12 h-12 text-[#800000] animate-spin mx-auto mb-4" />
+                            <h2 style={{ color: '#800000', fontSize: '20px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+                                Downloading Your Tax Invoice...
+                            </h2>
+                            <p style={{ color: '#665544', fontSize: '13px', margin: 0, lineHeight: 1.5 }}>
+                                Generating official GST invoice PDF for {invoiceNumber ? `Order #${invoiceNumber}` : 'your order'}. It will save directly to your downloads.
+                            </p>
+                        </>
+                    ) : downloadDone ? (
+                        <>
+                            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto', fontSize: '26px' }}>
+                                ✓
+                            </div>
+                            <h2 style={{ color: '#16a34a', fontSize: '20px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+                                Invoice Downloaded!
+                            </h2>
+                            <p style={{ color: '#665544', fontSize: '13px', margin: '0 0 24px 0', lineHeight: 1.5 }}>
+                                Your tax invoice PDF has been saved to your downloads.
+                            </p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <button
+                                    onClick={handleDownloadPdf}
+                                    style={{ padding: '11px 16px', background: '#800000', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}
+                                >
+                                    Download Again
+                                </button>
+                                <a
+                                    href={`/receipt/${encodeURIComponent(invoiceNumber)}?preview=true`}
+                                    style={{ padding: '10px 16px', background: '#fff', color: '#800000', border: '1.5px solid #800000', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', textDecoration: 'none' }}
+                                >
+                                    View Full Invoice Preview
+                                </a>
+                                <a
+                                    href="/"
+                                    style={{ color: '#800000', fontSize: '12px', textDecoration: 'underline', marginTop: '6px' }}
+                                >
+                                    Return to Shree Banarasi Sarees Store
+                                </a>
+                            </div>
+                        </>
+                    ) : error ? (
+                        <>
+                            <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+                            <h2 style={{ color: '#991b1b', fontSize: '18px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+                                {error}
+                            </h2>
+                            <a href="/" style={{ color: '#800000', fontSize: '13px', textDecoration: 'underline', marginTop: '12px', display: 'inline-block' }}>
+                                Return to Store
+                            </a>
+                        </>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <button
+                                onClick={handleDownloadPdf}
+                                style={{ padding: '11px 16px', background: '#800000', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}
+                            >
+                                Click Here to Download Invoice
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>

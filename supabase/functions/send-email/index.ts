@@ -36,8 +36,14 @@ interface EmailOrderDetails {
 function generateOrderEmailHtml(
   order: EmailOrderDetails,
   title: string,
-  subtitle: string
+  subtitle: string,
+  siteUrl: string = "https://shreebanarasisarees.in"
 ): string {
+  const trackingUrl = `${siteUrl}/account?orderId=${encodeURIComponent(order.orderId)}`;
+  const invoiceUrl = `${siteUrl}/receipt/${encodeURIComponent(order.orderId)}?download=true`;
+  const logoUrl = `${siteUrl}/brand_logo.png`;
+  const whatsappUrl = `https://wa.me/916203909946?text=${encodeURIComponent(`Hi Shree Banarasi Sarees, I need help regarding my order #${order.orderId}`)}`;
+
   const itemsHtml = (order.items || [])
     .map(
       (item) => `
@@ -68,10 +74,13 @@ function generateOrderEmailHtml(
           <td align="center">
             <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border: 1px solid #c9a45c; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: left;">
               
-              <!-- Header Strip -->
+              <!-- Header Strip with Logo -->
               <tr>
                 <td style="background-color: #800000; padding: 24px; text-align: center; border-bottom: 3px solid #c9a45c;">
-                  <h1 style="color: #fff9f0; margin: 0; font-size: 26px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase;">
+                  <a href="${siteUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
+                    <img src="${logoUrl}" alt="Shree Banarasi Sarees" width="76" height="76" style="display: block; margin: 0 auto 10px auto; border-radius: 50%; border: 2px solid #c9a45c; background-color: #ffffff; object-fit: contain;" />
+                  </a>
+                  <h1 style="color: #fff9f0; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase;">
                     Shree Banarasi Sarees
                   </h1>
                   <p style="color: #c9a45c; margin: 4px 0 0 0; font-size: 11px; letter-spacing: 3px; text-transform: uppercase;">
@@ -82,13 +91,34 @@ function generateOrderEmailHtml(
 
               <!-- Status Banner -->
               <tr>
-                <td style="padding: 30px 30px 20px 30px; text-align: center;">
+                <td style="padding: 26px 30px 16px 30px; text-align: center;">
                   <h2 style="color: #800000; margin: 0 0 8px 0; font-size: 22px; font-weight: bold;">
                     ${title}
                   </h2>
                   <p style="color: #665544; margin: 0; font-size: 14px; line-height: 1.5;">
                     ${subtitle}
                   </p>
+                </td>
+              </tr>
+
+              <!-- Quick Action CTAs: Track Order & Download Invoice -->
+              <tr>
+                <td align="center" style="padding: 0 30px 22px 30px;">
+                  <table cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                    <tr>
+                      <td style="border-radius: 8px; background-color: #800000; text-align: center; box-shadow: 0 2px 6px rgba(128,0,0,0.2);">
+                        <a href="${trackingUrl}" target="_blank" style="display: inline-block; padding: 12px 20px; color: #fff9f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: bold; text-decoration: none; border-radius: 8px; border: 1px solid #c9a45c; letter-spacing: 0.5px;">
+                          📍 Track Order Live
+                        </a>
+                      </td>
+                      <td width="12"></td>
+                      <td style="border-radius: 8px; background-color: #ffffff; text-align: center; border: 1.5px solid #800000;">
+                        <a href="${invoiceUrl}" target="_blank" style="display: inline-block; padding: 11px 18px; color: #800000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: bold; text-decoration: none; border-radius: 8px; letter-spacing: 0.5px;">
+                          📄 Download Invoice
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
                 </td>
               </tr>
 
@@ -176,12 +206,19 @@ function generateOrderEmailHtml(
                 </td>
               </tr>
 
-              <!-- Footer -->
+              <!-- Visit Store / Footer -->
               <tr>
-                <td style="background-color: #fff9f0; padding: 20px 30px; text-align: center; border-top: 1px solid #f0e6d2; font-size: 12px; color: #7a6855;">
-                  <p style="margin: 0 0 6px 0; font-weight: bold; color: #800000;">Shree Banarasi Sarees</p>
-                  <p style="margin: 0 0 6px 0;">Rudauli Chowk, Harpur Aloth, Samastipur, Bihar – 848103</p>
-                  <p style="margin: 0;">WhatsApp Support: +91 91620 390946</p>
+                <td style="background-color: #fff9f0; padding: 22px 30px; text-align: center; border-top: 1px solid #f0e6d2; font-size: 12px; color: #7a6855;">
+                  <p style="margin: 0 0 6px 0; font-weight: bold; color: #800000; font-size: 14px;">Shree Banarasi Sarees</p>
+                  <p style="margin: 0 0 10px 0;">Rudauli Chowk, Harpur Aloth, Samastipur, Bihar – 848103</p>
+                  <p style="margin: 0 0 12px 0;">
+                    <a href="${whatsappUrl}" target="_blank" style="display: inline-block; background-color: #25d366; color: #ffffff; padding: 6px 14px; border-radius: 20px; text-decoration: none; font-weight: bold; font-size: 12px;">
+                      💬 Chat on WhatsApp: +91 62039 09946
+                    </a>
+                  </p>
+                  <p style="margin: 0; font-size: 11px; color: #9c8a77;">
+                    <a href="${siteUrl}" target="_blank" style="color: #800000; text-decoration: underline;">Visit Our Online Store</a>
+                  </p>
                 </td>
               </tr>
 
@@ -213,6 +250,7 @@ serve(async (req) => {
       throw new Error("RESEND_API_KEY environment variable is missing");
     }
 
+    const SITE_URL = Deno.env.get("SITE_URL") || "https://shreebanarasisarees.in";
     const { action, order }: { action: 'ORDER_PLACED' | 'ORDER_CONFIRMED' | 'ORDER_DELIVERED'; order: EmailOrderDetails } = await req.json();
 
     if (!order || !order.customerEmail) {
@@ -244,7 +282,7 @@ serve(async (req) => {
       subtitle = `Here is an update regarding your order with Shree Banarasi Sarees.`;
     }
 
-    const html = generateOrderEmailHtml(order, title, subtitle);
+    const html = generateOrderEmailHtml(order, title, subtitle, SITE_URL);
 
     const resendResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
