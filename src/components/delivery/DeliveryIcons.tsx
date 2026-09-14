@@ -10,7 +10,7 @@ export function ExpressRiderIcon({ className = "w-10 h-10" }: { className?: stri
     <img
       src="/expressdel.webp"
       alt="Express Delivery"
-      className={`object-contain shrink-0 ${className}`}
+      className={`object-contain shrink-0 animate-rider-pulse ${className}`}
       loading="eager"
     />
   );
@@ -41,7 +41,7 @@ export function DeliveryRiderIcon({
     <img
       src={isExp ? "/expressdel.webp" : "/standarddel.webp"}
       alt={isExp ? "Express Delivery" : "Standard Delivery"}
-      className={`object-contain shrink-0 ${className}`}
+      className={`object-contain shrink-0 ${isExp ? 'animate-rider-pulse' : ''} ${className}`}
       loading="eager"
     />
   );

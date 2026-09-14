@@ -11,10 +11,11 @@ import { fetchDeliverySettings, DeliverySettings } from '../data/supabase';
 import { triggerHaptic } from '../utils/haptics';
 
 import { getQuickCity, fetchPincodeDetails } from '../lib/pincodeLookup';
+import { getSameDayCountdownInfo, getExpressDeliveryInfo } from '../utils/deliveryCountdown';
 
 const SUGGESTED_PINCODES = [
-  { pin: '848101', city: 'Samastipur', label: 'Samastipur (Express 20-Min)' },
-  { pin: '848114', city: 'Darbhanga', label: 'Darbhanga' },
+  { pin: '848101', city: 'Samastipur', label: 'Samastipur (20-Min Express)' },
+  { pin: '848134', city: 'Samastipur', label: 'Samastipur (Same-Day Delivery)' },
   { pin: '800001', city: 'Patna', label: 'Patna' },
   { pin: '110001', city: 'New Delhi', label: 'New Delhi' },
   { pin: '560001', city: 'Bengaluru', label: 'Bengaluru' }
@@ -99,25 +100,51 @@ export const DeliveryPincodeSkeleton: React.FC<{ variant?: 'mobile' | 'desktop' 
   );
 };
 
-// Helper to determine if a pincode is eligible for 20-min express
-// Note: Only Samastipur store pincodes (848101, 848102) qualify. All other Indian pincodes are Standard Delivery!
-export const checkIsExpress = (pin: string, deliveryRes?: any) => {
+export type DeliveryTier = 'express' | 'same_day' | 'standard';
+
+// Helper to determine delivery tier:
+// Tier 1: Express (< 5 km) - 848101, 848102
+// Tier 2: Same Day (5 - 10 km) - 848134, outer Samastipur blocks
+// Tier 3: Standard (> 10 km) - rest of India
+export const checkDeliveryTier = (pin: string, deliveryRes?: any): DeliveryTier => {
   const clean = pin?.trim() || '';
-  if (!clean) return false;
+  if (!clean) return 'standard';
 
-  const isSamastipurExpressPin = clean === '848101' || clean === '848102';
-  if (!isSamastipurExpressPin) {
-    return false; // ANY other pincode across India is Standard Delivery (3–5 Days)!
+  // 1. Explicit Samastipur Town Center (< 5 km from showroom)
+  if (clean === '848101' || clean === '848102') {
+    return 'express';
   }
 
+  // 2. Explicit Samastipur Outer / Suburban Blocks (5 km to 10 km from showroom, e.g. 848134 Jitwarpur/Warisnagar)
+  if (clean === '848134' || (clean.startsWith('8481') && clean !== '848114')) {
+    return 'same_day';
+  }
+
+  // 3. Dynamic distance calculation from API
   if (deliveryRes && deliveryRes.pincode === clean) {
-    if (deliveryRes.isExpress === false || deliveryRes.eligible === false) {
-      return false;
+    const dist = deliveryRes.distanceKm !== undefined ? Number(deliveryRes.distanceKm) : undefined;
+    if (dist !== undefined) {
+      if (dist <= 5.0 && (deliveryRes.is20MinDelivery || deliveryRes.isExpress || deliveryRes.eligible)) {
+        return 'express';
+      }
+      if (dist <= 10.0) {
+        return 'same_day';
+      }
+      return 'standard';
     }
-    return Boolean(deliveryRes.is20MinDelivery || deliveryRes.isExpress);
+    if (deliveryRes.is20MinDelivery || deliveryRes.isExpress) return 'express';
+    if (deliveryRes.options?.some((o: any) => o.id === 'same_day' && o.available)) return 'same_day';
   }
 
-  return true;
+  return 'standard';
+};
+
+export const checkIsExpress = (pin: string, deliveryRes?: any) => {
+  return checkDeliveryTier(pin, deliveryRes) === 'express';
+};
+
+export const checkIsSameDay = (pin: string, deliveryRes?: any) => {
+  return checkDeliveryTier(pin, deliveryRes) === 'same_day';
 };
 
 export const sanitizePincode = (val: any): string => {
@@ -177,7 +204,9 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
     }
   }, [activePin, checkPincode]);
 
-  const is20Min = checkIsExpress(activePin, result);
+  const activeTier = checkDeliveryTier(activePin, result);
+  const is20Min = activeTier === 'express';
+  const isSameDay = activeTier === 'same_day';
 
   const locationCity =
     city ||
@@ -220,6 +249,11 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
             ⚡ 20-Min
           </span>
         )}
+        {isSameDay && (
+          <span className="text-[9px] font-bold text-amber-200 bg-amber-900/80 border border-amber-500/30 px-1.5 py-0.5 rounded-md shrink-0">
+            🟢 Same-Day
+          </span>
+        )}
         <ChevronRight size={12} className="text-[#D4B870] group-hover:translate-x-0.5 transition-transform" />
       </button>
     );
@@ -253,6 +287,11 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
         {is20Min && (
           <span className="text-[9.5px] font-bold text-emerald-200 bg-emerald-900/80 border border-emerald-500/30 px-1.5 py-0.5 rounded-md shrink-0">
             ⚡ 20-Min
+          </span>
+        )}
+        {isSameDay && (
+          <span className="text-[9.5px] font-bold text-amber-200 bg-amber-900/80 border border-amber-500/30 px-1.5 py-0.5 rounded-md shrink-0">
+            🟢 Same-Day
           </span>
         )}
       </div>
@@ -432,9 +471,13 @@ export const DeliveryPincodeSheet: React.FC = () => {
     }, 400);
   };
 
-  const isInput20Min = checkIsExpress(inputPincode, result);
+  const inputTier = checkDeliveryTier(inputPincode, result);
+  const isInput20Min = inputTier === 'express';
+  const isInputSameDay = inputTier === 'same_day';
   const timingStatus = getExpressTimingStatus(result);
+  const sheetExpressInfo = getExpressDeliveryInfo(20);
   const deliveryDateInfo = getStandardDeliveryDateInfo(new Date(), deliverySettings?.standard_delivery_days ?? 3);
+  const sheetSameDayCountdown = getSameDayCountdownInfo(deliverySettings?.same_day_cutoff_time ?? '17:00:00', '6:30 PM');
 
   if (!mounted || !isSheetOpen) return null;
 
@@ -592,9 +635,23 @@ export const DeliveryPincodeSheet: React.FC = () => {
                 {/* Delivery Illustration */}
                 <div className="w-12 h-12 sm:w-13 sm:h-13 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-[#FFF0F3]">
                   <img
-                    src={isInput20Min ? '/expressdel.webp' : '/standarddel.webp'}
-                    alt={isInput20Min ? 'Express Delivery' : 'Standard Delivery'}
-                    className="w-full h-full object-contain"
+                    src={
+                      inputTier === 'express'
+                        ? '/expressdel.webp'
+                        : inputTier === 'same_day'
+                        ? '/sameday.webp'
+                        : '/standarddel.webp'
+                    }
+                    alt={
+                      inputTier === 'express'
+                        ? 'Express Delivery'
+                        : inputTier === 'same_day'
+                        ? 'Same Day Delivery'
+                        : 'Standard Delivery'
+                    }
+                    className={`w-full h-full object-contain ${
+                      inputTier === 'express' ? 'animate-rider-pulse' : ''
+                    }`}
                   />
                 </div>
 
@@ -604,17 +661,41 @@ export const DeliveryPincodeSheet: React.FC = () => {
                 {/* Text Info */}
                 <div className="space-y-0.5 min-w-0 flex-1">
                   <div className="font-bold text-xs sm:text-sm text-gray-900 leading-tight">
-                    {isInput20Min ? 'Samastipur Express Delivery' : 'Standard India Delivery'}
+                    {inputTier === 'express'
+                      ? 'Samastipur Express Delivery'
+                      : inputTier === 'same_day'
+                      ? 'Samastipur Same Day Delivery'
+                      : 'Standard India Delivery'}
                   </div>
                   <div>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-semibold">
-                      <CheckCircle2 size={11} className="text-emerald-600 shrink-0" />
-                      <span>{isInput20Min ? timingStatus.badgeText.replace('✓', '').trim() : 'Standard Delivery'}</span>
-                    </span>
+                    {inputTier === 'express' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-semibold">
+                        <CheckCircle2 size={11} className="text-emerald-600 shrink-0" />
+                        <span>{timingStatus.badgeText.replace('✓', '').trim()} · 20-Min</span>
+                      </span>
+                    )}
+                    {inputTier === 'same_day' && (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-200 text-[10px] font-semibold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                        <span>Same-Day Guaranteed</span>
+                      </span>
+                    )}
+                    {inputTier === 'standard' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-semibold">
+                        <CheckCircle2 size={11} className="text-blue-600 shrink-0" />
+                        <span>Standard Delivery</span>
+                      </span>
+                    )}
                   </div>
                   <p className="text-[10.5px] text-gray-500 leading-snug line-clamp-2">
-                    {isInput20Min
-                      ? timingStatus.descText
+                    {inputTier === 'express'
+                      ? (timingStatus.isNormalHours
+                          ? `Order now to get by ${sheetExpressInfo.timeStr} (~20 mins). Direct from showroom.`
+                          : timingStatus.descText)
+                      : inputTier === 'same_day'
+                      ? (sheetSameDayCountdown.isBeforeCutoff
+                          ? `Order in next ${sheetSameDayCountdown.countdownText} to get this by 6:30 PM today.`
+                          : `Order now for delivery tomorrow evening by 6:30 PM.`)
                       : `${deliveryDateInfo.deliveryByText} to ${getQuickCity(inputPincode) ? `${getQuickCity(inputPincode)}, ${inputPincode}` : inputPincode}. Standard courier & COD available.`}
                   </p>
                 </div>
@@ -625,16 +706,20 @@ export const DeliveryPincodeSheet: React.FC = () => {
                 <div className="flex items-center justify-center gap-1 text-[10px] font-medium text-gray-700">
                   <Clock size={11} className="text-gray-700 shrink-0" />
                   <span>
-                    {isInput20Min
+                    {inputTier === 'express'
                       ? (timingStatus.isNormalHours
-                          ? 'Estimated'
+                          ? 'Get by'
                           : (timingStatus.badgeText.includes('Today') ? 'Today' : 'Tomorrow'))
+                      : inputTier === 'same_day'
+                      ? (sheetSameDayCountdown.isBeforeCutoff ? 'Today' : 'Tomorrow')
                       : 'Estimated'}
                   </span>
                 </div>
                 <div className="text-[11px] sm:text-xs font-bold text-[#6B1725] mt-0.5 tracking-tight">
-                  {isInput20Min
-                    ? (timingStatus.isNormalHours ? '20 MINS' : '10:00 AM')
+                  {inputTier === 'express'
+                    ? (timingStatus.isNormalHours ? sheetExpressInfo.timeStr : '10:00 AM')
+                    : inputTier === 'same_day'
+                    ? '6:30 PM'
                     : (deliveryDateInfo.flipkartFormat || '3-5 Days')}
                 </div>
               </div>

@@ -262,6 +262,22 @@ html {
   will-change: transform;
 }
 
+@keyframes riderPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+.animate-rider-pulse {
+  animation: riderPulse 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  display: inline-block;
+  transform-origin: center;
+  will-change: transform;
+}
+
 /* Mobile commerce primitives: quietly elevated, large enough to tap, and fast to respond. */
 .native-surface {
   background: color-mix(in srgb, var(--surface-elevated) 94%, transparent);

@@ -174,13 +174,15 @@ export default async function Page({ params }: PageProps) {
         }
       }
     },
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": product.rating || 5,
-      "reviewCount": product.reviewsCount || 12,
-      "bestRating": 5,
-      "worstRating": 1
-    }
+    ...(product.rating > 0 && product.reviewsCount > 0 ? {
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": product.rating,
+        "reviewCount": product.reviewsCount,
+        "bestRating": 5,
+        "worstRating": 1
+      }
+    } : {})
   };
 
   // BreadcrumbList JSON-LD

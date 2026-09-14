@@ -12,8 +12,8 @@ import {
   MessageCircle,
   Share2,
   ZoomIn,
-  Zap,
   ChevronLeft,
+  ChevronRight,
   RotateCcw,
   CheckCircle2,
   MapPin,
@@ -29,7 +29,9 @@ import {
   ShoppingBag,
   Bell,
   Loader2,
-  Truck
+  Truck,
+  Clock,
+  PackageCheck
 } from 'lucide-react';
 import { fetchDesignVariants, fetchDeliverySettings, DeliverySettings, supabase } from '../../../data/supabase';
 import { RecentlyViewed } from '../../../components/RecentlyViewed';
@@ -42,6 +44,7 @@ import { getStandardDeliveryDateInfo } from '../../../lib/deliveryDates';
 import { triggerHaptic } from '../../../utils/haptics';
 import { DeliveryRiderIcon } from '../../../components/delivery/DeliveryIcons';
 import { getQuickCity } from '../../../lib/pincodeLookup';
+import { getSameDayCountdownInfo, SameDayCountdownInfo, getExpressDeliveryInfo, ExpressDeliveryInfo } from '../../../utils/deliveryCountdown';
 
 interface ProductDetailClientProps {
   product: Product;
@@ -84,28 +87,78 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     }
   }, [displayPincode, checkPincode]);
 
-  const is20Min = useMemo(() => {
-    if (result) {
-      return !!(
-        result.is20MinDelivery ||
-        result.isExpress ||
-        (result.distanceKm !== undefined && result.distanceKm <= 10) ||
-        result.eligible
-      );
-    }
-    const cleanPin = (displayPincode || '').trim();
-    return cleanPin.startsWith('8481') || cleanPin === (defaultDeliveryPincode || '848101');
-  }, [result, displayPincode, defaultDeliveryPincode]);
-
-  const timingStatus = useMemo(() => {
-    return getExpressTimingStatus(result);
-  }, [result]);
-
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
 
   useEffect(() => {
     fetchDeliverySettings().then(setDeliverySettings).catch(console.error);
   }, []);
+
+  // 3-Tier Delivery Logic:
+  // Tier 1: Express (< 5 km from showroom) -> 20-Minute Express Delivery
+  // Tier 2: Same Day (5 km to 10 km from showroom) -> Same Day Delivery with live countdown
+  // Tier 3: Standard (> 10 km / rest of India) -> Tracked courier delivery
+  const deliveryTier = useMemo<'express' | 'same_day' | 'standard'>(() => {
+    const cleanPin = (displayPincode || '').trim();
+    const maxExpressKm = Number(deliverySettings?.express_max_km ?? 5.0);
+    const maxSameDayKm = Number(deliverySettings?.same_day_max_km ?? 10.0);
+
+    // 1. Explicit Samastipur Town Center (< 5 km from showroom)
+    if (cleanPin === '848101' || cleanPin === '848102' || cleanPin === (defaultDeliveryPincode || '848101')) {
+      return 'express';
+    }
+
+    // 2. Explicit Samastipur Outer / Suburban Blocks (5 km to 10 km from showroom, e.g. 848134 Jitwarpur/Warisnagar)
+    if (cleanPin === '848134' || (cleanPin.startsWith('8481') && cleanPin !== '848114')) {
+      return 'same_day';
+    }
+
+    // 3. Dynamic distance check via GPS or backend route calculation
+    if (result) {
+      const dist = result.distanceKm !== undefined ? Number(result.distanceKm) : undefined;
+      if (dist !== undefined) {
+        if (dist <= maxExpressKm && (result.is20MinDelivery || result.isExpress || result.eligible)) {
+          return 'express';
+        }
+        if (dist <= maxSameDayKm) {
+          return 'same_day';
+        }
+        return 'standard';
+      }
+      if (result.is20MinDelivery) return 'express';
+      if (result.options?.some((o: any) => o.id === 'same_day' && o.available)) return 'same_day';
+    }
+
+    return 'standard';
+  }, [result, displayPincode, defaultDeliveryPincode, deliverySettings]);
+
+  const is20Min = deliveryTier === 'express';
+  const isSameDay = deliveryTier === 'same_day';
+
+  // Live countdown for Same-Day delivery cutoff (5 km - 10 km tier)
+  const [sameDayCountdown, setSameDayCountdown] = useState<SameDayCountdownInfo>(() =>
+    getSameDayCountdownInfo(deliverySettings?.same_day_cutoff_time ?? '17:00:00', '6:30 PM')
+  );
+
+  // Real-time 20-minute delivery ETA (< 5 km express tier)
+  const [expressInfo, setExpressInfo] = useState<ExpressDeliveryInfo>(() =>
+    getExpressDeliveryInfo(20)
+  );
+
+  useEffect(() => {
+    const updateTimer = () => {
+      setSameDayCountdown(
+        getSameDayCountdownInfo(deliverySettings?.same_day_cutoff_time ?? '17:00:00', '6:30 PM')
+      );
+      setExpressInfo(getExpressDeliveryInfo(20));
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 30000);
+    return () => clearInterval(interval);
+  }, [deliverySettings?.same_day_cutoff_time]);
+
+  const timingStatus = useMemo(() => {
+    return getExpressTimingStatus(result);
+  }, [result]);
 
   const deliveryDateInfo = useMemo(() => {
     return getStandardDeliveryDateInfo(new Date(), deliverySettings?.standard_delivery_days ?? 3);
@@ -113,25 +166,36 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
   const activeDeliveryCharge = useMemo(() => {
     if (result?.options && Array.isArray(result.options)) {
-      if (is20Min) {
+      if (deliveryTier === 'express') {
         const expOpt = result.options.find((o: any) => o.id === 'express' && o.available);
         if (expOpt) return expOpt.charge;
+      } else if (deliveryTier === 'same_day') {
+        const sdOpt = result.options.find((o: any) => o.id === 'same_day' && o.available);
+        if (sdOpt) return sdOpt.charge;
       }
       const stdOpt = result.options.find((o: any) => o.id === 'standard');
       if (stdOpt) return stdOpt.charge;
     }
     if (deliverySettings) {
-      return is20Min ? Number(deliverySettings.express_charge) : Number(deliverySettings.standard_charge);
+      if (deliveryTier === 'express') return Number(deliverySettings.express_charge);
+      if (deliveryTier === 'same_day') return Number(deliverySettings.same_day_charge);
+      return Number(deliverySettings.standard_charge);
     }
-    return is20Min ? 29 : 69;
-  }, [result, is20Min, deliverySettings]);
+    if (deliveryTier === 'express') return 29;
+    if (deliveryTier === 'same_day') return 49;
+    return 69;
+  }, [result, deliveryTier, deliverySettings]);
 
   const deliveryChargeText = useMemo(() => {
     if (activeDeliveryCharge === 0) {
-      return is20Min ? 'Free express delivery' : 'Free delivery';
+      if (deliveryTier === 'express') return 'Free express delivery';
+      if (deliveryTier === 'same_day') return 'Free same-day delivery';
+      return 'Free delivery';
     }
-    return is20Min ? `Express (₹${activeDeliveryCharge})` : `Standard delivery (₹${activeDeliveryCharge})`;
-  }, [activeDeliveryCharge, is20Min]);
+    if (deliveryTier === 'express') return `Express (₹${activeDeliveryCharge})`;
+    if (deliveryTier === 'same_day') return `Same Day (₹${activeDeliveryCharge})`;
+    return `Standard delivery (₹${activeDeliveryCharge})`;
+  }, [activeDeliveryCharge, deliveryTier]);
 
   // Loading/success states for actions
   const [isAddingToCart, setIsAddingToCart] = useState(false);
@@ -381,10 +445,12 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
     }
   };
 
-  // Average rating calculation
-  const avgRating = reviews.length > 0
-    ? (reviews.reduce((acc, r) => acc + (r.rating || 5), 0) / reviews.length).toFixed(1)
-    : '5.0';
+  // Average rating and reviews calculation
+  const totalReviewsCount = reviews.length > 0 ? reviews.length : (product.reviewsCount || 0);
+  const avgRatingNum = reviews.length > 0
+    ? (reviews.reduce((acc, r) => acc + (r.rating || 5), 0) / reviews.length)
+    : (product.rating || 0);
+  const avgRating = avgRatingNum > 0 ? avgRatingNum.toFixed(1) : null;
 
   // Similar products logic for "Similar weaves" section
   const similarProducts = PRODUCTS.filter(p => p.id !== product.id && (p.category === product.category || p.fabric === product.fabric)).slice(0, 6);
@@ -551,15 +617,45 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
               </h1>
 
               {/* RATING SUMMARY ROW */}
-              <div className="flex items-center gap-2 pt-1 text-xs">
-                <div className="flex items-center gap-1 text-[#B08A3C]">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} size={13} className="fill-[#B08A3C]" />
-                  ))}
-                </div>
-                <span className="font-bold text-[#292524]">{avgRating}</span>
-                <span className="text-[#7A6E65]">({reviews.length} reviews)</span>
-              </div>
+              {totalReviewsCount > 0 && avgRating ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById('customer-reviews');
+                    el?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="flex items-center gap-2 pt-1 text-xs cursor-pointer hover:opacity-85 transition-opacity text-left"
+                >
+                  <div className="flex items-center gap-1 text-[#B08A3C]">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        size={13}
+                        className={i < Math.round(avgRatingNum) ? "fill-[#B08A3C] text-[#B08A3C]" : "text-stone-300"}
+                      />
+                    ))}
+                  </div>
+                  <span className="font-bold text-[#292524]">{avgRating}</span>
+                  <span className="text-[#7A6E65]">({totalReviewsCount} {totalReviewsCount === 1 ? 'review' : 'reviews'})</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById('customer-reviews');
+                    el?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="flex items-center gap-1.5 pt-1 text-xs text-[#7A6E65] hover:text-[#6B1725] transition-colors cursor-pointer text-left"
+                >
+                  <div className="flex items-center gap-0.5 text-stone-300">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} size={13} className="text-stone-300" />
+                    ))}
+                  </div>
+                  <span className="font-medium text-[#7A6E65]">No reviews yet</span>
+                  <span className="text-[#6B1725] font-semibold hover:underline">· Write first review</span>
+                </button>
+              )}
             </div>
 
             {/* PRICE ROW */}
@@ -679,58 +775,134 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
               </p>
             </div>
 
-            {/* DESKTOP & MOBILE PINCODE DELIVERY DRAWER TRIGGER */}
-            <div className="border-y border-[#F3ECE0] py-4 space-y-3">
-              <div className="flex items-start justify-between">
-                <div
-                  onClick={openPincodeSheet}
-                  className="flex items-start gap-3 cursor-pointer group"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-[#FAF7F0] border border-[#E5DEC9] p-1 flex items-center justify-center shrink-0 mt-0.5 group-hover:border-[#6B1725]/40 transition-colors shadow-2xs overflow-hidden">
+            {/* ── SINGLE UNIFIED EYE-CATCHING DELIVERY CARD ── */}
+            <div className="space-y-2.5">
+              <div
+                onClick={openPincodeSheet}
+                className="rounded-2xl border border-[#E9DFCF] bg-gradient-to-r from-[#FFFDF9] via-[#FAF6EE] to-[#FFF9F2] p-3.5 sm:p-4 shadow-2xs hover:border-[#B08A3C]/60 hover:shadow-xs transition-all cursor-pointer group select-none relative overflow-hidden"
+              >
+                <div className="flex items-center gap-2.5 sm:gap-3.5">
+                  {/* Delivery Illustration */}
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white border border-[#E5DEC9] p-1.5 flex items-center justify-center shrink-0 shadow-2xs group-hover:border-[#6B1725]/50 group-hover:scale-105 transition-all">
                     <img
-                      src={is20Min ? "/expressdel.webp" : "/standarddel.webp"}
-                      alt={is20Min ? "Express Delivery" : "Standard Delivery"}
-                      className="w-full h-full object-contain"
+                      src={
+                        deliveryTier === 'express'
+                          ? '/expressdel.webp'
+                          : deliveryTier === 'same_day'
+                          ? '/sameday.webp'
+                          : '/standarddel.webp'
+                      }
+                      alt={
+                        deliveryTier === 'express'
+                          ? 'Express Delivery'
+                          : deliveryTier === 'same_day'
+                          ? 'Same Day Delivery'
+                          : 'Standard Delivery'
+                      }
+                      className={`w-full h-full object-contain ${
+                        deliveryTier === 'express' ? 'animate-rider-pulse' : ''
+                      }`}
                     />
                   </div>
-                  <div>
-                    <h4 className="text-sm font-sans font-bold text-[#292524] group-hover:text-[#6B1725] transition-colors">
-                      {is20Min
-                        ? '20-Minute Express Delivery'
-                        : deliveryDateInfo.deliveryByText}
-                    </h4>
-                    <p className="text-xs text-[#7A6E65] mt-0.5">
-                      To <strong className="font-bold text-[#292524]">{getQuickCity(displayPincode) ? `${getQuickCity(displayPincode)} (${displayPincode})` : displayPincode}</strong> · <span className="font-bold text-[#292524] tabular-nums">{deliveryChargeText}</span> · COD available
-                    </p>
+
+                  {/* Single Focused Delivery Message */}
+                  <div className="flex-1 min-w-0">
+                    {deliveryTier === 'same_day' && (
+                      <>
+                        <div className="font-sans font-bold text-xs sm:text-[14px] text-[#6B1725] leading-snug">
+                          <span>
+                            <span className="sm:hidden">{sameDayCountdown.mobileHeadline}</span>
+                            <span className="hidden sm:inline">{sameDayCountdown.headline}</span>
+                          </span>
+                        </div>
+                        <p className="text-[11px] sm:text-xs text-[#7A6E65] mt-0.5 leading-tight">
+                          To <strong className="font-semibold text-[#292524]">{getQuickCity(displayPincode) ? `${getQuickCity(displayPincode)} (${displayPincode})` : displayPincode}</strong> · COD available
+                        </p>
+                      </>
+                    )}
+
+                    {deliveryTier === 'express' && (
+                      <>
+                        <div className="font-sans font-bold text-xs sm:text-[14px] text-[#15803D] leading-snug">
+                          <span>
+                            <span className="sm:hidden">{expressInfo.mobileHeadline}</span>
+                            <span className="hidden sm:inline">{expressInfo.headline}</span>
+                          </span>
+                        </div>
+                        <p className="text-[11px] sm:text-xs text-[#7A6E65] mt-0.5 leading-tight">
+                          Direct from showroom to <strong className="font-semibold text-[#292524]">{getQuickCity(displayPincode) ? `${getQuickCity(displayPincode)} (${displayPincode})` : displayPincode}</strong> · COD available
+                        </p>
+                      </>
+                    )}
+
+                    {deliveryTier === 'standard' && (
+                      <>
+                        <div className="font-sans font-bold text-xs sm:text-[14px] text-[#292524] leading-snug">
+                          <span>{deliveryDateInfo.deliveryByText}</span>
+                        </div>
+                        <p className="text-[11px] sm:text-xs text-[#7A6E65] mt-0.5 leading-tight">
+                          To <strong className="font-semibold text-[#292524]">{getQuickCity(displayPincode) ? `${getQuickCity(displayPincode)} (${displayPincode})` : displayPincode}</strong> · Tracked express courier
+                        </p>
+                      </>
+                    )}
                   </div>
+
+                  {/* Change Pincode Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openPincodeSheet();
+                    }}
+                    className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-white hover:bg-[#FAF7F0] border border-[#D8CEBA] hover:border-[#6B1725]/40 text-[11px] sm:text-xs font-bold text-[#6B1725] shadow-2xs hover:shadow-xs transition-all cursor-pointer shrink-0 flex items-center gap-1 active:scale-95 ml-1"
+                  >
+                    <span>Change</span>
+                  </button>
                 </div>
-                <button
-                  onClick={openPincodeSheet}
-                  className="text-xs font-semibold text-[#B08A3C] underline hover:text-[#6B1725] transition-colors cursor-pointer"
-                >
-                  Change
-                </button>
               </div>
 
-              <div className="flex items-center flex-wrap gap-4 sm:gap-5 text-xs text-[#7A6E65] pt-1">
+              {/* 15-Minute Doorstep Color & Fabric Inspection Window - Only for Express or Same-Day */}
+              {(deliveryTier === 'express' || deliveryTier === 'same_day') && (
+                <div className="bg-[#FAF7F0] border border-[#E8DFD1] rounded-2xl p-3 sm:p-3.5 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-[#6B1725]/10 flex items-center justify-center text-[#6B1725] shrink-0">
+                        <PackageCheck size={14} className="text-[#6B1725]" />
+                      </div>
+                      <span className="font-serif font-bold text-xs sm:text-sm text-[#292524]">
+                        15-Min Doorstep Check &amp; Try
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 border border-emerald-300/60 px-2 py-0.5 rounded-full shrink-0">
+                      Free Service
+                    </span>
+                  </div>
+                  <p className="text-[11.5px] sm:text-xs text-[#6B625D] leading-relaxed">
+                    Our delivery boy waits 15 mins at your doorstep. Open the box and check the saree fabric, design, and color. If the color looks different or you don&apos;t like it, change it within 30 mins or return it on the spot for free.
+                  </p>
+                </div>
+              )}
+
+              {/* Bottom Guarantee Trust Badges */}
+              <div className="flex items-center flex-wrap gap-x-4 gap-y-1.5 text-xs text-[#7A6E65] px-1">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                  <span>Cash on Delivery</span>
+                </span>
                 <Link
                   href="/returns-refunds"
-                  className="flex items-center gap-1.5 text-[#7A6E65] hover:text-[#6B1725] transition-colors underline-offset-2 hover:underline"
+                  className="flex items-center gap-1.5 hover:text-[#6B1725] transition-colors"
                 >
                   <RotateCcw size={13} className="text-[#B08A3C]" />
                   <span>3-day return</span>
                 </Link>
                 <Link
                   href="/shipping-policy"
-                  className="flex items-center gap-1.5 text-[#7A6E65] hover:text-[#6B1725] transition-colors underline-offset-2 hover:underline"
+                  className="flex items-center gap-1.5 hover:text-[#6B1725] transition-colors"
                 >
                   <Truck size={13} className="text-[#B08A3C]" />
                   <span>Shipping Policy</span>
                 </Link>
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle2 size={13} className="text-[#B08A3C]" />
-                  <span>Silk Mark verified</span>
-                </span>
               </div>
             </div>
 
@@ -818,10 +990,10 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
               </button>
             </div>
 
-            {/* IN-STORE DRAPE LOCATION NOTE */}
+            {/* IN-STORE LOCATION NOTE */}
             <div className="text-xs text-[#7A6E65] flex items-center gap-2">
               <MapPin size={14} className="text-[#B08A3C] shrink-0" />
-              <span>In stock at the Samastipur shop — try the drape in person</span>
+              <span>In stock at our Samastipur shop — see it in person</span>
             </div>
 
             {/* ABOUT THIS WEAVE */}
@@ -879,20 +1051,24 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
         </div>
 
         {/* ── FULL-WIDTH BOTTOM CUSTOMER REVIEWS SECTION ── */}
-        <div className="my-10 pt-6 border-t border-[#F3ECE0] px-4 sm:px-6 lg:px-0">
+        <div id="customer-reviews" className="my-10 pt-6 border-t border-[#F3ECE0] px-4 sm:px-6 lg:px-0 scroll-mt-20">
           <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#292524]">
                   Customer Reviews
                 </h2>
-                <div className="bg-[#FAF6EE] border border-[#E5DEC9] text-[#6B1725] px-2.5 py-0.5 rounded-full text-xs font-bold flex items-center gap-1">
-                  <Star size={12} className="fill-[#B08A3C] text-[#B08A3C]" />
-                  <span>{avgRating} / 5</span>
-                </div>
+                {totalReviewsCount > 0 && avgRating && (
+                  <div className="bg-[#FAF6EE] border border-[#E5DEC9] text-[#6B1725] px-2.5 py-0.5 rounded-full text-xs font-bold flex items-center gap-1">
+                    <Star size={12} className="fill-[#B08A3C] text-[#B08A3C]" />
+                    <span>{avgRating} / 5</span>
+                  </div>
+                )}
               </div>
               <p className="text-xs text-[#7A6E65] mt-0.5">
-                {reviews.length > 0 ? `Based on ${reviews.length} verified customer reviews` : 'Verified handloom saree buyer experiences'}
+                {totalReviewsCount > 0
+                  ? `Based on ${totalReviewsCount} verified customer ${totalReviewsCount === 1 ? 'review' : 'reviews'}`
+                  : 'No reviews yet. Be the first to share your experience with this saree!'}
               </p>
             </div>
 
@@ -1013,7 +1189,30 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
       <Footer />
 
       {/* ── STICKY BOTTOM ACTION BAR (ONLY ON MOBILE - DOCKED TO SCREEN BOTTOM) ── */}
-      <div className="fixed bottom-0 inset-x-0 z-40 bg-[#FFFDF9]/96 backdrop-blur-xl border-t border-[#E9DED1] px-4 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] shadow-[0_-8px_28px_rgba(41,37,36,0.12)] flex items-center justify-between select-none md:hidden gap-3">
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-[#FFFDF9]/96 backdrop-blur-xl border-t border-[#E9DED1] shadow-[0_-8px_28px_rgba(41,37,36,0.12)] select-none md:hidden">
+        {deliveryTier === 'same_day' && (
+          <div className="bg-[#FAF6EE] border-b border-[#E9DED1] px-4 py-1.5 text-[11px] text-[#6B1725] font-semibold flex items-center justify-between">
+            <span className="flex items-center gap-1.5 truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="truncate">{sameDayCountdown.mobileHeadline}</span>
+            </span>
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/80 border border-emerald-300/60 px-1.5 py-0.5 rounded shrink-0 ml-2">
+              Same-Day
+            </span>
+          </div>
+        )}
+        {deliveryTier === 'express' && (
+          <div className="bg-[#F0FDF4] border-b border-emerald-200 px-4 py-1.5 text-[11px] text-emerald-950 font-semibold flex items-center justify-between">
+            <span className="flex items-center gap-1.5 truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="truncate">{expressInfo.stickyHeadline} · Direct from showroom</span>
+            </span>
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/80 border border-emerald-300/60 px-1.5 py-0.5 rounded shrink-0 ml-2">
+              Express
+            </span>
+          </div>
+        )}
+        <div className="px-4 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] flex items-center justify-between gap-3">
         {/* Left: Quick Wishlist toggle + Price */}
         <div className="flex items-center gap-2.5 shrink-0">
           <button
@@ -1087,6 +1286,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
           )}
         </div>
       </div>
+    </div>
 
       {/* WRITE A REVIEW MODAL */}
       {isReviewModalOpen && (

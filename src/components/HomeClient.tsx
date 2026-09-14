@@ -19,6 +19,7 @@ import { ProductCardSkeleton } from './ProductCardSkeleton';
 import { useRecentlyViewed } from '../utils/useRecentlyViewed';
 import { HomepageSection as HomepageSectionType } from '../types/homepage-sections';
 import { HomepageSection } from './homepage-sections';
+import { ActiveOrderStrip } from './ActiveOrderStrip';
 
 // Dynamically imported below-the-fold components
 const TestimonialSection = dynamic(() => import('./TestimonialSection').then(m => m.TestimonialSection), {
@@ -372,6 +373,7 @@ export default function HomeClient({
         </section>
       </main>
       <Footer />
+      <ActiveOrderStrip />
     </>
   );
 }

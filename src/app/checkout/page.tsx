@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useStore, CartItem } from '../../context/StoreContext';
 import {
   CheckCircle,
+  CheckCircle2,
   MapPin,
   CreditCard,
   Landmark,
@@ -15,6 +16,7 @@ import {
   Plus,
   MessageSquare,
   Sparkles,
+  PackageCheck,
   AlertCircle,
   ShieldCheck,
   Tag,
@@ -785,6 +787,7 @@ function CheckoutContent() {
       setCreatedOrder(orderDetails);
       setIsOrdered(true);
       if (typeof window !== 'undefined' && orderDetails?.orderId) {
+        localStorage.setItem('sbs_active_order_id', orderDetails.orderId);
         const pKey = `sbs_ga_purchased_${orderDetails.orderId}`;
         if (!sessionStorage.getItem(pKey)) {
           sessionStorage.setItem(pKey, 'true');
@@ -1841,7 +1844,7 @@ function CheckoutContent() {
                                   <img
                                     src={opt.image || (opt.id === 'express' ? '/expressdel.webp' : opt.id === 'same_day' ? '/sameday.webp' : '/standarddel.webp')}
                                     alt={opt.title}
-                                    className={`w-full h-full object-contain p-1 ${!isAvailable ? 'grayscale opacity-60' : ''}`}
+                                    className={`w-full h-full object-contain p-1 ${!isAvailable ? 'grayscale opacity-60' : opt.id === 'express' ? 'animate-rider-pulse' : ''}`}
                                   />
                                 </div>
 
@@ -2044,9 +2047,39 @@ function CheckoutContent() {
                       </div>
                     </div>
 
-                    <div className="p-3 bg-[#FAF6EE] rounded-xl border border-[#E5DEC9] text-xs text-[#6B625D] leading-relaxed">
-                      💡 <strong>Doorstep Inspection Guarantee:</strong> Open the packet in front of our delivery rider. Inspect the weave and zariwork &mdash; if it is not what you expected, hand it straight back with zero questions.
-                    </div>
+                    {/* 15-Minute Doorstep Inspection & Exchange Window Reassurance - Only for Local Express / Same-Day */}
+                    {selectedDeliveryOption !== 'standard' && (
+                      <div className="p-3.5 bg-gradient-to-br from-[#FFFDF9] via-[#FAF6EE] to-[#FFF9F2] rounded-xl border border-[#D8CEBA] space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-lg bg-[#6B1725]/10 flex items-center justify-center text-[#6B1725] shrink-0">
+                              <PackageCheck size={14} className="text-[#6B1725]" />
+                            </div>
+                            <span className="font-serif font-bold text-xs sm:text-[13px] text-[#292524]">
+                              15-Min Doorstep Check &amp; Return
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 border border-emerald-300/60 px-2 py-0.5 rounded-full shrink-0">
+                            100% Free
+                          </span>
+                        </div>
+
+                        <p className="text-[11.5px] text-[#6B625D] leading-relaxed">
+                          Our delivery boy will wait 15 mins at your door. Open the box, check the saree color and cloth before paying.
+                        </p>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-[#E8DFD1]/80 text-[11px] text-[#292524]">
+                          <div className="flex items-start gap-1.5">
+                            <CheckCircle2 size={13} className="text-emerald-600 shrink-0 mt-0.5" />
+                            <span><strong>Color looks different?</strong> Change color in 30 mins or return for free.</span>
+                          </div>
+                          <div className="flex items-start gap-1.5">
+                            <CheckCircle2 size={13} className="text-emerald-600 shrink-0 mt-0.5" />
+                            <span><strong>Pay only if you like it:</strong> Cash or Google Pay / PhonePe at doorstep.</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Gift Order Option */}

@@ -16,7 +16,8 @@ import {
   X,
   MapPin,
   Heart,
-  Loader2
+  Loader2,
+  PackageCheck
 } from 'lucide-react';
 import { useStore, CartItem } from '../context/StoreContext';
 import {
@@ -649,7 +650,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
                           <img
                             src={opt.image || (opt.id === 'express' ? '/expressdel.webp' : opt.id === 'same_day' ? '/sameday.webp' : '/standarddel.webp')}
                             alt={opt.title}
-                            className={`w-full h-full object-contain p-1 ${!isAvailable ? 'grayscale opacity-60' : ''}`}
+                            className={`w-full h-full object-contain p-1 ${!isAvailable ? 'grayscale opacity-60' : opt.id === 'express' ? 'animate-rider-pulse' : ''}`}
                           />
                         </div>
 
@@ -688,6 +689,26 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
                   );
                 })}
               </div>
+
+              {/* 15-Minute Doorstep Inspection & Exchange Reassurance - Only for Local Express / Same-Day */}
+              {selectedDeliveryMethod !== 'standard' && (
+                <div className="p-3 bg-[#FAF6EE] rounded-xl border border-[#E5DEC9] space-y-1 mt-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <PackageCheck size={13} className="text-[#6B1725] shrink-0" />
+                      <span className="font-serif font-bold text-xs text-[#292524]">
+                        15-Min Doorstep Check
+                      </span>
+                    </div>
+                    <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100/90 border border-emerald-300/60 px-1.5 py-0.2 rounded-full shrink-0">
+                      Free
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#6B625D] leading-relaxed">
+                    Delivery boy waits 15 mins. Open &amp; check the saree color and cloth. Change color in 30 mins or return for free.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* ── 2D. COUPON CODE BOX ── */}
