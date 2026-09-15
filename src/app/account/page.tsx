@@ -269,6 +269,7 @@ interface ResolvedOrderItem {
   quantity: number;
   image: string | null;
   item_status?: string;
+  selectedAddons?: Array<{ id: string; title: string; price: number; size?: string }>;
 }
 
 // Safely extract item title, image, and price across all possible order item formats
@@ -282,7 +283,8 @@ function resolveOrderItem(item: any, products: any[] = []): ResolvedOrderItem {
       mrp: 0,
       quantity: 1,
       image: null,
-      item_status: 'active'
+      item_status: 'active',
+      selectedAddons: []
     };
   }
 
@@ -382,6 +384,14 @@ function resolveOrderItem(item: any, products: any[] = []): ResolvedOrderItem {
 
   const item_status = item?.item_status || prod?.item_status || snap?.item_status || 'active';
 
+  const selectedAddons = Array.isArray(item?.selectedAddons)
+    ? item.selectedAddons
+    : Array.isArray(item?.addons)
+    ? item.addons
+    : Array.isArray(snap?.addons)
+    ? snap.addons
+    : [];
+
   return {
     id: id || sku || 'item',
     sku: sku || (id ? id.slice(0, 6).toUpperCase() : 'SBS-SAREE'),
@@ -390,7 +400,8 @@ function resolveOrderItem(item: any, products: any[] = []): ResolvedOrderItem {
     mrp: mrp > 0 ? mrp : price,
     quantity: Number(item?.quantity || 1),
     image,
-    item_status
+    item_status,
+    selectedAddons,
   };
 }
 
@@ -1266,8 +1277,11 @@ function AccountContent() {
           const snapMrp = Number(snap?.mrp || snap?.price || 0);
           const mrp = snapMrp > 0 ? snapMrp : (resolved.mrp > 0 ? resolved.mrp : unitPrice);
           const hsnCode = item.hsn_code || snap?.hsn_code || '5208';
+          const addonSuffix = resolved.selectedAddons && resolved.selectedAddons.length > 0
+            ? ` (${resolved.selectedAddons.map(a => `${a.title}${a.size ? ` ${a.size}"` : ''}`).join(', ')})`
+            : '';
           return {
-            sareeName: isItemCancelled ? `[Cancelled] ${resolved.name}` : resolved.name,
+            sareeName: (isItemCancelled ? `[Cancelled] ${resolved.name}` : resolved.name) + addonSuffix,
             quantity: resolved.quantity || 1,
             mrp: mrp > 0 ? mrp : unitPrice,
             sellingPrice: unitPrice,
@@ -1614,6 +1628,18 @@ function AccountContent() {
                       <p className="text-xs text-[#78716C] font-sans mt-1">
                         {resolved.sku} · Qty {resolved.quantity}
                       </p>
+                      {resolved.selectedAddons && resolved.selectedAddons.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {resolved.selectedAddons.map((addon) => (
+                            <span
+                              key={addon.id}
+                              className="inline-flex items-center text-[10px] font-semibold text-[#6B1725] bg-[#FAF6EE] border border-[#E5DEC9] px-1.5 py-0.5 rounded"
+                            >
+                              {addon.title}{addon.size ? ` (${addon.size}")` : ''} (+₹{addon.price})
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
                       {/* Actions for individual item */}
                       <div className="flex items-center gap-3 mt-2">

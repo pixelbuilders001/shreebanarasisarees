@@ -29,6 +29,24 @@ export interface Product {
   hsn_code?: string | null;
   gst_rate?: number | null;
   price_includes_gst?: boolean | null;
+  has_blouse?: boolean;
+}
+
+export interface ProductAddon {
+  id: string;
+  title: string;
+  price: number;
+  description?: string;
+  requires_size?: boolean;
+  is_active?: boolean;
+  display_order?: number;
+}
+
+export interface SelectedAddon {
+  id: string;
+  title: string;
+  price: number;
+  size?: string;
 }
 
 export const PRODUCTS: Product[] = [

@@ -27,6 +27,12 @@ interface CartItemInput {
   product_id?: string;
   inventory_id?: string;
   quantity: number;
+  addons?: Array<{
+    id: string;
+    title: string;
+    price: number;
+    size?: string;
+  }>;
 }
 
 interface RequestBody {
@@ -176,14 +182,22 @@ Deno.serve(async (req) => {
     // --------------------------------------------------
     // 1. Resolve Items (from payload or user cart_items table)
     // --------------------------------------------------
-    const itemMap = new Map<string, number>();
+    const requestedItems: {
+      productId: string;
+      quantity: number;
+      addons: Array<{ id: string; title: string; price: number; size?: string }>;
+    }[] = [];
+
+    const stockDemandMap = new Map<string, number>();
 
     if (body.items && Array.isArray(body.items) && body.items.length > 0) {
       for (const item of body.items) {
         const pId = item.productId || item.product_id || item.id || item.inventory_id;
         const qty = Math.max(1, Math.floor(Number(item.quantity) || 1));
+        const addons = Array.isArray(item.addons) ? item.addons : [];
         if (pId) {
-          itemMap.set(pId, (itemMap.get(pId) || 0) + qty);
+          requestedItems.push({ productId: String(pId), quantity: qty, addons });
+          stockDemandMap.set(String(pId), (stockDemandMap.get(String(pId)) || 0) + qty);
         }
       }
     } else if (userId) {
@@ -202,17 +216,18 @@ Deno.serve(async (req) => {
         for (const it of dbCartItems) {
           const qty = Math.max(1, Math.floor(Number(it.quantity) || 1));
           if (it.product_id) {
-            itemMap.set(it.product_id, (itemMap.get(it.product_id) || 0) + qty);
+            requestedItems.push({ productId: String(it.product_id), quantity: qty, addons: [] });
+            stockDemandMap.set(String(it.product_id), (stockDemandMap.get(String(it.product_id)) || 0) + qty);
           }
         }
       }
     }
 
-    if (itemMap.size === 0) {
+    if (requestedItems.length === 0) {
       return response({ success: false, error: "Cannot create order with an empty cart" }, 400);
     }
 
-    const productIds = Array.from(itemMap.keys());
+    const productIds = Array.from(stockDemandMap.keys());
 
     // --------------------------------------------------
     // 2. Authoritative Product Read from storefront_products / inventory
@@ -401,18 +416,36 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Query active product addons to verify pricing authoritatively
+    const { data: dbAddons } = await admin
+      .from("product_addons")
+      .select("id, title, price, is_active")
+      .eq("is_active", true);
+
+    const addonPriceMap = new Map<string, number>();
+    if (dbAddons && dbAddons.length > 0) {
+      for (const da of dbAddons) {
+        addonPriceMap.set(String(da.id), Number(da.price));
+      }
+    }
+
     const validatedItems: {
       product: any;
       quantity: number;
       unitPrice: number;
+      baseUnitPrice: number;
+      addonsTotal: number;
       lineTotal: number;
       hsnCode: string;
       gstRate: number;
+      addons: Array<{ id: string; title: string; price: number; size?: string }>;
     }[] = [];
 
     let calculatedSubtotal = 0;
 
-    for (const [pId, requestedQty] of itemMap.entries()) {
+    for (const reqItem of requestedItems) {
+      const pId = reqItem.productId;
+      const requestedQty = reqItem.quantity;
       const prod =
         productMap.get(pId) ||
         productMap.get(String(pId).toLowerCase()) ||
@@ -430,7 +463,8 @@ Deno.serve(async (req) => {
       }
 
       const availableStock = Number(prod.stock ?? 0);
-      if (availableStock < requestedQty) {
+      const totalDemand = stockDemandMap.get(pId) || requestedQty;
+      if (availableStock < totalDemand) {
         return response(
           {
             success: false,
@@ -440,8 +474,22 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Customer-facing price is GST-inclusive
-      const unitPrice = round2(Number(prod.selling_price));
+      // Authoritative addon price resolution
+      const validatedAddons = (reqItem.addons || []).map((a) => {
+        const authPrice = addonPriceMap.has(a.id) ? addonPriceMap.get(a.id)! : Number(a.price) || 0;
+        return {
+          id: a.id,
+          title: a.title,
+          price: authPrice,
+          size: a.size,
+        };
+      });
+
+      const addonsUnitTotal = validatedAddons.reduce((sum, a) => sum + a.price, 0);
+
+      // Customer-facing price is GST-inclusive (Saree selling price + chosen addons)
+      const baseUnitPrice = round2(Number(prod.selling_price));
+      const unitPrice = round2(baseUnitPrice + addonsUnitTotal);
       const lineTotal = round2(unitPrice * requestedQty);
       calculatedSubtotal = round2(calculatedSubtotal + lineTotal);
 
@@ -449,9 +497,12 @@ Deno.serve(async (req) => {
         product: prod,
         quantity: requestedQty,
         unitPrice,
+        baseUnitPrice,
+        addonsTotal: addonsUnitTotal,
         lineTotal,
         hsnCode: prod.hsn_code || "5208",
         gstRate: prod.gst_rate != null ? Number(prod.gst_rate) : 5.0,
+        addons: validatedAddons,
       });
     }
 
@@ -722,6 +773,7 @@ Deno.serve(async (req) => {
         discount_percentage: prod.discount_percentage,
         description: prod.description,
         images: images,
+        addons: it.addons || [],
       };
 
       return {
@@ -743,6 +795,7 @@ Deno.serve(async (req) => {
         total_price: it.discountedConsideration,
         product_snapshot: snapshot,
         item_status: "active",
+        addons: it.addons || [],
       };
     });
 
@@ -754,6 +807,17 @@ Deno.serve(async (req) => {
     if (itemsInsertErr && itemsInsertErr.message?.includes("barcode")) {
       console.warn("Retrying order_items insert without barcode column...");
       const fallbackPayload = orderItemsPayload.map(({ barcode, ...rest }) => rest);
+      const retryRes = await admin
+        .from("order_items")
+        .insert(fallbackPayload)
+        .select();
+      createdItems = retryRes.data;
+      itemsInsertErr = retryRes.error;
+    }
+
+    if (itemsInsertErr && itemsInsertErr.message?.includes("addons")) {
+      console.warn("Retrying order_items insert without addons column...");
+      const fallbackPayload = orderItemsPayload.map(({ addons, barcode, ...rest }: any) => rest);
       const retryRes = await admin
         .from("order_items")
         .insert(fallbackPayload)
@@ -795,24 +859,24 @@ Deno.serve(async (req) => {
     // --------------------------------------------------
     // 12. Decrement inventory stock safely
     // --------------------------------------------------
-    for (const it of validatedItems) {
+    for (const [pId, totalQty] of stockDemandMap.entries()) {
       try {
         const { data: invRow } = await admin
           .from("inventory")
           .select("stock")
-          .eq("id", it.product.id)
+          .eq("id", pId)
           .single();
 
         if (invRow) {
           const currentStock = Number(invRow.stock || 0);
-          const newStock = Math.max(0, currentStock - it.quantity);
+          const newStock = Math.max(0, currentStock - totalQty);
           await admin
             .from("inventory")
             .update({ stock: newStock })
-            .eq("id", it.product.id);
+            .eq("id", pId);
         }
       } catch (stockErr) {
-        console.warn(`Could not update stock for product ${it.product.id}:`, stockErr);
+        console.warn(`Could not update stock for product ${pId}:`, stockErr);
       }
     }
 

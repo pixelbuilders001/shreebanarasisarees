@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Product, PRODUCTS } from './products';
+import { Product, PRODUCTS, ProductAddon, SelectedAddon } from './products';
 import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 import { getStandardDeliveryDateInfo } from '../lib/deliveryDates';
 
@@ -29,6 +29,7 @@ export interface DbInventory {
   color: string;
   selling_price: number;
   stock: number;
+  has_blouse?: boolean | null;
   // rack_no: string | null;
   // barcode: string | null;
   status: string;
@@ -109,6 +110,51 @@ export async function fetchProductRatingsMap(): Promise<Record<string, RatingSum
     console.error('Error fetching product ratings map:', err);
     return {};
   }
+}
+
+let cachedProductAddons: ProductAddon[] | null = null;
+let cachedProductAddonsTimestamp = 0;
+
+/**
+ * Fetches active saree add-on services from the product_addons table.
+ */
+export async function fetchProductAddons(): Promise<ProductAddon[]> {
+  const now = Date.now();
+  if (cachedProductAddons && (now - cachedProductAddonsTimestamp < 60000)) {
+    return cachedProductAddons;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('product_addons')
+      .select('*')
+      .eq('is_active', true)
+      .order('display_order', { ascending: true });
+
+    if (!error && data && data.length > 0) {
+      cachedProductAddons = data.map((d: any) => ({
+        id: String(d.id),
+        title: String(d.title),
+        price: Number(d.price),
+        description: d.description ? String(d.description) : undefined,
+        requires_size: Boolean(d.requires_size),
+        is_active: Boolean(d.is_active),
+        display_order: Number(d.display_order || 0)
+      }));
+      cachedProductAddonsTimestamp = now;
+      return cachedProductAddons;
+    }
+  } catch (err) {
+    console.error('Error fetching product addons:', err);
+  }
+
+  // Fallback defaults if table is momentarily unreachable
+  return [
+    { id: 'fall_pico', title: 'Fall & Pico Stitching', price: 149, description: 'Hand-stitched fall and machine pico borders', requires_size: false, is_active: true, display_order: 1 },
+    { id: 'petticoat', title: 'Matching Cotton Inskirt (Petticoat)', price: 299, description: 'High quality matching cotton inskirt', requires_size: false, is_active: true, display_order: 2 },
+    { id: 'stitch_blouse', title: 'Blouse Piece Stitching', price: 499, description: 'Tailored to your measurements with lining', requires_size: true, is_active: true, display_order: 3 },
+    { id: 'blouse_piece', title: 'Extra Matching Blouse Fabric', price: 249, description: '0.8m unstitched matching blouse fabric', requires_size: false, is_active: true, display_order: 4 }
+  ];
 }
 
 /**
@@ -194,7 +240,8 @@ export function mapDbProductToProduct(
     rating,
     reviewsCount,
     length: "5.5 meters",
-    blousePiece: "0.8 meters",
+    blousePiece: item.has_blouse === false ? "Not included" : "0.8 meters",
+    has_blouse: item.has_blouse !== undefined && item.has_blouse !== null ? Boolean(item.has_blouse) : true,
     work: "Traditional woven borders and zari motifs",
     care: "Dry Clean Only",
     designCode: item.design_code || undefined,
@@ -728,7 +775,7 @@ export interface CreateDbOrderParams {
     pinCode: string;
     deliveryMethod: 'Home Delivery' | 'Store Pickup';
   };
-  items?: { product: Product; quantity: number }[];
+  items?: { product: Product; quantity: number; selectedAddons?: SelectedAddon[]; addonsTotal?: number }[];
   subtotal?: number;
   discount?: number;
   shipping?: number;
@@ -772,7 +819,8 @@ export async function createDbOrder(orderData: CreateDbOrderParams, userId?: str
     const orderPayload = {
       items: (orderData.items || []).map(i => ({
         productId: i.product.id,
-        quantity: i.quantity
+        quantity: i.quantity,
+        addons: i.selectedAddons || []
       })),
       customer_name,
       customer_phone,
@@ -908,6 +956,7 @@ export async function createDbOrder(orderData: CreateDbOrderParams, userId?: str
           sgst_amount,
           igst_amount,
           gst_amount,
+          selectedAddons: item.addons || snapshot.addons || [],
         };
       }
 
@@ -950,6 +999,7 @@ export async function createDbOrder(orderData: CreateDbOrderParams, userId?: str
         sgst_amount,
         igst_amount,
         gst_amount,
+        selectedAddons: item.addons || [],
       };
     });
 
@@ -1109,6 +1159,7 @@ export function mapDbOrderToOrder(orderRow: any): Order {
     const sgst_amount = item.sgst_amount != null ? Number(item.sgst_amount) : undefined;
     const igst_amount = item.igst_amount != null ? Number(item.igst_amount) : undefined;
     const gst_amount = item.gst_amount != null ? Number(item.gst_amount) : undefined;
+    const itemAddons = item.addons || item.selectedAddons || productSnapshot?.addons || productSnapshot?.selectedAddons || [];
 
     return {
       id: item.id,
@@ -1129,6 +1180,8 @@ export function mapDbOrderToOrder(orderRow: any): Order {
       sgst_amount,
       igst_amount,
       gst_amount,
+      selectedAddons: itemAddons,
+      addons: itemAddons,
     };
   });
 

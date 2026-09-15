@@ -79,10 +79,25 @@ export function buildReceiptDataFromOrder(order: any, products?: any[]): Receipt
       if (!resolvedHsn) resolvedHsn = snap.hsn_code || '5208';
     }
 
+    // Extract tailoring add-ons if present
+    const itemAddonsRaw = item.selectedAddons || item.addons || prod?.selectedAddons || prod?.addons || snap?.addons || snap?.selectedAddons || [];
+    const itemAddons = Array.isArray(itemAddonsRaw) ? itemAddonsRaw.map((a: any) => ({
+      id: a.id,
+      title: a.title || a.name || 'Tailoring Add-on',
+      price: Number(a.price || 0),
+      size: a.size || undefined,
+    })) : [];
+    const addonsTotalPerUnit = itemAddons.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+
+    // If resolvedPrice was derived from product base price (which excludes addons), add addonsTotalPerUnit
+    const priceExcludesAddons = (item.sellingPrice == null && item.unit_price == null && prod != null);
+    const finalPrice = priceExcludesAddons ? (resolvedPrice + addonsTotalPerUnit) : resolvedPrice;
+    const finalMrpVal = priceExcludesAddons ? (resolvedMrp + addonsTotalPerUnit) : resolvedMrp;
+
     const isItemCancelled = (item?.item_status || prod?.item_status || '').toLowerCase() === 'cancelled';
     const finalName = resolvedName || 'Handloom Banarasi Saree';
-    const unitSellingPrice = resolvedPrice > 0 ? resolvedPrice : 0;
-    const unitMrp = resolvedMrp > 0 ? resolvedMrp : unitSellingPrice;
+    const unitSellingPrice = finalPrice > 0 ? finalPrice : 0;
+    const unitMrp = finalMrpVal > 0 ? finalMrpVal : unitSellingPrice;
 
     return {
       sareeName: isItemCancelled ? `[Cancelled] ${finalName}` : finalName,
@@ -90,6 +105,7 @@ export function buildReceiptDataFromOrder(order: any, products?: any[]): Receipt
       mrp: unitMrp,
       sellingPrice: unitSellingPrice,
       hsnCode: resolvedHsn,
+      addons: itemAddons.length > 0 ? itemAddons : undefined,
     };
   });
 
@@ -189,10 +205,21 @@ export function generateInvoiceHtml(receipt: ReceiptData): string {
       const itemDisc = Math.max(0, itemMrpTotal - itemSellingTotal);
       const itemDiscPct = itemMrpTotal > 0 ? (itemDisc / itemMrpTotal) * 100 : 0;
 
+      const addonsHtml = item.addons && item.addons.length > 0
+        ? `
+          <div style="margin-top: 4px; font-size: 11px; color: #6B1725; line-height: 1.45;">
+            ${item.addons.map(a => `
+              <div>+ ${a.title}${a.size ? ` (${a.size}&quot;)` : ''}: ${fmtCurrency(a.price)}</div>
+            `).join('')}
+          </div>
+        `
+        : '';
+
       return `
         <tr style="border-bottom: 1px dashed #ccc;">
           <td style="padding: 10px 8px 10px 0; word-break: break-word;">
             <div style="font-weight: 500;">${item.sareeName}</div>
+            ${addonsHtml}
             ${item.hsnCode ? `<div style="font-size: 11px; color: #666; margin-top: 2px;">HSN: ${item.hsnCode}</div>` : ''}
           </td>
           <td style="padding: 10px 6px; text-align: center;">${item.quantity}</td>

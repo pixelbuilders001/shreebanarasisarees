@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { Product, PRODUCTS } from '../data/products';
+import { Product, PRODUCTS, SelectedAddon } from '../data/products';
 import { X, ShoppingBag } from 'lucide-react';
 import { 
   supabase,
@@ -48,6 +48,8 @@ export interface CartItem {
   sgst_amount?: number;
   igst_amount?: number;
   gst_amount?: number;
+  selectedAddons?: SelectedAddon[];
+  addonsTotal?: number;
 }
 
 export interface CustomRequest {
@@ -140,9 +142,11 @@ interface StoreContextType {
   wishlist: Product[];
   orders: Order[];
   customRequests: CustomRequest[];
-  addToCart: (product: Product, quantity?: number) => void;
-  removeFromCart: (productId: string) => void;
-  updateCartQuantity: (productId: string, quantity: number) => void;
+  addToCart: (product: Product, quantity?: number, selectedAddons?: SelectedAddon[]) => void;
+  updateCartItemAddons: (productId: string, selectedAddons: SelectedAddon[]) => void;
+  removeCartItemAddon: (productId: string, addonId: string) => void;
+  removeFromCart: (productId: string, addonsKey?: string) => void;
+  updateCartQuantity: (productId: string, quantity: number, addonsKey?: string) => void;
   clearCart: () => void;
   toggleWishlist: (product: Product) => void;
   isInWishlist: (productId: string) => boolean;
@@ -564,9 +568,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             PRODUCTS.find(p => p.id === dbItem.product_id);
 
           if (product) {
+            const localMatch = localCartItems.find(l => l.product?.id === dbItem.product_id);
             finalCartItems.push({
               product,
-              quantity: dbItem.quantity
+              quantity: dbItem.quantity,
+              selectedAddons: localMatch?.selectedAddons || [],
+              addonsTotal: localMatch?.addonsTotal || 0
             });
           }
         }
@@ -1018,23 +1025,33 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [userPhone, isHydrated]);
 
+  const getItemAddonsKey = (addons?: SelectedAddon[]) => {
+    return (addons || []).map(a => `${a.id}:${a.size || ''}`).sort().join('|');
+  };
+
   // Cart operations
-  const addToCart = (product: Product, quantity = 1) => {
+  const addToCart = (product: Product, quantity = 1, selectedAddons?: SelectedAddon[]) => {
     const isCartEmpty = cart.length === 0;
-    const existingItem = cart.find(item => item.product.id === product.id);
-    const newQty = existingItem ? existingItem.quantity + quantity : quantity;
 
     setCart((prevCart) => {
       const existingItemIndex = prevCart.findIndex(item => item.product.id === product.id);
+
       if (existingItemIndex > -1) {
         const newCart = [...prevCart];
+        const existing = newCart[existingItemIndex];
+        const nextAddons = selectedAddons !== undefined ? selectedAddons : (existing.selectedAddons || []);
+        const addonsTotal = nextAddons.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
         newCart[existingItemIndex] = {
-          ...newCart[existingItemIndex],
-          quantity: newCart[existingItemIndex].quantity + quantity
+          ...existing,
+          quantity: Math.max(existing.quantity, quantity),
+          selectedAddons: nextAddons,
+          addonsTotal
         };
         return newCart;
       }
-      return [...prevCart, { product, quantity }];
+      const addons = selectedAddons || [];
+      const addonsTotal = addons.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+      return [...prevCart, { product, quantity, selectedAddons: addons, addonsTotal }];
     });
 
     // GA4 Event: add_to_cart
@@ -1042,7 +1059,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const isUuid = userPhone ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userPhone) : false;
     if (userPhone && isUuid) {
-      upsertDbCartItem(userPhone, product.id, newQty);
+      upsertDbCartItem(userPhone, product.id, quantity);
     }
     
     if (isCartEmpty) {
@@ -1055,28 +1072,74 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const removeFromCart = (productId: string) => {
-    const targetItem = cart.find(item => item.product.id === productId);
+  const updateCartItemAddons = (productId: string, selectedAddons: SelectedAddon[]) => {
+    const addonsTotal = (selectedAddons || []).reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+    setCart((prevCart) =>
+      prevCart.map(item => {
+        if (item.product.id === productId) {
+          return {
+            ...item,
+            selectedAddons,
+            addonsTotal
+          };
+        }
+        return item;
+      })
+    );
+  };
+
+  const removeCartItemAddon = (productId: string, addonId: string) => {
+    setCart((prevCart) =>
+      prevCart.map(item => {
+        if (item.product.id !== productId) return item;
+        const newAddons = (item.selectedAddons || []).filter(a => a.id !== addonId);
+        const newTotal = newAddons.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+        return {
+          ...item,
+          selectedAddons: newAddons,
+          addonsTotal: newTotal
+        };
+      })
+    );
+  };
+
+  const removeFromCart = (productId: string, addonsKey?: string) => {
+    const targetItem = cart.find(item => {
+      if (addonsKey !== undefined) {
+        return item.product.id === productId && getItemAddonsKey(item.selectedAddons) === addonsKey;
+      }
+      return item.product.id === productId;
+    });
     if (targetItem) {
       trackRemoveFromCart(targetItem.product, targetItem.quantity);
     }
 
-    setCart((prevCart) => prevCart.filter(item => item.product.id !== productId));
+    setCart((prevCart) => prevCart.filter(item => {
+      if (addonsKey !== undefined) {
+        return !(item.product.id === productId && getItemAddonsKey(item.selectedAddons) === addonsKey);
+      }
+      return item.product.id !== productId;
+    }));
     const isUuid = userPhone ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userPhone) : false;
     if (userPhone && isUuid) {
       deleteDbCartItem(userPhone, productId);
     }
   };
 
-  const updateCartQuantity = (productId: string, quantity: number) => {
+  const updateCartQuantity = (productId: string, quantity: number, addonsKey?: string) => {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(productId, addonsKey);
       return;
     }
     setCart((prevCart) =>
-      prevCart.map(item =>
-        item.product.id === productId ? { ...item, quantity } : item
-      )
+      prevCart.map(item => {
+        if (addonsKey !== undefined) {
+          return (item.product.id === productId && getItemAddonsKey(item.selectedAddons) === addonsKey)
+            ? { ...item, quantity }
+            : item;
+        }
+        return item.product.id === productId ? { ...item, quantity } : item;
+      })
     );
     const isUuid = userPhone ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userPhone) : false;
     if (userPhone && isUuid) {
@@ -1367,9 +1430,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     for (const dbItem of freshDbCart) {
       const product = products.find(p => p.id === dbItem.product_id);
       if (product) {
+        const localMatch = currentCart.find(l => l.product?.id === dbItem.product_id);
         finalCartItems.push({
           product,
-          quantity: dbItem.quantity
+          quantity: dbItem.quantity,
+          selectedAddons: localMatch?.selectedAddons || [],
+          addonsTotal: localMatch?.addonsTotal || 0
         });
       }
     }
@@ -1641,6 +1707,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       orders,
       customRequests,
       addToCart,
+      updateCartItemAddons,
+      removeCartItemAddon,
       removeFromCart,
       updateCartQuantity,
       clearCart,

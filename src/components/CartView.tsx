@@ -17,18 +17,22 @@ import {
   MapPin,
   Heart,
   Loader2,
-  PackageCheck
+  PackageCheck,
+  Scissors
 } from 'lucide-react';
 import { useStore, CartItem } from '../context/StoreContext';
+import { ProductAddon } from '../data/products';
 import {
   getProductSlug,
   fetchDeliverySettings,
   calculateDeliveryOptions,
+  fetchProductAddons,
   DeliverySettings,
   CalculatedDeliveryOption,
   DeliveryOptionType
 } from '../data/supabase';
 import { useCustomerLocation } from '../hooks/useCustomerLocation';
+import { SareeCustomizationModal } from './SareeCustomizationModal';
 
 import { openPincodeSheet, getExpressTimingStatus } from './DeliveryPincodeBar';
 import { getStandardDeliveryDateInfo } from '../lib/deliveryDates';
@@ -165,6 +169,9 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
     updateCartQuantity,
     removeFromCart,
     addToCart,
+    removeCartItemAddon,
+    updateCartItemAddons,
+    showToast,
     user,
     setIsAuthModalOpen,
     isHydrated,
@@ -175,6 +182,12 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
   // Skeleton Loading & Navigation State
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isNavigatingToCheckout, setIsNavigatingToCheckout] = useState<boolean>(false);
+  const [cartAddonsList, setCartAddonsList] = useState<ProductAddon[]>([]);
+  const [customizingCartItem, setCustomizingCartItem] = useState<CartItem | null>(null);
+
+  useEffect(() => {
+    fetchProductAddons().then(setCartAddonsList).catch(console.error);
+  }, []);
 
   useEffect(() => {
     setIsNavigatingToCheckout(false);
@@ -285,6 +298,22 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
     return deliveryOptions.find(o => o.id === selectedDeliveryMethod) || deliveryOptions[0];
   }, [deliveryOptions, selectedDeliveryMethod]);
 
+  // Quick / same-day delivery cannot include blouse tailoring (requires 2-3 days).
+  // Automatically strip stitch_blouse if customer switches delivery tier to express or same-day.
+  useEffect(() => {
+    if (selectedDeliveryMethod !== 'standard') {
+      const itemsWithStitch = cart.filter(item =>
+        item.selectedAddons?.some(a => a.id === 'stitch_blouse')
+      );
+      if (itemsWithStitch.length > 0) {
+        itemsWithStitch.forEach(item => {
+          removeCartItemAddon(item.product.id, 'stitch_blouse');
+        });
+        showToast('Blouse stitching removed: Quick & same-day delivery cannot include tailoring.', 'info');
+      }
+    }
+  }, [selectedDeliveryMethod, cart, removeCartItemAddon, showToast]);
+
   // Coupon state
   const [couponInput, setCouponInput] = useState<string>('');
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
@@ -305,14 +334,23 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
     return cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   }, [cart]);
 
-  const subtotal = useMemo(() => {
+  const itemDiscount = useMemo(() => {
     return cart.reduce((sum, item) => {
-      const price = item.product.salePrice ?? item.product.price;
-      return sum + price * item.quantity;
+      const currentPrice = item.product.salePrice ?? item.product.price;
+      return sum + (item.product.price - currentPrice) * item.quantity;
     }, 0);
   }, [cart]);
 
-  const itemDiscount = Math.max(0, originalTotal - subtotal);
+  const totalAddonsAmount = useMemo(() => {
+    return cart.reduce((sum, item) => {
+      const addons = (item.selectedAddons || []).reduce((aSum, a) => aSum + (Number(a.price) || 0), 0);
+      return sum + addons * item.quantity;
+    }, 0);
+  }, [cart]);
+
+  const subtotal = useMemo(() => {
+    return (originalTotal - itemDiscount) + totalAddonsAmount;
+  }, [originalTotal, itemDiscount, totalAddonsAmount]);
 
   // Delivery fee dynamically calculated from delivery_settings
   const deliveryFee = useMemo(() => {
@@ -332,7 +370,9 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
   // Handlers
   const handleRemoveItem = (item: CartItem, index: number) => {
     setRemovedHistory({ item, index });
-    removeFromCart(item.product.id);
+    const addonsKey = (item.selectedAddons || []).map(a => `${a.id}:${a.size || ''}`).sort().join('|');
+    removeFromCart(item.product.id, addonsKey);
+    setItemToRemove(null);
     setUndoToastVisible(true);
     setTimeout(() => {
       setUndoToastVisible(false);
@@ -341,7 +381,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
 
   const handleUndoRemove = () => {
     if (removedHistory) {
-      addToCart(removedHistory.item.product, removedHistory.item.quantity);
+      addToCart(removedHistory.item.product, removedHistory.item.quantity, removedHistory.item.selectedAddons || []);
       setRemovedHistory(null);
       setUndoToastVisible(false);
     }
@@ -505,13 +545,16 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
             {/* ── 2B. CART ITEMS LIST ── */}
             <div className="space-y-3">
               {cart.map((item, index) => {
-                const currentPrice = item.product.salePrice ?? item.product.price;
-                const originalPrice = item.product.price;
-                const hasDiscount = !!item.product.salePrice && item.product.salePrice < originalPrice;
+                const addonsPerItem = (item.selectedAddons || []).reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+                const currentPrice = (item.product.salePrice ?? item.product.price) + addonsPerItem;
+                const originalPrice = item.product.price + addonsPerItem;
+                const hasDiscount = !!item.product.salePrice && item.product.salePrice < item.product.price;
+                const addonsKey = (item.selectedAddons || []).map(a => `${a.id}:${a.size || ''}`).sort().join('|');
+                const itemKey = `${item.product.id}-${addonsKey}-${index}`;
 
                 return (
                   <div
-                    key={item.product.id}
+                    key={itemKey}
                     className="bg-white rounded-2xl border border-[#E5DEC9] p-3.5 flex gap-3.5 shadow-2xs relative"
                   >
                     {/* Item Thumbnail Image */}
@@ -556,9 +599,67 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
                           )}
                         </div>
 
+                        {/* Selected Add-ons Badges */}
+                        {item.selectedAddons && item.selectedAddons.length > 0 ? (
+                          <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                            {item.selectedAddons.map((addon) => (
+                              <span
+                                key={addon.id}
+                                className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-[#6B1725] bg-[#FAF6EE] border border-[#E5DEC9] pl-2 pr-1 py-0.5 rounded-md"
+                              >
+                                <Check size={10} className="text-emerald-700 shrink-0" />
+                                <span>{addon.title}{addon.size ? ` (${addon.size}")` : ''}</span>
+                                <span className="text-[#8C7A6B] font-normal">+₹{addon.price}</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    removeCartItemAddon(item.product.id, addon.id);
+                                    showToast(`Removed "${addon.title}" from your bag.`, 'info');
+                                  }}
+                                  className="text-[#A89F91] hover:text-red-700 p-0.5 hover:bg-stone-200/50 rounded transition-colors cursor-pointer shrink-0 ml-0.5"
+                                  title={`Remove ${addon.title}`}
+                                  aria-label={`Remove ${addon.title}`}
+                                >
+                                  <X size={11} />
+                                </button>
+                              </span>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setCustomizingCartItem(item);
+                              }}
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#6B1725] hover:text-[#52111C] bg-white hover:bg-[#FAF6EE] border border-[#E5DEC9] hover:border-[#6B1725]/40 px-2 py-0.5 rounded-md transition-all cursor-pointer"
+                              title="Edit tailoring services"
+                            >
+                              <Scissors size={10} />
+                              <span>Edit</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="mt-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setCustomizingCartItem(item);
+                              }}
+                              className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[#6B1725] hover:text-[#52111C] bg-[#FAF6EE] hover:bg-[#F5EEDC] border border-dashed border-[#D8CEBA] hover:border-[#6B1725] px-2 py-0.5 rounded-md transition-all cursor-pointer"
+                            >
+                              <Scissors size={10} className="text-[#6B1725]" />
+                              <span>+ Add Fall &amp; Pico / Tailoring</span>
+                            </button>
+                          </div>
+                        )}
+
                         {/* Stock & Specs */}
                         <p className="text-[11px] font-sans text-[#7A6E65] mt-1">
-                          Blouse piece included &middot; Qty {item.quantity} (single stock)
+                          Qty {item.quantity} {item.product.blousePiece ? `· ${item.product.blousePiece}` : ''}
                         </p>
                       </div>
 
@@ -574,7 +675,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
 
                         <div className="flex items-center border border-[#E5DEC9] rounded-xl bg-[#FAF7F0] p-0.5 shadow-2xs">
                           <button
-                            onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)}
+                            onClick={() => updateCartQuantity(item.product.id, item.quantity - 1, addonsKey)}
                             disabled={item.quantity <= 1}
                             className="w-8 h-8 flex items-center justify-center text-[#292524] hover:text-[#6B1725] disabled:opacity-30 cursor-pointer active:scale-95 transition-transform"
                             aria-label="Decrease quantity"
@@ -585,7 +686,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)}
+                            onClick={() => updateCartQuantity(item.product.id, item.quantity + 1, addonsKey)}
                             disabled={item.quantity >= item.product.stock}
                             className="w-8 h-8 flex items-center justify-center text-[#292524] hover:text-[#6B1725] disabled:opacity-30 cursor-pointer active:scale-95 transition-transform"
                             aria-label="Increase quantity"
@@ -759,6 +860,14 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
                 <span className="font-bold text-[#292524]">₹{originalTotal.toLocaleString('en-IN')}</span>
               </div>
 
+              {/* Tailoring & Add-on Services */}
+              {totalAddonsAmount > 0 && (
+                <div className="flex justify-between text-xs sm:text-sm text-[#7A6E65]">
+                  <span>Tailoring &amp; Services</span>
+                  <span className="font-bold text-[#6B1725]">+ ₹{totalAddonsAmount.toLocaleString('en-IN')}</span>
+                </div>
+              )}
+
               {/* Discount */}
               {totalSavings > 0 && (
                 <div className="flex justify-between text-xs sm:text-sm text-[#7A6E65]">
@@ -930,6 +1039,30 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
           </div>
         </div>,
         document.body
+      )}
+
+      {/* Saree Customization & Tailoring Modal for In-Cart Editing */}
+      {customizingCartItem && (
+        <SareeCustomizationModal
+          key={customizingCartItem.product.id}
+          isOpen={Boolean(customizingCartItem)}
+          onClose={() => setCustomizingCartItem(null)}
+          product={customizingCartItem.product}
+          addonsList={cartAddonsList}
+          initialSelectedAddons={customizingCartItem.selectedAddons || []}
+          mode="edit"
+          allowBlouseStitching={selectedDeliveryMethod === 'standard'}
+          onConfirm={(selectedAddons) => {
+            updateCartItemAddons(customizingCartItem.product.id, selectedAddons);
+            setCustomizingCartItem(null);
+            showToast(
+              selectedAddons.length > 0
+                ? 'Updated tailoring services in your bag.'
+                : 'Updated bag (saree only).',
+              'info'
+            );
+          }}
+        />
       )}
     </div>
   );

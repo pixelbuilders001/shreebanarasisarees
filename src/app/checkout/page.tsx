@@ -15,7 +15,7 @@ import {
   Lock,
   Plus,
   MessageSquare,
-  Sparkles,
+  Scissors,
   PackageCheck,
   AlertCircle,
   ShieldCheck,
@@ -42,6 +42,7 @@ import {
 import {
   checkDeliveryServiceability,
   fetchDeliverySettings,
+  fetchProductAddons,
   calculateDeliveryOptions,
   DeliverySettings,
   CalculatedDeliveryOption,
@@ -49,6 +50,8 @@ import {
   getProductSlug,
   supabase
 } from '../../data/supabase';
+import { ProductAddon } from '../../data/products';
+import { SareeCustomizationModal } from '../../components/SareeCustomizationModal';
 import { trackBeginCheckout, trackPurchase } from '../../lib/gtag';
 import { fetchPincodeDetails } from '../../lib/pincodeLookup';
 import { AddNewAddressModal } from '../../components/delivery/AddNewAddressModal';
@@ -153,8 +156,21 @@ function CheckoutContent() {
     userProfile,
     isHydrated,
     setIsAuthModalOpen,
-    products
+    products,
+    updateCartItemAddons,
+    removeCartItemAddon,
+    showToast
   } = useStore();
+
+  // Tailoring customization state in checkout
+  const [customizingItem, setCustomizingItem] = useState<CartItem | null>(null);
+  const [checkoutAddonsList, setCheckoutAddonsList] = useState<ProductAddon[]>([]);
+
+  useEffect(() => {
+    fetchProductAddons()
+      .then(setCheckoutAddonsList)
+      .catch((err) => console.error('Failed to load addons for checkout:', err));
+  }, []);
 
   const fallbackTiming = useMemo(() => getExpressTimingStatus(deliveryInfo), [deliveryInfo]);
 
@@ -218,6 +234,22 @@ function CheckoutContent() {
     return 'express';
   });
   const [paymentMethod, setPaymentMethod] = useState<'Cash on Delivery'>('Cash on Delivery');
+
+  // Quick / same-day delivery cannot include blouse tailoring (requires 2-3 days).
+  // Automatically strip stitch_blouse if customer switches delivery tier to express or same-day.
+  useEffect(() => {
+    if (selectedDeliveryOption !== 'standard') {
+      const itemsWithStitch = cart.filter(item =>
+        item.selectedAddons?.some(a => a.id === 'stitch_blouse')
+      );
+      if (itemsWithStitch.length > 0) {
+        itemsWithStitch.forEach(item => {
+          removeCartItemAddon(item.product.id, 'stitch_blouse');
+        });
+        showToast('Blouse stitching removed: Quick & same-day delivery cannot include tailoring.', 'info');
+      }
+    }
+  }, [selectedDeliveryOption, cart, removeCartItemAddon, showToast]);
 
   // 3-step wizard state: 1 = Address, 2 = Delivery, 3 = Review & Pay
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
@@ -396,18 +428,27 @@ function CheckoutContent() {
   }, [shippingAddresses, selectedAddressId]);
 
   // Calculate totals
-  const subtotal = useMemo(() => {
-    return cart.reduce((total, item) => {
-      const itemPrice = item.product.salePrice ?? item.product.price;
-      return total + itemPrice * item.quantity;
-    }, 0);
-  }, [cart]);
-
   const originalTotal = useMemo(() => {
     return cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
   }, [cart]);
 
-  const totalProductDiscount = originalTotal - subtotal;
+  const totalProductDiscount = useMemo(() => {
+    return cart.reduce((sum, item) => {
+      const currentPrice = item.product.salePrice ?? item.product.price;
+      return sum + (item.product.price - currentPrice) * item.quantity;
+    }, 0);
+  }, [cart]);
+
+  const totalAddonsAmount = useMemo(() => {
+    return cart.reduce((sum, item) => {
+      const addons = (item.selectedAddons || []).reduce((aSum, a) => aSum + (Number(a.price) || 0), 0);
+      return sum + addons * item.quantity;
+    }, 0);
+  }, [cart]);
+
+  const subtotal = useMemo(() => {
+    return (originalTotal - totalProductDiscount) + totalAddonsAmount;
+  }, [originalTotal, totalProductDiscount, totalAddonsAmount]);
 
   // Delivery options calculated dynamically from delivery_settings & customer distance
   const deliveryOptions = useMemo<CalculatedDeliveryOption[]>(() => {
@@ -1102,7 +1143,9 @@ function CheckoutContent() {
                 const name = prod.name || 'Handloom Banarasi Saree';
                 const sku = prod.sku || prod.designCode || 'SBS';
                 const quantity = item.quantity || 1;
-                const price = (prod.salePrice ?? prod.price ?? 0) * quantity;
+                const addonsList = item.selectedAddons || item.addons || [];
+                const addonsPerItem = addonsList.reduce((sum: number, a: any) => sum + (Number(a.price) || 0), 0);
+                const price = ((prod.salePrice ?? prod.price ?? 0) + addonsPerItem) * quantity;
 
                 return (
                   <div
@@ -1128,6 +1171,18 @@ function CheckoutContent() {
                           </span>
                         )}
                       </p>
+                      {addonsList.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {addonsList.map((addon: any) => (
+                            <span
+                              key={addon.id}
+                              className="inline-flex items-center text-[10px] font-semibold text-[#6B1725] bg-[#FAF6EE] border border-[#E5DEC9] px-1.5 py-0.5 rounded"
+                            >
+                              {addon.title}{addon.size ? ` (${addon.size}")` : ''} (+₹{addon.price})
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="text-sm font-semibold text-[#292524] text-right shrink-0 pl-2">
                       ₹{price.toLocaleString('en-IN')}
@@ -1994,9 +2049,11 @@ function CheckoutContent() {
 
                     <div className="space-y-3 divide-y divide-[#F3ECE0]">
                       {cart.map((item, idx) => {
-                        const price = item.product.salePrice ?? item.product.price;
+                        const addonsPerItem = (item.selectedAddons || []).reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+                        const price = (item.product.salePrice ?? item.product.price) + addonsPerItem;
+                        const addonsKey = (item.selectedAddons || []).map(a => `${a.id}:${a.size || ''}`).join('-');
                         return (
-                          <div key={item.product.id} className={`flex items-center gap-3.5 ${idx > 0 ? 'pt-3' : ''}`}>
+                          <div key={`${item.product.id}-${addonsKey}-${idx}`} className={`flex items-start sm:items-center gap-3.5 ${idx > 0 ? 'pt-3' : ''}`}>
                             <div className="w-14 h-16 sm:w-16 sm:h-20 rounded-xl overflow-hidden bg-[#FAF7F0] shrink-0 border border-[#E5DEC9]">
                               <img
                                 src={item.product.images[0]}
@@ -2012,8 +2069,64 @@ function CheckoutContent() {
                                 {item.product.name}
                               </h5>
                               <span className="text-[11px] text-[#7A6E65] block mt-0.5">
-                                Qty: {item.quantity} &middot; Blouse piece included
+                                Qty: {item.quantity} {item.product.blousePiece ? `· ${item.product.blousePiece}` : ''}
                               </span>
+                              {item.selectedAddons && item.selectedAddons.length > 0 ? (
+                                <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                                  {item.selectedAddons.map((addon) => (
+                                    <span
+                                      key={addon.id}
+                                      className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-[#6B1725] bg-[#FAF6EE] border border-[#E5DEC9] pl-2 pr-1 py-0.5 rounded-md"
+                                    >
+                                      <Check size={10} className="text-emerald-700 shrink-0" />
+                                      <span>{addon.title}{addon.size ? ` (${addon.size}")` : ''}</span>
+                                      <span className="text-[#8C7A6B] font-normal">+₹{addon.price}</span>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          removeCartItemAddon(item.product.id, addon.id);
+                                          showToast(`Removed "${addon.title}" from ${item.product.name}.`, 'info');
+                                        }}
+                                        className="text-[#A89F91] hover:text-red-700 p-0.5 hover:bg-stone-200/50 rounded transition-colors cursor-pointer ml-0.5 shrink-0"
+                                        title={`Remove ${addon.title}`}
+                                        aria-label={`Remove ${addon.title}`}
+                                      >
+                                        <X size={11} />
+                                      </button>
+                                    </span>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setCustomizingItem(item);
+                                    }}
+                                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#6B1725] hover:text-[#52111C] bg-white hover:bg-[#FAF6EE] border border-[#E5DEC9] hover:border-[#6B1725]/40 px-2 py-0.5 rounded-md transition-all cursor-pointer"
+                                    title="Edit tailoring services"
+                                  >
+                                    <Scissors size={10} />
+                                    <span>Edit</span>
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="mt-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setCustomizingItem(item);
+                                    }}
+                                    className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[#6B1725] hover:text-[#52111C] bg-[#FAF6EE] hover:bg-[#F5EEDC] border border-dashed border-[#D8CEBA] hover:border-[#6B1725] px-2 py-0.5 rounded-md transition-all cursor-pointer"
+                                  >
+                                    <Scissors size={10} className="text-[#6B1725]" />
+                                    <span>+ Add Fall &amp; Pico / Tailoring</span>
+                                  </button>
+                                </div>
+                              )}
                             </div>
                             <div className="text-right shrink-0">
                               <span className="font-sans font-bold text-sm sm:text-base text-[#292524] tabular-nums">
@@ -2161,6 +2274,12 @@ function CheckoutContent() {
                         <span>Item total</span>
                         <span className="font-medium text-[#292524]">₹{originalTotal.toLocaleString('en-IN')}</span>
                       </div>
+                      {totalAddonsAmount > 0 && (
+                        <div className="flex justify-between text-[#7A6E65]">
+                          <span>Tailoring &amp; Services</span>
+                          <span className="font-semibold text-[#6B1725]">+₹{totalAddonsAmount.toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
                       {totalProductDiscount > 0 && (
                         <div className="flex justify-between text-[#7A6E65]">
                           <span>Product discount</span>
@@ -2281,12 +2400,14 @@ function CheckoutContent() {
                   {/* Saree List */}
                   <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1 divide-y divide-[#F3ECE0]">
                     {cart.map((item, idx) => {
-                      const currentPrice = item.product.salePrice ?? item.product.price;
-                      const originalPrice = item.product.price;
-                      const hasDiscount = !!item.product.salePrice && item.product.salePrice < originalPrice;
+                      const addonsPerItem = (item.selectedAddons || []).reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+                      const currentPrice = (item.product.salePrice ?? item.product.price) + addonsPerItem;
+                      const originalPrice = item.product.price + addonsPerItem;
+                      const hasDiscount = !!item.product.salePrice && item.product.salePrice < item.product.price;
+                      const addonsKey = (item.selectedAddons || []).map(a => `${a.id}:${a.size || ''}`).join('-');
 
                       return (
-                        <div key={item.product.id} className={`flex items-center gap-3 py-1 ${idx > 0 ? 'pt-2.5' : ''}`}>
+                        <div key={`${item.product.id}-${addonsKey}-${idx}`} className={`flex items-start gap-3 py-1 ${idx > 0 ? 'pt-2.5' : ''}`}>
                           <div className="w-14 h-16 rounded-xl overflow-hidden bg-[#FAF7F0] shrink-0 border border-[#E5DEC9]">
                             <img src={item.product.images[0]} alt={item.product.name} className="w-full h-full object-cover" />
                           </div>
@@ -2298,8 +2419,64 @@ function CheckoutContent() {
                               {item.product.name}
                             </h5>
                             <span className="text-[11px] text-[#7A6E65] block mt-0.5 font-sans">
-                              Qty: {item.quantity} &middot; Blouse piece incl.
+                              Qty: {item.quantity} {item.product.blousePiece ? `· ${item.product.blousePiece}` : ''}
                             </span>
+                            {item.selectedAddons && item.selectedAddons.length > 0 ? (
+                              <div className="flex flex-wrap items-center gap-1 mt-1">
+                                {item.selectedAddons.map((addon) => (
+                                  <span
+                                    key={addon.id}
+                                    className="inline-flex items-center gap-1 text-[9px] font-semibold text-[#6B1725] bg-[#FAF6EE] border border-[#E5DEC9] pl-1.5 pr-1 py-0.5 rounded"
+                                  >
+                                    <Check size={8} className="text-emerald-700 shrink-0" />
+                                    <span>{addon.title}{addon.size ? ` (${addon.size}")` : ''}</span>
+                                    <span className="text-[#8C7A6B] font-normal">+₹{addon.price}</span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        removeCartItemAddon(item.product.id, addon.id);
+                                        showToast(`Removed "${addon.title}" from ${item.product.name}.`, 'info');
+                                      }}
+                                      className="text-[#A89F91] hover:text-red-700 p-0.5 hover:bg-stone-200/50 rounded transition-colors cursor-pointer ml-0.5 shrink-0"
+                                      title={`Remove ${addon.title}`}
+                                      aria-label={`Remove ${addon.title}`}
+                                    >
+                                      <X size={9} />
+                                    </button>
+                                  </span>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setCustomizingItem(item);
+                                  }}
+                                  className="inline-flex items-center gap-1 text-[9px] font-semibold text-[#6B1725] hover:text-[#52111C] bg-white hover:bg-[#FAF6EE] border border-[#E5DEC9] hover:border-[#6B1725]/40 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                                  title="Edit tailoring services"
+                                >
+                                  <Scissors size={8} />
+                                  <span>Edit</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="mt-1">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setCustomizingItem(item);
+                                  }}
+                                  className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#6B1725] hover:text-[#52111C] bg-[#FAF6EE] hover:bg-[#F5EEDC] border border-dashed border-[#D8CEBA] hover:border-[#6B1725] px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                                >
+                                  <Scissors size={8} className="text-[#6B1725]" />
+                                  <span>+ Add Fall &amp; Pico / Tailoring</span>
+                                </button>
+                              </div>
+                            )}
                           </div>
                           <div className="text-right shrink-0">
                             <div className="font-sans font-bold text-sm text-[#292524] tabular-nums">
@@ -2354,6 +2531,12 @@ function CheckoutContent() {
                       <span>Item total</span>
                       <span className="font-medium text-[#292524]">₹{originalTotal.toLocaleString('en-IN')}</span>
                     </div>
+                    {totalAddonsAmount > 0 && (
+                      <div className="flex justify-between text-[#7A6E65]">
+                        <span>Tailoring &amp; Services</span>
+                        <span className="font-semibold text-[#6B1725]">+₹{totalAddonsAmount.toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
                     {totalProductDiscount > 0 && (
                       <div className="flex justify-between text-[#7A6E65]">
                         <span>Product discount</span>
@@ -2435,7 +2618,7 @@ function CheckoutContent() {
                 {/* SBS Heritage Guarantee Badge */}
                 <div className="bg-[#FAF7F0] border border-[#E5DEC9] rounded-2xl p-4 space-y-2.5 shadow-2xs">
                   <div className="flex items-center gap-2 text-xs font-serif font-bold text-[#6B1725]">
-                    <Sparkles size={15} />
+                    <ShieldCheck size={15} />
                     <span>Shree Banarasi Sarees Guarantee</span>
                   </div>
                   <ul className="text-[11px] text-[#7A6E65] space-y-1.5 font-sans leading-relaxed">
@@ -2525,6 +2708,30 @@ function CheckoutContent() {
         onClose={() => setIsAddAddressModalOpen(false)}
         onAddressSaved={handleNewAddressSaved}
       />
+
+      {/* Saree Customization Modal for Tailoring Services */}
+      {customizingItem && (
+        <SareeCustomizationModal
+          key={customizingItem.product.id}
+          isOpen={Boolean(customizingItem)}
+          onClose={() => setCustomizingItem(null)}
+          product={customizingItem.product}
+          addonsList={checkoutAddonsList}
+          initialSelectedAddons={customizingItem.selectedAddons || []}
+          mode="edit"
+          allowBlouseStitching={selectedDeliveryOption === 'standard'}
+          onConfirm={(selectedAddons) => {
+            updateCartItemAddons(customizingItem.product.id, selectedAddons);
+            setCustomizingItem(null);
+            showToast(
+              selectedAddons.length > 0
+                ? `Updated tailoring services for ${customizingItem.product.name}.`
+                : `Updated ${customizingItem.product.name} (saree only).`,
+              'info'
+            );
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -3,9 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
-import { Loader2, Printer, AlertTriangle, Smartphone, Sparkles, Download } from 'lucide-react';
+import { Loader2, Printer, AlertTriangle, Smartphone, ShieldCheck, Download } from 'lucide-react';
 import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
-import { decodeReceiptData, ReceiptData, ReceiptItem } from '@/lib/receiptUtils';
+import { decodeReceiptData, ReceiptData, ReceiptItem, ReceiptItemAddon } from '@/lib/receiptUtils';
 import { downloadInvoicePdf } from '@/lib/invoicePdf';
 import { PRODUCTS } from '@/data/products';
 import ContextualNotificationBanner from '@/components/notifications/ContextualNotificationBanner';
@@ -237,12 +237,21 @@ export default function ReceiptPage() {
 
                         const mrpVal = snapMrp > unitPrice ? snapMrp : (matchedMrp > unitPrice ? matchedMrp : (snapMrp > 0 ? snapMrp : unitPrice));
 
+                        const itemAddonsRaw = i.addons || snap?.addons || snap?.selectedAddons || [];
+                        const addons: ReceiptItemAddon[] = Array.isArray(itemAddonsRaw) ? itemAddonsRaw.map((a: any) => ({
+                            id: a.id,
+                            title: a.title || a.name || 'Tailoring Add-on',
+                            price: Number(a.price || 0),
+                            size: a.size || undefined,
+                        })) : [];
+
                         return {
                             sareeName,
                             quantity: Number(i.quantity || 1),
                             mrp: mrpVal,
                             sellingPrice: unitPrice,
                             hsnCode: i.hsn_code || snap?.hsn_code || '5208',
+                            addons: addons.length > 0 ? addons : undefined,
                         };
                     });
 
@@ -538,7 +547,7 @@ export default function ReceiptPage() {
                                 </div>
                                 <div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <Sparkles style={{ width: 14, height: 14, color: '#D4B870' }} />
+                                        <ShieldCheck style={{ width: 14, height: 14, color: '#D4B870' }} />
                                         <h3 style={{ fontFamily: 'Georgia, serif', fontWeight: 'bold', fontSize: '15px', color: '#FFF9F0', margin: 0, letterSpacing: '0.3px' }}>
                                             Get Order Tracking on Shree Banarasi App
                                         </h3>
@@ -705,7 +714,17 @@ export default function ReceiptPage() {
                                     return (
                                         <tr key={idx} style={{ borderBottom: '1px dashed #ccc' }}>
                                             <td style={{ padding: '11px 8px 11px 0', wordBreak: 'break-word' }}>
-                                                <div>{item.sareeName}</div>
+                                                <div style={{ fontWeight: 500, color: '#111' }}>{item.sareeName}</div>
+                                                {item.addons && item.addons.length > 0 && (
+                                                    <div style={{ marginTop: '4px', fontSize: '11px', color: '#6B1725', lineHeight: '1.45' }}>
+                                                        {item.addons.map((a, aIdx) => (
+                                                            <div key={aIdx} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                <span>+ {a.title}{a.size ? ` (${a.size}")` : ''}:</span>
+                                                                <span style={{ fontWeight: 600 }}>{fmtCurrency(a.price)}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                                 {item.hsnCode && (
                                                     <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>HSN: {item.hsnCode}</div>
                                                 )}

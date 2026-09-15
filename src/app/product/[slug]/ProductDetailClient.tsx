@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Header } from '../../../components/Header';
 import { Footer } from '../../../components/Footer';
-import { Product, PRODUCTS } from '../../../data/products';
+import { Product, PRODUCTS, ProductAddon, SelectedAddon } from '../../../data/products';
 import { useStore } from '../../../context/StoreContext';
 import {
   Heart,
@@ -33,9 +33,10 @@ import {
   Clock,
   PackageCheck
 } from 'lucide-react';
-import { fetchDesignVariants, fetchDeliverySettings, DeliverySettings, supabase } from '../../../data/supabase';
+import { fetchDesignVariants, fetchDeliverySettings, fetchProductAddons, DeliverySettings, supabase } from '../../../data/supabase';
 import { RecentlyViewed } from '../../../components/RecentlyViewed';
 import { ProductCard } from '../../../components/ProductCard';
+import { SareeCustomizationModal } from '../../../components/SareeCustomizationModal';
 import { useRecentlyViewed } from '../../../utils/useRecentlyViewed';
 import { trackViewItem } from '../../../lib/gtag';
 import { openPincodeSheet, getExpressTimingStatus } from '../../../components/DeliveryPincodeBar';
@@ -61,6 +62,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     currentPincode,
     defaultDeliveryPincode,
     cart,
+    updateCartItemAddons,
     setIsCartOpen,
     user,
     setIsAuthModalOpen,
@@ -78,6 +80,92 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     }
   }, [product.id, product.images]);
   const [quantity, setQuantity] = useState(1);
+
+  // Saree Customization & Add-ons state
+  const [addonsList, setAddonsList] = useState<ProductAddon[]>([]);
+  const [selectedAddonIds, setSelectedAddonIds] = useState<Record<string, boolean>>({});
+  const [blouseSize, setBlouseSize] = useState<string>('38');
+  const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState<boolean>(false);
+  const [customizationMode, setCustomizationMode] = useState<'cart' | 'buy_now' | 'edit'>('cart');
+
+  // Check if this saree is already in the shopping bag
+  const cartItem = useMemo(() => {
+    return cart.find(item => item.product.id === product.id);
+  }, [cart, product.id]);
+
+  const isProductInCart = Boolean(cartItem);
+
+  // Synchronize addon selections per-product: resets cleanly when switching products
+  useEffect(() => {
+    const initialRecord: Record<string, boolean> = {};
+    let initialBlouseSize = '38';
+
+    if (cartItem?.selectedAddons && cartItem.selectedAddons.length > 0) {
+      cartItem.selectedAddons.forEach(a => {
+        initialRecord[a.id] = true;
+        if (a.size) {
+          initialBlouseSize = a.size;
+        }
+      });
+    }
+
+    setSelectedAddonIds(initialRecord);
+    setBlouseSize(initialBlouseSize);
+  }, [product.id, cartItem]);
+
+  useEffect(() => {
+    fetchProductAddons().then(addons => {
+      setAddonsList(addons);
+    });
+  }, []);
+
+  const hasBlouse = product.has_blouse !== false;
+
+  const toggleAddon = (id: string) => {
+    const nextSelected = {
+      ...selectedAddonIds,
+      [id]: !selectedAddonIds[id]
+    };
+    setSelectedAddonIds(nextSelected);
+
+    // If saree is already in bag, immediately sync the cart item so user never has to re-add the item
+    if (isProductInCart) {
+      const nextActiveAddons = addonsList
+        .filter(addon => {
+          if (!nextSelected[addon.id]) return false;
+          if (hasBlouse && addon.id === 'blouse_piece') return false;
+          return true;
+        })
+        .map(addon => ({
+          id: addon.id,
+          title: addon.title,
+          price: addon.price,
+          size: addon.requires_size ? blouseSize : undefined
+        }));
+
+      updateCartItemAddons(product.id, nextActiveAddons);
+
+      const isNowRemoved = !nextSelected[id];
+      const addonTitle = addonsList.find(a => a.id === id)?.title || 'Service';
+      if (isNowRemoved) {
+        showToast(`Removed "${addonTitle}" from your bag.`, 'info');
+      } else {
+        showToast(`Added "${addonTitle}" to your bag.`, 'info');
+      }
+    }
+  };
+
+  const handleBlouseSizeChange = (newSize: string) => {
+    setBlouseSize(newSize);
+    if (isProductInCart && selectedAddonIds['stitch_blouse']) {
+      const nextActiveAddons = activeSelectedAddons.map(a =>
+        a.id === 'stitch_blouse' ? { ...a, size: newSize } : a
+      );
+      updateCartItemAddons(product.id, nextActiveAddons);
+      showToast(`Updated blouse size to ${newSize}" in your bag.`, 'info');
+    }
+  };
+
   const displayPincode = currentPincode || defaultDeliveryPincode || '';
   const { result, checkPincode } = useCustomerLocation();
 
@@ -133,6 +221,28 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
   const is20Min = deliveryTier === 'express';
   const isSameDay = deliveryTier === 'same_day';
+
+  const activeSelectedAddons = useMemo<SelectedAddon[]>(() => {
+    return addonsList
+      .filter(addon => {
+        if (!selectedAddonIds[addon.id]) return false;
+        // If saree already has blouse piece, do not offer extra fabric
+        if (hasBlouse && addon.id === 'blouse_piece') return false;
+        // Blouse stitching is only offered for standard delivery (not quick / same-day delivery)
+        if (deliveryTier !== 'standard' && addon.id === 'stitch_blouse') return false;
+        return true;
+      })
+      .map(addon => ({
+        id: addon.id,
+        title: addon.title,
+        price: addon.price,
+        size: addon.requires_size ? blouseSize : undefined
+      }));
+  }, [addonsList, selectedAddonIds, hasBlouse, blouseSize, deliveryTier]);
+
+  const addonsTotal = useMemo(() => {
+    return activeSelectedAddons.reduce((sum, a) => sum + a.price, 0);
+  }, [activeSelectedAddons]);
 
   // Live countdown for Same-Day delivery cutoff (5 km - 10 km tier)
   const [sameDayCountdown, setSameDayCountdown] = useState<SameDayCountdownInfo>(() =>
@@ -225,6 +335,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const carouselRef = useRef<HTMLDivElement>(null);
   const isWishlisted = isInWishlist(product.id);
   const finalPrice = product.salePrice ?? product.price;
+  const finalPriceWithAddons = finalPrice + addonsTotal;
   const discountPercent = product.salePrice
     ? Math.round(((product.price - product.salePrice) / product.price) * 100)
     : 0;
@@ -331,17 +442,20 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
     window.open(`https://wa.me/${whatsappNumber}?text=${encodedMessage}`, '_blank');
   };
 
-  const isAlreadyInCart = cart.some(item => item.product.id === product.id);
+  const isAlreadyInCart = isProductInCart;
 
   const handleAddToCart = async () => {
     if (product.stock > 0) {
       triggerHaptic('medium');
-      if (isAlreadyInCart) {
+      if (isProductInCart) {
         setIsCartOpen(true);
+      } else if (addonsList.length > 0) {
+        setCustomizationMode('cart');
+        setIsCustomizationModalOpen(true);
       } else {
         setIsAddingToCart(true);
         await new Promise(resolve => setTimeout(resolve, 350));
-        addToCart(product, quantity);
+        addToCart(product, quantity, []);
         setIsAddingToCart(false);
         showToast(`Added "${product.name}" to your shopping bag.`);
       }
@@ -351,12 +465,47 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
   const handleBuyNow = async () => {
     if (product.stock > 0) {
       triggerHaptic('medium');
-      setIsBuyingNow(true);
-      await new Promise(resolve => setTimeout(resolve, 300));
-      if (!isAlreadyInCart) {
-        addToCart(product, quantity);
+      if (isProductInCart) {
+        setIsCartOpen(true);
+      } else if (addonsList.length > 0) {
+        setCustomizationMode('buy_now');
+        setIsCustomizationModalOpen(true);
+      } else {
+        setIsBuyingNow(true);
+        await new Promise(resolve => setTimeout(resolve, 300));
+        addToCart(product, quantity, []);
+        setIsBuyingNow(false);
+        setIsCartOpen(true);
       }
-      setIsBuyingNow(false);
+    }
+  };
+
+  const handleConfirmCustomization = (selectedAddons: SelectedAddon[], mode: 'cart' | 'buy_now' | 'edit') => {
+    setIsCustomizationModalOpen(false);
+
+    // Synchronize local PDP addon selections
+    const addonMap: Record<string, boolean> = {};
+    selectedAddons.forEach(a => {
+      addonMap[a.id] = true;
+      if (a.size) setBlouseSize(a.size);
+    });
+    setSelectedAddonIds(addonMap);
+
+    if (isProductInCart) {
+      updateCartItemAddons(product.id, selectedAddons);
+      showToast(
+        selectedAddons.length > 0
+          ? 'Updated tailoring services in your bag.'
+          : 'Updated bag (saree only).',
+        'info'
+      );
+    } else {
+      addToCart(product, quantity, selectedAddons);
+      const msg = selectedAddons.length > 0 ? ' with selected services' : '';
+      showToast(`Added "${product.name}"${msg} to your shopping bag.`);
+    }
+
+    if (mode === 'buy_now' || mode === 'edit') {
       setIsCartOpen(true);
     }
   };
@@ -661,14 +810,18 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
             {/* PRICE ROW */}
             <div className="flex items-baseline gap-2.5 flex-wrap border-b border-[#F3ECE0] pb-4">
               <span className="text-2xl sm:text-3xl font-bold font-sans text-[#292524]">
-                ₹{finalPrice.toLocaleString('en-IN')}
+                ₹{finalPriceWithAddons.toLocaleString('en-IN')}
               </span>
-              {product.salePrice && (
+              {addonsTotal > 0 ? (
+                <span className="text-xs text-[#6B1725] font-semibold bg-[#FAF6EE] px-2 py-0.5 rounded border border-[#E5DEC9]">
+                  ₹{finalPrice.toLocaleString('en-IN')} saree + ₹{addonsTotal.toLocaleString('en-IN')} add-ons
+                </span>
+              ) : product.salePrice && (
                 <span className="text-base text-[#7A6E65] line-through">
                   ₹{product.price.toLocaleString('en-IN')}
                 </span>
               )}
-              {discountPercent > 0 && (
+              {discountPercent > 0 && addonsTotal === 0 && (
                 <span className="bg-[#FAF6EE] text-[#C25E00] border border-[#E5DEC9] px-2.5 py-0.5 rounded text-xs font-bold">
                   {discountPercent}% off
                 </span>
@@ -682,9 +835,47 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
             <div className="flex items-center gap-2 text-xs font-semibold text-[#292524] bg-[#FAF6EE] border border-[#E5DEC9] rounded-xl px-3.5 py-2.5">
               <Scissors size={15} className="text-[#6B1725] shrink-0" />
               <span>
-                <strong>Blouse Piece Included:</strong> {product.blousePiece || 'Matching unstitched blouse piece (0.8m) included'}
+                <strong>Blouse Piece:</strong> {hasBlouse ? (product.blousePiece || 'Matching unstitched blouse piece (0.8m) included') : 'Not included (add-on available)'}
               </span>
             </div>
+
+            {/* TAILORING SERVICES TRIGGER PILL */}
+            {product.stock > 0 && addonsList.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomizationMode(isProductInCart ? 'edit' : 'cart');
+                  setIsCustomizationModalOpen(true);
+                }}
+                className="w-full flex items-center justify-between gap-3 text-left p-3 rounded-xl bg-[#FAF6EE] hover:bg-[#F5EEDC] border border-[#E8DFD1] hover:border-[#6B1725]/40 transition-all cursor-pointer group shadow-2xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-[#6B1725]/10 flex items-center justify-center text-[#6B1725] shrink-0 group-hover:bg-[#6B1725]/15 transition-colors">
+                    <Scissors size={14} className="text-[#6B1725]" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-[#292524] flex items-center gap-1.5">
+                      <span>Fall, Pico &amp; Tailoring</span>
+                      {activeSelectedAddons.length > 0 && (
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded">
+                          {activeSelectedAddons.length} Selected
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-[#7A6E65]">
+                      {activeSelectedAddons.length > 0
+                        ? activeSelectedAddons.map(a => a.title).join(', ')
+                        : deliveryTier === 'standard'
+                          ? 'Optional Fall & Pico, Inskirt & Blouse Stitching'
+                          : 'Optional Fall & Pico & Inskirt (Stitching requires standard delivery)'}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs font-semibold text-[#6B1725] group-hover:underline shrink-0 flex items-center gap-0.5">
+                  {activeSelectedAddons.length > 0 ? 'Edit' : 'Customize'} &rarr;
+                </span>
+              </button>
+            )}
 
             {/* HIGH-END COLOR VARIANTS CONTAINER */}
             <div className="bg-[#FAF6EE]/60 border border-[#E5DEC9] rounded-2xl p-4 space-y-3 shadow-2xs">
@@ -956,7 +1147,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                         <span>Processing...</span>
                       </>
                     ) : (
-                      <span>Buy Now</span>
+                      <span>Buy Now{addonsTotal > 0 ? ` • ₹${(finalPriceWithAddons * quantity).toLocaleString('en-IN')}` : ''}</span>
                     )}
                   </button>
 
@@ -1227,9 +1418,13 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
           </button>
           <div>
             <div className="font-sans text-base font-bold text-[#292524] leading-tight">
-              ₹{finalPrice.toLocaleString('en-IN')}
+              ₹{finalPriceWithAddons.toLocaleString('en-IN')}
             </div>
-            {product.stock === 0 ? (
+            {addonsTotal > 0 ? (
+              <span className="text-[10px] font-semibold text-[#6B1725] block">
+                Incl. add-ons
+              </span>
+            ) : product.stock === 0 ? (
               <span className="text-[11px] font-bold text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200 block">
                 Out of Stock
               </span>
@@ -1279,7 +1474,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                     <span>Wait...</span>
                   </>
                 ) : (
-                  <span>Buy now</span>
+                  <span>Buy now{addonsTotal > 0 ? ` • ₹${finalPriceWithAddons.toLocaleString('en-IN')}` : ''}</span>
                 )}
               </button>
             </>
@@ -1427,6 +1622,19 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
           </div>
         </div>
       )}
+
+      {/* SAREE CUSTOMIZATION & TAILORING POPUP / BOTTOM SHEET */}
+      <SareeCustomizationModal
+        key={product.id}
+        isOpen={isCustomizationModalOpen}
+        onClose={() => setIsCustomizationModalOpen(false)}
+        product={product}
+        addonsList={addonsList}
+        initialSelectedAddons={activeSelectedAddons}
+        mode={customizationMode}
+        allowBlouseStitching={deliveryTier === 'standard'}
+        onConfirm={handleConfirmCustomization}
+      />
     </>
   );
 }

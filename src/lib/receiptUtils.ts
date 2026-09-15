@@ -1,9 +1,17 @@
+export interface ReceiptItemAddon {
+    id?: string;
+    title: string;
+    price: number;
+    size?: string;
+}
+
 export interface ReceiptItem {
     sareeName: string;
     quantity: number;
     mrp: number;
     sellingPrice: number;
     hsnCode?: string;
+    addons?: ReceiptItemAddon[];
 }
 
 export interface ReceiptData {
