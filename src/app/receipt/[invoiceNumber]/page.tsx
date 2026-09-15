@@ -194,7 +194,7 @@ export default function ReceiptPage() {
                         customer_name, customer_phone, customer_email, shipping_address,
                         taxable_amount, gst_amount, cgst_amount, sgst_amount, igst_amount, gst_rate, place_of_supply,
                         invoice_number, invoice_date,
-                        gift_wrap_charge,
+                        gift_wrap_charge, coupon_code,
                         order_items (
                             id, order_id, inventory_id, product_name, product_name_snapshot, sku, barcode, quantity, unit_price, discount_amount, taxable_value, gst_rate, cgst_amount, sgst_amount, igst_amount, gst_amount, total_price, product_snapshot, item_status
                         )
@@ -209,14 +209,19 @@ export default function ReceiptPage() {
                 if (orderErr) { setError('Failed to load receipt.'); setLoading(false); return; }
                 if (!orderData) { setError('Receipt not found. Please check the link.'); setLoading(false); return; }
 
-                const items: ReceiptItem[] = (orderData.order_items || [])
+                const rawOrderItems: ReceiptItem[] = (orderData.order_items || [])
                     .map((i: any) => {
                         let snap = i.product_snapshot;
                         if (typeof snap === 'string') {
                             try { snap = JSON.parse(snap); } catch {}
                         }
                         const unitPrice = Number(i.unit_price || snap?.selling_price || 0);
-                        const snapMrp = Number(snap?.mrp || snap?.price || 0);
+                        let snapMrp = Number(snap?.mrp || snap?.price || 0);
+                        const snapDiscount = Number(snap?.discount_amount || 0);
+                        // Reconstruct real MRP when snapshot has discount_amount but mrp = selling_price
+                        if (snapMrp <= unitPrice && snapDiscount > 0) {
+                            snapMrp = unitPrice + snapDiscount;
+                        }
                         const rawSareeName = i.product_name || i.product_name_snapshot || snap?.saree_name || snap?.name || 'Pure Silk Banarasi Saree';
                         const sareeName = (i.item_status === 'cancelled') ? `[Cancelled] ${rawSareeName}` : rawSareeName;
 
@@ -235,8 +240,6 @@ export default function ReceiptPage() {
                             }
                         }
 
-                        const mrpVal = snapMrp > unitPrice ? snapMrp : (matchedMrp > unitPrice ? matchedMrp : (snapMrp > 0 ? snapMrp : unitPrice));
-
                         const itemAddonsRaw = i.addons || snap?.addons || snap?.selectedAddons || [];
                         const addons: ReceiptItemAddon[] = Array.isArray(itemAddonsRaw) ? itemAddonsRaw.map((a: any) => ({
                             id: a.id,
@@ -245,15 +248,38 @@ export default function ReceiptPage() {
                             size: a.size || undefined,
                         })) : [];
 
+                        const addonsUnit = addons.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+                        const sareeBasePrice = (addonsUnit > 0 && unitPrice > addonsUnit) ? (unitPrice - addonsUnit) : unitPrice;
+                        const mrpVal = snapMrp > sareeBasePrice ? snapMrp : (matchedMrp > sareeBasePrice ? matchedMrp : (snapMrp > 0 ? snapMrp : sareeBasePrice));
+                        const itemCouponDisc = Number(i.discount_amount || 0);
+
                         return {
                             sareeName,
                             quantity: Number(i.quantity || 1),
                             mrp: mrpVal,
-                            sellingPrice: unitPrice,
+                            sellingPrice: sareeBasePrice,
                             hsnCode: i.hsn_code || snap?.hsn_code || '5208',
                             addons: addons.length > 0 ? addons : undefined,
+                            discountAmount: itemCouponDisc > 0 ? itemCouponDisc : undefined,
                         };
                     });
+
+                // Pro-rata allocate order-level discount to items when no item-level discounts exist
+                const orderDiscount = Number(orderData.discount || 0);
+                const hasItemDiscounts = rawOrderItems.some(it => (it.discountAmount || 0) > 0);
+                const orderCalcSubtotal = rawOrderItems.reduce((s, it) => s + it.sellingPrice * it.quantity, 0);
+                const items: ReceiptItem[] = rawOrderItems.map(it => {
+                    if (!hasItemDiscounts && orderDiscount > 0 && orderCalcSubtotal > 0) {
+                        const itemSubtotal = it.sellingPrice * it.quantity;
+                        const allocated = Math.round((itemSubtotal / orderCalcSubtotal) * orderDiscount * 100) / 100;
+                        return { ...it, discountAmount: allocated > 0 ? allocated : undefined };
+                    }
+                    return it;
+                });
+
+                const finalDiscountAmount = hasItemDiscounts
+                    ? items.reduce((s, it) => s + (it.discountAmount || 0), 0)
+                    : orderDiscount;
 
                 const shippingAddr = typeof orderData.shipping_address === 'object' && orderData.shipping_address ? orderData.shipping_address : {};
                 const fullAddress = [
@@ -276,9 +302,11 @@ export default function ReceiptPage() {
                     customerAddress: fullAddress || null,
                     customerEmail: orderData.customer_email || shippingAddr.email || null,
                     items,
-                    subtotal: Number(orderData.subtotal || 0),
+                    subtotal: Number(orderData.subtotal || orderCalcSubtotal),
                     totalAmount: Number(orderData.total_amount || 0),
-                    discountAmount: Number(orderData.discount || 0),
+                    discountAmount: finalDiscountAmount,
+                    appliedVoucherCode: orderData.coupon_code || null,
+                    appliedVoucherAmount: finalDiscountAmount > 0 ? finalDiscountAmount : null,
                     shippingFee: Number(orderData.shipping_fee || 0),
                     giftWrapCharge: Number(orderData.gift_wrap_charge || 0),
                     isGstApplied: hasGst,
@@ -324,24 +352,47 @@ export default function ReceiptPage() {
     const dateLong = fmtLong(receipt.date);
 
     const totalMrp = receipt.items.reduce((s, i) => s + i.quantity * (i.mrp || i.sellingPrice), 0);
-    const totalItemDiscount = receipt.items.reduce((s, i) => {
-        const itemMrp = i.mrp || i.sellingPrice;
-        return s + Math.max(0, (itemMrp - i.sellingPrice) * i.quantity);
-    }, 0);
+
+    // Compute per-item total discount (backward-compatible with old and new discount_amount format)
+    const perItemTotalDisc = receipt.items.map(i => {
+        const mrp = i.mrp || i.sellingPrice;
+        const prodDisc = Math.max(0, (mrp - i.sellingPrice) * i.quantity);
+        const dbDisc = i.discountAmount || 0;
+        // New orders: dbDisc = mrpDisc + couponDisc (>= prodDisc) → use dbDisc
+        // Old orders: dbDisc = couponDisc only (< prodDisc or 0) → add prodDisc + dbDisc
+        return (dbDisc >= prodDisc && prodDisc > 0) ? dbDisc : prodDisc + dbDisc;
+    });
+    const totalItemDiscount = perItemTotalDisc.reduce((s, d) => s + d, 0);
+
     const totalItemDiscountPercent = totalMrp > 0 ? (totalItemDiscount / totalMrp) * 100 : 0;
     const totalItemDiscountPercentText = totalItemDiscountPercent > 0 ? ` (${parseFloat(totalItemDiscountPercent.toFixed(1))}%)` : '';
 
-    const subtotal = receipt.subtotal && receipt.subtotal > 0
-        ? receipt.subtotal
-        : receipt.items.reduce((s, i) => s + i.quantity * i.sellingPrice, 0);
+    const totalAddons = receipt.items.reduce((sum, item) => {
+        const itemAddons = Array.isArray(item.addons) ? item.addons : [];
+        const addonsPerUnit = itemAddons.reduce((aSum, a) => aSum + (Number(a.price) || 0), 0);
+        return sum + addonsPerUnit * (item.quantity || 1);
+    }, 0);
 
-    const billDiscount = receipt.discountAmount || 0;
+    const itemsSellingTotal = receipt.items.reduce((s, i) => s + i.quantity * i.sellingPrice, 0);
+    const subtotal = totalItemDiscount > 0
+        ? Math.max(0, totalMrp - totalItemDiscount)
+        : (itemsSellingTotal > 0 ? itemsSellingTotal : (receipt.subtotal || totalMrp));
+
+    // billDiscount: any order-level discount not already captured in item-level totalDisc
+    const mrpDiscountTotal = Math.max(0, totalMrp - itemsSellingTotal);
+    const extraItemDiscount = Math.max(0, totalItemDiscount - mrpDiscountTotal);
+    const rawBillDiscount = receipt.discountAmount || 0;
+    const billDiscount = Math.max(0, rawBillDiscount - extraItemDiscount);
+    const billDiscountLabel = receipt.appliedVoucherCode
+        ? `COUPON (${receipt.appliedVoucherCode})`
+        : 'DISCOUNT';
     const billDiscountPercent = (receipt.discountPercentage && receipt.discountPercentage > 0)
         ? receipt.discountPercentage
         : ((subtotal > 0 && billDiscount > 0) ? (billDiscount / subtotal) * 100 : 0);
     const billDiscountPercentText = billDiscountPercent > 0 ? ` (${parseFloat(billDiscountPercent.toFixed(1))}%)` : '';
 
-    const totalSavings = totalItemDiscount + billDiscount + Number(receipt.appliedVoucherAmount || 0);
+    // totalSavings = total item discounts (mrp + coupon per item) + any remaining bill-level discount
+    const totalSavings = totalItemDiscount + billDiscount;
     const totalSavingsPercent = totalMrp > 0 ? (totalSavings / totalMrp) * 100 : 0;
 
     const handleDownloadPdf = async () => {
@@ -707,9 +758,13 @@ export default function ReceiptPage() {
                                 {receipt.items.map((item, idx) => {
                                     const itemMrp = item.mrp && item.mrp > 0 ? item.mrp : item.sellingPrice;
                                     const itemMrpTotal = item.quantity * itemMrp;
-                                    const itemSellingTotal = item.quantity * item.sellingPrice;
-                                    const itemDisc = Math.max(0, itemMrpTotal - itemSellingTotal);
-                                    const itemDiscPct = itemMrpTotal > 0 ? (itemDisc / itemMrpTotal) * 100 : 0;
+                                    const prodDisc = Math.max(0, (itemMrp - item.sellingPrice) * item.quantity);
+                                    const dbDisc = item.discountAmount || 0;
+                                    // New orders: dbDisc = mrpDisc + couponDisc (>= prodDisc)
+                                    // Old orders: dbDisc = couponDisc only (< prodDisc or 0)
+                                    const totalLineDisc = (dbDisc >= prodDisc && prodDisc > 0) ? dbDisc : prodDisc + dbDisc;
+                                    const itemPayableTotal = itemMrpTotal - totalLineDisc;
+                                    const itemDiscPct = itemMrpTotal > 0 ? (totalLineDisc / itemMrpTotal) * 100 : 0;
 
                                     return (
                                         <tr key={idx} style={{ borderBottom: '1px dashed #ccc' }}>
@@ -731,10 +786,10 @@ export default function ReceiptPage() {
                                             </td>
                                             <td style={{ padding: '11px 6px', textAlign: 'center' }}>{item.quantity}</td>
                                             <td style={{ padding: '11px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtCurrency(itemMrp)}</td>
-                                            <td style={{ padding: '11px 6px', textAlign: 'right', color: itemDisc > 0 ? '#b91c1c' : '#777', whiteSpace: 'nowrap' }}>
-                                                {itemDisc > 0 ? `− ${fmtCurrency(itemDisc)}${itemDiscPct > 0 ? ` (${parseFloat(itemDiscPct.toFixed(1))}%)` : ''}` : '—'}
+                                            <td style={{ padding: '11px 6px', textAlign: 'right', color: totalLineDisc > 0 ? '#b91c1c' : '#777', whiteSpace: 'nowrap' }}>
+                                                {totalLineDisc > 0 ? `− ${fmtCurrency(totalLineDisc)}${itemDiscPct > 0 ? ` (${parseFloat(itemDiscPct.toFixed(1))}%)` : ''}` : '—'}
                                             </td>
-                                            <td style={{ padding: '11px 0 11px 6px', textAlign: 'right', fontWeight: '500', whiteSpace: 'nowrap' }}>{fmtCurrency(itemSellingTotal)}</td>
+                                            <td style={{ padding: '11px 0 11px 6px', textAlign: 'right', fontWeight: '500', whiteSpace: 'nowrap' }}>{fmtCurrency(itemPayableTotal)}</td>
                                         </tr>
                                     );
                                 })}
@@ -749,7 +804,7 @@ export default function ReceiptPage() {
 
                     <div style={{ borderTop: '2px solid #111', paddingTop: '12px', marginTop: '4px' }}>
                         <div className="totals-container" style={{ maxWidth: '400px', marginLeft: 'auto', width: '100%' }}>
-                            {totalMrp > subtotal && (
+                            {totalItemDiscount > 0 && (
                                 <>
                                     <div className="totals-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '4px 0', borderBottom: '1px dashed #eee', fontSize: '12.5px' }}>
                                         <span style={{ color: '#555' }}>TOTAL MRP</span>
@@ -769,10 +824,17 @@ export default function ReceiptPage() {
                                 <span style={{ textAlign: 'right', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{fmtCurrency(subtotal)}</span>
                             </div>
 
+                            {totalAddons > 0 && (
+                                <div className="totals-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '4px 0', borderBottom: '1px dashed #eee', fontSize: '12.5px' }}>
+                                    <span style={{ color: '#555' }}>TAILORING / ADD-ONS</span>
+                                    <span style={{ textAlign: 'right', fontWeight: '500', whiteSpace: 'nowrap' }}>+ {fmtCurrency(totalAddons)}</span>
+                                </div>
+                            )}
+
                             {billDiscount > 0 && (
                                 <div className="totals-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '5px 0', borderBottom: '1px dashed #ccc', fontSize: '12.5px', color: '#b91c1c' }}>
                                     <span style={{ fontWeight: 'bold', letterSpacing: '0.5px' }}>
-                                        DISCOUNT{billDiscountPercentText}
+                                        {billDiscountLabel}{billDiscountPercentText}
                                     </span>
                                     <span style={{ textAlign: 'right', fontWeight: 'bold', whiteSpace: 'nowrap' }}>− {fmtCurrency(billDiscount)}</span>
                                 </div>

@@ -68,16 +68,10 @@ function round2(val: number): number {
 }
 
 Deno.serve(async (req) => {
-  // --------------------------------------------------
-  // CORS
-  // --------------------------------------------------
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // --------------------------------------------------
-  // Only POST requests
-  // --------------------------------------------------
   if (req.method !== "POST") {
     return response({ success: false, error: "Method not allowed" }, 405);
   }
@@ -87,44 +81,25 @@ Deno.serve(async (req) => {
       throw new Error("Missing Supabase service environment variables");
     }
 
-    // --------------------------------------------------
-    // Create admin client (Service Role)
-    // --------------------------------------------------
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // --------------------------------------------------
-    // Optional Authentication Check
-    // (Supports both authenticated users & guest checkouts)
-    // --------------------------------------------------
     let authenticatedUser: any = null;
     const authorization = req.headers.get("Authorization");
 
     if (authorization && SUPABASE_ANON_KEY) {
       try {
         const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-          global: {
-            headers: {
-              Authorization: authorization,
-            },
-          },
+          global: { headers: { Authorization: authorization } },
         });
         const { data: authData } = await userClient.auth.getUser();
-        if (authData?.user) {
-          authenticatedUser = authData.user;
-        }
+        if (authData?.user) authenticatedUser = authData.user;
       } catch (authErr) {
         console.warn("Auth token check skipped or failed:", authErr);
       }
     }
 
-    // --------------------------------------------------
-    // Read request body
-    // --------------------------------------------------
     let body: RequestBody;
     try {
       body = await req.json();
@@ -133,61 +108,35 @@ Deno.serve(async (req) => {
     }
 
     const {
-      customer_name,
-      customer_phone,
-      customer_email,
-      shipping_address,
-      notes = null,
-      coupon_code,
-      payment_method = 'cod',
-      is_gift = false,
-      gift_recipient_name = null,
-      gift_message = null,
-      gift_wrap_charge = 0,
+      customer_name, customer_phone, customer_email, shipping_address,
+      notes = null, coupon_code, payment_method = 'cod',
+      is_gift = false, gift_recipient_name = null, gift_message = null, gift_wrap_charge = 0,
     } = body;
 
-    // Determine user ID
     const userId = authenticatedUser?.id || body.user_id || null;
 
-    // Validate customer name & phone
     const cleanCustomerName = (
-      customer_name ||
-      shipping_address?.full_name ||
-      shipping_address?.name ||
-      "Valued Customer"
+      customer_name || shipping_address?.full_name || shipping_address?.name || "Valued Customer"
     ).trim();
-
     const cleanCustomerPhone = (
-      customer_phone ||
-      shipping_address?.phone ||
-      shipping_address?.mobileNumber ||
-      ""
+      customer_phone || shipping_address?.phone || shipping_address?.mobileNumber || ""
     ).trim();
 
-    if (!cleanCustomerName) {
-      return response({ success: false, error: "Customer name is required" }, 400);
-    }
-
-    if (!cleanCustomerPhone) {
-      return response({ success: false, error: "Customer phone number is required" }, 400);
-    }
-
-    if (!shipping_address || typeof shipping_address !== "object") {
+    if (!cleanCustomerName) return response({ success: false, error: "Customer name is required" }, 400);
+    if (!cleanCustomerPhone) return response({ success: false, error: "Customer phone number is required" }, 400);
+    if (!shipping_address || typeof shipping_address !== "object")
       return response({ success: false, error: "Shipping address is required" }, 400);
-    }
 
-    // User email (prefer verified auth email, fallback to body / address)
     const cleanCustomerEmail = authenticatedUser?.email || customer_email || shipping_address?.email || null;
 
     // --------------------------------------------------
-    // 1. Resolve Items (from payload or user cart_items table)
+    // 1. Resolve Items
     // --------------------------------------------------
     const requestedItems: {
       productId: string;
       quantity: number;
       addons: Array<{ id: string; title: string; price: number; size?: string }>;
     }[] = [];
-
     const stockDemandMap = new Map<string, number>();
 
     if (body.items && Array.isArray(body.items) && body.items.length > 0) {
@@ -201,17 +150,12 @@ Deno.serve(async (req) => {
         }
       }
     } else if (userId) {
-      // Fallback to database cart_items if no items explicitly provided in body
       const { data: dbCartItems, error: cartErr } = await admin
-        .from("cart_items")
-        .select("product_id, quantity")
-        .eq("user_id", userId);
-
+        .from("cart_items").select("product_id, quantity").eq("user_id", userId);
       if (cartErr) {
         console.error("Cart fetch error:", cartErr);
         return response({ success: false, error: "Unable to load your cart" }, 500);
       }
-
       if (dbCartItems && dbCartItems.length > 0) {
         for (const it of dbCartItems) {
           const qty = Math.max(1, Math.floor(Number(it.quantity) || 1));
@@ -223,126 +167,45 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (requestedItems.length === 0) {
+    if (requestedItems.length === 0)
       return response({ success: false, error: "Cannot create order with an empty cart" }, 400);
-    }
 
     const productIds = Array.from(stockDemandMap.keys());
 
     // --------------------------------------------------
-    // 2. Authoritative Product Read from storefront_products / inventory
-    // Rule: Never trust price/discount/stock sent from browser.
+    // 2. Authoritative Product Read
     // --------------------------------------------------
     let dbProducts: any[] | null = null;
     let prodErr: any = null;
 
-    // Step 2A: Query storefront_products with standard catalog fields & inventory_images
     const { data: sfData, error: sfErr } = await admin
       .from("storefront_products")
-      .select(`
-        id,
-        saree_name,
-        selling_price,
-        mrp,
-        discount_amount,
-        discount_percentage,
-        hsn_code,
-        gst_rate,
-        price_includes_gst,
-        stock,
-        status,
-        category,
-        fabric,
-        color,
-        sku,
-        description,
-        inventory_images (
-          image_url,
-          is_primary,
-          sort_order
-        )
-      `)
+      .select(`id, saree_name, selling_price, mrp, discount_amount, discount_percentage, hsn_code, gst_rate, price_includes_gst, stock, status, category, fabric, color, sku, description, inventory_images ( image_url, is_primary, sort_order )`)
       .in("id", productIds);
 
     if (!sfErr && sfData && sfData.length > 0) {
       dbProducts = sfData;
     } else {
-      if (sfErr) {
-        console.warn("storefront_products join query error:", sfErr.message);
-      }
-      // Step 2B: Fallback without nested relation on view
+      if (sfErr) console.warn("storefront_products join query error:", sfErr.message);
       const { data: sfFlatData, error: sfFlatErr } = await admin
         .from("storefront_products")
-        .select(`
-          id,
-          saree_name,
-          selling_price,
-          mrp,
-          discount_amount,
-          discount_percentage,
-          hsn_code,
-          gst_rate,
-          price_includes_gst,
-          stock,
-          status,
-          category,
-          fabric,
-          color,
-          sku,
-          description
-        `)
+        .select(`id, saree_name, selling_price, mrp, discount_amount, discount_percentage, hsn_code, gst_rate, price_includes_gst, stock, status, category, fabric, color, sku, description`)
         .in("id", productIds);
 
       if (!sfFlatErr && sfFlatData && sfFlatData.length > 0) {
         dbProducts = sfFlatData;
       } else {
-        // Step 2C: Fallback directly to underlying 'inventory' table
         const { data: invData, error: invErr } = await admin
           .from("inventory")
-          .select(`
-            id,
-            saree_name,
-            selling_price,
-            mrp,
-            discount_amount,
-            discount_percentage,
-            hsn_code,
-            gst_rate,
-            price_includes_gst,
-            stock,
-            status,
-            category,
-            fabric,
-            color,
-            sku,
-            description
-          `)
+          .select(`id, saree_name, selling_price, mrp, discount_amount, discount_percentage, hsn_code, gst_rate, price_includes_gst, stock, status, category, fabric, color, sku, description`)
           .in("id", productIds);
 
         if (!invErr && invData && invData.length > 0) {
           dbProducts = invData;
         } else {
-          // Step 2D: Fallback lookup by SKU in case client sent SKU instead of ID
           const { data: skuData, error: skuErr } = await admin
             .from("storefront_products")
-            .select(`
-              id,
-              saree_name,
-              selling_price,
-              mrp,
-              discount_amount,
-              discount_percentage,
-              hsn_code,
-              gst_rate,
-              price_includes_gst,
-              stock,
-              status,
-              category,
-              fabric,
-              color,
-              sku,
-              description
-            `)
+            .select(`id, saree_name, selling_price, mrp, discount_amount, discount_percentage, hsn_code, gst_rate, price_includes_gst, stock, status, category, fabric, color, sku, description`)
             .in("sku", productIds);
 
           if (!skuErr && skuData && skuData.length > 0) {
@@ -356,43 +219,22 @@ Deno.serve(async (req) => {
 
     if (prodErr && (!dbProducts || dbProducts.length === 0)) {
       console.error("Storefront products fetch error:", prodErr);
-      return response(
-        {
-          success: false,
-          error: `Failed to verify products in catalog: ${prodErr?.message || prodErr?.details || "Product lookup failed"}`,
-        },
-        500
-      );
+      return response({ success: false, error: `Failed to verify products in catalog: ${prodErr?.message || prodErr?.details || "Product lookup failed"}` }, 500);
     }
+    if (!dbProducts || dbProducts.length === 0)
+      return response({ success: false, error: `Failed to verify products in catalog: No matching products found for ID(s) [${productIds.join(", ")}]` }, 404);
 
-    if (!dbProducts || dbProducts.length === 0) {
-      return response(
-        {
-          success: false,
-          error: `Failed to verify products in catalog: No matching products found for ID(s) [${productIds.join(", ")}]`,
-        },
-        404
-      );
-    }
-
-    // Attach inventory_images if needed
-    const needsImages = dbProducts.some(
-      (p: any) => !p.inventory_images || p.inventory_images.length === 0
-    );
+    const needsImages = dbProducts.some((p: any) => !p.inventory_images || p.inventory_images.length === 0);
     if (needsImages) {
       try {
         const pIds = dbProducts.map((p: any) => p.id).filter(Boolean);
         if (pIds.length > 0) {
           const { data: imgRows } = await admin
-            .from("inventory_images")
-            .select("inventory_id, image_url, is_primary, sort_order")
-            .in("inventory_id", pIds);
-
+            .from("inventory_images").select("inventory_id, image_url, is_primary, sort_order").in("inventory_id", pIds);
           if (imgRows && imgRows.length > 0) {
             for (const p of dbProducts) {
-              if (!p.inventory_images || p.inventory_images.length === 0) {
+              if (!p.inventory_images || p.inventory_images.length === 0)
                 p.inventory_images = imgRows.filter((img: any) => img.inventory_id === p.id);
-              }
             }
           }
         }
@@ -401,7 +243,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Map by both ID and SKU (raw, lowercase, uppercase) for ultra-reliable matching
     const productMap = new Map<string, any>();
     for (const p of dbProducts) {
       if (p.id) {
@@ -416,90 +257,46 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Query active product addons to verify pricing authoritatively
-    const { data: dbAddons } = await admin
-      .from("product_addons")
-      .select("id, title, price, is_active")
-      .eq("is_active", true);
-
+    const { data: dbAddons } = await admin.from("product_addons").select("id, title, price, is_active").eq("is_active", true);
     const addonPriceMap = new Map<string, number>();
     if (dbAddons && dbAddons.length > 0) {
-      for (const da of dbAddons) {
-        addonPriceMap.set(String(da.id), Number(da.price));
-      }
+      for (const da of dbAddons) addonPriceMap.set(String(da.id), Number(da.price));
     }
 
     const validatedItems: {
-      product: any;
-      quantity: number;
-      unitPrice: number;
-      baseUnitPrice: number;
-      addonsTotal: number;
-      lineTotal: number;
-      hsnCode: string;
-      gstRate: number;
+      product: any; quantity: number; unitPrice: number; baseUnitPrice: number;
+      addonsTotal: number; lineTotal: number; hsnCode: string; gstRate: number;
       addons: Array<{ id: string; title: string; price: number; size?: string }>;
     }[] = [];
-
     let calculatedSubtotal = 0;
 
     for (const reqItem of requestedItems) {
       const pId = reqItem.productId;
       const requestedQty = reqItem.quantity;
-      const prod =
-        productMap.get(pId) ||
-        productMap.get(String(pId).toLowerCase()) ||
-        productMap.get(String(pId).toUpperCase());
+      const prod = productMap.get(pId) || productMap.get(String(pId).toLowerCase()) || productMap.get(String(pId).toUpperCase());
 
-      if (!prod) {
-        return response({ success: false, error: `Product not found: ${pId}` }, 404);
-      }
-
-      if (prod.status !== "active") {
-        return response(
-          { success: false, error: `"${prod.saree_name}" is currently unavailable.` },
-          400
-        );
-      }
+      if (!prod) return response({ success: false, error: `Product not found: ${pId}` }, 404);
+      if (prod.status !== "active") return response({ success: false, error: `"${prod.saree_name}" is currently unavailable.` }, 400);
 
       const availableStock = Number(prod.stock ?? 0);
       const totalDemand = stockDemandMap.get(pId) || requestedQty;
-      if (availableStock < totalDemand) {
-        return response(
-          {
-            success: false,
-            error: `Only ${availableStock} item(s) available for "${prod.saree_name}".`,
-          },
-          400
-        );
-      }
+      if (availableStock < totalDemand)
+        return response({ success: false, error: `Only ${availableStock} item(s) available for "${prod.saree_name}".` }, 400);
 
-      // Authoritative addon price resolution
-      const validatedAddons = (reqItem.addons || []).map((a) => {
-        const authPrice = addonPriceMap.has(a.id) ? addonPriceMap.get(a.id)! : Number(a.price) || 0;
-        return {
-          id: a.id,
-          title: a.title,
-          price: authPrice,
-          size: a.size,
-        };
-      });
-
+      const validatedAddons = (reqItem.addons || []).map((a) => ({
+        id: a.id, title: a.title,
+        price: addonPriceMap.has(a.id) ? addonPriceMap.get(a.id)! : Number(a.price) || 0,
+        size: a.size,
+      }));
       const addonsUnitTotal = validatedAddons.reduce((sum, a) => sum + a.price, 0);
-
-      // Customer-facing price is GST-inclusive (Saree selling price + chosen addons)
       const baseUnitPrice = round2(Number(prod.selling_price));
       const unitPrice = round2(baseUnitPrice + addonsUnitTotal);
       const lineTotal = round2(unitPrice * requestedQty);
       calculatedSubtotal = round2(calculatedSubtotal + lineTotal);
 
       validatedItems.push({
-        product: prod,
-        quantity: requestedQty,
-        unitPrice,
-        baseUnitPrice,
-        addonsTotal: addonsUnitTotal,
-        lineTotal,
+        product: prod, quantity: requestedQty, unitPrice, baseUnitPrice,
+        addonsTotal: addonsUnitTotal, lineTotal,
         hsnCode: prod.hsn_code || "5208",
         gstRate: prod.gst_rate != null ? Number(prod.gst_rate) : 5.0,
         addons: validatedAddons,
@@ -515,26 +312,23 @@ Deno.serve(async (req) => {
     if (coupon_code && typeof coupon_code === "string") {
       const cleanCoupon = coupon_code.trim().toUpperCase();
       const couponRule = VALID_COUPONS[cleanCoupon];
-
       if (couponRule && calculatedSubtotal >= couponRule.minOrder) {
         validatedCouponCode = cleanCoupon;
-        if (couponRule.discountPercent) {
+        if (couponRule.discountPercent)
           totalDiscount = round2((calculatedSubtotal * couponRule.discountPercent) / 100);
-        } else if (couponRule.fixedDiscount) {
+        else if (couponRule.fixedDiscount)
           totalDiscount = round2(couponRule.fixedDiscount);
-        }
         totalDiscount = Math.min(totalDiscount, calculatedSubtotal);
       }
     }
 
     // --------------------------------------------------
-    // 4. Server-side Delivery Charge Calculation from delivery_settings
+    // 4. Delivery Charge Calculation
     // --------------------------------------------------
     const { data: delSettings } = await admin
       .from("delivery_settings")
       .select("express_charge, same_day_charge, standard_charge, is_active, standard_delivery_days")
-      .eq("id", "default")
-      .maybeSingle();
+      .eq("id", "default").maybeSingle();
 
     const expressCharge = Number(delSettings?.express_charge ?? 29);
     const sameDayCharge = Number(delSettings?.same_day_charge ?? 49);
@@ -545,9 +339,7 @@ Deno.serve(async (req) => {
     const finalEstimatedDeliveryDate = body.estimated_delivery_date || calculatedEstDate;
 
     const chosenOption = body.delivery_option || shipping_address?.delivery_option || "standard";
-    const isPickup =
-      shipping_address?.deliveryMethod === "Store Pickup" ||
-      body.delivery_method === "Store Pickup";
+    const isPickup = shipping_address?.deliveryMethod === "Store Pickup" || body.delivery_method === "Store Pickup";
 
     let calculatedShippingCharge = 0;
     let finalDeliveryMethod = "Standard Delivery";
@@ -566,20 +358,15 @@ Deno.serve(async (req) => {
       finalDeliveryMethod = "Standard Delivery";
     }
 
-    // Allow custom delivery method label override if sent from client
-    if (body.delivery_method && body.delivery_method !== "Home Delivery") {
+    if (body.delivery_method && body.delivery_method !== "Home Delivery")
       finalDeliveryMethod = body.delivery_method;
-    }
 
     const shippingFee = calculatedShippingCharge;
     const finalGiftWrapCharge = Number(gift_wrap_charge || 0);
-    const totalPayable = round2(
-      Math.max(0, calculatedSubtotal - totalDiscount + shippingFee + finalGiftWrapCharge)
-    );
+    const totalPayable = round2(Math.max(0, calculatedSubtotal - totalDiscount + shippingFee + finalGiftWrapCharge));
 
     // --------------------------------------------------
     // 5. Place of Supply & GST Classification
-    // Rule: Seller is Bihar. Intra-state if customer state is Bihar; else Inter-state.
     // --------------------------------------------------
     const customerState = (shipping_address?.state || "Bihar").trim();
     const isIntraState = customerState.toLowerCase() === "bihar";
@@ -587,7 +374,6 @@ Deno.serve(async (req) => {
 
     // --------------------------------------------------
     // 6. Item-level Pro-Rata Coupon Discount & Embedded GST Extraction
-    // Embedded GST formula: Taxable = Net Consideration / (1 + rate / 100)
     // --------------------------------------------------
     let allocatedDiscountSum = 0;
     const itemsWithGst: any[] = [];
@@ -598,7 +384,6 @@ Deno.serve(async (req) => {
 
       if (totalDiscount > 0 && calculatedSubtotal > 0) {
         if (i === validatedItems.length - 1) {
-          // Last item absorbs any rounding difference
           itemDiscount = round2(totalDiscount - allocatedDiscountSum);
         } else {
           itemDiscount = round2((it.lineTotal / calculatedSubtotal) * totalDiscount);
@@ -606,38 +391,20 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Net discounted consideration for this item line
       const discountedConsideration = round2(it.lineTotal - itemDiscount);
-
-      // Embedded GST extraction
       const gstRate = it.gstRate;
       const taxableValue = round2(discountedConsideration / (1 + gstRate / 100));
       const gstAmount = round2(discountedConsideration - taxableValue);
 
-      let cgstAmount = 0;
-      let sgstAmount = 0;
-      let igstAmount = 0;
-
+      let cgstAmount = 0, sgstAmount = 0, igstAmount = 0;
       if (isIntraState) {
         cgstAmount = round2(gstAmount / 2);
-        sgstAmount = round2(gstAmount - cgstAmount); // Exact reconciliation: CGST + SGST = GST
-        igstAmount = 0;
+        sgstAmount = round2(gstAmount - cgstAmount);
       } else {
-        cgstAmount = 0;
-        sgstAmount = 0;
         igstAmount = gstAmount;
       }
 
-      itemsWithGst.push({
-        ...it,
-        itemDiscount,
-        discountedConsideration,
-        taxableValue,
-        gstAmount,
-        cgstAmount,
-        sgstAmount,
-        igstAmount,
-      });
+      itemsWithGst.push({ ...it, itemDiscount, discountedConsideration, taxableValue, gstAmount, cgstAmount, sgstAmount, igstAmount });
     }
 
     // --------------------------------------------------
@@ -655,27 +422,19 @@ Deno.serve(async (req) => {
     // --------------------------------------------------
     const now = new Date();
     const dateString = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Kolkata",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    })
-      .format(now)
-      .replaceAll("-", "");
+      timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(now).replaceAll("-", "");
 
     const randomSuffix = Math.floor(100000 + Math.random() * 900000);
     const orderNumber = `SBS-ORD-${dateString}-${randomSuffix}`;
-
     const yy = String(now.getFullYear()).slice(-2);
     const mm = String(now.getMonth() + 1).padStart(2, "0");
     const invoiceNumber = `SBS-INV-${yy}${mm}-${randomSuffix}`;
     const invoiceDate = now.toISOString();
-
     const cleanPaymentMethod = payment_method === "online" ? "online" : "cod";
 
     // --------------------------------------------------
     // 9. Insert into public.orders
-    // Includes new columns: delivery_method and shipping_charge
     // --------------------------------------------------
     const orderInsertPayload: any = {
       order_number: orderNumber,
@@ -687,10 +446,11 @@ Deno.serve(async (req) => {
       notes: notes,
       subtotal: calculatedSubtotal,
       discount: totalDiscount,
+      coupon_code: validatedCouponCode,         // ← CHANGED: persist the applied coupon code
       shipping_fee: shippingFee,
-      shipping_charge: shippingFee, // Newly added column
-      delivery_method: finalDeliveryMethod, // Newly added column
-      estimated_delivery_date: finalEstimatedDeliveryDate, // Newly added column
+      shipping_charge: shippingFee,
+      delivery_method: finalDeliveryMethod,
+      estimated_delivery_date: finalEstimatedDeliveryDate,
       total_amount: totalPayable,
       payment_method: cleanPaymentMethod,
       payment_status: "pending",
@@ -711,10 +471,7 @@ Deno.serve(async (req) => {
     };
 
     let { data: createdOrder, error: orderInsertErr } = await admin
-      .from("orders")
-      .insert([orderInsertPayload])
-      .select()
-      .single();
+      .from("orders").insert([orderInsertPayload]).select().single();
 
     if (
       orderInsertErr &&
@@ -722,9 +479,7 @@ Deno.serve(async (req) => {
         orderInsertErr.message?.includes("delivery_method") ||
         orderInsertErr.message?.includes("estimated_delivery_date"))
     ) {
-      console.warn(
-        "Retrying orders insert without newly added delivery columns in case schema cache is reloading..."
-      );
+      console.warn("Retrying orders insert without newly added delivery columns in case schema cache is reloading...");
       const { shipping_charge, delivery_method, estimated_delivery_date, ...fallbackPayload } = orderInsertPayload;
       const retryRes = await admin.from("orders").insert([fallbackPayload]).select().single();
       createdOrder = retryRes.data;
@@ -733,13 +488,7 @@ Deno.serve(async (req) => {
 
     if (orderInsertErr || !createdOrder) {
       console.error("Order insertion error:", orderInsertErr);
-      return response(
-        {
-          success: false,
-          error: orderInsertErr?.message || "Failed to create order record",
-        },
-        500
-      );
+      return response({ success: false, error: orderInsertErr?.message || "Failed to create order record" }, 500);
     }
 
     // --------------------------------------------------
@@ -785,7 +534,10 @@ Deno.serve(async (req) => {
         barcode: prod.barcode || null,
         quantity: it.quantity,
         unit_price: it.unitPrice,
-        discount_amount: it.itemDiscount,
+        // ← CHANGED: total discount = MRP product discount + pro-rata coupon allocation
+        discount_amount: round2(
+          Math.max(0, (Number(prod.mrp || 0) - it.baseUnitPrice) * it.quantity) + it.itemDiscount
+        ),
         taxable_value: it.taxableValue,
         gst_rate: it.gstRate,
         cgst_amount: it.cgstAmount,
@@ -800,17 +552,12 @@ Deno.serve(async (req) => {
     });
 
     let { data: createdItems, error: itemsInsertErr } = await admin
-      .from("order_items")
-      .insert(orderItemsPayload)
-      .select();
+      .from("order_items").insert(orderItemsPayload).select();
 
     if (itemsInsertErr && itemsInsertErr.message?.includes("barcode")) {
       console.warn("Retrying order_items insert without barcode column...");
       const fallbackPayload = orderItemsPayload.map(({ barcode, ...rest }) => rest);
-      const retryRes = await admin
-        .from("order_items")
-        .insert(fallbackPayload)
-        .select();
+      const retryRes = await admin.from("order_items").insert(fallbackPayload).select();
       createdItems = retryRes.data;
       itemsInsertErr = retryRes.error;
     }
@@ -818,25 +565,15 @@ Deno.serve(async (req) => {
     if (itemsInsertErr && itemsInsertErr.message?.includes("addons")) {
       console.warn("Retrying order_items insert without addons column...");
       const fallbackPayload = orderItemsPayload.map(({ addons, barcode, ...rest }: any) => rest);
-      const retryRes = await admin
-        .from("order_items")
-        .insert(fallbackPayload)
-        .select();
+      const retryRes = await admin.from("order_items").insert(fallbackPayload).select();
       createdItems = retryRes.data;
       itemsInsertErr = retryRes.error;
     }
 
     if (itemsInsertErr) {
       console.error("Order items insertion error:", itemsInsertErr);
-      // Clean up orphaned order
       await admin.from("orders").delete().eq("id", createdOrder.id);
-      return response(
-        {
-          success: false,
-          error: itemsInsertErr.message || "Failed to snapshot order items",
-        },
-        500
-      );
+      return response({ success: false, error: itemsInsertErr.message || "Failed to snapshot order items" }, 500);
     }
 
     // --------------------------------------------------
@@ -844,36 +581,19 @@ Deno.serve(async (req) => {
     // --------------------------------------------------
     const { error: historyErr } = await admin
       .from("order_status_history")
-      .insert([
-        {
-          order_id: createdOrder.id,
-          status: "placed",
-          note: "Order placed successfully by customer on storefront",
-        },
-      ]);
+      .insert([{ order_id: createdOrder.id, status: "placed", note: "Order placed successfully by customer on storefront" }]);
 
-    if (historyErr) {
-      console.warn("Status history insertion warning:", historyErr);
-    }
+    if (historyErr) console.warn("Status history insertion warning:", historyErr);
 
     // --------------------------------------------------
     // 12. Decrement inventory stock safely
     // --------------------------------------------------
     for (const [pId, totalQty] of stockDemandMap.entries()) {
       try {
-        const { data: invRow } = await admin
-          .from("inventory")
-          .select("stock")
-          .eq("id", pId)
-          .single();
-
+        const { data: invRow } = await admin.from("inventory").select("stock").eq("id", pId).single();
         if (invRow) {
-          const currentStock = Number(invRow.stock || 0);
-          const newStock = Math.max(0, currentStock - totalQty);
-          await admin
-            .from("inventory")
-            .update({ stock: newStock })
-            .eq("id", pId);
+          const newStock = Math.max(0, Number(invRow.stock || 0) - totalQty);
+          await admin.from("inventory").update({ stock: newStock }).eq("id", pId);
         }
       } catch (stockErr) {
         console.warn(`Could not update stock for product ${pId}:`, stockErr);
@@ -884,45 +604,17 @@ Deno.serve(async (req) => {
     // 13. Clear user's cart if user is logged in
     // --------------------------------------------------
     if (userId) {
-      try {
-        // Try cart_items table
-        await admin.from("cart_items").delete().eq("user_id", userId);
-      } catch {
-        // Non-fatal
-      }
-      try {
-        // Try cart table if present
-        await admin.from("cart").delete().eq("user_id", userId);
-      } catch {
-        // Non-fatal
-      }
+      try { await admin.from("cart_items").delete().eq("user_id", userId); } catch { /* non-fatal */ }
+      try { await admin.from("cart").delete().eq("user_id", userId); } catch { /* non-fatal */ }
     }
 
     // --------------------------------------------------
     // 14. Return the authoritative order response
     // --------------------------------------------------
-    const responseOrder = {
-      ...createdOrder,
-      order_items: createdItems || [],
-      items: createdItems || [],
-    };
+    return response({ success: true, order: { ...createdOrder, order_items: createdItems || [], items: createdItems || [] } }, 200);
 
-    return response(
-      {
-        success: true,
-        order: responseOrder,
-      },
-      200
-    );
   } catch (err: any) {
     console.error("create-order error:", err);
-    return response(
-      {
-        success: false,
-        error: err.message || "Internal server error",
-      },
-      500
-    );
+    return response({ success: false, error: err.message || "Internal server error" }, 500);
   }
 });
-

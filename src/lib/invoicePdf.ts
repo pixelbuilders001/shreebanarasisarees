@@ -77,6 +77,11 @@ export function buildReceiptDataFromOrder(order: any, products?: any[]): Receipt
       if (!resolvedName) resolvedName = snap.name;
       if (!resolvedMrp) resolvedMrp = Number(snap.mrp || snap.price || 0);
       if (!resolvedHsn) resolvedHsn = snap.hsn_code || '5208';
+      // Reconstruct real MRP when snapshot has discount_amount but mrp ≤ selling price
+      const snapDisc = Number(snap.discount_amount || 0);
+      if (resolvedMrp <= resolvedPrice && snapDisc > 0) {
+        resolvedMrp = resolvedPrice + snapDisc;
+      }
     }
 
     // Extract tailoring add-ons if present
@@ -99,6 +104,9 @@ export function buildReceiptDataFromOrder(order: any, products?: any[]): Receipt
     const unitSellingPrice = finalPrice > 0 ? finalPrice : 0;
     const unitMrp = finalMrpVal > 0 ? finalMrpVal : unitSellingPrice;
 
+    // Read per-item coupon discount_amount (set by create-order edge function)
+    const itemCouponDisc = Number(item.discount_amount || 0);
+
     return {
       sareeName: isItemCancelled ? `[Cancelled] ${finalName}` : finalName,
       quantity: Number(item.quantity || 1),
@@ -106,6 +114,7 @@ export function buildReceiptDataFromOrder(order: any, products?: any[]): Receipt
       sellingPrice: unitSellingPrice,
       hsnCode: resolvedHsn,
       addons: itemAddons.length > 0 ? itemAddons : undefined,
+      discountAmount: itemCouponDisc > 0 ? itemCouponDisc : undefined,
     };
   });
 
@@ -125,9 +134,24 @@ export function buildReceiptDataFromOrder(order: any, products?: any[]): Receipt
   const placeOfSupply = order.place_of_supply || order.customer?.state || 'Bihar';
   const isIntraState = placeOfSupply.trim().toLowerCase() === 'bihar';
 
-  const subtotal = order.subtotal != null
-    ? Number(order.subtotal)
-    : items.reduce((sum, it) => sum + it.sellingPrice * it.quantity, 0);
+  const calcSubtotal = items.reduce((sum, it) => sum + it.sellingPrice * it.quantity, 0);
+  const subtotal = order.subtotal != null ? Number(order.subtotal) : calcSubtotal;
+
+  // Pro-rata allocate order-level discount to items when no item-level discounts exist
+  const orderDiscount = Number(order.discount || 0);
+  const hasItemDiscounts = items.some(it => (it.discountAmount || 0) > 0);
+  const finalItems: ReceiptItem[] = items.map(it => {
+    if (!hasItemDiscounts && orderDiscount > 0 && calcSubtotal > 0) {
+      const itemSubtotal = it.sellingPrice * it.quantity;
+      const allocated = Math.round((itemSubtotal / calcSubtotal) * orderDiscount * 100) / 100;
+      return { ...it, discountAmount: allocated > 0 ? allocated : undefined };
+    }
+    return it;
+  });
+
+  const finalDiscountAmount = hasItemDiscounts
+    ? finalItems.reduce((s, it) => s + (it.discountAmount || 0), 0)
+    : orderDiscount;
 
   const orderTaxable = order.taxable_amount != null ? Number(order.taxable_amount) : undefined;
   const orderGst = order.gst_amount != null ? Number(order.gst_amount) : undefined;
@@ -141,10 +165,10 @@ export function buildReceiptDataFromOrder(order: any, products?: any[]): Receipt
     customerMobile,
     customerAddress: fullAddress || null,
     customerEmail,
-    items,
+    items: finalItems,
     subtotal,
     totalAmount: Number(order.total || 0),
-    discountAmount: Number(order.discount || 0),
+    discountAmount: finalDiscountAmount,
     shippingFee: Number(order.shipping || order.shipping_charge || 0),
     giftWrapCharge: Number(order.gift_wrap_charge || 0),
     isGstApplied: isGstPresent,
@@ -159,7 +183,7 @@ export function buildReceiptDataFromOrder(order: any, products?: any[]): Receipt
     totalGst: orderGst,
     placeOfSupply,
     appliedVoucherCode: order.applied_voucher_code || order.coupon_code || null,
-    appliedVoucherAmount: order.applied_voucher_amount != null ? Number(order.applied_voucher_amount) : null,
+    appliedVoucherAmount: finalDiscountAmount > 0 ? finalDiscountAmount : null,
   };
 }
 
@@ -174,18 +198,41 @@ export function generateInvoiceHtml(receipt: ReceiptData): string {
     (s, i) => s + (i.mrp && i.mrp > 0 ? i.mrp : i.sellingPrice) * i.quantity,
     0
   );
-  const totalItemSelling = receipt.items.reduce((s, i) => s + i.sellingPrice * i.quantity, 0);
-  const totalItemDiscount = Math.max(0, totalMrp - totalItemSelling);
+
+  // Per-item total discount — backward-compatible: new orders store mrpDisc+couponDisc in discountAmount
+  const perItemTotalDisc = receipt.items.map(i => {
+    const mrp = i.mrp && i.mrp > 0 ? i.mrp : i.sellingPrice;
+    const prodDisc = Math.max(0, (mrp - i.sellingPrice) * i.quantity);
+    const dbDisc = i.discountAmount || 0;
+    // New orders: dbDisc >= prodDisc (includes mrp disc) → use dbDisc
+    // Old orders: dbDisc < prodDisc or 0 (coupon only) → add prodDisc + dbDisc
+    return (dbDisc >= prodDisc && prodDisc > 0) ? dbDisc : prodDisc + dbDisc;
+  });
+  const totalItemDiscount = perItemTotalDisc.reduce((s, d) => s + d, 0);
+
   const totalItemDiscountPercent = totalMrp > 0 ? (totalItemDiscount / totalMrp) * 100 : 0;
   const totalItemDiscountPercentText =
     totalItemDiscountPercent > 0 ? ` (${parseFloat(totalItemDiscountPercent.toFixed(1))}%)` : '';
 
-  const subtotal =
-    receipt.subtotal && receipt.subtotal > 0
-      ? receipt.subtotal
-      : receipt.items.reduce((s, i) => s + i.quantity * i.sellingPrice, 0);
+  const totalAddons = receipt.items.reduce((sum, item) => {
+    const itemAddons = Array.isArray(item.addons) ? item.addons : [];
+    const addonsPerUnit = itemAddons.reduce((aSum, a) => aSum + (Number(a.price) || 0), 0);
+    return sum + addonsPerUnit * (item.quantity || 1);
+  }, 0);
 
-  const billDiscount = receipt.discountAmount || 0;
+  const itemsSellingTotal = receipt.items.reduce((s, i) => s + i.quantity * i.sellingPrice, 0);
+  const subtotal = totalItemDiscount > 0
+    ? Math.max(0, totalMrp - totalItemDiscount)
+    : (itemsSellingTotal > 0 ? itemsSellingTotal : (receipt.subtotal || totalMrp));
+
+  // billDiscount: any order-level discount not already captured in per-item totalDisc
+  const mrpDiscountTotal = Math.max(0, totalMrp - itemsSellingTotal);
+  const extraItemDiscount = Math.max(0, totalItemDiscount - mrpDiscountTotal);
+  const rawBillDiscount = receipt.discountAmount || 0;
+  const billDiscount = Math.max(0, rawBillDiscount - extraItemDiscount);
+  const billDiscountLabel = receipt.appliedVoucherCode
+    ? `COUPON (${receipt.appliedVoucherCode})`
+    : 'DISCOUNT';
   const billDiscountPercent =
     receipt.discountPercentage && receipt.discountPercentage > 0
       ? receipt.discountPercentage
@@ -194,16 +241,21 @@ export function generateInvoiceHtml(receipt: ReceiptData): string {
       : 0;
   const billDiscountPercentText = billDiscountPercent > 0 ? ` (${parseFloat(billDiscountPercent.toFixed(1))}%)` : '';
 
-  const totalSavings = totalItemDiscount + billDiscount + Number(receipt.appliedVoucherAmount || 0);
+  // totalSavings = all item discounts + any remaining bill-level discount
+  const totalSavings = totalItemDiscount + billDiscount;
   const totalSavingsPercent = totalMrp > 0 ? (totalSavings / totalMrp) * 100 : 0;
 
   const itemRowsHtml = receipt.items
     .map((item) => {
       const itemMrp = item.mrp && item.mrp > 0 ? item.mrp : item.sellingPrice;
       const itemMrpTotal = item.quantity * itemMrp;
-      const itemSellingTotal = item.quantity * item.sellingPrice;
-      const itemDisc = Math.max(0, itemMrpTotal - itemSellingTotal);
-      const itemDiscPct = itemMrpTotal > 0 ? (itemDisc / itemMrpTotal) * 100 : 0;
+      const prodDisc = Math.max(0, (itemMrp - item.sellingPrice) * item.quantity);
+      const dbDisc = item.discountAmount || 0;
+      // New orders: dbDisc = mrpDisc + couponDisc (>= prodDisc)
+      // Old orders: dbDisc = couponDisc only (< prodDisc or 0)
+      const totalLineDisc = (dbDisc >= prodDisc && prodDisc > 0) ? dbDisc : prodDisc + dbDisc;
+      const itemPayableTotal = itemMrpTotal - totalLineDisc;
+      const itemDiscPct = itemMrpTotal > 0 ? (totalLineDisc / itemMrpTotal) * 100 : 0;
 
       const addonsHtml = item.addons && item.addons.length > 0
         ? `
@@ -224,10 +276,10 @@ export function generateInvoiceHtml(receipt: ReceiptData): string {
           </td>
           <td style="padding: 10px 6px; text-align: center;">${item.quantity}</td>
           <td style="padding: 10px 6px; text-align: right; white-space: nowrap;">${fmtCurrency(itemMrp)}</td>
-          <td style="padding: 10px 6px; text-align: right; color: ${itemDisc > 0 ? '#b91c1c' : '#777'}; white-space: nowrap;">
-            ${itemDisc > 0 ? `− ${fmtCurrency(itemDisc)}${itemDiscPct > 0 ? ` (${parseFloat(itemDiscPct.toFixed(1))}%)` : ''}` : '—'}
+          <td style="padding: 10px 6px; text-align: right; color: ${totalLineDisc > 0 ? '#b91c1c' : '#777'}; white-space: nowrap;">
+            ${totalLineDisc > 0 ? `− ${fmtCurrency(totalLineDisc)}${itemDiscPct > 0 ? ` (${parseFloat(itemDiscPct.toFixed(1))}%)` : ''}` : '—'}
           </td>
-          <td style="padding: 10px 0 10px 6px; text-align: right; font-weight: 600; white-space: nowrap;">${fmtCurrency(itemSellingTotal)}</td>
+          <td style="padding: 10px 0 10px 6px; text-align: right; font-weight: 600; white-space: nowrap;">${fmtCurrency(itemPayableTotal)}</td>
         </tr>
       `;
     })
@@ -325,7 +377,7 @@ export function generateInvoiceHtml(receipt: ReceiptData): string {
       <div style="border-top: 2px solid #111; padding-top: 12px; margin-top: 4px;">
         <div style="max-width: 420px; margin-left: auto; width: 100%;">
           ${
-            totalMrp > subtotal
+            totalItemDiscount > 0
               ? `
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 4px 0; border-bottom: 1px dashed #eee; font-size: 12.5px;">
                   <span style="color: #555;">TOTAL MRP</span>
@@ -341,16 +393,27 @@ export function generateInvoiceHtml(receipt: ReceiptData): string {
 
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 5px 0; border-bottom: 1px dashed #ccc; font-size: 12.5px;">
             <span style="font-weight: bold; letter-spacing: 0.5px;">
-              ${totalMrp > subtotal ? 'SUBTOTAL (AFTER PRODUCT DISCOUNT)' : 'SUBTOTAL'}
+              ${totalItemDiscount > 0 ? 'SUBTOTAL (AFTER PRODUCT DISCOUNT)' : 'SUBTOTAL'}
             </span>
             <span style="text-align: right; font-weight: bold; white-space: nowrap;">${fmtCurrency(subtotal)}</span>
           </div>
 
           ${
+            totalAddons > 0
+              ? `
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 4px 0; border-bottom: 1px dashed #eee; font-size: 12.5px;">
+                  <span style="color: #555;">TAILORING / ADD-ONS</span>
+                  <span style="text-align: right; font-weight: 500; white-space: nowrap;">+ ${fmtCurrency(totalAddons)}</span>
+                </div>
+              `
+              : ''
+          }
+
+          ${
             billDiscount > 0
               ? `
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 5px 0; border-bottom: 1px dashed #ccc; font-size: 12.5px; color: #b91c1c;">
-                  <span style="font-weight: bold; letter-spacing: 0.5px;">DISCOUNT${billDiscountPercentText}</span>
+                  <span style="font-weight: bold; letter-spacing: 0.5px;">${billDiscountLabel}${billDiscountPercentText}</span>
                   <span style="text-align: right; font-weight: bold; white-space: nowrap;">− ${fmtCurrency(billDiscount)}</span>
                 </div>
               `

@@ -12,6 +12,8 @@ export interface ReceiptItem {
     sellingPrice: number;
     hsnCode?: string;
     addons?: ReceiptItemAddon[];
+    discountAmount?: number;
+    discountPercentage?: number;
 }
 
 export interface ReceiptData {

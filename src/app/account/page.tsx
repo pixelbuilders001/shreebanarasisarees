@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useStore, Order } from '../../context/StoreContext';
+import { PRODUCTS } from '../../data/products';
 import {
   ChevronLeft,
   ChevronRight,
@@ -25,7 +26,7 @@ import {
 import { supabase, fetchDbOrderWithItems, fetchDbOrders, mapDbOrderToOrder, OrderStatusHistoryEntry, ShipmentTrackingUpdateEntry, fetchDeliverySettings, DeliverySettings } from '../../data/supabase';
 import { OrdersTabSkeleton } from '../../components/TabSkeletons';
 import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
-import { generateReceiptUrl, ReceiptData, ReceiptItem } from '@/lib/receiptUtils';
+import { generateReceiptUrl, ReceiptData, ReceiptItem, ReceiptItemAddon } from '@/lib/receiptUtils';
 import { buildReceiptDataFromOrder, downloadInvoicePdf } from '@/lib/invoicePdf';
 import { getStandardDeliveryDateInfo } from '../../lib/deliveryDates';
 
@@ -270,6 +271,7 @@ interface ResolvedOrderItem {
   image: string | null;
   item_status?: string;
   selectedAddons?: Array<{ id: string; title: string; price: number; size?: string }>;
+  discount_amount?: number;
 }
 
 // Safely extract item title, image, and price across all possible order item formats
@@ -302,11 +304,16 @@ function resolveOrderItem(item: any, products: any[] = []): ResolvedOrderItem {
   const id = prod?.id || item?.inventory_id || item?.productId || item?.id || snap?.id || '';
   const sku = prod?.sku || item?.sku || snap?.sku || '';
 
-  // 3. Find matched product in store catalog
-  const matched = Array.isArray(products) ? products.find(p => 
+  // 3. Find matched product in store catalog (check products from context, then static PRODUCTS)
+  const catalogMatch = Array.isArray(products) ? products.find(p => 
     (id && (p.id === id || p.slug === id)) ||
     (sku && p.sku === sku)
   ) : null;
+  const staticMatch = PRODUCTS.find(p => 
+    (id && (p.id === id || p.slug === id)) ||
+    (sku && p.sku === sku)
+  );
+  const matched = catalogMatch || staticMatch || null;
 
   // 4. Resolve name
   const name = 
@@ -322,17 +329,42 @@ function resolveOrderItem(item: any, products: any[] = []): ResolvedOrderItem {
 
   // 5. Resolve price and mrp
   const price = Number(
-    prod?.salePrice ?? prod?.price ?? 
     item?.unit_price ?? item?.price ?? 
+    prod?.salePrice ?? prod?.selling_price ?? prod?.price ?? 
     snap?.salePrice ?? snap?.selling_price ?? snap?.price ?? 
     matched?.salePrice ?? matched?.price ?? 0
   );
 
-  const snapMrp = Number(snap?.mrp || snap?.price || 0);
-  const prodMrp = Number(prod?.price || 0);
+  let snapMrp = Number(snap?.mrp || snap?.price || 0);
+  const snapDiscount = Number(snap?.discount_amount || 0);
+  // Reconstruct real MRP when snapshot has discount_amount but mrp <= selling price
+  if (snapMrp <= price && snapDiscount > 0) {
+    snapMrp = price + snapDiscount;
+  }
+
+  // If item has discount_amount from order_items table and snapMrp is still <= price
+  const itemDiscount = Number(item?.discount_amount || 0);
+  const qty = Number(item?.quantity || 1);
+  if (snapMrp <= price && itemDiscount > 0 && qty > 0) {
+    snapMrp = price + Math.round(itemDiscount / qty);
+  }
+
+  const prodMrp = Number(prod?.mrp || prod?.price || 0);
   const matchedMrp = Number(matched?.price || 0);
   const rawMrp = Number(item?.mrp || 0);
-  const mrpCandidate = snapMrp || prodMrp || matchedMrp || rawMrp;
+
+  let mrpCandidate = 0;
+  if (snapMrp > price) {
+    mrpCandidate = snapMrp;
+  } else if (matchedMrp > price) {
+    mrpCandidate = matchedMrp;
+  } else if (prodMrp > price) {
+    mrpCandidate = prodMrp;
+  } else if (rawMrp > price) {
+    mrpCandidate = rawMrp;
+  } else {
+    mrpCandidate = snapMrp || prodMrp || matchedMrp || rawMrp;
+  }
   const mrp = mrpCandidate > price ? mrpCandidate : (price > 0 ? price : 0);
 
   // 6. Resolve image
@@ -402,6 +434,7 @@ function resolveOrderItem(item: any, products: any[] = []): ResolvedOrderItem {
     image,
     item_status,
     selectedAddons,
+    discount_amount: itemDiscount > 0 ? itemDiscount : undefined,
   };
 }
 
@@ -1243,49 +1276,63 @@ function AccountContent() {
     });
     const itemsForPriceCalc = (!isCancelled && activeItems.length > 0) ? activeItems : displayItems;
 
-    const orderTotalMrp = itemsForPriceCalc.reduce((acc, item) => {
+    // Separate tailoring add-ons from base saree prices
+    const orderAddonsTotal = itemsForPriceCalc.reduce((acc, item) => {
       const resolved = resolveOrderItem(item, products);
-      let snap = item.product_snapshot;
-      if (typeof snap === 'string') {
-        try { snap = JSON.parse(snap); } catch {}
-      }
-      const snapMrp = Number(snap?.mrp || snap?.price || 0);
-      const mrp = snapMrp > 0 ? snapMrp : (resolved.mrp > 0 ? resolved.mrp : resolved.price);
-      return acc + mrp * (resolved.quantity || 1);
+      const selectedAddons = resolved.selectedAddons || [];
+      const addonsUnit = selectedAddons.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+      return acc + (addonsUnit * (resolved.quantity || 1));
     }, 0);
 
-    const orderItemsSellingTotal = itemsForPriceCalc.reduce((acc, item) => {
+    const orderBaseSellingTotal = itemsForPriceCalc.reduce((acc, item) => {
       const resolved = resolveOrderItem(item, products);
       const unitPrice = item.unit_price != null ? Number(item.unit_price) : resolved.price;
-      return acc + unitPrice * (resolved.quantity || 1);
-    }, 0) || (activeOrder.subtotal || activeOrder.total);
+      const selectedAddons = resolved.selectedAddons || [];
+      const addonsUnit = selectedAddons.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+      const sareeBasePrice = Math.max(0, unitPrice - addonsUnit);
+      return acc + (sareeBasePrice * (resolved.quantity || 1));
+    }, 0);
 
-    const productDiscount = Math.max(0, orderTotalMrp - orderItemsSellingTotal);
-    const couponDiscount = Number(activeOrder.discount || 0);
-    const totalSavings = productDiscount + couponDiscount;
+    const orderTotalMrp = itemsForPriceCalc.reduce((acc, item) => {
+      const resolved = resolveOrderItem(item, products);
+      const mrp = resolved.mrp > 0 ? resolved.mrp : resolved.price;
+      return acc + (mrp * (resolved.quantity || 1));
+    }, 0);
+
+    // Exact discount amount from order_items discount_amount column (or fallback)
+    const itemsDiscountSum = itemsForPriceCalc.reduce((sum, item) => sum + (Number(item.discount_amount || 0)), 0);
+    const orderDiscountAmount = itemsDiscountSum > 0
+      ? itemsDiscountSum
+      : (Math.max(0, orderTotalMrp - orderBaseSellingTotal) + Number(activeOrder.discount || 0));
+    const totalSavings = orderDiscountAmount;
 
     const receiptDownloadUrl = (() => {
       try {
         const items: ReceiptItem[] = displayItems.map((item: any) => {
           const resolved = resolveOrderItem(item, products);
           const isItemCancelled = (item?.item_status || (item as any)?.product?.item_status || resolved.item_status || '').toLowerCase() === 'cancelled';
-          let snap = item.product_snapshot;
-          if (typeof snap === 'string') {
-            try { snap = JSON.parse(snap); } catch {}
-          }
           const unitPrice = item.unit_price != null ? Number(item.unit_price) : resolved.price;
-          const snapMrp = Number(snap?.mrp || snap?.price || 0);
-          const mrp = snapMrp > 0 ? snapMrp : (resolved.mrp > 0 ? resolved.mrp : unitPrice);
-          const hsnCode = item.hsn_code || snap?.hsn_code || '5208';
-          const addonSuffix = resolved.selectedAddons && resolved.selectedAddons.length > 0
-            ? ` (${resolved.selectedAddons.map(a => `${a.title}${a.size ? ` ${a.size}"` : ''}`).join(', ')})`
-            : '';
+          const selectedAddons = resolved.selectedAddons || [];
+          const addonsUnit = selectedAddons.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+          const sareeBasePrice = (addonsUnit > 0 && unitPrice > addonsUnit) ? (unitPrice - addonsUnit) : unitPrice;
+          const mrp = resolved.mrp > 0 ? resolved.mrp : sareeBasePrice;
+          const hsnCode = item.hsn_code || (typeof item.product_snapshot === 'object' ? item.product_snapshot?.hsn_code : undefined) || '5208';
+          const itemDisc = Number(item.discount_amount != null ? item.discount_amount : (resolved.discount_amount || 0));
+          const addons: ReceiptItemAddon[] = selectedAddons.map(a => ({
+            id: a.id,
+            title: a.title,
+            price: Number(a.price || 0),
+            size: a.size,
+          }));
+
           return {
-            sareeName: (isItemCancelled ? `[Cancelled] ${resolved.name}` : resolved.name) + addonSuffix,
+            sareeName: isItemCancelled ? `[Cancelled] ${resolved.name}` : resolved.name,
             quantity: resolved.quantity || 1,
-            mrp: mrp > 0 ? mrp : unitPrice,
-            sellingPrice: unitPrice,
+            mrp,
+            sellingPrice: sareeBasePrice,
             hsnCode,
+            addons: addons.length > 0 ? addons : undefined,
+            discountAmount: itemDisc > 0 ? itemDisc : undefined,
           };
         });
 
@@ -1310,7 +1357,7 @@ function AccountContent() {
           customerAddress: fullAddress || null,
           customerEmail: activeOrder.customer?.email || null,
           items,
-          subtotal: orderItemsSellingTotal,
+          subtotal: orderBaseSellingTotal,
           totalAmount: activeOrder.total,
           discountAmount: activeOrder.discount || 0,
           shippingFee: activeOrder.shipping || 0,
@@ -1597,7 +1644,13 @@ function AccountContent() {
               const resolved = resolveOrderItem(item, products);
               const isItemCancelled = (item?.item_status || (item as any)?.product?.item_status || resolved.item_status || '').toLowerCase() === 'cancelled';
               const unitPrice = item.unit_price != null ? Number(item.unit_price) : resolved.price;
-              const totalPrice = item.total_price != null ? Number(item.total_price) : (unitPrice * resolved.quantity);
+              const itemSellingTotal = unitPrice * resolved.quantity;
+              const itemTotalMrp = (resolved.mrp > 0 ? resolved.mrp : unitPrice) * resolved.quantity;
+              const itemTableDiscount = Number(item.discount_amount != null ? item.discount_amount : (resolved.discount_amount || 0));
+              const itemDiscount = itemTableDiscount > 0
+                ? itemTableDiscount
+                : Math.max(0, (resolved.mrp - unitPrice) * resolved.quantity);
+              const cardPrice = itemDiscount > 0 ? Math.max(0, itemTotalMrp - itemDiscount) : itemSellingTotal;
 
               return (
                 <div key={item.id || resolved.id || idx} className={`py-3 first:pt-0 last:pb-0 flex items-start justify-between gap-3 ${isItemCancelled ? 'opacity-70 bg-rose-50/20 -mx-2 px-2 rounded-lg' : ''}`}>
@@ -1668,23 +1721,23 @@ function AccountContent() {
 
                   <div className="text-right shrink-0">
                     <div className="flex items-baseline justify-end gap-1.5">
-                      {resolved.mrp > unitPrice && !isItemCancelled && (
+                      {itemDiscount > 0 && !isItemCancelled && (
                         <span className="text-[11px] text-[#A8A29E] line-through font-normal font-sans">
-                          ₹{(resolved.mrp * resolved.quantity).toLocaleString('en-IN')}
+                          ₹{itemTotalMrp.toLocaleString('en-IN')}
                         </span>
                       )}
                       <span className={`font-bold text-xs sm:text-sm font-sans ${isItemCancelled ? 'line-through text-[#78716C]' : 'text-[#1C1917]'}`}>
-                        ₹{totalPrice.toLocaleString('en-IN')}
+                        ₹{cardPrice.toLocaleString('en-IN')}
                       </span>
                     </div>
                     {resolved.quantity > 1 && (
                       <span className="text-[10px] text-[#78716C] font-sans block mt-0.5">
-                        ₹{unitPrice.toLocaleString('en-IN')} each
+                        ₹{Math.round(cardPrice / resolved.quantity).toLocaleString('en-IN')} each
                       </span>
                     )}
-                    {resolved.mrp > unitPrice && !isItemCancelled && (
+                    {itemDiscount > 0 && !isItemCancelled && (
                       <span className="text-[10px] font-semibold text-emerald-700 font-sans block mt-0.5">
-                        Save ₹{((resolved.mrp - unitPrice) * resolved.quantity).toLocaleString('en-IN')}
+                        Save ₹{itemDiscount.toLocaleString('en-IN')}
                       </span>
                     )}
                   </div>
@@ -1701,43 +1754,38 @@ function AccountContent() {
           </h3>
 
           <div className="space-y-2 text-xs font-sans">
-            {productDiscount > 0 ? (
-              <>
-                <div className="flex items-center justify-between text-[#57534E]">
-                  <span>Total MRP</span>
-                  <span className="text-[#1C1917] font-medium">
-                    ₹{orderTotalMrp.toLocaleString('en-IN')}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-emerald-700 font-medium">
-                  <span>Product Discount</span>
-                  <span>-₹{productDiscount.toLocaleString('en-IN')}</span>
-                </div>
-                <div className="flex items-center justify-between text-[#57534E]">
-                  <span>Items Subtotal</span>
-                  <span className="text-[#1C1917] font-medium">
-                    ₹{orderItemsSellingTotal.toLocaleString('en-IN')}
-                  </span>
-                </div>
-              </>
-            ) : (
-              <div className="flex items-center justify-between text-[#57534E]">
-                <span>Items Subtotal</span>
-                <span className="text-[#1C1917] font-medium">
-                  ₹{(activeOrder.subtotal || orderItemsSellingTotal || activeOrder.total).toLocaleString('en-IN')}
-                </span>
-              </div>
-            )}
+            <div className="flex items-center justify-between text-[#57534E]">
+              <span>MRP</span>
+              <span className="text-[#1C1917] font-medium">
+                ₹{orderTotalMrp.toLocaleString('en-IN')}
+              </span>
+            </div>
 
-            {couponDiscount > 0 && (
+            {orderDiscountAmount > 0 && (
               <div className="flex items-center justify-between text-emerald-700 font-medium">
-                <span>Coupon / Order Discount</span>
-                <span>-₹{couponDiscount.toLocaleString('en-IN')}</span>
+                <span>Discount</span>
+                <span>-₹{orderDiscountAmount.toLocaleString('en-IN')}</span>
               </div>
             )}
 
             <div className="flex items-center justify-between text-[#57534E]">
-              <span>Delivery Fee</span>
+              <span>Saree Subtotal</span>
+              <span className="text-[#1C1917] font-medium">
+                ₹{orderBaseSellingTotal.toLocaleString('en-IN')}
+              </span>
+            </div>
+
+            {orderAddonsTotal > 0 && (
+              <div className="flex items-center justify-between text-[#57534E]">
+                <span>Add-ons</span>
+                <span className="text-[#1C1917] font-medium">
+                  +₹{orderAddonsTotal.toLocaleString('en-IN')}
+                </span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between text-[#57534E]">
+              <span>Shipping Charges</span>
               {activeOrder.shipping > 0 ? (
                 <span className="text-[#1C1917] font-medium">₹{activeOrder.shipping.toLocaleString('en-IN')}</span>
               ) : (
