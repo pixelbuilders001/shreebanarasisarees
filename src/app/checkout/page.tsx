@@ -62,6 +62,7 @@ import ContextualNotificationBanner from '../../components/notifications/Context
 
 const FREE_SHIPPING_THRESHOLD = 999;
 const STANDARD_SHIPPING_FEE = 99;
+const DEFAULT_GIFT_WRAP_CHARGE: number = 99; // Royal Gift Packaging & Personal Greeting Card
 
 // Valid Coupons
 const VALID_COUPONS: Record<string, { discountPercent?: number; fixedDiscount?: number; minOrder: number; description: string }> = {
@@ -507,7 +508,8 @@ function CheckoutContent() {
     return appliedCoupon.discountAmount;
   }, [appliedCoupon]);
 
-  const grandTotal = Math.max(0, subtotal - couponDiscountAmount + shippingFee);
+  const giftWrapCharge = isGift ? DEFAULT_GIFT_WRAP_CHARGE : 0;
+  const grandTotal = Math.max(0, subtotal - couponDiscountAmount + shippingFee + giftWrapCharge);
 
 
 
@@ -800,7 +802,7 @@ function CheckoutContent() {
       is_gift: isGift,
       gift_recipient_name: isGift ? (giftRecipientName.trim() || null) : null,
       gift_message: isGift ? (giftMessage.trim() || null) : null,
-      gift_wrap_charge: 0
+      gift_wrap_charge: giftWrapCharge
     }).then((orderDetails) => {
       // Auto-login customer using mobile if guest
       if (!userPhone) {
@@ -986,6 +988,33 @@ function CheckoutContent() {
             </div>
           </div>
 
+          {/* Gift Order Details Card */}
+          {createdOrder.is_gift && (
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E5DEC9] shadow-2xs mb-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-sans font-medium text-[#7A6E65] uppercase tracking-wider flex items-center gap-1.5">
+                  <Gift size={13} className="text-[#B08A3C]" />
+                  <span>GIFT ORDER DETAILS</span>
+                </span>
+                <span className="text-xs font-semibold text-[#0F766E] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                  {(createdOrder.gift_wrap_charge || 0) > 0 ? `+₹${Number(createdOrder.gift_wrap_charge).toLocaleString('en-IN')}` : 'FREE PACKAGING'}
+                </span>
+              </div>
+              <div className="space-y-1 text-xs text-[#292524] pt-1 border-t border-[#F3ECE0]">
+                {createdOrder.gift_recipient_name && (
+                  <p>
+                    <span className="text-[#7A6E65]">Recipient:</span> <strong className="font-semibold">{createdOrder.gift_recipient_name}</strong>
+                  </p>
+                )}
+                {createdOrder.gift_message && (
+                  <div className="bg-[#FAF7F0] p-2.5 rounded-xl border border-[#E5DEC9]/70 text-[#52111C] italic font-serif text-xs">
+                    &ldquo;{createdOrder.gift_message}&rdquo;
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Delivery Timeline Card */}
           <div className="bg-white rounded-2xl p-5 border border-[#E5DEC9] shadow-2xs mb-4">
             <div className="flex items-center justify-between mb-4">
@@ -1097,6 +1126,14 @@ function CheckoutContent() {
                 <div className="flex justify-between text-[11px] pl-2 text-[#7A6E65]">
                   <span>IGST ({Number(createdOrder.gst_rate || 5)}%)</span>
                   <span>₹{Number(createdOrder.igst_amount).toFixed(2)}</span>
+                </div>
+              )}
+              {createdOrder.gift_wrap_charge != null && Number(createdOrder.gift_wrap_charge) > 0 && (
+                <div className="flex justify-between">
+                  <span>Gift Packaging</span>
+                  <span className="font-medium text-[#292524]">
+                    ₹{Number(createdOrder.gift_wrap_charge).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
                 </div>
               )}
               {createdOrder.place_of_supply && (
@@ -2204,10 +2241,17 @@ function CheckoutContent() {
                         onChange={(e) => setIsGift(e.target.checked)}
                         className="rounded border-[#B08A3C]/40 text-[#6B1725] focus:ring-[#6B1725] w-4 h-4"
                       />
-                      <div className="flex items-center gap-2">
-                        <Gift size={16} className="text-[#B08A3C]" />
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Gift size={16} className="text-[#B08A3C] shrink-0" />
                         <span className="text-xs font-serif font-bold text-[#292524]">
                           This is a Gift Order (Add gift packaging &amp; personal message)
+                        </span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                          DEFAULT_GIFT_WRAP_CHARGE === 0
+                            ? 'text-[#0F766E] bg-emerald-50 border border-emerald-200/80'
+                            : 'text-[#6B1725] bg-[#FAF6EE] border border-[#B08A3C]/40 font-sans'
+                        }`}>
+                          {DEFAULT_GIFT_WRAP_CHARGE === 0 ? 'FREE' : `+₹${DEFAULT_GIFT_WRAP_CHARGE}`}
                         </span>
                       </div>
                     </label>
@@ -2298,6 +2342,17 @@ function CheckoutContent() {
                           {shippingFee === 0 ? <span className="text-[#0F766E]">FREE</span> : `₹${shippingFee}`}
                         </span>
                       </div>
+                      {isGift && (
+                        <div className="flex justify-between text-[#7A6E65]">
+                          <span className="flex items-center gap-1.5">
+                            <Gift size={13} className="text-[#B08A3C]" />
+                            <span>Gift Packaging &amp; Greeting Card</span>
+                          </span>
+                          <span className="font-semibold text-[#6B1725] tabular-nums">
+                            {Number(giftWrapCharge) === 0 ? <span className="text-[#0F766E]">FREE</span> : `+₹${Number(giftWrapCharge).toLocaleString('en-IN')}`}
+                          </span>
+                        </div>
+                      )}
                       <div className="border-t border-[#E5DEC9] pt-2 flex justify-between items-baseline">
                         <span className="font-sans font-bold text-sm sm:text-base text-[#292524]">Total Payable</span>
                         <span className="font-sans font-extrabold text-2xl text-[#6B1725] tabular-nums tracking-tight">
@@ -2555,6 +2610,17 @@ function CheckoutContent() {
                         {shippingFee === 0 ? <span className="text-[#0F766E]">FREE</span> : `₹${shippingFee}`}
                       </span>
                     </div>
+                    {isGift && (
+                      <div className="flex justify-between text-[#7A6E65]">
+                        <span className="flex items-center gap-1.5">
+                          <Gift size={13} className="text-[#B08A3C]" />
+                          <span>Gift Packaging &amp; Greeting Card</span>
+                        </span>
+                        <span className="font-semibold text-[#6B1725] tabular-nums">
+                          {Number(giftWrapCharge) === 0 ? <span className="text-[#0F766E]">FREE</span> : `+₹${Number(giftWrapCharge).toLocaleString('en-IN')}`}
+                        </span>
+                      </div>
+                    )}
                     <div className="border-t border-[#E5DEC9] pt-3 flex justify-between items-baseline">
                       <span className="font-sans font-bold text-sm sm:text-base text-[#292524]">Total Payable</span>
                       <span className="font-sans font-extrabold text-2xl text-[#6B1725] tabular-nums tracking-tight">
