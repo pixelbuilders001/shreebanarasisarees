@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Grid, Search, ShoppingBag, User } from 'lucide-react';
@@ -12,8 +12,20 @@ export const MobileBottomNav: React.FC = () => {
   const pathname = usePathname();
   const { cart, user, userProfile, setIsAuthModalOpen } = useStore();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [cartBumping, setCartBumping] = useState(false);
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const prevCartCount = useRef(cartCount);
+
+  useEffect(() => {
+    if (cartCount > prevCartCount.current) {
+      setCartBumping(true);
+      const timer = setTimeout(() => setCartBumping(false), 500);
+      return () => clearTimeout(timer);
+    }
+    prevCartCount.current = cartCount;
+  }, [cartCount]);
+
   const userAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || userProfile?.avatar_url;
 
   // Native App Architecture: Hide bottom navigation on PDP (/product), Cart (/cart), Checkout, Payment, and Receipt
@@ -83,9 +95,18 @@ export const MobileBottomNav: React.FC = () => {
             }`}
           >
             <div className="relative">
-              <ShoppingBag size={20} className={pathname === '/cart' ? 'text-[#6B1725] stroke-[2.5]' : ''} />
+              <ShoppingBag
+                size={20}
+                className={`transition-transform duration-200 ${
+                  pathname === '/cart' ? 'text-[#6B1725] stroke-[2.5]' : ''
+                } ${cartBumping ? 'animate-bag-pop text-[#6B1725]' : ''}`}
+              />
               {cartCount > 0 && (
-                <span className="absolute -top-1.5 -right-2 bg-[#6B1725] text-[#FAF7F0] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[#FAF7F0]">
+                <span
+                  className={`absolute -top-1.5 -right-2 bg-[#6B1725] text-[#FAF7F0] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[#FAF7F0] ${
+                    cartBumping ? 'animate-badge-bump' : ''
+                  }`}
+                >
                   {cartCount}
                 </span>
               )}

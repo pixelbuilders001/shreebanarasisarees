@@ -95,6 +95,7 @@ const MainFeaturedCard: React.FC<MainFeaturedCardProps> = ({ product }) => {
   const { toggleWishlist, isInWishlist, currentPincode, defaultDeliveryPincode, isHydrated } = useStore();
   const [imageError, setImageError] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [isWishlistAnimating, setIsWishlistAnimating] = useState(false);
   const activeWishlist = isInWishlist(product.id);
 
   useEffect(() => {
@@ -168,16 +169,21 @@ const MainFeaturedCard: React.FC<MainFeaturedCardProps> = ({ product }) => {
             e.preventDefault();
             e.stopPropagation();
             triggerHaptic('light');
+            setIsWishlistAnimating(true);
             toggleWishlist(product);
+            setTimeout(() => setIsWishlistAnimating(false), 500);
           }}
-          className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/95 backdrop-blur-md shadow-md z-10 flex items-center justify-center border border-[#E9DED1] hover:border-[#B08A3C]/50 transition-all select-none cursor-pointer active:scale-95"
+          className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/95 backdrop-blur-md shadow-md z-10 flex items-center justify-center border border-[#E9DED1] hover:border-[#B08A3C]/50 transition-all select-none cursor-pointer active:scale-90 overflow-hidden"
           aria-label="Add to Wishlist"
         >
+          {isWishlistAnimating && (
+            <span className="absolute inset-0 rounded-full border-2 border-[#6B1725]/40 animate-heart-ring" />
+          )}
           <Heart
             size={17}
-            className={`transition-colors duration-200 ${
+            className={`transition-all duration-200 ${
               activeWishlist ? 'fill-[#6B1725] text-[#6B1725]' : 'text-[#292524]'
-            }`}
+            } ${isWishlistAnimating ? 'animate-heart-pop' : ''}`}
           />
         </button>
       </div>
@@ -269,6 +275,7 @@ interface SecondaryProductCardProps {
 const SecondaryProductCard: React.FC<SecondaryProductCardProps> = ({ product }) => {
   const { toggleWishlist, isInWishlist } = useStore();
   const [imageError, setImageError] = useState(false);
+  const [isWishlistAnimating, setIsWishlistAnimating] = useState(false);
   const activeWishlist = isInWishlist(product.id);
 
   const discountPercent = product.salePrice
@@ -361,14 +368,21 @@ const SecondaryProductCard: React.FC<SecondaryProductCardProps> = ({ product }) 
                 e.preventDefault();
                 e.stopPropagation();
                 triggerHaptic('light');
+                setIsWishlistAnimating(true);
                 toggleWishlist(product);
+                setTimeout(() => setIsWishlistAnimating(false), 500);
               }}
-              className="p-1.5 rounded-full hover:bg-[#FAF7F0] text-[#292524] transition-colors cursor-pointer"
+              className="relative p-1.5 rounded-full hover:bg-[#FAF7F0] text-[#292524] transition-colors cursor-pointer active:scale-90 overflow-hidden"
               aria-label="Add to Wishlist"
             >
+              {isWishlistAnimating && (
+                <span className="absolute inset-0 rounded-full border border-[#6B1725]/40 animate-heart-ring" />
+              )}
               <Heart
                 size={14}
-                className={activeWishlist ? 'fill-[#6B1725] text-[#6B1725]' : 'text-[#292524]/60'}
+                className={`transition-all duration-200 ${
+                  activeWishlist ? 'fill-[#6B1725] text-[#6B1725]' : 'text-[#292524]/60'
+                } ${isWishlistAnimating ? 'animate-heart-pop' : ''}`}
               />
             </button>
 

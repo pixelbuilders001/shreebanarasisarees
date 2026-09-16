@@ -87,6 +87,14 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const [blouseSize, setBlouseSize] = useState<string>('38');
   const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState<boolean>(false);
   const [customizationMode, setCustomizationMode] = useState<'cart' | 'buy_now' | 'edit'>('cart');
+  const [isWishlistAnimating, setIsWishlistAnimating] = useState(false);
+
+  const handleWishlistToggle = () => {
+    triggerHaptic('light');
+    setIsWishlistAnimating(true);
+    toggleWishlist(product);
+    setTimeout(() => setIsWishlistAnimating(false), 500);
+  };
 
   // Check if this saree is already in the shopping bag
   const cartItem = useMemo(() => {
@@ -457,7 +465,6 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
         await new Promise(resolve => setTimeout(resolve, 350));
         addToCart(product, quantity, []);
         setIsAddingToCart(false);
-        showToast(`Added "${product.name}" to your shopping bag.`);
       }
     }
   };
@@ -501,8 +508,6 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
       );
     } else {
       addToCart(product, quantity, selectedAddons);
-      const msg = selectedAddons.length > 0 ? ' with selected services' : '';
-      showToast(`Added "${product.name}"${msg} to your shopping bag.`);
     }
 
     if (mode === 'buy_now' || mode === 'edit') {
@@ -668,11 +673,19 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                     <Share2 size={19} />
                   </button>
                   <button
-                    onClick={() => toggleWishlist(product)}
-                    className="w-11 h-11 rounded-full bg-white/95 backdrop-blur-md shadow-md flex items-center justify-center text-[#292524] hover:bg-white active:scale-95 transition-all cursor-pointer"
+                    onClick={handleWishlistToggle}
+                    className="relative w-11 h-11 rounded-full bg-white/95 backdrop-blur-md shadow-md flex items-center justify-center text-[#292524] hover:bg-white active:scale-90 transition-all cursor-pointer"
                     aria-label="Save to Wishlist"
                   >
-                    <Heart size={19} className={isWishlisted ? 'fill-[#6B1725] text-[#6B1725]' : 'text-[#292524]'} />
+                    {isWishlistAnimating && (
+                      <span className="absolute inset-0 rounded-full border-2 border-[#6B1725]/40 animate-heart-ring" />
+                    )}
+                    <Heart
+                      size={19}
+                      className={`transition-all duration-200 ${
+                        isWishlisted ? 'fill-[#6B1725] text-[#6B1725]' : 'text-[#292524]'
+                      } ${isWishlistAnimating ? 'animate-heart-pop' : ''}`}
+                    />
                   </button>
                 </div>
               </div>
@@ -1121,7 +1134,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                   <button
                     onClick={handleAddToCart}
                     disabled={isAddingToCart}
-                    className="flex-1 bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-85 text-white py-3.5 px-6 rounded-full font-serif font-bold text-sm shadow-md cursor-pointer transition-all flex items-center justify-center gap-2"
+                    className="flex-1 bg-[#6B1725] hover:bg-[#52111C] active:scale-95 disabled:opacity-85 text-white py-3.5 px-6 rounded-full font-serif font-bold text-sm shadow-md cursor-pointer transition-all flex items-center justify-center gap-2 group"
                   >
                     {isAddingToCart ? (
                       <>
@@ -1130,7 +1143,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                       </>
                     ) : (
                       <>
-                        <ShoppingBag size={18} />
+                        <ShoppingBag size={18} className="group-hover:animate-bag-pop transition-transform" />
                         <span>{isAlreadyInCart ? 'Go to cart' : 'Add to Bag'}</span>
                       </>
                     )}
@@ -1139,7 +1152,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                   <button
                     onClick={handleBuyNow}
                     disabled={isBuyingNow}
-                    className="flex-1 bg-white border-2 border-[#6B1725] disabled:opacity-85 text-[#6B1725] py-3.5 px-6 rounded-full font-serif font-bold text-sm hover:bg-[#6B1725]/5 cursor-pointer transition-all text-center flex items-center justify-center gap-2"
+                    className="flex-1 bg-white border-2 border-[#6B1725] active:scale-95 disabled:opacity-85 text-[#6B1725] py-3.5 px-6 rounded-full font-serif font-bold text-sm hover:bg-[#6B1725]/5 cursor-pointer transition-all text-center flex items-center justify-center gap-2"
                   >
                     {isBuyingNow ? (
                       <>
@@ -1152,11 +1165,19 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                   </button>
 
                   <button
-                    onClick={() => toggleWishlist(product)}
-                    className="p-3.5 rounded-full border border-[#E5DEC9] text-[#292524] hover:bg-[#FAF6EE] transition-all cursor-pointer"
+                    onClick={handleWishlistToggle}
+                    className="relative p-3.5 rounded-full border border-[#E5DEC9] text-[#292524] hover:bg-[#FAF6EE] active:scale-90 transition-all cursor-pointer"
                     title="Save to wishlist"
                   >
-                    <Heart size={20} className={isWishlisted ? 'fill-[#6B1725] text-[#6B1725]' : ''} />
+                    {isWishlistAnimating && (
+                      <span className="absolute inset-0 rounded-full border-2 border-[#6B1725]/40 animate-heart-ring" />
+                    )}
+                    <Heart
+                      size={20}
+                      className={`transition-all duration-200 ${
+                        isWishlisted ? 'fill-[#6B1725] text-[#6B1725]' : ''
+                      } ${isWishlistAnimating ? 'animate-heart-pop' : ''}`}
+                    />
                   </button>
                 </div>
               )}
@@ -1407,14 +1428,19 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
         {/* Left: Quick Wishlist toggle + Price */}
         <div className="flex items-center gap-2.5 shrink-0">
           <button
-            onClick={() => {
-              triggerHaptic('light');
-              toggleWishlist(product);
-            }}
-            className="native-press w-11 h-11 rounded-2xl border border-[#E9DED1] bg-[#FAF7F0] flex items-center justify-center text-[#292524] cursor-pointer shrink-0 shadow-sm"
+            onClick={handleWishlistToggle}
+            className="native-press relative w-11 h-11 rounded-2xl border border-[#E9DED1] bg-[#FAF7F0] flex items-center justify-center text-[#292524] cursor-pointer shrink-0 shadow-sm active:scale-90 transition-all overflow-hidden"
             aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
           >
-            <Heart size={18} className={isWishlisted ? 'fill-[#6B1725] text-[#6B1725]' : 'text-[#292524]'} />
+            {isWishlistAnimating && (
+              <span className="absolute inset-0 rounded-2xl border-2 border-[#6B1725]/40 animate-heart-ring" />
+            )}
+            <Heart
+              size={18}
+              className={`transition-all duration-200 ${
+                isWishlisted ? 'fill-[#6B1725] text-[#6B1725]' : 'text-[#292524]'
+              } ${isWishlistAnimating ? 'animate-heart-pop' : ''}`}
+            />
           </button>
           <div>
             <div className="font-sans text-base font-bold text-[#292524] leading-tight">
@@ -1441,7 +1467,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
           {product.stock === 0 ? (
             <button
               onClick={handleNotifyMe}
-              className="native-press flex-1 bg-[#292524] hover:bg-black text-white min-h-12 py-3 px-5 rounded-2xl text-sm font-bold shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+              className="native-press flex-1 bg-[#292524] hover:bg-black active:scale-95 text-white min-h-12 py-3 px-5 rounded-2xl text-sm font-bold shadow-md cursor-pointer flex items-center justify-center gap-1.5 transition-transform"
             >
               <Bell size={15} />
               Notify Me
@@ -1451,7 +1477,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
               <button
                 onClick={handleAddToCart}
                 disabled={isAddingToCart}
-                className="native-press bg-[#6B1725] hover:bg-[#52111C] disabled:opacity-85 text-white min-h-12 py-3 px-4 rounded-2xl text-sm font-bold shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-1.5 min-w-[105px]"
+                className="native-press bg-[#6B1725] hover:bg-[#52111C] active:scale-95 disabled:opacity-85 text-white min-h-12 py-3 px-4 rounded-2xl text-sm font-bold shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-1.5 min-w-[105px] transition-transform duration-150"
               >
                 {isAddingToCart ? (
                   <>
@@ -1459,14 +1485,17 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                     <span>Adding...</span>
                   </>
                 ) : (
-                  <span>{isAlreadyInCart ? 'Go to cart' : 'Add to Bag'}</span>
+                  <>
+                    <ShoppingBag size={15} className={`text-white transition-transform ${isAlreadyInCart ? '' : 'group-hover:animate-bag-pop'}`} />
+                    <span>{isAlreadyInCart ? 'Go to cart' : 'Add to Bag'}</span>
+                  </>
                 )}
               </button>
 
               <button
                 onClick={handleBuyNow}
                 disabled={isBuyingNow}
-                className="native-press bg-white border-2 border-[#6B1725] disabled:opacity-85 text-[#6B1725] min-h-12 py-3 px-4 rounded-2xl text-sm font-bold hover:bg-[#6B1725]/5 cursor-pointer flex items-center justify-center gap-1.5 min-w-[95px]"
+                className="native-press bg-white border-2 border-[#6B1725] active:scale-95 disabled:opacity-85 text-[#6B1725] min-h-12 py-3 px-4 rounded-2xl text-sm font-bold hover:bg-[#6B1725]/5 cursor-pointer flex items-center justify-center gap-1.5 min-w-[95px] transition-transform duration-150"
               >
                 {isBuyingNow ? (
                   <>

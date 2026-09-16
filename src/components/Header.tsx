@@ -50,6 +50,28 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const wishlistCount = wishlist.length;
+  const [cartBumping, setCartBumping] = useState(false);
+  const [wishlistBumping, setWishlistBumping] = useState(false);
+  const prevCartCount = useRef(cartCount);
+  const prevWishlistCount = useRef(wishlistCount);
+
+  useEffect(() => {
+    if (cartCount > prevCartCount.current) {
+      setCartBumping(true);
+      const timer = setTimeout(() => setCartBumping(false), 500);
+      return () => clearTimeout(timer);
+    }
+    prevCartCount.current = cartCount;
+  }, [cartCount]);
+
+  useEffect(() => {
+    if (wishlistCount > prevWishlistCount.current) {
+      setWishlistBumping(true);
+      const timer = setTimeout(() => setWishlistBumping(false), 500);
+      return () => clearTimeout(timer);
+    }
+    prevWishlistCount.current = wishlistCount;
+  }, [wishlistCount]);
 
   // Scroll state for sticky header transition
   const [isScrolled, setIsScrolled] = useState(false);
@@ -280,12 +302,12 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
               {/* Wishlist */}
               <Link
                 href="/wishlist"
-                className="relative p-2 text-[#292524] hover:text-[#6B1725] transition-colors"
+                className="relative p-2 text-[#292524] hover:text-[#6B1725] transition-colors active:scale-90"
                 aria-label="Wishlist"
               >
-                <Heart size={21} />
+                <Heart size={21} className={`transition-transform duration-200 ${wishlistBumping ? 'animate-heart-pop text-[#6B1725]' : ''}`} />
                 {wishlistCount > 0 && (
-                  <span className="absolute top-0 right-0 bg-[#6B1725] text-[#FAF7F0] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-[#FAF7F0]">
+                  <span className={`absolute top-0 right-0 bg-[#6B1725] text-[#FAF7F0] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-[#FAF7F0] ${wishlistBumping ? 'animate-badge-bump' : ''}`}>
                     {wishlistCount}
                   </span>
                 )}
@@ -348,12 +370,12 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
               {/* Cart Drawer Trigger */}
               <button
                 onClick={() => setIsCartOpen(true)}
-                className="relative p-2.5 bg-[#6B1725] text-[#FAF7F0] hover:bg-[#52111C] rounded-full transition-all active:scale-95 shadow-sm flex items-center justify-center"
+                className="relative p-2.5 bg-[#6B1725] text-[#FAF7F0] hover:bg-[#52111C] rounded-full transition-all active:scale-90 shadow-sm flex items-center justify-center cursor-pointer"
                 aria-label="Shopping Cart"
               >
-                <ShoppingBag size={18} />
+                <ShoppingBag size={18} className={`transition-transform duration-200 ${cartBumping ? 'animate-bag-pop' : ''}`} />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[#B08A3C] text-[#292524] text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#FAF7F0]">
+                  <span className={`absolute -top-1 -right-1 bg-[#B08A3C] text-[#292524] text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#FAF7F0] ${cartBumping ? 'animate-badge-bump' : ''}`}>
                     {cartCount}
                   </span>
                 )}
@@ -396,12 +418,12 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
                 <Link
                   href="/wishlist"
                   onClick={() => triggerHaptic('selection')}
-                  className="native-press relative p-2.5 rounded-xl bg-[#F5EDE5]/65 text-[#292524] hover:text-[#6B1725]"
+                  className="native-press relative p-2.5 rounded-xl bg-[#F5EDE5]/65 text-[#292524] hover:text-[#6B1725] active:scale-90 transition-transform"
                   aria-label="Wishlist"
                 >
-                  <Heart size={21} />
+                  <Heart size={21} className={`transition-transform duration-200 ${wishlistBumping ? 'animate-heart-pop text-[#6B1725]' : ''}`} />
                   {wishlistCount > 0 && (
-                    <span className="absolute top-0.5 right-0.5 bg-[#6B1725] text-[#FAF7F0] text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[#FAF7F0]">
+                    <span className={`absolute top-0.5 right-0.5 bg-[#6B1725] text-[#FAF7F0] text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[#FAF7F0] ${wishlistBumping ? 'animate-badge-bump' : ''}`}>
                       {wishlistCount}
                     </span>
                   )}
@@ -412,12 +434,12 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
                     triggerHaptic('selection');
                     setIsCartOpen(true);
                   }}
-                  className="native-press relative p-2.5 rounded-xl bg-[#6B1725] text-[#FFFDF9] shadow-[0_4px_12px_rgba(107,23,37,0.2)] cursor-pointer"
+                  className="native-press relative p-2.5 rounded-xl bg-[#6B1725] text-[#FFFDF9] shadow-[0_4px_12px_rgba(107,23,37,0.2)] cursor-pointer active:scale-90 transition-transform"
                   aria-label="Shopping Cart"
                 >
-                  <ShoppingBag size={21} />
+                  <ShoppingBag size={21} className={`transition-transform duration-200 ${cartBumping ? 'animate-bag-pop' : ''}`} />
                   {cartCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-[#B08A3C] text-[#292524] text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-[#FFFDF9]">
+                    <span className={`absolute -top-1 -right-1 bg-[#B08A3C] text-[#292524] text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-[#FFFDF9] ${cartBumping ? 'animate-badge-bump' : ''}`}>
                       {cartCount}
                     </span>
                   )}

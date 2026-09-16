@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Product, PRODUCTS, SelectedAddon } from '../data/products';
-import { X, ShoppingBag } from 'lucide-react';
+import { X, ShoppingBag, Heart } from 'lucide-react';
 import { 
   supabase,
   fetchProducts, 
@@ -224,52 +224,73 @@ const ToastNotification: React.FC<ToastProps> = ({ message, type = 'info', actio
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
-    }, 5000);
+    }, 2400);
     return () => clearTimeout(timer);
   }, [onClose]);
 
   return (
     <>
       <style>{`
-        @keyframes slideDown {
+        @keyframes toastSlideUpMobile {
           from {
             opacity: 0;
-            transform: translateY(-1rem);
+            transform: translate3d(-50%, 12px, 0) scale(0.95);
           }
           to {
             opacity: 1;
-            transform: translateY(0);
+            transform: translate3d(-50%, 0, 0) scale(1);
           }
         }
-        .animate-toast-slide-down {
-          animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        @keyframes toastSlideUpDesktop {
+          from {
+            opacity: 0;
+            transform: translate3d(0, 12px, 0) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0) scale(1);
+          }
+        }
+        .animate-toast-mobile {
+          animation: toastSlideUpMobile 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @media (min-width: 640px) {
+          .animate-toast-desktop {
+            animation: toastSlideUpDesktop 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          }
         }
       `}</style>
-      <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-50 flex items-center justify-between gap-3 bg-[#FFF9F0] border border-gold/45 text-dark-brown px-4 py-3 rounded-xl shadow-lg animate-toast-slide-down sm:max-w-md w-auto sm:w-full">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-full bg-maroon/10 text-maroon flex-shrink-0">
-            {type === 'cart' ? <ShoppingBag size={15} /> : <span className="text-sm">🔔</span>}
+      <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 z-50 flex items-center justify-between gap-2.5 bg-[#292524]/94 backdrop-blur-md text-[#FAF7F0] border border-white/12 px-3.5 py-1.5 sm:py-2 rounded-full shadow-[0_6px_22px_rgba(0,0,0,0.24)] animate-toast-mobile sm:animate-toast-desktop max-w-[90vw] sm:max-w-xs pointer-events-auto select-none">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="p-1 rounded-full bg-white/12 text-[#FAF7F0] flex-shrink-0 flex items-center justify-center">
+            {type === 'cart' ? (
+              <ShoppingBag size={12} className="text-[#E5C378]" />
+            ) : (
+              <Heart size={12} className="fill-[#E5C378] text-[#E5C378]" />
+            )}
           </div>
-          <p className="text-xs sm:text-sm font-medium font-sans">{message}</p>
+          <p className="text-xs font-medium font-sans truncate text-[#FAF7F0]">
+            {message}
+          </p>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0 ml-1">
           {action && (
             <button
               onClick={() => {
                 action.onClick();
                 onClose();
               }}
-              className="text-[10px] sm:text-xs font-serif font-bold text-maroon hover:underline px-2 py-1"
+              className="text-[11px] font-sans font-bold text-[#E5C378] hover:underline px-1.5 py-0.5 cursor-pointer"
             >
               {action.label}
             </button>
           )}
           <button
             onClick={onClose}
-            className="text-dark-brown/40 hover:text-dark-brown p-1"
+            className="text-[#FAF7F0]/40 hover:text-[#FAF7F0] p-0.5 rounded-full transition-colors cursor-pointer"
             aria-label="Close notification"
           >
-            <X size={14} />
+            <X size={12} />
           </button>
         </div>
       </div>
@@ -1065,8 +1086,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (isCartEmpty) {
       setIsCartOpen(true);
     } else {
-      showToast(`Added "${product.name}" to your bag!`, 'cart', {
-        label: 'View Bag',
+      showToast('Added to bag', 'cart', {
+        label: 'View',
         onClick: () => setIsCartOpen(true)
       });
     }
@@ -1162,9 +1183,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!exists) {
       // GA4 Event: add_to_wishlist
       trackAddToWishlist(product);
-      showToast(`Added "${product.name}" to your wishlist!`, 'info');
+      showToast('Added to wishlist', 'info');
     } else {
-      showToast(`Removed "${product.name}" from your wishlist.`, 'info');
+      showToast('Removed from wishlist', 'info');
     }
 
     setWishlist((prev) => {

@@ -298,6 +298,112 @@ html {
   box-shadow: 0 -12px 40px rgba(41, 37, 36, 0.18);
 }
 
+/* Tactile Mobile Interaction Animations */
+@keyframes heartPop {
+  0% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(0.76);
+  }
+  50% {
+    transform: scale(1.28);
+  }
+  75% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-heart-pop {
+  animation: heartPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transform-origin: center;
+  will-change: transform;
+}
+
+@keyframes heartRing {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+
+.animate-heart-ring {
+  animation: heartRing 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes bagPop {
+  0% {
+    transform: scale(1) translateY(0);
+  }
+  25% {
+    transform: scale(0.86) translateY(1.5px);
+  }
+  50% {
+    transform: scale(1.22) translateY(-2px) rotate(-6deg);
+  }
+  75% {
+    transform: scale(0.98) translateY(0) rotate(3deg);
+  }
+  100% {
+    transform: scale(1) translateY(0) rotate(0deg);
+  }
+}
+
+.animate-bag-pop {
+  animation: bagPop 0.48s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: center;
+  will-change: transform;
+}
+
+@keyframes badgeBump {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.36);
+  }
+  65% {
+    transform: scale(0.92);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-badge-bump {
+  animation: badgeBump 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: center;
+  will-change: transform;
+}
+
+@keyframes tapSpring {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(0.94);
+  }
+  75% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-tap-spring {
+  animation: tapSpring 0.32s cubic-bezier(0.25, 1, 0.5, 1);
+  will-change: transform;
+}
+
 @media (max-width: 1023px) {
   input,
   select,

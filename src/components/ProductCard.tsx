@@ -18,6 +18,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [isWishlistAnimating, setIsWishlistAnimating] = useState(false);
+  const [isCartAnimating, setIsCartAnimating] = useState(false);
   const activeWishlist = isInWishlist(product.id);
   const cartItem = cart.find(item => item.product.id === product.id);
   const quantityInCart = cartItem ? cartItem.quantity : 0;
@@ -26,6 +28,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const discountPercent = product.salePrice 
     ? Math.round(((product.price - product.salePrice) / product.price) * 100)
     : 0;
+
+  const handleWishlistToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    triggerHaptic('light');
+    setIsWishlistAnimating(true);
+    toggleWishlist(product);
+    setTimeout(() => setIsWishlistAnimating(false), 500);
+  };
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    triggerHaptic('medium');
+    setIsCartAnimating(true);
+    addToCart(product, 1);
+    setTimeout(() => setIsCartAnimating(false), 600);
+  };
 
   const handleNotifyMe = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -81,18 +101,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         {/* Wishlist Floating Button (Top Right Corner) */}
         <button
-          onClick={() => {
-            triggerHaptic('light');
-            toggleWishlist(product);
-          }}
-          className="native-press absolute top-2.5 right-2.5 w-9 h-9 rounded-full bg-white/92 backdrop-blur-md shadow-md z-10 flex items-center justify-center border border-[#E9DED1] select-none cursor-pointer"
+          onClick={handleWishlistToggle}
+          className="native-press absolute top-2.5 right-2.5 w-9 h-9 rounded-full bg-white/92 backdrop-blur-md shadow-md z-10 flex items-center justify-center border border-[#E9DED1] select-none cursor-pointer active:scale-90 transition-transform duration-150"
           aria-label="Add to Wishlist"
         >
+          {isWishlistAnimating && (
+            <span className="absolute inset-0 rounded-full border-2 border-[#6B1725]/40 animate-heart-ring" />
+          )}
           <Heart
             size={16}
-            className={`transition-colors duration-200 ${
+            className={`transition-all duration-200 ${
               activeWishlist ? 'fill-[#6B1725] text-[#6B1725]' : 'text-[#292524]'
-            }`}
+            } ${isWishlistAnimating ? 'animate-heart-pop' : ''}`}
           />
         </button>
       </div>
@@ -166,7 +186,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {/* Add to Cart Button / Quantity Selector */}
         <div className="mt-2.5">
           {quantityInCart > 0 ? (
-            <div className="flex items-center justify-between border border-maroon/30 rounded-xl bg-white overflow-hidden shadow-sm h-9 sm:h-9.5">
+            <div className="flex items-center justify-between border border-maroon/30 rounded-xl bg-white overflow-hidden shadow-sm h-9 sm:h-9.5 animate-scaleIn">
               <button
                 onClick={(e) => {
                   e.preventDefault();
@@ -199,7 +219,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           ) : product.stock === 0 ? (
             <button
               onClick={handleNotifyMe}
-              className="native-press w-full min-h-10 py-2 sm:py-2.5 rounded-xl border border-maroon/30 bg-[#FFF9F0]/40 text-maroon font-bold text-xs sm:text-[13px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+              className="native-press w-full min-h-10 py-2 sm:py-2.5 rounded-xl border border-maroon/30 bg-[#FFF9F0]/40 text-maroon font-bold text-xs sm:text-[13px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-95 transition-transform"
               aria-label={`Notify me when ${product.name} is back in stock`}
             >
               <Bell size={13} />
@@ -207,17 +227,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </button>
           ) : (
             <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                triggerHaptic('medium');
-                addToCart(product, 1);
-              }}
-              className="native-press w-full min-h-10 py-2 sm:py-2.5 rounded-xl border border-maroon/25 hover:border-maroon/80 bg-[#6B1725] hover:bg-[#52111C] text-[#FFFDF9] font-bold text-xs sm:text-[13px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_5px_12px_rgba(107,23,37,0.18)] cursor-pointer"
+              onClick={handleAddToCart}
+              className={`native-press w-full min-h-10 py-2 sm:py-2.5 rounded-xl border border-maroon/25 hover:border-maroon/80 bg-[#6B1725] hover:bg-[#52111C] text-[#FFFDF9] font-bold text-xs sm:text-[13px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_5px_12px_rgba(107,23,37,0.18)] cursor-pointer active:scale-95 transition-all duration-200 ${
+                isCartAnimating ? 'animate-tap-spring ring-2 ring-gold/40' : ''
+              }`}
               aria-label="Add to Cart"
             >
-              <ShoppingBag size={13} className="transition-colors" />
-              <span className="font-serif">Add to Cart</span>
+              <ShoppingBag
+                size={13}
+                className={`transition-transform duration-200 ${isCartAnimating ? 'animate-bag-pop text-gold-light' : 'text-[#FFFDF9]'}`}
+              />
+              <span className="font-serif">{isCartAnimating ? 'Added ✓' : 'Add to Cart'}</span>
             </button>
           )}
         </div>
@@ -262,6 +282,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
   const activeWishlist = isInWishlist(product.id);
 
   const [isAdding, setIsAdding] = useState(false);
+  const [isWishlistAnimating, setIsWishlistAnimating] = useState(false);
 
   const handleAddToCart = async () => {
     if (product.stock > 0) {
@@ -424,7 +445,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
                 <button
                   onClick={handleAddToCart}
                   disabled={product.stock === 0 || isAdding}
-                  className="flex-1 py-2.5 bg-maroon disabled:opacity-85 text-ivory rounded-lg font-serif font-bold text-[11px] uppercase tracking-wider hover:bg-maroon-dark transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  className="flex-1 py-2.5 bg-maroon disabled:opacity-85 text-ivory rounded-lg font-serif font-bold text-[11px] uppercase tracking-wider hover:bg-maroon-dark active:scale-95 transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isAdding ? (
                     <>
@@ -433,7 +454,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
                     </>
                   ) : (
                     <>
-                      <ShoppingBag size={14} />
+                      <ShoppingBag size={14} className="group-hover:animate-bag-pop" />
                       <span>Add to Cart</span>
                     </>
                   )}
@@ -442,12 +463,22 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
                 <button
                   onClick={() => {
                     triggerHaptic('light');
+                    setIsWishlistAnimating(true);
                     toggleWishlist(product);
+                    setTimeout(() => setIsWishlistAnimating(false), 500);
                   }}
-                  className="p-2.5 rounded-lg border border-gold/30 text-dark-brown hover:text-maroon hover:border-maroon/50 active:scale-90 transition-all flex-shrink-0 cursor-pointer"
+                  className="relative p-2.5 rounded-lg border border-gold/30 text-dark-brown hover:text-maroon hover:border-maroon/50 active:scale-90 transition-all flex-shrink-0 cursor-pointer overflow-hidden"
                   aria-label="Toggle wishlist"
                 >
-                  <Heart size={16} className={activeWishlist ? 'fill-maroon text-maroon' : ''} />
+                  {isWishlistAnimating && (
+                    <span className="absolute inset-0 rounded-lg border-2 border-[#6B1725]/40 animate-heart-ring" />
+                  )}
+                  <Heart
+                    size={16}
+                    className={`transition-all duration-200 ${
+                      activeWishlist ? 'fill-maroon text-maroon' : ''
+                    } ${isWishlistAnimating ? 'animate-heart-pop' : ''}`}
+                  />
                 </button>
               </div>
 
