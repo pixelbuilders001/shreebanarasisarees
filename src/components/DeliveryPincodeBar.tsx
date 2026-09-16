@@ -8,7 +8,7 @@ import { useStore } from '../context/StoreContext';
 import { AddNewAddressModal } from './delivery/AddNewAddressModal';
 import { getStandardDeliveryDateInfo } from '../lib/deliveryDates';
 import { fetchDeliverySettings, DeliverySettings } from '../data/supabase';
-import { triggerHaptic } from '../utils/haptics';
+import { triggerHaptic, blockGhostClicks, isGhostClickBlocked } from '../utils/haptics';
 
 import { getQuickCity, fetchPincodeDetails } from '../lib/pincodeLookup';
 import { getSameDayCountdownInfo, getExpressDeliveryInfo } from '../utils/deliveryCountdown';
@@ -21,6 +21,14 @@ const SUGGESTED_PINCODES = [
   { pin: '560001', city: 'Bengaluru', label: 'Bengaluru' }
 ];
 
+export const markPincodeSheetClosed = () => {
+  blockGhostClicks(750);
+};
+
+export const isPincodeSheetRecentlyClosed = () => {
+  return isGhostClickBlocked();
+};
+
 export const openPincodeSheet = (pincode?: any) => {
   if (typeof window !== 'undefined') {
     // Guard against React SyntheticEvent objects passed when openPincodeSheet is used directly in onClick
@@ -30,6 +38,7 @@ export const openPincodeSheet = (pincode?: any) => {
 };
 
 export const closePincodeSheet = () => {
+  markPincodeSheetClosed();
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('close-pincode-sheet'));
   }
@@ -319,6 +328,7 @@ export const DeliveryPincodeSheet: React.FC = () => {
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [isAddressModalOpen, setIsAddressModalOpen] = useState<boolean>(false);
   const [isCityLoading, setIsCityLoading] = useState<boolean>(false);
+  const [isSavedSuccess, setIsSavedSuccess] = useState<boolean>(false);
   const isSavingRef = useRef<boolean>(false);
 
   const { isLoading, result, errorMsg, checkPincode } = useCustomerLocation();
@@ -358,6 +368,7 @@ export const DeliveryPincodeSheet: React.FC = () => {
       const defaultPin = sanitizePincode(defaultDeliveryPincode);
       const pin = specifiedPin || currentPin || defaultPin || '848101';
 
+      setIsSavedSuccess(false);
       setInputPincode(pin);
       checkPincode(pin);
       const quick = getQuickCity(pin);
@@ -373,6 +384,7 @@ export const DeliveryPincodeSheet: React.FC = () => {
     };
 
     const handleCloseSheet = () => {
+      markPincodeSheetClosed();
       setIsSheetOpen(false);
     };
 
@@ -390,6 +402,7 @@ export const DeliveryPincodeSheet: React.FC = () => {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        markPincodeSheetClosed();
         setIsSheetOpen(false);
       }
     };
@@ -454,21 +467,31 @@ export const DeliveryPincodeSheet: React.FC = () => {
       document.activeElement.blur();
     }
 
-    // 1. Immediately close the sheet synchronously on the very first click / tap
-    setIsSheetOpen(false);
+    // 1. Immediately mark pincode sheet closed to shield underlying PDP / Cart buttons from ghost clicks
+    markPincodeSheetClosed();
+    setIsSavedSuccess(true);
 
     // 2. Persist and check in background without blocking UI dismissal
     setCurrentPincode(clean);
     checkPincode(clean);
+
+    // 3. Keep sheet in DOM for 150ms to absorb touch/click release and prevent ghost clicks
+    setTimeout(() => {
+      setIsSheetOpen(false);
+      setIsSavedSuccess(false);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('close-pincode-sheet'));
+      }
+    }, 150);
   };
 
   const executeSave = () => {
-    if (isSavingRef.current || isPincodeLoading || inputPincode.length !== 6) return;
+    if (isSavingRef.current || isPincodeLoading || isSavedSuccess || inputPincode.length !== 6) return;
     isSavingRef.current = true;
     handleSavePincode(inputPincode);
     setTimeout(() => {
       isSavingRef.current = false;
-    }, 400);
+    }, 500);
   };
 
   const inputTier = checkDeliveryTier(inputPincode, result);
@@ -484,10 +507,21 @@ export const DeliveryPincodeSheet: React.FC = () => {
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs transition-opacity animate-fadeIn p-0 sm:p-4">
       {/* Backdrop click to close */}
-      <div className="absolute inset-0" onClick={() => setIsSheetOpen(false)} />
+      <div
+        className="absolute inset-0 cursor-pointer"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          markPincodeSheetClosed();
+          setIsSheetOpen(false);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('close-pincode-sheet'));
+          }
+        }}
+      />
 
       {/* Modern Clean Drawer Card */}
-      <div className="relative z-10 w-full max-w-[440px] bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-5 shadow-2xl space-y-3.5 animate-slide-in-from-bottom border border-gray-100 max-h-[85vh] overflow-y-auto">
+      <div className="relative z-10 w-full max-w-[440px] bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-5 shadow-2xl space-y-3.5 animate-slide-in-from-bottom border border-gray-100 max-h-[85vh] overflow-y-auto">
 
         {/* Top Content Area */}
         <div className="space-y-3.5">
@@ -496,7 +530,16 @@ export const DeliveryPincodeSheet: React.FC = () => {
 
           {/* Close Button */}
           <button
-            onClick={() => setIsSheetOpen(false)}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              markPincodeSheetClosed();
+              setIsSheetOpen(false);
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('close-pincode-sheet'));
+              }
+            }}
             className="absolute right-4 top-4 p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
             aria-label="Close"
           >
@@ -792,16 +835,15 @@ export const DeliveryPincodeSheet: React.FC = () => {
         <div className="pt-1">
           <button
             type="button"
-            onClick={executeSave}
-            onPointerUp={(e) => {
-              if (e.pointerType === 'touch' && !isPincodeLoading && inputPincode.length === 6) {
-                executeSave();
-              }
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              executeSave();
             }}
-            disabled={inputPincode.length !== 6 || isPincodeLoading}
+            disabled={inputPincode.length !== 6 || isPincodeLoading || isSavedSuccess}
             className={`w-full py-3 bg-[#6B1725] hover:bg-[#52111C] active:scale-[0.99] text-white rounded-full font-bold text-xs sm:text-[13px] tracking-wider uppercase transition-all shadow-md shadow-[#6B1725]/20 flex items-center justify-center gap-1.5 select-none ${
-              inputPincode.length !== 6 || isPincodeLoading
-                ? 'opacity-50 cursor-not-allowed pointer-events-none'
+              inputPincode.length !== 6 || isPincodeLoading || isSavedSuccess
+                ? 'opacity-60 cursor-not-allowed'
                 : 'cursor-pointer'
             }`}
           >
@@ -809,6 +851,11 @@ export const DeliveryPincodeSheet: React.FC = () => {
               <>
                 <Loader2 size={14} className="animate-spin text-white" />
                 <span>Checking Delivery...</span>
+              </>
+            ) : isSavedSuccess ? (
+              <>
+                <Check size={15} strokeWidth={2.5} className="text-white" />
+                <span>DELIVERING TO {inputPincode}</span>
               </>
             ) : (
               <>

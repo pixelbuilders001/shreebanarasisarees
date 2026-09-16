@@ -32,9 +32,9 @@ import {
   DeliveryOptionType
 } from '../data/supabase';
 import { useCustomerLocation } from '../hooks/useCustomerLocation';
-import { SareeCustomizationModal } from './SareeCustomizationModal';
+import { SareeCustomizationModal, isCustomizationModalRecentlyClosed } from './SareeCustomizationModal';
 
-import { openPincodeSheet, getExpressTimingStatus } from './DeliveryPincodeBar';
+import { openPincodeSheet, getExpressTimingStatus, isPincodeSheetRecentlyClosed } from './DeliveryPincodeBar';
 import { getStandardDeliveryDateInfo } from '../lib/deliveryDates';
 import { triggerHaptic } from '../utils/haptics';
 import { DeliveryRiderIcon } from './delivery/DeliveryIcons';
@@ -401,6 +401,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
   };
 
   const handleProceedToCheckout = () => {
+    if (isPincodeSheetRecentlyClosed() || isCustomizationModalRecentlyClosed()) return;
     triggerHaptic('medium');
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('selected_delivery_option', selectedDeliveryMethod);

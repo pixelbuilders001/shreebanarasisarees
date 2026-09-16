@@ -36,13 +36,13 @@ import {
 import { fetchDesignVariants, fetchDeliverySettings, fetchProductAddons, DeliverySettings, supabase } from '../../../data/supabase';
 import { RecentlyViewed } from '../../../components/RecentlyViewed';
 import { ProductCard } from '../../../components/ProductCard';
-import { SareeCustomizationModal } from '../../../components/SareeCustomizationModal';
+import { SareeCustomizationModal, isCustomizationModalRecentlyClosed } from '../../../components/SareeCustomizationModal';
 import { useRecentlyViewed } from '../../../utils/useRecentlyViewed';
 import { trackViewItem } from '../../../lib/gtag';
-import { openPincodeSheet, getExpressTimingStatus } from '../../../components/DeliveryPincodeBar';
+import { openPincodeSheet, getExpressTimingStatus, isPincodeSheetRecentlyClosed } from '../../../components/DeliveryPincodeBar';
 import { useCustomerLocation } from '../../../hooks/useCustomerLocation';
 import { getStandardDeliveryDateInfo } from '../../../lib/deliveryDates';
-import { triggerHaptic } from '../../../utils/haptics';
+import { triggerHaptic, blockGhostClicks, isGhostClickBlocked } from '../../../utils/haptics';
 import { DeliveryRiderIcon } from '../../../components/delivery/DeliveryIcons';
 import { getQuickCity } from '../../../lib/pincodeLookup';
 import { getSameDayCountdownInfo, SameDayCountdownInfo, getExpressDeliveryInfo, ExpressDeliveryInfo } from '../../../utils/deliveryCountdown';
@@ -88,6 +88,44 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState<boolean>(false);
   const [customizationMode, setCustomizationMode] = useState<'cart' | 'buy_now' | 'edit'>('cart');
   const [isWishlistAnimating, setIsWishlistAnimating] = useState(false);
+
+  // Overlay state & ghost click cooldown tracker
+  const [isOverlayActive, setIsOverlayActive] = useState<boolean>(false);
+  const [isCustomizationCooldown, setIsCustomizationCooldown] = useState<boolean>(false);
+
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    const handleOpenSheet = () => {
+      clearTimeout(timeoutId);
+      setIsOverlayActive(true);
+    };
+
+    const handleCloseSheet = () => {
+      blockGhostClicks(750);
+      timeoutId = setTimeout(() => {
+        setIsOverlayActive(false);
+      }, 750);
+    };
+
+    window.addEventListener('open-pincode-sheet', handleOpenSheet);
+    window.addEventListener('close-pincode-sheet', handleCloseSheet);
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('open-pincode-sheet', handleOpenSheet);
+      window.removeEventListener('close-pincode-sheet', handleCloseSheet);
+    };
+  }, []);
+
+  const safeCloseCustomizationModal = () => {
+    blockGhostClicks(750);
+    setIsCustomizationModalOpen(false);
+    setIsCustomizationCooldown(true);
+    setTimeout(() => {
+      setIsCustomizationCooldown(false);
+    }, 750);
+  };
 
   const handleWishlistToggle = () => {
     triggerHaptic('light');
@@ -453,6 +491,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
   const isAlreadyInCart = isProductInCart;
 
   const handleAddToCart = async () => {
+    if (isGhostClickBlocked() || isOverlayActive || isCustomizationModalOpen || isCustomizationCooldown) return;
     if (product.stock > 0) {
       triggerHaptic('medium');
       if (isProductInCart) {
@@ -470,6 +509,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
   };
 
   const handleBuyNow = async () => {
+    if (isGhostClickBlocked() || isOverlayActive || isCustomizationModalOpen || isCustomizationCooldown) return;
     if (product.stock > 0) {
       triggerHaptic('medium');
       if (isProductInCart) {
@@ -488,7 +528,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
   };
 
   const handleConfirmCustomization = (selectedAddons: SelectedAddon[], mode: 'cart' | 'buy_now' | 'edit') => {
-    setIsCustomizationModalOpen(false);
+    safeCloseCustomizationModal();
 
     // Synchronize local PDP addon selections
     const addonMap: Record<string, boolean> = {};
@@ -1401,7 +1441,9 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
       <Footer />
 
       {/* ── STICKY BOTTOM ACTION BAR (ONLY ON MOBILE - DOCKED TO SCREEN BOTTOM) ── */}
-      <div className="fixed bottom-0 inset-x-0 z-40 bg-[#FFFDF9]/96 backdrop-blur-xl border-t border-[#E9DED1] shadow-[0_-8px_28px_rgba(41,37,36,0.12)] select-none md:hidden">
+      <div className={`fixed bottom-0 inset-x-0 z-40 bg-[#FFFDF9]/96 backdrop-blur-xl border-t border-[#E9DED1] shadow-[0_-8px_28px_rgba(41,37,36,0.12)] select-none md:hidden transition-all duration-200 ${
+        isCustomizationModalOpen || isCustomizationCooldown || isOverlayActive ? 'pointer-events-none opacity-50' : ''
+      }`}>
         {deliveryTier === 'same_day' && (
           <div className="bg-[#FAF6EE] border-b border-[#E9DED1] px-4 py-1.5 text-[11px] text-[#6B1725] font-semibold flex items-center justify-between">
             <span className="flex items-center gap-1.5 truncate">
@@ -1476,7 +1518,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
             <>
               <button
                 onClick={handleAddToCart}
-                disabled={isAddingToCart}
+                disabled={isAddingToCart || isCustomizationModalOpen || isCustomizationCooldown || isOverlayActive}
                 className="native-press bg-[#6B1725] hover:bg-[#52111C] active:scale-95 disabled:opacity-85 text-white min-h-12 py-3 px-4 rounded-2xl text-sm font-bold shadow-[0_5px_14px_rgba(107,23,37,0.22)] cursor-pointer flex items-center justify-center gap-1.5 min-w-[105px] transition-transform duration-150"
               >
                 {isAddingToCart ? (
@@ -1494,7 +1536,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
               <button
                 onClick={handleBuyNow}
-                disabled={isBuyingNow}
+                disabled={isBuyingNow || isCustomizationModalOpen || isCustomizationCooldown || isOverlayActive}
                 className="native-press bg-white border-2 border-[#6B1725] active:scale-95 disabled:opacity-85 text-[#6B1725] min-h-12 py-3 px-4 rounded-2xl text-sm font-bold hover:bg-[#6B1725]/5 cursor-pointer flex items-center justify-center gap-1.5 min-w-[95px] transition-transform duration-150"
               >
                 {isBuyingNow ? (
@@ -1656,7 +1698,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
       <SareeCustomizationModal
         key={product.id}
         isOpen={isCustomizationModalOpen}
-        onClose={() => setIsCustomizationModalOpen(false)}
+        onClose={safeCloseCustomizationModal}
         product={product}
         addonsList={addonsList}
         initialSelectedAddons={activeSelectedAddons}

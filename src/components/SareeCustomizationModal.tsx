@@ -3,6 +3,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, Scissors, CheckCircle2, Clock } from 'lucide-react';
 import { Product, ProductAddon, SelectedAddon } from '@/data/products';
+import { blockGhostClicks, isGhostClickBlocked } from '../utils/haptics';
+
+export const markCustomizationModalClosed = () => {
+  blockGhostClicks(750);
+};
+
+export const isCustomizationModalRecentlyClosed = () => {
+  return isGhostClickBlocked();
+};
 
 interface SareeCustomizationModalProps {
   isOpen: boolean;
@@ -27,6 +36,7 @@ export const SareeCustomizationModal: React.FC<SareeCustomizationModalProps> = (
 }) => {
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
   const [blouseSize, setBlouseSize] = useState<string>('38');
+  const [isClosing, setIsClosing] = useState<boolean>(false);
 
   const hasBlouse = product.has_blouse !== false;
   const basePrice = product.salePrice ?? product.price;
@@ -34,6 +44,7 @@ export const SareeCustomizationModal: React.FC<SareeCustomizationModalProps> = (
   // Pre-populate selections from initialSelectedAddons whenever modal opens or product changes
   useEffect(() => {
     if (isOpen) {
+      setIsClosing(false);
       const initialMap: Record<string, boolean> = {};
       let initialSize = '38';
       if (initialSelectedAddons && initialSelectedAddons.length > 0) {
@@ -94,13 +105,56 @@ export const SareeCustomizationModal: React.FC<SareeCustomizationModalProps> = (
     }));
   };
 
-  const handleSkip = () => {
-    onConfirm([], mode);
+  const handleClose = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (isClosing) return;
+    setIsClosing(true);
+    markCustomizationModalClosed();
+    setTimeout(() => {
+      onClose();
+      setIsClosing(false);
+    }, 120);
   };
 
-  const handleApply = () => {
-    onConfirm(activeAddons, mode);
+  const handleSkip = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isClosing) return;
+    setIsClosing(true);
+    markCustomizationModalClosed();
+    setTimeout(() => {
+      onConfirm([], mode);
+      setIsClosing(false);
+    }, 120);
   };
+
+  const handleApply = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isClosing) return;
+    setIsClosing(true);
+    markCustomizationModalClosed();
+    setTimeout(() => {
+      onConfirm(activeAddons, mode);
+      setIsClosing(false);
+    }, 120);
+  };
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        markCustomizationModalClosed();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -108,8 +162,8 @@ export const SareeCustomizationModal: React.FC<SareeCustomizationModalProps> = (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center animate-fadeIn">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
-        onClick={onClose}
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity cursor-pointer"
+        onClick={handleClose}
         aria-hidden="true"
       />
 
@@ -151,7 +205,7 @@ export const SareeCustomizationModal: React.FC<SareeCustomizationModalProps> = (
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-[#7A6E65] flex items-center justify-center transition-colors cursor-pointer shrink-0"
             aria-label="Close"
           >
@@ -413,7 +467,7 @@ export const SareeCustomizationModal: React.FC<SareeCustomizationModalProps> = (
         </div>
 
         {/* Footer / Dual Action CTA */}
-        <div className="p-4 sm:p-5 bg-white border-t border-[#E8DFD1] space-y-2.5 shrink-0 shadow-lg">
+        <div className="p-4 sm:p-5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-5 bg-white border-t border-[#E8DFD1] space-y-2.5 shrink-0 shadow-lg">
           <div className="flex items-center justify-between text-xs font-sans">
             <span className="text-[#7A6E65]">
               {activeAddons.length > 0
@@ -431,7 +485,10 @@ export const SareeCustomizationModal: React.FC<SareeCustomizationModalProps> = (
               <button
                 type="button"
                 onClick={handleSkip}
-                className="flex-1 py-3 px-4 rounded-xl border border-[#D4C8B4] text-[#7A6E65] hover:text-[#292524] hover:bg-stone-50 font-sans font-bold text-xs sm:text-sm transition-all text-center cursor-pointer"
+                disabled={isClosing}
+                className={`flex-1 py-3 px-4 rounded-xl border border-[#D4C8B4] text-[#7A6E65] hover:text-[#292524] hover:bg-stone-50 font-sans font-bold text-xs sm:text-sm transition-all text-center ${
+                  isClosing ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                }`}
               >
                 Skip (Just Saree)
               </button>
@@ -441,7 +498,10 @@ export const SareeCustomizationModal: React.FC<SareeCustomizationModalProps> = (
             <button
               type="button"
               onClick={handleApply}
-              className="flex-1 py-3 px-4 rounded-xl font-sans font-bold text-xs sm:text-sm transition-all text-center cursor-pointer shadow-md flex items-center justify-center gap-1.5 bg-[#6B1725] hover:bg-[#52111C] text-white shadow-[#6B1725]/20"
+              disabled={isClosing}
+              className={`flex-1 py-3 px-4 rounded-xl font-sans font-bold text-xs sm:text-sm transition-all text-center shadow-md flex items-center justify-center gap-1.5 bg-[#6B1725] hover:bg-[#52111C] text-white shadow-[#6B1725]/20 ${
+                isClosing ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+              }`}
             >
               <CheckCircle2 size={16} />
               <span>

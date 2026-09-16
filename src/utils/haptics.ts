@@ -28,3 +28,41 @@ export const triggerHaptic = (type: HapticFeedbackType = 'light'): void => {
     // Silently ignore if vibration is blocked by browser policy or device settings
   }
 };
+
+let blockUntilTimestamp = 0;
+
+/**
+ * Universally suppresses ghost clicks / tap bleeding across window boundaries.
+ * Uses a capture-phase event listener to intercept and swallow any synthetic click/touch events
+ * immediately following the closing of bottom sheets or modals.
+ */
+export const blockGhostClicks = (durationMs = 750): void => {
+  if (typeof window === 'undefined') return;
+
+  const targetExpiry = Date.now() + durationMs;
+  blockUntilTimestamp = Math.max(blockUntilTimestamp, targetExpiry);
+  (window as any).__lastSheetDismissTime = blockUntilTimestamp;
+
+  const captureInterceptor = (e: Event) => {
+    if (Date.now() < blockUntilTimestamp) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    } else {
+      window.removeEventListener('click', captureInterceptor, true);
+      window.removeEventListener('touchend', captureInterceptor, true);
+      window.removeEventListener('pointerup', captureInterceptor, true);
+    }
+  };
+
+  window.addEventListener('click', captureInterceptor, true);
+  window.addEventListener('touchend', captureInterceptor, true);
+  window.addEventListener('pointerup', captureInterceptor, true);
+};
+
+export const isGhostClickBlocked = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const globalExpiry = (window as any).__lastSheetDismissTime || 0;
+  return Date.now() < blockUntilTimestamp || Date.now() < globalExpiry;
+};
+
