@@ -86,7 +86,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const [selectedAddonIds, setSelectedAddonIds] = useState<Record<string, boolean>>({});
   const [blouseSize, setBlouseSize] = useState<string>('38');
   const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState<boolean>(false);
-  const [customizationMode, setCustomizationMode] = useState<'cart' | 'buy_now' | 'edit'>('cart');
+  const [customizationMode, setCustomizationMode] = useState<'cart' | 'buy_now' | 'edit' | 'pdp'>('cart');
   const [isWishlistAnimating, setIsWishlistAnimating] = useState(false);
 
   // Overlay state & ghost click cooldown tracker
@@ -496,13 +496,13 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
       triggerHaptic('medium');
       if (isProductInCart) {
         setIsCartOpen(true);
-      } else if (addonsList.length > 0) {
+      } else if (addonsList.length > 0 && activeSelectedAddons.length === 0) {
         setCustomizationMode('cart');
         setIsCustomizationModalOpen(true);
       } else {
         setIsAddingToCart(true);
         await new Promise(resolve => setTimeout(resolve, 350));
-        addToCart(product, quantity, []);
+        addToCart(product, quantity, activeSelectedAddons);
         setIsAddingToCart(false);
       }
     }
@@ -514,20 +514,20 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
       triggerHaptic('medium');
       if (isProductInCart) {
         setIsCartOpen(true);
-      } else if (addonsList.length > 0) {
+      } else if (addonsList.length > 0 && activeSelectedAddons.length === 0) {
         setCustomizationMode('buy_now');
         setIsCustomizationModalOpen(true);
       } else {
         setIsBuyingNow(true);
         await new Promise(resolve => setTimeout(resolve, 300));
-        addToCart(product, quantity, []);
+        addToCart(product, quantity, activeSelectedAddons);
         setIsBuyingNow(false);
         setIsCartOpen(true);
       }
     }
   };
 
-  const handleConfirmCustomization = (selectedAddons: SelectedAddon[], mode: 'cart' | 'buy_now' | 'edit') => {
+  const handleConfirmCustomization = (selectedAddons: SelectedAddon[], mode: 'cart' | 'buy_now' | 'edit' | 'pdp') => {
     safeCloseCustomizationModal();
 
     // Synchronize local PDP addon selections
@@ -537,6 +537,17 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
       if (a.size) setBlouseSize(a.size);
     });
     setSelectedAddonIds(addonMap);
+
+    // If configuring tailoring on PDP before adding to cart, DO NOT add to bag!
+    if (mode === 'pdp') {
+      showToast(
+        selectedAddons.length > 0
+          ? `${selectedAddons.length} tailoring service(s) applied to this saree.`
+          : 'Tailoring services cleared.',
+        'info'
+      );
+      return;
+    }
 
     if (isProductInCart) {
       updateCartItemAddons(product.id, selectedAddons);
@@ -897,7 +908,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
               <button
                 type="button"
                 onClick={() => {
-                  setCustomizationMode(isProductInCart ? 'edit' : 'cart');
+                  setCustomizationMode(isProductInCart ? 'edit' : 'pdp');
                   setIsCustomizationModalOpen(true);
                 }}
                 className="w-full flex items-center justify-between gap-3 text-left p-3 rounded-xl bg-[#FAF6EE] hover:bg-[#F5EEDC] border border-[#E8DFD1] hover:border-[#6B1725]/40 transition-all cursor-pointer group shadow-2xs"

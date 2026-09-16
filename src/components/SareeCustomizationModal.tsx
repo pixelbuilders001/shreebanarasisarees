@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Scissors, CheckCircle2, Clock } from 'lucide-react';
 import { Product, ProductAddon, SelectedAddon } from '@/data/products';
 import { blockGhostClicks, isGhostClickBlocked } from '../utils/haptics';
@@ -19,8 +20,8 @@ interface SareeCustomizationModalProps {
   product: Product;
   addonsList: ProductAddon[];
   initialSelectedAddons?: SelectedAddon[];
-  onConfirm: (selectedAddons: SelectedAddon[], mode: 'cart' | 'buy_now' | 'edit') => void;
-  mode?: 'cart' | 'buy_now' | 'edit';
+  onConfirm: (selectedAddons: SelectedAddon[], mode: 'cart' | 'buy_now' | 'edit' | 'pdp') => void;
+  mode?: 'cart' | 'buy_now' | 'edit' | 'pdp';
   allowBlouseStitching?: boolean;
 }
 
@@ -37,6 +38,11 @@ export const SareeCustomizationModal: React.FC<SareeCustomizationModalProps> = (
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
   const [blouseSize, setBlouseSize] = useState<string>('38');
   const [isClosing, setIsClosing] = useState<boolean>(false);
+  const [mounted, setMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const hasBlouse = product.has_blouse !== false;
   const basePrice = product.salePrice ?? product.price;
@@ -156,10 +162,10 @@ export const SareeCustomizationModal: React.FC<SareeCustomizationModalProps> = (
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!mounted || !isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center animate-fadeIn">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center animate-fadeIn">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity cursor-pointer"
@@ -480,7 +486,7 @@ export const SareeCustomizationModal: React.FC<SareeCustomizationModalProps> = (
           </div>
 
           <div className="flex items-center gap-2.5">
-            {/* Skip Button (Adds just the saree) */}
+            {/* Skip Button */}
             {mode !== 'edit' && (
               <button
                 type="button"
@@ -490,7 +496,7 @@ export const SareeCustomizationModal: React.FC<SareeCustomizationModalProps> = (
                   isClosing ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
                 }`}
               >
-                Skip (Just Saree)
+                {mode === 'pdp' ? 'Clear Services' : 'Skip (Just Saree)'}
               </button>
             )}
 
@@ -507,6 +513,8 @@ export const SareeCustomizationModal: React.FC<SareeCustomizationModalProps> = (
               <span>
                 {mode === 'edit'
                   ? 'Update Services'
+                  : mode === 'pdp'
+                  ? (activeAddons.length > 0 ? 'Apply Services to Saree' : 'Save (Saree Only)')
                   : activeAddons.length > 0
                   ? 'Add Services & Continue'
                   : `Continue to ${mode === 'buy_now' ? 'Checkout' : 'Bag'}`}
@@ -515,6 +523,7 @@ export const SareeCustomizationModal: React.FC<SareeCustomizationModalProps> = (
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
