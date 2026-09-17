@@ -38,6 +38,7 @@ import { openPincodeSheet, getExpressTimingStatus, isPincodeSheetRecentlyClosed 
 import { getStandardDeliveryDateInfo } from '../lib/deliveryDates';
 import { triggerHaptic } from '../utils/haptics';
 import { DeliveryRiderIcon } from './delivery/DeliveryIcons';
+import { trackViewCart } from '../lib/gtag';
 
 interface CartViewProps {
   onBack?: () => void;
@@ -364,6 +365,17 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
 
   // Final Payable
   const finalPayable = Math.max(0, subtotal - couponDiscountAmount + deliveryFee);
+
+  // Track GA4 view_cart
+  const hasTrackedViewCart = useRef(false);
+  useEffect(() => {
+    if (cart.length > 0 && !hasTrackedViewCart.current) {
+      hasTrackedViewCart.current = true;
+      trackViewCart(cart, subtotal);
+    } else if (cart.length === 0) {
+      hasTrackedViewCart.current = false;
+    }
+  }, [cart, subtotal]);
 
 
 

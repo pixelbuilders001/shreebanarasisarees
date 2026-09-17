@@ -52,7 +52,7 @@ import {
 } from '../../data/supabase';
 import { ProductAddon } from '../../data/products';
 import { SareeCustomizationModal } from '../../components/SareeCustomizationModal';
-import { trackBeginCheckout, trackPurchase } from '../../lib/gtag';
+import { trackBeginCheckout, trackPurchase, trackAddShippingInfo, trackAddPaymentInfo } from '../../lib/gtag';
 import { fetchPincodeDetails } from '../../lib/pincodeLookup';
 import { AddNewAddressModal } from '../../components/delivery/AddNewAddressModal';
 import { CheckoutSkeleton } from '../../components/CheckoutSkeleton';
@@ -521,6 +521,25 @@ function CheckoutContent() {
       trackBeginCheckout(cart, grandTotal);
     }
   }, [cart, grandTotal]);
+
+  // Track GA4 add_shipping_info when user advances to delivery method selection (Step 2+)
+  const hasTrackedShippingInfo = React.useRef(false);
+  useEffect(() => {
+    if (currentStep >= 2 && cart.length > 0 && grandTotal > 0 && !hasTrackedShippingInfo.current) {
+      hasTrackedShippingInfo.current = true;
+      const tierName = activeDeliveryOption?.title || 'Standard Delivery';
+      trackAddShippingInfo(cart, grandTotal, tierName, appliedCoupon?.code);
+    }
+  }, [currentStep, cart, grandTotal, activeDeliveryOption, appliedCoupon]);
+
+  // Track GA4 add_payment_info when user reaches Step 3 (Review & Pay)
+  const hasTrackedPaymentInfo = React.useRef(false);
+  useEffect(() => {
+    if (currentStep === 3 && cart.length > 0 && grandTotal > 0 && !hasTrackedPaymentInfo.current) {
+      hasTrackedPaymentInfo.current = true;
+      trackAddPaymentInfo(cart, grandTotal, paymentMethod, appliedCoupon?.code);
+    }
+  }, [currentStep, cart, grandTotal, paymentMethod, appliedCoupon]);
 
   // Re-validate coupon when subtotal changes
   useEffect(() => {

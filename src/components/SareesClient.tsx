@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Header } from './Header';
@@ -11,6 +11,7 @@ import { SlidersHorizontal, ArrowUpDown, X, Search, ChevronDown, Check, Zap, Tag
 import { parseSearchQuery, scoreProducts, formatPriceFilter, type DetectedFilters } from '../lib/searchEngine';
 import { useStore } from '../context/StoreContext';
 import { triggerHaptic } from '../utils/haptics';
+import { trackViewItemList } from '../lib/gtag';
 
 const PAGE_SIZE = 24;
 const INITIAL_VISIBLE_COUNT = PAGE_SIZE;
@@ -354,6 +355,23 @@ export const SareesClient: React.FC<SareesClientProps> = ({
   }
 
   const visibleProducts = filteredProducts.slice(0, visibleCount);
+
+  // Track GA4 view_item_list
+  const lastTrackedListRef = useRef<string>('');
+  useEffect(() => {
+    if (visibleProducts.length > 0) {
+      const listName = selectedCategory && selectedCategory !== 'All' 
+        ? `${selectedCategory} Sarees` 
+        : urlSearch 
+          ? `Search: ${urlSearch}` 
+          : 'All Sarees Collection';
+      const signature = `${listName}_${visibleProducts.slice(0, 5).map(p => p.id).join('-')}`;
+      if (lastTrackedListRef.current !== signature) {
+        lastTrackedListRef.current = signature;
+        trackViewItemList(visibleProducts, listName);
+      }
+    }
+  }, [visibleProducts, selectedCategory, urlSearch]);
 
   // Helper for Sidebar UI Elements
   const renderFilterSidebar = () => (

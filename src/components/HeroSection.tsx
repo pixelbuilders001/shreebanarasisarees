@@ -103,7 +103,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
                 src={slide.image_url}
                 alt={slide.title || "Shree Banarasi Sarees Banner"}
                 fill
-                unoptimized
                 priority={idx === 0}
                 loading={idx === 0 ? "eager" : "lazy"}
                 sizes="(max-width: 640px) 86vw, (max-width: 768px) 90vw, 100vw"
@@ -132,8 +131,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
                   src={slide.image_url}
                   alt={slide.title || "Shree Banarasi Sarees Banner"}
                   fill
-                  unoptimized
-                  priority={idx === 0}
+                  priority={false}
                   loading={idx === 0 ? "eager" : "lazy"}
                   sizes="(max-width: 1280px) 100vw, 1280px"
                   className="object-cover object-center w-full h-full group-hover:scale-102 transition-transform duration-700"

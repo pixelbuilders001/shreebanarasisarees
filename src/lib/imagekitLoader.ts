@@ -25,7 +25,10 @@ export default function imageKitLoader({
 
   // 1. If it's an ImageKit URL, apply ImageKit transformation parameters
   if (src.includes('ik.imagekit.io')) {
-    return `${src}${separator}tr=w-${width},q-${q},f-auto`;
+    // Strip existing tr parameter if present to avoid duplicate or conflicting transformations
+    const cleanUrl = src.replace(/([?&])tr=[^&]+(&|$)/, '$1').replace(/[?&]$/, '');
+    const sep = cleanUrl.includes('?') ? '&' : '?';
+    return `${cleanUrl}${sep}tr=w-${width},q-${q},f-auto`;
   }
 
   // 2. If it's an Unsplash URL, apply auto format, crop, responsive width, and quality
