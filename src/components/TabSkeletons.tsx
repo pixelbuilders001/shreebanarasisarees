@@ -173,3 +173,41 @@ export function CustomizationsTabSkeleton() {
     </div>
   );
 }
+
+/**
+ * Skeleton for the Banarasi Coins & Referral tab content area.
+ */
+export function CoinsTabSkeleton() {
+  return (
+    <div className="space-y-4 animate-pulse w-full">
+      {/* Hero Wallet Card Skeleton */}
+      <div className="h-44 sm:h-48 bg-stone-200/80 rounded-3xl" />
+
+      {/* Share Box Skeleton */}
+      <div className="bg-white p-5 sm:p-6 rounded-3xl border border-[#E7DFC9] shadow-2xs space-y-3">
+        <div className="w-48 h-5 bg-stone-200/80 rounded" />
+        <div className="w-64 h-3.5 bg-stone-200/50 rounded" />
+        <div className="h-12 bg-stone-200/60 rounded-2xl mt-3" />
+      </div>
+
+      {/* Stats Grid Skeleton */}
+      <div className="grid grid-cols-3 gap-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="bg-white p-4 rounded-2xl border border-[#E7DFC9] shadow-2xs space-y-2">
+            <div className="w-12 h-3 bg-stone-200/50 rounded" />
+            <div className="w-16 h-6 bg-stone-200/80 rounded" />
+          </div>
+        ))}
+      </div>
+
+      {/* Transactions Table Skeleton */}
+      <div className="bg-white p-5 rounded-3xl border border-[#E7DFC9] shadow-2xs space-y-3">
+        <div className="w-36 h-5 bg-stone-200/80 rounded mb-2" />
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-14 bg-stone-200/40 rounded-xl" />
+        ))}
+      </div>
+    </div>
+  );
+}
+

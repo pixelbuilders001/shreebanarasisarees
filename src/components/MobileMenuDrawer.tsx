@@ -13,7 +13,10 @@ import {
   Flame,
   Star,
   Bell,
-  Download
+  Download,
+  Coins,
+  Share2,
+  Check
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { triggerHaptic } from '../utils/haptics';
@@ -30,6 +33,7 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
   const {
     user,
     userProfile,
+    userWallet,
     wishlist,
     logoutUser,
     setIsAuthModalOpen
@@ -56,6 +60,7 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
   const [appStripDismissed, setAppStripDismissed] = useState<boolean>(true);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
+  const [copiedDrawerCode, setCopiedDrawerCode] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -367,6 +372,113 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
             </button>
           )}
 
+          {/* Wallet and Refer & Earn Strip */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#52111C] via-[#6B1725] to-[#3B0A12] text-[#FAF7F0] p-3 border border-[#B08A3C]/40 shadow-sm space-y-2">
+            {/* Top row: Icon + Title + Balance + Share button */}
+            <div className="flex items-center justify-between gap-2.5">
+              <Link
+                href="/account/coins"
+                onClick={() => {
+                  triggerHaptic('selection');
+                  onClose();
+                }}
+                className="flex items-center gap-2.5 min-w-0 flex-1"
+              >
+                <div className="w-8 h-8 rounded-xl bg-[#FAF7F0]/15 border border-[#FAF7F0]/20 flex items-center justify-center shrink-0">
+                  <Coins size={16} className="text-[#D4AF37]" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-[#FAF7F0] truncate">
+                      Banarasi Coins
+                    </span>
+                    {user && (
+                      <span className="text-[10px] font-bold text-[#D4AF37] bg-black/30 px-1.5 py-0.2 rounded border border-[#D4AF37]/30">
+                        🪙 ₹{Math.floor(userWallet?.available_balance || 0)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-[#FAF7F0]/80 leading-tight truncate">
+                    {user ? 'Refer friends & earn coins on orders' : 'Sign in & earn ₹250 coins'}
+                  </p>
+                </div>
+              </Link>
+
+              {user && userProfile?.referral_code ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic('light');
+                    const code = userProfile.referral_code;
+                    const url = typeof window !== 'undefined' 
+                      ? `${window.location.origin}/?ref=${code}`
+                      : `https://shreebanarsisarees.com/?ref=${code}`;
+                    const msg = `✨ Discover exquisite handcrafted sarees from Shree Banarasi Sarees! Use my referral code *${code}* to shop:\n${url}`;
+                    
+                    if (typeof navigator !== 'undefined' && navigator.share) {
+                      navigator.share({
+                        title: 'Shree Banarasi Sarees',
+                        text: msg,
+                        url
+                      }).catch(() => {});
+                    } else {
+                      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+                    }
+                  }}
+                  className="w-8 h-8 rounded-xl bg-[#FAF7F0]/15 hover:bg-[#FAF7F0]/25 active:scale-95 border border-[#FAF7F0]/20 flex items-center justify-center shrink-0 transition-all text-[#FAF7F0] cursor-pointer"
+                  title="Share Referral Link"
+                  aria-label="Share Referral Link"
+                >
+                  <Share2 size={14} className="text-[#FAF7F0]" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('light');
+                    onClose();
+                    setIsAuthModalOpen(true);
+                  }}
+                  className="text-[11px] font-semibold text-[#D4AF37] hover:underline shrink-0 px-1"
+                >
+                  Join
+                </button>
+              )}
+            </div>
+
+            {/* Bottom row: Referral code display with copy button */}
+            {user && userProfile?.referral_code && (
+              <div className="flex items-center justify-between pt-1.5 border-t border-white/10 text-[10px]">
+                <span className="text-[#FAF7F0]/75 font-medium">Your Referral Code:</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    triggerHaptic('light');
+                    if (userProfile?.referral_code) {
+                      navigator.clipboard.writeText(userProfile.referral_code);
+                      setCopiedDrawerCode(true);
+                      setTimeout(() => setCopiedDrawerCode(false), 2000);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 font-mono font-bold text-[#E5D7BF] bg-black/35 hover:bg-black/50 border border-[#D4AF37]/35 px-2 py-0.5 rounded-lg transition-colors active:scale-95"
+                  title="Click to copy referral code"
+                >
+                  <span>{userProfile.referral_code}</span>
+                  {copiedDrawerCode ? (
+                    <span className="inline-flex items-center gap-0.5 text-emerald-400 font-sans font-semibold text-[9px]">
+                      <Check size={10} /> Copied!
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-sans text-[#FAF7F0]/60 underline">Copy</span>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Featured Filters: New Arrivals & Bestsellers */}
           <div className="grid grid-cols-2 gap-2">
             <Link
@@ -442,20 +554,41 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
             </span>
             <div className="bg-white rounded-xl border border-[#E5DEC9] divide-y divide-[#F3ECE0] overflow-hidden">
               {user ? (
-                <Link
-                  href="/account"
-                  onClick={() => {
-                    triggerHaptic('selection');
-                    onClose();
-                  }}
-                  className="flex items-center justify-between px-4 py-3 min-h-[46px] hover:bg-[#FAF7F0] text-sm font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Package size={16} className="text-[#6B1725]" />
-                    <span>My Orders</span>
-                  </div>
-                  <ChevronRight size={15} className="text-[#7A6E65]/60" />
-                </Link>
+                <>
+                  <Link
+                    href="/account"
+                    onClick={() => {
+                      triggerHaptic('selection');
+                      onClose();
+                    }}
+                    className="flex items-center justify-between px-4 py-3 min-h-[46px] hover:bg-[#FAF7F0] text-sm font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Package size={16} className="text-[#6B1725]" />
+                      <span>My Orders</span>
+                    </div>
+                    <ChevronRight size={15} className="text-[#7A6E65]/60" />
+                  </Link>
+                  <Link
+                    href="/account/coins"
+                    onClick={() => {
+                      triggerHaptic('selection');
+                      onClose();
+                    }}
+                    className="flex items-center justify-between px-4 py-3 min-h-[46px] hover:bg-[#FAF7F0] text-sm font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Coins size={16} className="text-[#B08A3C]" />
+                      <span>Banarasi Coins</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-[#6B1725] bg-[#FAF7F0] px-2 py-0.5 rounded-md border border-[#B08A3C]/30">
+                        🪙 ₹{Math.floor(userWallet?.available_balance || 0)}
+                      </span>
+                      <ChevronRight size={15} className="text-[#7A6E65]/60" />
+                    </div>
+                  </Link>
+                </>
               ) : (
                 <button
                   onClick={() => {

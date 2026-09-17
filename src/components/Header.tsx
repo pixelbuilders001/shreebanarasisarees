@@ -14,7 +14,8 @@ import {
   ChevronDown,
   LogOut,
   Package,
-  Sparkles
+  Sparkles,
+  Coins
 } from 'lucide-react';
 
 import { useStore } from '../context/StoreContext';
@@ -44,6 +45,7 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
     setIsAuthModalOpen,
     user,
     userProfile,
+    userWallet,
     logoutUser,
     categories: dbCategories
   } = useStore();
@@ -352,6 +354,19 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
                     >
                       <Package size={15} className="text-[#6B1725]" />
                       My Orders
+                    </Link>
+                    <Link
+                      href="/account/coins"
+                      onClick={() => setIsAccountMenuOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 text-xs font-medium text-[#292524] hover:bg-[#FAF7F0] rounded-xl transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Coins size={15} className="text-[#B08A3C]" />
+                        Banarasi Coins
+                      </span>
+                      <span className="text-[10px] font-bold text-[#6B1725] bg-[#FAF7F0] px-1.5 py-0.5 rounded-md border border-[#B08A3C]/30">
+                        🪙 ₹{Math.floor(userWallet?.available_balance || 0)}
+                      </span>
                     </Link>
                     <button
                       onClick={() => {

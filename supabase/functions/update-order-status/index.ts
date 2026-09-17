@@ -78,6 +78,258 @@ async function restoreInventory(adminClient: any, item: any) {
   return updatedInventory;
 }
 
+// Helper to handle referral coin maturation and redemption refunds on status transitions
+async function handleCoinTransitionsOnStatusChange(
+  adminClient: any,
+  orderId: string,
+  orderNumber: string,
+  newStatus: string
+) {
+  const norm = (newStatus || "").toLowerCase();
+
+  // 1. If delivered: schedule maturation after the admin's return window
+  if (norm === "delivered") {
+    try {
+      const { data: refSettings } = await adminClient
+        .from("referral_settings")
+        .select("return_window_days")
+        .eq("id", "default")
+        .maybeSingle();
+
+      const returnWindowDays = Math.max(0, Number(refSettings?.return_window_days ?? 7));
+      const nowMs = Date.now();
+      const maturationDate = new Date(nowMs + returnWindowDays * 24 * 60 * 60 * 1000).toISOString();
+
+      const { data: pendingRewards } = await adminClient
+        .from("coin_transactions")
+        .select("*")
+        .eq("order_id", orderId)
+        .eq("type", "REFERRAL_REWARD")
+        .eq("status", "PENDING");
+
+      if (pendingRewards && pendingRewards.length > 0) {
+        for (const rewardTx of pendingRewards) {
+          const rewardAmt = Number(rewardTx.amount || 0);
+          const referrerId = rewardTx.user_id;
+
+          if (returnWindowDays > 0) {
+            // Keep status as PENDING, but set expires_at as the return window maturation deadline
+            await adminClient
+              .from("coin_transactions")
+              .update({
+                expires_at: maturationDate,
+                description: `Pending ${returnWindowDays}-day return window (matures ${maturationDate.split('T')[0]})`
+              })
+              .eq("id", rewardTx.id);
+          } else {
+            // Zero return window: mature immediately
+            await adminClient
+              .from("coin_transactions")
+              .update({
+                status: "COMPLETED",
+                description: `Referral reward completed upon delivery`
+              })
+              .eq("id", rewardTx.id);
+
+            const { data: refWallet } = await adminClient
+              .from("user_wallets")
+              .select("pending_balance, available_balance, total_earned")
+              .eq("user_id", referrerId)
+              .maybeSingle();
+
+            if (refWallet) {
+              const curPending = Number(refWallet.pending_balance || 0);
+              const curAvail = Number(refWallet.available_balance || 0);
+              const curEarned = Number(refWallet.total_earned || 0);
+
+              await adminClient
+                .from("user_wallets")
+                .update({
+                  pending_balance: Math.max(0, curPending - rewardAmt),
+                  available_balance: curAvail + rewardAmt,
+                  total_earned: curEarned + rewardAmt,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("user_id", referrerId);
+            }
+
+            await adminClient
+              .from("referrals")
+              .update({
+                status: "REWARDED",
+                rewarded_at: new Date().toISOString(),
+              })
+              .eq("qualifying_order_id", orderId);
+          }
+        }
+      }
+    } catch (maturationErr) {
+      console.warn("Coin return window scheduling error on delivered:", maturationErr);
+    }
+  }
+
+  // 1b. Sweep: Mature any transactions whose return window deadline has safely passed
+  try {
+    const { data: maturedList } = await adminClient
+      .from("coin_transactions")
+      .select("id, user_id, amount, order_id, expires_at")
+      .eq("type", "REFERRAL_REWARD")
+      .eq("status", "PENDING")
+      .not("expires_at", "is", null)
+      .lte("expires_at", new Date().toISOString());
+
+    if (maturedList && maturedList.length > 0) {
+      for (const mTx of maturedList) {
+        if (!mTx.order_id) continue;
+        const { data: oRow } = await adminClient
+          .from("orders")
+          .select("order_status")
+          .eq("id", mTx.order_id)
+          .maybeSingle();
+
+        if (oRow?.order_status === "delivered") {
+          const amt = Number(mTx.amount || 0);
+          await adminClient
+            .from("coin_transactions")
+            .update({
+              status: "COMPLETED",
+              description: "Referral reward credited: Return window successfully completed"
+            })
+            .eq("id", mTx.id);
+
+          const { data: wRow } = await adminClient
+            .from("user_wallets")
+            .select("pending_balance, available_balance, total_earned")
+            .eq("user_id", mTx.user_id)
+            .maybeSingle();
+
+          if (wRow) {
+            await adminClient
+              .from("user_wallets")
+              .update({
+                pending_balance: Math.max(0, Number(wRow.pending_balance || 0) - amt),
+                available_balance: Number(wRow.available_balance || 0) + amt,
+                total_earned: Number(wRow.total_earned || 0) + amt,
+                updated_at: new Date().toISOString()
+              })
+              .eq("user_id", mTx.user_id);
+          }
+
+          await adminClient
+            .from("referrals")
+            .update({
+              status: "REWARDED",
+              rewarded_at: new Date().toISOString()
+            })
+            .eq("qualifying_order_id", mTx.order_id);
+        }
+      }
+    }
+  } catch (sweepErr) {
+    console.warn("Matured coins sweep warning:", sweepErr);
+  }
+
+  // 2. If cancelled or returned: void pending referral reward & refund redeemed coins
+  if (norm === "cancelled" || norm === "returned") {
+    try {
+      // Void pending referral rewards
+      const { data: pendingRewards } = await adminClient
+        .from("coin_transactions")
+        .select("*")
+        .eq("order_id", orderId)
+        .eq("type", "REFERRAL_REWARD")
+        .eq("status", "PENDING");
+
+      if (pendingRewards && pendingRewards.length > 0) {
+        for (const rewardTx of pendingRewards) {
+          const rewardAmt = Number(rewardTx.amount || 0);
+          const referrerId = rewardTx.user_id;
+
+          await adminClient
+            .from("coin_transactions")
+            .update({ status: "CANCELLED" })
+            .eq("id", rewardTx.id);
+
+          const { data: refWallet } = await adminClient
+            .from("user_wallets")
+            .select("pending_balance")
+            .eq("user_id", referrerId)
+            .maybeSingle();
+
+          if (refWallet) {
+            const curPending = Number(refWallet.pending_balance || 0);
+            await adminClient
+              .from("user_wallets")
+              .update({
+                pending_balance: Math.max(0, curPending - rewardAmt),
+                updated_at: new Date().toISOString(),
+              })
+              .eq("user_id", referrerId);
+          }
+
+          await adminClient
+            .from("referrals")
+            .update({ status: "VOIDED" })
+            .eq("qualifying_order_id", orderId);
+        }
+      }
+
+      // Refund any coins redeemed by the customer
+      const { data: redemptionTxs } = await adminClient
+        .from("coin_transactions")
+        .select("*")
+        .eq("order_id", orderId)
+        .eq("type", "ORDER_REDEMPTION")
+        .eq("status", "COMPLETED");
+
+      if (redemptionTxs && redemptionTxs.length > 0) {
+        for (const redTx of redemptionTxs) {
+          const refundCoins = Math.abs(Number(redTx.amount || 0));
+          const customerUserId = redTx.user_id;
+
+          if (refundCoins > 0 && customerUserId) {
+            const { data: existingRefund } = await adminClient
+              .from("coin_transactions")
+              .select("id")
+              .eq("order_id", orderId)
+              .eq("type", "ORDER_CANCELLED_REFUND")
+              .maybeSingle();
+
+            if (!existingRefund) {
+              await adminClient.from("coin_transactions").insert({
+                user_id: customerUserId,
+                amount: refundCoins,
+                type: "ORDER_CANCELLED_REFUND",
+                status: "COMPLETED",
+                order_id: orderId,
+                description: `Refund of ${refundCoins} Banarasi Coins for cancelled order #${orderNumber || ''}`,
+              });
+
+              const { data: custWallet } = await adminClient
+                .from("user_wallets")
+                .select("available_balance")
+                .eq("user_id", customerUserId)
+                .maybeSingle();
+
+              if (custWallet) {
+                await adminClient
+                  .from("user_wallets")
+                  .update({
+                    available_balance: Number(custWallet.available_balance || 0) + refundCoins,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("user_id", customerUserId);
+              }
+            }
+          }
+        }
+      }
+    } catch (voidErr) {
+      console.warn("Coin void/refund error on cancellation:", voidErr);
+    }
+  }
+}
+
 Deno.serve(async (req) => {
   // --------------------------------------------------
   // CORS
@@ -322,6 +574,10 @@ Deno.serve(async (req) => {
         note: historyNote,
       });
 
+      if (isEntireOrderCancelled) {
+        await handleCoinTransitionsOnStatusChange(adminClient, order.id, order.order_number, "cancelled");
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
@@ -424,6 +680,8 @@ Deno.serve(async (req) => {
         note: note || "Order cancelled by admin",
       });
 
+      await handleCoinTransitionsOnStatusChange(adminClient, order.id, order.order_number, "cancelled");
+
       return new Response(
         JSON.stringify({
           success: true,
@@ -469,6 +727,9 @@ Deno.serve(async (req) => {
       status: normalizedStatus,
       note: note || `Order status changed to ${normalizedStatus} by ${callerRole}`,
     });
+
+    // Handle referral maturation (delivered) or void/refund (cancelled / returned)
+    await handleCoinTransitionsOnStatusChange(adminClient, order.id, order.order_number, normalizedStatus);
 
     // --------------------------------------------------
     // Trigger FCM Push Notification to Customer

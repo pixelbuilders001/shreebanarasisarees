@@ -7,13 +7,24 @@ import { ChevronLeft, ChevronRight, ArrowRight, Sparkles } from 'lucide-react';
 import { DbHeroBanner } from '../data/supabase';
 import { useHeroBanners } from '../hooks/useHeroBanners';
 
+interface SlideItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  image_url: string;
+  mobile_image_url?: string | null;
+  button_link: string;
+  badge: string;
+}
+
 // High-resolution authentic Indian saree model hero images
-const DEFAULT_HERO_SLIDES = [
+const DEFAULT_HERO_SLIDES: SlideItem[] = [
   {
     id: "hero-slide-1",
     title: "Timeless Sarees. Rooted in Tradition.",
     subtitle: "Discover authentic handwoven Banarasi Katan silk sarees directly from master weaver looms.",
     image_url: "/hero_banner_1.png",
+    mobile_image_url: null,
     button_link: "/sarees",
     badge: "HERITAGE HANDLOOM"
   },
@@ -22,6 +33,7 @@ const DEFAULT_HERO_SLIDES = [
     title: "Royal Banarasi Silk Edit",
     subtitle: "Intricate zari weaves & pure Katan silk crafted for grand bridal trousseaus.",
     image_url: "/hero_banner_2.png",
+    mobile_image_url: null,
     button_link: "/sarees?category=Bridal+Collection",
     badge: "BRIDAL TROUSSEAU"
   },
@@ -30,6 +42,7 @@ const DEFAULT_HERO_SLIDES = [
     title: "Crafted for Special Celebrations",
     subtitle: "Vibrant Bandhanis, Chikankaris and opulent festive hues for every auspicious event.",
     image_url: "/hero_banner_3.png",
+    mobile_image_url: null,
     button_link: "/sarees?category=Festive+Sarees",
     badge: "FESTIVE COLLECTION"
   },
@@ -38,6 +51,7 @@ const DEFAULT_HERO_SLIDES = [
     title: "Lightweight Organza & Chanderi",
     subtitle: "Ethereal sheer textures with delicate zari borders for modern day-to-night elegance.",
     image_url: "/hero_banner_4.png",
+    mobile_image_url: null,
     button_link: "/sarees?category=Organza+Sarees",
     badge: "CONTEMPORARY WEAVES"
   }
@@ -51,12 +65,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
   const { banners: dbBanners, isLoading: loading } = useHeroBanners(initialBanners);
   const [activeIdx, setActiveIdx] = useState(0);
 
-  const slides = dbBanners.length > 0
+  const slides: SlideItem[] = dbBanners.length > 0
     ? dbBanners.map((b, i) => ({
         id: b.id || `db-banner-${i}`,
         title: b.title || `Banner ${i + 1}`,
         subtitle: DEFAULT_HERO_SLIDES[i % DEFAULT_HERO_SLIDES.length].subtitle,
         image_url: b.image_url,
+        mobile_image_url: b.mobile_image_url || null,
         button_link: b.button_link || "/sarees",
         badge: DEFAULT_HERO_SLIDES[i % DEFAULT_HERO_SLIDES.length].badge
       }))
@@ -81,7 +96,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
   if (loading) {
     return (
       <div className="w-full bg-[#FAF6EE] px-4 py-3">
-        <div className="w-[85vw] md:w-full aspect-[1.85/1] md:aspect-[21/8] rounded-2xl bg-[#E5DEC9] animate-pulse max-w-7xl mx-auto" />
+        <div className="w-[82vw] sm:w-[86vw] md:w-full aspect-[2/3] md:aspect-[21/8] rounded-2xl bg-[#E5DEC9] animate-pulse max-w-7xl mx-auto" />
       </div>
     );
   }
@@ -90,22 +105,22 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ initialBanners }) => {
 
   return (
     <>
-      {/* ── 1. MOBILE HERO VIEW (PRESERVED 100% UNTOUCHED FOR MOBILE) ── */}
+      {/* ── 1. MOBILE HERO VIEW (VERTICAL BANNERS - ASPECT 2/3 - 1024x1536) ── */}
       <section className="w-full bg-[#FAF6EE] py-3 select-none md:hidden">
         <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory px-4 no-scrollbar scroll-smooth">
           {slides.map((slide, idx) => (
             <Link
               key={slide.id}
               href={slide.button_link}
-              className="shrink-0 w-[86vw] sm:w-[90vw] snap-center relative aspect-[1.85/1] sm:aspect-[2.4/1] rounded-2xl overflow-hidden border border-[#E5DEC9] shadow-2xs group block"
+              className="shrink-0 w-[82vw] sm:w-[86vw] snap-center relative aspect-[2/3] rounded-2xl overflow-hidden border border-[#E5DEC9] shadow-md group block bg-[#FAF6EE]"
             >
               <Image
-                src={slide.image_url}
+                src={slide.mobile_image_url || slide.image_url}
                 alt={slide.title || "Shree Banarasi Sarees Banner"}
                 fill
                 priority={idx === 0}
                 loading={idx === 0 ? "eager" : "lazy"}
-                sizes="(max-width: 640px) 86vw, (max-width: 768px) 90vw, 100vw"
+                sizes="(max-width: 640px) 82vw, (max-width: 768px) 86vw, 100vw"
                 className="object-cover object-center w-full h-full group-hover:scale-102 transition-transform duration-500"
               />
             </Link>

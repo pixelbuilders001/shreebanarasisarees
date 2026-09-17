@@ -825,6 +825,8 @@ export interface CreateDbOrderParams {
   gift_recipient_name?: string | null;
   gift_message?: string | null;
   gift_wrap_charge?: number;
+  coins_redeemed?: number;
+  referral_code?: string;
 }
 
 export async function createDbOrder(orderData: CreateDbOrderParams, userId?: string | null): Promise<Order | null> {
@@ -873,6 +875,8 @@ export async function createDbOrder(orderData: CreateDbOrderParams, userId?: str
       gift_recipient_name: orderData.gift_recipient_name,
       gift_message: orderData.gift_message,
       gift_wrap_charge: orderData.gift_wrap_charge,
+      coins_redeemed: orderData.coins_redeemed || 0,
+      referral_code: orderData.referral_code || undefined,
       user_id: userId || null
     };
 
@@ -2167,6 +2171,7 @@ export interface DbHeroBanner {
   title: string | null;
   subtitle: string | null;
   image_url: string;
+  mobile_image_url?: string | null;
   button_text: string | null;
   button_link: string | null;
   is_active: boolean;
@@ -2982,3 +2987,297 @@ export function calculateDeliveryOptions(
 export * from '../types/homepage-sections';
 export { fetchDynamicHomepageSections } from './homepage-sections';
 
+// ---------------------------------------------------------------------------
+// Banarasi Coins & Referral System (Phase 1)
+// ---------------------------------------------------------------------------
+export type CoinTransactionType = 
+  | 'REFERRAL_REWARD'
+  | 'ORDER_REDEMPTION'
+  | 'ORDER_CANCELLED_REFUND'
+  | 'WELCOME_BONUS'
+  | 'EXPIRED'
+  | 'ADMIN_ADJUSTMENT';
+
+export type CoinTransactionStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED';
+
+export interface UserWallet {
+  user_id: string;
+  available_balance: number;
+  pending_balance: number;
+  total_earned: number;
+  updated_at: string;
+}
+
+export interface CoinTransaction {
+  id: string;
+  user_id: string;
+  amount: number;
+  type: CoinTransactionType;
+  status: CoinTransactionStatus;
+  order_id?: string | null;
+  source_user_id?: string | null;
+  description: string;
+  expires_at?: string | null;
+  created_at: string;
+}
+
+export interface ReferralStat {
+  id: string;
+  referrer_id: string;
+  referee_id: string;
+  status: 'REGISTERED' | 'QUALIFIED' | 'REWARDED' | 'VOIDED';
+  reward_amount: number;
+  created_at: string;
+  rewarded_at?: string | null;
+}
+
+/**
+ * Trigger coin maturation check for any pending rewards whose return window has safely expired
+ */
+export async function triggerMaturedCoinsProcessing(): Promise<void> {
+  try {
+    await supabase.rpc('process_matured_referral_coins');
+  } catch {
+    // Non-fatal if RPC is not yet created in DB
+  }
+}
+
+/**
+ * Fetch the authenticated user's Banarasi Coins wallet
+ */
+export async function fetchUserWallet(userId: string): Promise<UserWallet | null> {
+  try {
+    // Mature any coins whose return window has safely elapsed
+    await triggerMaturedCoinsProcessing();
+
+    const { data, error } = await supabase
+      .from('user_wallets')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Could not fetch user wallet:', error.message);
+      return null;
+    }
+
+    if (!data) {
+      return {
+        user_id: userId,
+        available_balance: 0,
+        pending_balance: 0,
+        total_earned: 0,
+        updated_at: new Date().toISOString()
+      };
+    }
+
+    return {
+      user_id: data.user_id,
+      available_balance: Number(data.available_balance || 0),
+      pending_balance: Number(data.pending_balance || 0),
+      total_earned: Number(data.total_earned || 0),
+      updated_at: data.updated_at
+    };
+  } catch (err) {
+    console.error('Error fetching user wallet:', err);
+    return null;
+  }
+}
+
+/**
+ * Fetch the user's coin ledger / transaction history
+ */
+export async function fetchCoinTransactions(userId: string, limit = 20): Promise<CoinTransaction[]> {
+  try {
+    const { data, error } = await supabase
+      .from('coin_transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.warn('Could not fetch coin transactions:', error.message);
+      return [];
+    }
+
+    return (data || []).map(row => ({
+      ...row,
+      amount: Number(row.amount || 0)
+    }));
+  } catch (err) {
+    console.error('Error in fetchCoinTransactions:', err);
+    return [];
+  }
+}
+
+/**
+ * Fetch referral statistics for the user (total invited, successful purchases)
+ */
+export async function fetchReferralSummary(userId: string): Promise<{ totalInvited: number; successfulPurchases: number }> {
+  try {
+    const { data, error } = await supabase
+      .from('referrals')
+      .select('status')
+      .eq('referrer_id', userId);
+
+    if (error || !data) return { totalInvited: 0, successfulPurchases: 0 };
+
+    const totalInvited = data.length;
+    const successfulPurchases = data.filter(r => r.status === 'REWARDED' || r.status === 'QUALIFIED').length;
+
+    return { totalInvited, successfulPurchases };
+  } catch (err) {
+    console.error('Error fetching referral summary:', err);
+    return { totalInvited: 0, successfulPurchases: 0 };
+  }
+}
+
+/**
+ * Look up a referrer's ID and name by their unique referral code
+ */
+export async function lookupReferrerByCode(code: string): Promise<{ id: string; full_name?: string } | null> {
+  try {
+    const cleanCode = code.trim().toUpperCase();
+    if (!cleanCode) return null;
+
+    // 1. Try secure RPC function first (bypasses RLS safely)
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('resolve_referrer_by_code', { code: cleanCode });
+      if (!rpcError && rpcData && rpcData.length > 0) {
+        return rpcData[0];
+      }
+    } catch {
+      // Fallback to table query if RPC not yet deployed
+    }
+
+    // 2. Direct table fallback
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('referral_code', cleanCode)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Referrer lookup warning:', error.message);
+      return null;
+    }
+
+    return data || null;
+  } catch (err) {
+    console.error('Exception looking up referrer by code:', err);
+    return null;
+  }
+}
+
+/**
+ * Record a new referral relationship when an invited friend registers
+ */
+export async function recordReferralSignup(referrerId: string, refereeId: string, refCode?: string): Promise<boolean> {
+  if (!referrerId || !refereeId || referrerId === refereeId) return false;
+
+  try {
+    // 1. Try atomic claim_referral RPC if refCode provided
+    if (refCode) {
+      try {
+        const { data: claimed, error: rpcErr } = await supabase.rpc('claim_referral', { ref_code: refCode });
+        if (!rpcErr && claimed) {
+          return true;
+        }
+      } catch {
+        // Fallback to direct insert
+      }
+    }
+
+    // 2. Direct insert fallback
+    const { error } = await supabase
+      .from('referrals')
+      .insert({
+        referrer_id: referrerId,
+        referee_id: refereeId,
+        status: 'REGISTERED'
+      });
+
+    if (error) {
+      if (error.code === '23505') return true; // Already recorded
+      console.warn('Could not record referral signup:', error.message);
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Exception recording referral signup:', err);
+    return false;
+  }
+}
+
+export interface StoreReferralSettings {
+  is_active: boolean;
+  tier1_min_order: number;
+  tier1_reward_coins: number;
+  tier2_min_order: number;
+  tier2_reward_coins: number;
+  tier3_min_order: number;
+  tier3_reward_coins: number;
+  max_redemption_percent: number;
+  min_order_for_redemption: number;
+  return_window_days: number;
+}
+
+export const DEFAULT_STORE_REFERRAL_SETTINGS: StoreReferralSettings = {
+  is_active: true,
+  tier1_min_order: 1500,
+  tier1_reward_coins: 150,
+  tier2_min_order: 4000,
+  tier2_reward_coins: 300,
+  tier3_min_order: 9000,
+  tier3_reward_coins: 500,
+  max_redemption_percent: 20,
+  min_order_for_redemption: 1999,
+  return_window_days: 7,
+};
+
+/**
+ * Fetch dynamic referral settings configured by admin
+ */
+export async function fetchReferralSettings(): Promise<StoreReferralSettings> {
+  try {
+    const { data, error } = await supabase
+      .from('referral_settings')
+      .select('*')
+      .eq('id', 'default')
+      .maybeSingle();
+
+    if (error || !data) {
+      return DEFAULT_STORE_REFERRAL_SETTINGS;
+    }
+
+    return {
+      is_active: Boolean(data.is_active ?? true),
+      tier1_min_order: Number(data.tier1_min_order ?? 1500),
+      tier1_reward_coins: Number(data.tier1_reward_coins ?? 150),
+      tier2_min_order: Number(data.tier2_min_order ?? 4000),
+      tier2_reward_coins: Number(data.tier2_reward_coins ?? 300),
+      tier3_min_order: Number(data.tier3_min_order ?? 9000),
+      tier3_reward_coins: Number(data.tier3_reward_coins ?? 500),
+      max_redemption_percent: Number(data.max_redemption_percent ?? 20),
+      min_order_for_redemption: Number(data.min_order_for_redemption ?? 1999),
+      return_window_days: Number(data.return_window_days ?? 7),
+    };
+  } catch (err) {
+    console.warn('Error fetching referral settings, using defaults:', err);
+    return DEFAULT_STORE_REFERRAL_SETTINGS;
+  }
+}
+
+/**
+ * Calculate referral coins earned based on order value and active slabs
+ */
+export function calculateReferralReward(orderTotal: number, settings?: StoreReferralSettings | null): number {
+  const s = settings || DEFAULT_STORE_REFERRAL_SETTINGS;
+  if (!s.is_active) return 0;
+  if (orderTotal >= s.tier3_min_order) return s.tier3_reward_coins;
+  if (orderTotal >= s.tier2_min_order) return s.tier2_reward_coins;
+  if (orderTotal >= s.tier1_min_order) return s.tier1_reward_coins;
+  return 0;
+}

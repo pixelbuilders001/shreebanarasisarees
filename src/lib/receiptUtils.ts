@@ -31,6 +31,9 @@ export interface ReceiptData {
     discountPercentage?: number;
     shippingFee?: number;
     giftWrapCharge?: number;
+    referralCode?: string | null;
+    referralDiscount?: number | null;
+    coinsRedeemed?: number | null;
     issuedVoucherCode?: string | null;
     issuedVoucherAmount?: number | null;
     appliedVoucherCode?: string | null;

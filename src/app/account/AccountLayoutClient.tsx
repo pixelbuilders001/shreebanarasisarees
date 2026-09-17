@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Footer } from '../../components/Footer';
 import { useStore } from '../../context/StoreContext';
-import { User, ShoppingBag, MapPin, LogOut, Sparkles, ChevronLeft } from 'lucide-react';
+import { User, ShoppingBag, MapPin, LogOut, Sparkles, ChevronLeft, Coins } from 'lucide-react';
 import { 
   OrdersTabSkeleton, 
   AddressesTabSkeleton, 
   ProfileTabSkeleton, 
-  CustomizationsTabSkeleton 
+  CustomizationsTabSkeleton,
+  CoinsTabSkeleton
 } from '../../components/TabSkeletons';
 import AccountPwaStrip from '../../components/AccountPwaStrip';
 
@@ -21,6 +22,7 @@ export default function AccountLayoutClient({ children }: { children: React.Reac
     logoutUser,
     user,
     userProfile,
+    userWallet,
     isHydrated,
     loginWithGoogle,
     setIsAuthModalOpen,
@@ -143,6 +145,12 @@ export default function AccountLayoutClient({ children }: { children: React.Reac
   // Account menu items
   const menuItems = [
     { name: 'My Orders', path: '/account', icon: ShoppingBag, count: orders?.length },
+    { 
+      name: 'Banarasi Coins', 
+      path: '/account/coins', 
+      icon: Coins, 
+      badge: userWallet ? `₹${Math.floor(userWallet.available_balance)}` : undefined 
+    },
     { name: 'My Addresses', path: '/account/addresses', icon: MapPin, count: shippingAddresses?.length },
     { name: 'My Profile', path: '/account/profile', icon: User },
     { name: 'Customizations', path: '/account/customizations', icon: Sparkles, count: customRequests?.length },
@@ -218,13 +226,19 @@ export default function AccountLayoutClient({ children }: { children: React.Reac
                 >
                   <Icon size={14} className={isActive ? 'text-[#FAF7F0] flex-shrink-0' : 'text-maroon flex-shrink-0'} />
                   <span>{item.name}</span>
-                  {typeof item.count === 'number' && item.count > 0 && (
+                  {item.badge ? (
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                      isActive ? 'bg-[#FAF7F0]/20 text-[#FAF7F0]' : 'bg-[#FFF9F0] text-[#B08A3C] border border-[#B08A3C]/30'
+                    }`}>
+                      🪙 {item.badge}
+                    </span>
+                  ) : typeof item.count === 'number' && item.count > 0 ? (
                     <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
                       isActive ? 'bg-[#FAF7F0]/20 text-[#FAF7F0]' : 'bg-cream text-maroon'
                     }`}>
                       {item.count}
                     </span>
-                  )}
+                  ) : null}
                 </Link>
               );
             })}
@@ -275,13 +289,19 @@ export default function AccountLayoutClient({ children }: { children: React.Reac
                     <span className="truncate">{item.name}</span>
                   </span>
 
-                  {typeof item.count === 'number' && item.count > 0 && (
+                  {item.badge ? (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                      isActive ? 'bg-[#FAF7F0]/20 text-[#FAF7F0]' : 'bg-[#FFF9F0] text-[#B08A3C] border border-[#B08A3C]/30'
+                    }`}>
+                      🪙 {item.badge}
+                    </span>
+                  ) : typeof item.count === 'number' && item.count > 0 ? (
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
                       isActive ? 'bg-[#FAF7F0]/20 text-[#FAF7F0]' : 'bg-cream text-maroon'
                     }`}>
                       {item.count}
                     </span>
-                  )}
+                  ) : null}
                 </Link>
               );
             })}
@@ -296,6 +316,8 @@ export default function AccountLayoutClient({ children }: { children: React.Reac
                 <ProfileTabSkeleton />
               ) : pathname === '/account/customizations' ? (
                 <CustomizationsTabSkeleton />
+              ) : pathname === '/account/coins' ? (
+                <CoinsTabSkeleton />
               ) : (
                 <OrdersTabSkeleton />
               )

@@ -43,6 +43,7 @@ interface RequestBody {
   shipping_address?: any;
   notes?: string;
   coupon_code?: string;
+  referral_code?: string;
   payment_method?: string;
   delivery_option?: 'express' | 'same_day' | 'standard';
   delivery_method?: string;
@@ -52,6 +53,7 @@ interface RequestBody {
   gift_recipient_name?: string | null;
   gift_message?: string | null;
   gift_wrap_charge?: number;
+  coins_redeemed?: number;
   user_id?: string | null;
 }
 
@@ -323,6 +325,140 @@ Deno.serve(async (req) => {
     }
 
     // --------------------------------------------------
+    // 3b. Server-side Banarasi Coins Redemption Validation
+    // --------------------------------------------------
+    let validatedCoinsRedeemed = 0;
+    const requestedCoins = Number(body.coins_redeemed || 0);
+
+    // Fetch referral settings once for coins & referral discounts
+    const { data: refSettings } = await admin
+      .from("referral_settings")
+      .select("*")
+      .eq("id", "default")
+      .maybeSingle();
+
+    const isRefActive = Boolean(refSettings?.is_active ?? true);
+
+    if (requestedCoins > 0 && userId && isRefActive) {
+      try {
+        const { data: userWallet } = await admin
+          .from("user_wallets")
+          .select("available_balance")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        const availBal = Number(userWallet?.available_balance || 0);
+        const minOrderForCoins = Number(refSettings?.min_order_for_redemption ?? 1999);
+        const maxRedemptionPercent = Number(refSettings?.max_redemption_percent ?? 20);
+
+        if (calculatedSubtotal >= minOrderForCoins && availBal > 0) {
+          const maxAllowedByCart = Math.floor((calculatedSubtotal * maxRedemptionPercent) / 100);
+          const maxRedeemable = Math.min(availBal, maxAllowedByCart);
+          validatedCoinsRedeemed = Math.min(requestedCoins, maxRedeemable);
+        }
+      } catch (coinValErr) {
+        console.warn("Coin redemption validation error:", coinValErr);
+        validatedCoinsRedeemed = 0;
+      }
+    }
+
+    // --------------------------------------------------
+    // 3c. Server-side Referral Discount Validation (Tiered from referral_settings)
+    // --------------------------------------------------
+    let validatedReferralDiscount = 0;
+    let validatedReferralCode: string | null = null;
+    let validatedReferrerId: string | null = null;
+
+    if (body.referral_code && typeof body.referral_code === "string" && isRefActive) {
+      try {
+        const cleanRefCode = body.referral_code.trim().toUpperCase();
+        if (cleanRefCode) {
+          // 1. Lookup referrer profile
+          const { data: refProfile } = await admin
+            .from("profiles")
+            .select("id, full_name, phone_number")
+            .eq("referral_code", cleanRefCode)
+            .maybeSingle();
+
+          if (refProfile?.id) {
+            const referrerId = refProfile.id;
+            const refPhoneStr = refProfile.phone_number ? String(refProfile.phone_number) : null;
+            const custPhoneClean = cleanCustomerPhone.replace(/\D/g, "");
+
+            // Anti-Fraud Check 1: Self-Referral (by User ID or Phone Number)
+            const isSelfReferral =
+              (userId && referrerId === userId) ||
+              (refPhoneStr && custPhoneClean && refPhoneStr.endsWith(custPhoneClean.slice(-10)));
+
+            if (!isSelfReferral) {
+              // Anti-Fraud Check 2: First-Order Only Check (Check both user_id & customer_phone)
+              let hasPriorOrders = false;
+
+              if (userId) {
+                const { data: priorUserOrders } = await admin
+                  .from("orders")
+                  .select("id")
+                  .eq("user_id", userId)
+                  .neq("order_status", "cancelled")
+                  .limit(1);
+
+                if (priorUserOrders && priorUserOrders.length > 0) {
+                  hasPriorOrders = true;
+                }
+              }
+
+              if (!hasPriorOrders && custPhoneClean) {
+                const { data: priorPhoneOrders } = await admin
+                  .from("orders")
+                  .select("id")
+                  .ilike("customer_phone", `%${custPhoneClean.slice(-10)}%`)
+                  .neq("order_status", "cancelled")
+                  .limit(1);
+
+                if (priorPhoneOrders && priorPhoneOrders.length > 0) {
+                  hasPriorOrders = true;
+                }
+              }
+
+              if (!hasPriorOrders) {
+                // Tiered discount calculation from referral_settings
+                const t1Min = Number(refSettings?.tier1_min_order ?? 1500);
+                const t1Reward = Number(refSettings?.tier1_reward_coins ?? 150);
+                const t2Min = Number(refSettings?.tier2_min_order ?? 4000);
+                const t2Reward = Number(refSettings?.tier2_reward_coins ?? 300);
+                const t3Min = Number(refSettings?.tier3_min_order ?? 9000);
+                const t3Reward = Number(refSettings?.tier3_reward_coins ?? 500);
+                const maxPercent = Number(refSettings?.max_redemption_percent ?? 20);
+
+                let tierDiscount = 0;
+                if (calculatedSubtotal >= t3Min) {
+                  tierDiscount = t3Reward;
+                } else if (calculatedSubtotal >= t2Min) {
+                  tierDiscount = t2Reward;
+                } else if (calculatedSubtotal >= t1Min) {
+                  tierDiscount = t1Reward;
+                }
+
+                if (tierDiscount > 0) {
+                  const maxCap = (calculatedSubtotal * maxPercent) / 100;
+                  validatedReferralDiscount = round2(Math.min(tierDiscount, maxCap));
+                  validatedReferralCode = cleanRefCode;
+                  validatedReferrerId = referrerId;
+                }
+              }
+            }
+          }
+        }
+      } catch (refErr) {
+        console.warn("Referral discount validation warning:", refErr);
+        validatedReferralDiscount = 0;
+        validatedReferralCode = null;
+      }
+    }
+
+    const totalOrderDiscount = round2(totalDiscount + validatedReferralDiscount + validatedCoinsRedeemed);
+
+    // --------------------------------------------------
     // 4. Delivery Charge Calculation
     // --------------------------------------------------
     const { data: delSettings } = await admin
@@ -363,7 +499,7 @@ Deno.serve(async (req) => {
 
     const shippingFee = calculatedShippingCharge;
     const finalGiftWrapCharge = Number(gift_wrap_charge || 0);
-    const totalPayable = round2(Math.max(0, calculatedSubtotal - totalDiscount + shippingFee + finalGiftWrapCharge));
+    const totalPayable = round2(Math.max(0, calculatedSubtotal - totalOrderDiscount + shippingFee + finalGiftWrapCharge));
 
     // --------------------------------------------------
     // 5. Place of Supply & GST Classification
@@ -373,7 +509,7 @@ Deno.serve(async (req) => {
     const placeOfSupply = customerState;
 
     // --------------------------------------------------
-    // 6. Item-level Pro-Rata Coupon Discount & Embedded GST Extraction
+    // 6. Item-level Pro-Rata Discount & Embedded GST Extraction
     // --------------------------------------------------
     let allocatedDiscountSum = 0;
     const itemsWithGst: any[] = [];
@@ -382,11 +518,11 @@ Deno.serve(async (req) => {
       const it = validatedItems[i];
       let itemDiscount = 0;
 
-      if (totalDiscount > 0 && calculatedSubtotal > 0) {
+      if (totalOrderDiscount > 0 && calculatedSubtotal > 0) {
         if (i === validatedItems.length - 1) {
-          itemDiscount = round2(totalDiscount - allocatedDiscountSum);
+          itemDiscount = round2(totalOrderDiscount - allocatedDiscountSum);
         } else {
-          itemDiscount = round2((it.lineTotal / calculatedSubtotal) * totalDiscount);
+          itemDiscount = round2((it.lineTotal / calculatedSubtotal) * totalOrderDiscount);
           allocatedDiscountSum = round2(allocatedDiscountSum + itemDiscount);
         }
       }
@@ -443,10 +579,15 @@ Deno.serve(async (req) => {
       customer_phone: cleanCustomerPhone,
       customer_email: cleanCustomerEmail,
       shipping_address: shipping_address,
-      notes: notes,
+      notes: validatedCoinsRedeemed > 0
+        ? `${notes ? notes + ' | ' : ''}[🪙 ${validatedCoinsRedeemed} Banarasi Coins Redeemed]`
+        : notes,
       subtotal: calculatedSubtotal,
-      discount: totalDiscount,
-      coupon_code: validatedCouponCode,         // ← CHANGED: persist the applied coupon code
+      discount: totalOrderDiscount,
+      coupon_code: validatedCouponCode,
+      referral_code: validatedReferralCode,
+      referral_discount: validatedReferralDiscount,
+      coins_redeemed: validatedCoinsRedeemed,
       shipping_fee: shippingFee,
       shipping_charge: shippingFee,
       delivery_method: finalDeliveryMethod,
@@ -477,10 +618,13 @@ Deno.serve(async (req) => {
       orderInsertErr &&
       (orderInsertErr.message?.includes("shipping_charge") ||
         orderInsertErr.message?.includes("delivery_method") ||
-        orderInsertErr.message?.includes("estimated_delivery_date"))
+        orderInsertErr.message?.includes("estimated_delivery_date") ||
+        orderInsertErr.message?.includes("referral_code") ||
+        orderInsertErr.message?.includes("referral_discount") ||
+        orderInsertErr.message?.includes("coins_redeemed"))
     ) {
-      console.warn("Retrying orders insert without newly added delivery columns in case schema cache is reloading...");
-      const { shipping_charge, delivery_method, estimated_delivery_date, ...fallbackPayload } = orderInsertPayload;
+      console.warn("Retrying orders insert without newly added columns in case schema cache is reloading...");
+      const { shipping_charge, delivery_method, estimated_delivery_date, referral_code, referral_discount, coins_redeemed, ...fallbackPayload } = orderInsertPayload;
       const retryRes = await admin.from("orders").insert([fallbackPayload]).select().single();
       createdOrder = retryRes.data;
       orderInsertErr = retryRes.error;
@@ -606,6 +750,133 @@ Deno.serve(async (req) => {
     if (userId) {
       try { await admin.from("cart_items").delete().eq("user_id", userId); } catch { /* non-fatal */ }
       try { await admin.from("cart").delete().eq("user_id", userId); } catch { /* non-fatal */ }
+    }
+
+    // --------------------------------------------------
+    // 13b. Deduct redeemed Banarasi Coins from customer's wallet
+    // --------------------------------------------------
+    if (validatedCoinsRedeemed > 0 && userId) {
+      try {
+        const { data: userWal } = await admin
+          .from("user_wallets")
+          .select("available_balance")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        const currentBal = Number(userWal?.available_balance || 0);
+        const newBal = Math.max(0, currentBal - validatedCoinsRedeemed);
+
+        await admin
+          .from("user_wallets")
+          .update({
+            available_balance: newBal,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", userId);
+
+        await admin.from("coin_transactions").insert({
+          user_id: userId,
+          amount: -validatedCoinsRedeemed,
+          type: "ORDER_REDEMPTION",
+          status: "COMPLETED",
+          order_id: createdOrder.id,
+          description: `Redeemed ${validatedCoinsRedeemed} Banarasi Coins on Order #${orderNumber}`,
+        });
+      } catch (coinDeductErr) {
+        console.warn("Failed to record coin redemption ledger:", coinDeductErr);
+      }
+    }
+
+    // --------------------------------------------------
+    // 13c. Attribute Referral Reward to Referrer (Pending Maturation)
+    // --------------------------------------------------
+    if (validatedReferrerId && validatedReferrerId !== userId) {
+      try {
+        const referrerId = validatedReferrerId;
+        const earnedReward = validatedReferralDiscount;
+
+        if (earnedReward > 0) {
+          // Resolve effective referee profile (user ID if logged in, or lookup by phone)
+          let effectiveRefereeId = userId;
+          if (!effectiveRefereeId && cleanCustomerPhone) {
+            const cleanDigits = parseInt(cleanCustomerPhone.replace(/\D/g, ''), 10);
+            if (cleanDigits) {
+              const { data: matchedProfile } = await admin
+                .from("profiles")
+                .select("id")
+                .eq("phone_number", cleanDigits)
+                .maybeSingle();
+              if (matchedProfile?.id) effectiveRefereeId = matchedProfile.id;
+            }
+          }
+
+          // If referee profile exists, link in public.referrals
+          if (effectiveRefereeId && effectiveRefereeId !== referrerId) {
+            const { data: refRow } = await admin
+              .from("referrals")
+              .select("id")
+              .eq("referee_id", effectiveRefereeId)
+              .maybeSingle();
+
+            if (refRow?.id) {
+              await admin
+                .from("referrals")
+                .update({
+                  status: "QUALIFIED",
+                  qualifying_order_id: createdOrder.id,
+                  reward_amount: earnedReward,
+                })
+                .eq("id", refRow.id);
+            } else {
+              await admin.from("referrals").insert({
+                referrer_id: referrerId,
+                referee_id: effectiveRefereeId,
+                status: "QUALIFIED",
+                qualifying_order_id: createdOrder.id,
+                reward_amount: earnedReward,
+              });
+            }
+          }
+
+          // Immutable Ledger Entry: Referral Reward in PENDING state awaiting return window
+          await admin.from("coin_transactions").insert({
+            user_id: referrerId,
+            amount: earnedReward,
+            type: "REFERRAL_REWARD",
+            status: "PENDING",
+            order_id: createdOrder.id,
+            source_user_id: effectiveRefereeId || null,
+            description: `Pending reward for friend's first order #${orderNumber}`,
+          });
+
+          // Credit referrer's wallet pending_balance
+          const { data: refWallet } = await admin
+            .from("user_wallets")
+            .select("pending_balance, available_balance, total_earned")
+            .eq("user_id", referrerId)
+            .maybeSingle();
+
+          if (refWallet) {
+            await admin
+              .from("user_wallets")
+              .update({
+                pending_balance: Number(refWallet.pending_balance || 0) + earnedReward,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("user_id", referrerId);
+          } else {
+            await admin.from("user_wallets").insert({
+              user_id: referrerId,
+              available_balance: 0,
+              pending_balance: earnedReward,
+              total_earned: 0,
+              updated_at: new Date().toISOString(),
+            });
+          }
+        }
+      } catch (refAttributionErr) {
+        console.warn("Referral attribution warning (non-fatal):", refAttributionErr);
+      }
     }
 
     // --------------------------------------------------

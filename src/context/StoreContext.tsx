@@ -21,8 +21,13 @@ import {
   addToDbWishlist,
   removeFromDbWishlist,
   fetchDefaultDeliveryPincode,
-  updateProfileDefaultPincode
+  updateProfileDefaultPincode,
+  UserWallet,
+  fetchUserWallet,
+  lookupReferrerByCode,
+  recordReferralSignup
 } from '../data/supabase';
+import { getStoredReferralCode, clearStoredReferralCode } from '../lib/referralUtils';
 import {
   getValidCachedCategories,
   syncCategories,
@@ -159,6 +164,8 @@ interface StoreContextType {
     delivery_option?: string;
     delivery_method?: string;
     shipping_charge?: number;
+    coins_redeemed?: number;
+    referral_code?: string;
   }) => Promise<Order>;
   cancelOrder: (orderId: string) => Promise<boolean>;
   cancelOrderItem: (orderId: string, productId: string) => Promise<{ success: boolean; cancelledEntireOrder: boolean; newSubtotal?: number; newTotal?: number; message?: string }>;
@@ -177,6 +184,9 @@ interface StoreContextType {
   logoutUser: () => void;
   user: any | null;
   userProfile: any | null;
+  userWallet: UserWallet | null;
+  userWalletLoading: boolean;
+  refreshWallet: () => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   updateUserProfile: (updates: { full_name?: string | null; phone_number?: number | null }) => Promise<void>;
   shippingAddresses: any[];
@@ -339,6 +349,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [userPhone, setUserPhone] = useState<string | null>(null);
   const [user, setUser] = useState<any | null>(null);
   const [userProfile, setUserProfile] = useState<any | null>(null);
+  const [userWallet, setUserWallet] = useState<UserWallet | null>(null);
+  const [userWalletLoading, setUserWalletLoading] = useState(false);
   const [shippingAddresses, setShippingAddresses] = useState<any[]>([]);
   const [shippingAddressesLoading, setShippingAddressesLoading] = useState(false);
   const [shippingAddressesLoaded, setShippingAddressesLoaded] = useState(false);
@@ -769,6 +781,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             .single();
 
           if (profileError || !profile) {
+            // Check if there is an active referral code captured from cookie/localStorage
+            let referrerId: string | null = null;
+            let activeStoredRefCode: string | null = null;
+            try {
+              activeStoredRefCode = getStoredReferralCode();
+              if (activeStoredRefCode) {
+                const referrer = await lookupReferrerByCode(activeStoredRefCode);
+                if (referrer && referrer.id !== currentUser.id) {
+                  referrerId = referrer.id;
+                }
+              }
+            } catch (refErr) {
+              console.warn('Referral attribution check failed:', refErr);
+            }
+
             // Profile does not exist, onboarding step: create profile row
             const { data: newProfile, error: insertError } = await supabase
               .from('profiles')
@@ -777,13 +804,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 email: currentUser.email,
                 role: 'user', // Default role set to user
                 full_name: currentUser.user_metadata?.full_name || null,
-                phone_number: currentUser.phone ? parseInt(currentUser.phone.replace(/\D/g, ''), 10) : null
+                phone_number: currentUser.phone ? parseInt(currentUser.phone.replace(/\D/g, ''), 10) : null,
+                referred_by: referrerId
               })
               .select()
               .single();
 
             if (!insertError && newProfile) {
               currentProfile = newProfile;
+              // If successfully attributed, record referral and clear stored referral code
+              if (referrerId) {
+                recordReferralSignup(referrerId, currentUser.id, activeStoredRefCode || undefined).catch(() => {});
+                clearStoredReferralCode();
+              }
             } else {
               console.error('Error creating profile on onboarding:', insertError);
               currentProfile = {
@@ -794,6 +827,37 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
           } else {
             currentProfile = profile;
+
+            // If existing user was never referred and has no orders yet, allow attributing them
+            if (!profile.referred_by) {
+              try {
+                const storedRefCode = getStoredReferralCode();
+                if (storedRefCode) {
+                  const referrer = await lookupReferrerByCode(storedRefCode);
+                  if (referrer && referrer.id !== currentUser.id) {
+                    const { count } = await supabase
+                      .from('orders')
+                      .select('*', { count: 'exact', head: true })
+                      .eq('user_id', currentUser.id);
+
+                    if (count === 0) {
+                      const { error: updateRefErr } = await supabase
+                        .from('profiles')
+                        .update({ referred_by: referrer.id })
+                        .eq('id', currentUser.id);
+
+                      if (!updateRefErr) {
+                        currentProfile.referred_by = referrer.id;
+                        recordReferralSignup(referrer.id, currentUser.id, storedRefCode).catch(() => {});
+                        clearStoredReferralCode();
+                      }
+                    }
+                  }
+                }
+              } catch (existingRefErr) {
+                console.warn('Attribution for existing unpurchased user failed:', existingRefErr);
+              }
+            }
           }
         } catch (e) {
           console.error('Failed to sync profile:', e);
@@ -814,6 +878,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         // Fetch and merge cart & orders for this user
         await syncUserData(currentUser.id, activeProducts, true);
+
+        // Fetch Banarasi Coins wallet asynchronously
+        fetchUserWallet(currentUser.id).then(w => {
+          if (w) setUserWallet(w);
+        }).catch(err => {
+          console.warn('Initial wallet fetch error:', err);
+        });
 
         // Close auth modal smoothly upon successful login
         setIsAuthModalOpen(false);
@@ -848,6 +919,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       } else {
         setUser(null);
         setUserProfile(null);
+        setUserWallet(null);
         setShippingAddresses([]);
         setShippingAddressesLoaded(false);
         currentUserRef.current = null;
@@ -1220,6 +1292,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     delivery_method?: string;
     shipping_charge?: number;
     estimated_delivery_date?: string | null;
+    coins_redeemed?: number;
+    referral_code?: string;
   }): Promise<Order> => {
     // 1. Try to create the order in Supabase via create-order Edge Function
     const dbOrder = await createDbOrder({
@@ -1242,14 +1316,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       is_gift: orderData.is_gift,
       gift_recipient_name: orderData.gift_recipient_name,
       gift_message: orderData.gift_message,
-      gift_wrap_charge: orderData.gift_wrap_charge
+      gift_wrap_charge: orderData.gift_wrap_charge,
+      coins_redeemed: orderData.coins_redeemed || 0,
+      referral_code: orderData.referral_code
     }, user?.id);
 
     if (dbOrder) {
       // 2. Add to orders state
       setOrders((prev) => [dbOrder, ...prev]);
+
+      // 3. Refresh user coin wallet if coins redeemed
+      if (orderData.coins_redeemed && orderData.coins_redeemed > 0) {
+        refreshWallet().catch(err => console.warn('Could not refresh wallet after order:', err));
+      }
       
-      // 3. Clear cart
+      // 4. Clear cart
       setCart([]);
       if (typeof window !== 'undefined') {
         localStorage.removeItem('sbs_cart');
@@ -1697,6 +1778,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCart([]);
     setOrders([]);
     setWishlist([]);
+    setUserWallet(null);
     localStorage.removeItem('sbs_orders');
     localStorage.removeItem('sbs_user_phone');
     localStorage.removeItem('sbs_wishlist');
@@ -1715,6 +1797,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     if (typeof window !== 'undefined') {
       window.location.href = '/';
+    }
+  };
+
+  const refreshWallet = async () => {
+    if (!currentUserRef.current) {
+      setUserWallet(null);
+      return;
+    }
+    setUserWalletLoading(true);
+    try {
+      const wallet = await fetchUserWallet(currentUserRef.current);
+      setUserWallet(wallet);
+    } catch (err) {
+      console.error('Error refreshing wallet:', err);
+    } finally {
+      setUserWalletLoading(false);
     }
   };
 
@@ -1753,6 +1851,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       logoutUser,
       user,
       userProfile,
+      userWallet,
+      userWalletLoading,
+      refreshWallet,
       loginWithGoogle,
       updateUserProfile,
       shippingAddresses,

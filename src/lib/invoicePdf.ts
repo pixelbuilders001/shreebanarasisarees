@@ -167,10 +167,17 @@ export function buildReceiptDataFromOrder(order: any, products?: any[]): Receipt
     customerEmail,
     items: finalItems,
     subtotal,
-    totalAmount: Number(order.total || 0),
+    totalAmount: Number(order.total_amount ?? order.total ?? 0),
     discountAmount: finalDiscountAmount,
     shippingFee: Number(order.shipping || order.shipping_charge || 0),
     giftWrapCharge: Number(order.gift_wrap_charge || 0),
+    referralCode: order.referral_code || order.referralCode || null,
+    referralDiscount: Number(order.referral_discount || order.referralDiscount || 0) > 0
+      ? Number(order.referral_discount || order.referralDiscount)
+      : null,
+    coinsRedeemed: Number(order.coins_redeemed || order.coinsRedeemed || 0) > 0
+      ? Number(order.coins_redeemed || order.coinsRedeemed)
+      : null,
     isGstApplied: isGstPresent,
     gstRate: Number(order.gst_rate || 5),
     taxableAmount: orderTaxable,
@@ -182,8 +189,10 @@ export function buildReceiptDataFromOrder(order: any, products?: any[]): Receipt
     igstAmount: order.igst_amount != null ? Number(order.igst_amount) : undefined,
     totalGst: orderGst,
     placeOfSupply,
-    appliedVoucherCode: order.applied_voucher_code || order.coupon_code || null,
-    appliedVoucherAmount: finalDiscountAmount > 0 ? finalDiscountAmount : null,
+    appliedVoucherCode: order.coupon_code || order.applied_voucher_code || null,
+    appliedVoucherAmount: Math.max(0, finalDiscountAmount - Number(order.referral_discount || order.referralDiscount || 0) - Number(order.coins_redeemed || order.coinsRedeemed || 0)) > 0
+      ? Math.max(0, finalDiscountAmount - Number(order.referral_discount || order.referralDiscount || 0) - Number(order.coins_redeemed || order.coinsRedeemed || 0))
+      : null,
   };
 }
 
@@ -472,10 +481,32 @@ export function generateInvoiceHtml(receipt: ReceiptData): string {
           }
 
           ${
-            receipt.appliedVoucherCode
+            receipt.referralDiscount && receipt.referralDiscount > 0
+              ? `
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 5px 0; border-bottom: 1px dashed #ccc; font-size: 12.5px; color: #0f766e;">
+                  <span style="font-weight: bold; letter-spacing: 0.5px;">REFERRAL DISCOUNT ${receipt.referralCode ? `(${receipt.referralCode})` : ''}</span>
+                  <span style="text-align: right; font-weight: bold; white-space: nowrap;">− ${fmtCurrency(receipt.referralDiscount)}</span>
+                </div>
+              `
+              : ''
+          }
+
+          ${
+            receipt.coinsRedeemed && receipt.coinsRedeemed > 0
+              ? `
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 5px 0; border-bottom: 1px dashed #ccc; font-size: 12.5px; color: #b45309;">
+                  <span style="font-weight: bold; letter-spacing: 0.5px;">BANARASI COINS REDEEMED</span>
+                  <span style="text-align: right; font-weight: bold; white-space: nowrap;">− ${fmtCurrency(receipt.coinsRedeemed)}</span>
+                </div>
+              `
+              : ''
+          }
+
+          ${
+            receipt.appliedVoucherCode && (receipt.appliedVoucherAmount || 0) > 0
               ? `
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 5px 0; border-bottom: 1px dashed #ccc; font-size: 12.5px; color: #b91c1c;">
-                  <span style="font-weight: bold; letter-spacing: 0.5px;">VOUCHER APPLIED (${receipt.appliedVoucherCode})</span>
+                  <span style="font-weight: bold; letter-spacing: 0.5px;">COUPON APPLIED (${receipt.appliedVoucherCode})</span>
                   <span style="text-align: right; white-space: nowrap;">− ${fmtCurrency(receipt.appliedVoucherAmount || 0)}</span>
                 </div>
               `

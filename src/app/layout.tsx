@@ -14,6 +14,7 @@ import MicrosoftClarity from "../components/MicrosoftClarity";
 import RouteTransitionLoader from "../components/RouteTransitionLoader";
 import { OfflineDetector } from "../components/offline/OfflineDetector";
 import { GlobalAuthModal } from "../components/GlobalAuthModal";
+import { ReferralCapture } from "../components/ReferralCapture";
 
 const playfair = Playfair_Display({
   variable: "--font-serif",
@@ -128,6 +129,7 @@ export default function RootLayout({
           <OfflineDetector />
           <PWARegistration />
           <NotificationPrompt />
+          <ReferralCapture />
           <Suspense fallback={null}>
             <RouteTransitionLoader />
           </Suspense>

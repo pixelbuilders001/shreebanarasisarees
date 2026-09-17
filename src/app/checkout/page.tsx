@@ -37,7 +37,8 @@ import {
   Download,
   FileText,
   Truck,
-  ArrowRight
+  ArrowRight,
+  Coins
 } from 'lucide-react';
 import {
   checkDeliveryServiceability,
@@ -48,8 +49,18 @@ import {
   CalculatedDeliveryOption,
   DeliveryOptionType,
   getProductSlug,
+  lookupReferrerByCode,
+  calculateReferralReward,
+  fetchReferralSettings,
+  StoreReferralSettings,
+  DEFAULT_STORE_REFERRAL_SETTINGS,
   supabase
 } from '../../data/supabase';
+import {
+  getStoredReferralCode,
+  storeReferralCode,
+  clearStoredReferralCode
+} from '../../lib/referralUtils';
 import { ProductAddon } from '../../data/products';
 import { SareeCustomizationModal } from '../../components/SareeCustomizationModal';
 import { trackBeginCheckout, trackPurchase, trackAddShippingInfo, trackAddPaymentInfo } from '../../lib/gtag';
@@ -64,13 +75,7 @@ const FREE_SHIPPING_THRESHOLD = 999;
 const STANDARD_SHIPPING_FEE = 99;
 const DEFAULT_GIFT_WRAP_CHARGE: number = 99; // Royal Gift Packaging & Personal Greeting Card
 
-// Valid Coupons
-const VALID_COUPONS: Record<string, { discountPercent?: number; fixedDiscount?: number; minOrder: number; description: string }> = {
-  'WELCOME10': { discountPercent: 10, minOrder: 1000, description: '10% OFF on orders over ₹1,000' },
-  'SHREE500': { fixedDiscount: 500, minOrder: 3000, description: '₹500 OFF on orders over ₹3,000' },
-  'FESTIVE15': { discountPercent: 15, minOrder: 5000, description: '15% OFF on orders over ₹5,000' },
-  'BANARASI10': { discountPercent: 10, minOrder: 1500, description: '10% OFF on Banarasi collection' },
-};
+
 
 const INDIAN_STATES = [
   "Bihar", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Chhattisgarh", "Goa", "Gujarat",
@@ -155,6 +160,8 @@ function CheckoutContent() {
     saveShippingAddress,
     user,
     userProfile,
+    userWallet,
+    refreshWallet,
     isHydrated,
     setIsAuthModalOpen,
     products,
@@ -162,6 +169,16 @@ function CheckoutContent() {
     removeCartItemAddon,
     showToast
   } = useStore();
+
+  // Referral & Banarasi Coins Settings
+  const [referralSettings, setReferralSettings] = useState<StoreReferralSettings>(DEFAULT_STORE_REFERRAL_SETTINGS);
+  const [useCoins, setUseCoins] = useState(false);
+
+  useEffect(() => {
+    fetchReferralSettings()
+      .then(setReferralSettings)
+      .catch((err) => console.error('Failed to load referral settings:', err));
+  }, []);
 
   // Tailoring customization state in checkout
   const [customizingItem, setCustomizingItem] = useState<CartItem | null>(null);
@@ -265,15 +282,33 @@ function CheckoutContent() {
     return '';
   });
 
-  // Coupon state
-  const [isCouponOpen, setIsCouponOpen] = useState(false);
-  const [couponInput, setCouponInput] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<{
+  // Referral Code state (replaces coupon code)
+  const [referralInput, setReferralInput] = useState('');
+  const [appliedReferral, setAppliedReferral] = useState<{
     code: string;
-    discountAmount: number;
-    description: string;
+    referrerId: string;
+    referrerName?: string;
   } | null>(null);
-  const [couponError, setCouponError] = useState<string | null>(null);
+  const [referralError, setReferralError] = useState<string | null>(null);
+  const [referralSuccess, setReferralSuccess] = useState<string | null>(null);
+  const [isValidatingReferral, setIsValidatingReferral] = useState(false);
+
+  // Auto-detect and prefill referral code from link / cookie if available
+  useEffect(() => {
+    const stored = getStoredReferralCode();
+    if (stored && !appliedReferral) {
+      lookupReferrerByCode(stored).then((referrer) => {
+        if (referrer && (!user || referrer.id !== user.id)) {
+          setAppliedReferral({
+            code: stored,
+            referrerId: referrer.id,
+            referrerName: referrer.full_name
+          });
+          setReferralSuccess(`Referred by ${referrer.full_name || stored}`);
+        }
+      }).catch(console.warn);
+    }
+  }, [user?.id]);
 
   // Gift Order state
   const [isGift, setIsGift] = useState(false);
@@ -503,15 +538,35 @@ function CheckoutContent() {
     ? 0
     : (activeDeliveryOption ? activeDeliveryOption.charge : (deliverySettings?.standard_charge ?? 69));
 
-  const couponDiscountAmount = useMemo(() => {
-    if (!appliedCoupon) return 0;
-    return appliedCoupon.discountAmount;
-  }, [appliedCoupon]);
+  // Banarasi Coins redemption calculation
+  const availableCoins = Math.floor(userWallet?.available_balance || 0);
+  const isCoinEligible = Boolean(
+    referralSettings.is_active &&
+    subtotal >= (referralSettings.min_order_for_redemption || 1999) &&
+    availableCoins > 0
+  );
+
+  const maxCoinsAllowed = useMemo(() => {
+    if (!isCoinEligible) return 0;
+    const maxByCart = Math.floor((subtotal * (referralSettings.max_redemption_percent || 20)) / 100);
+    return Math.min(availableCoins, maxByCart);
+  }, [isCoinEligible, subtotal, referralSettings.max_redemption_percent, availableCoins]);
+
+  const coinsDiscountAmount = useMemo(() => {
+    return (useCoins && isCoinEligible) ? maxCoinsAllowed : 0;
+  }, [useCoins, isCoinEligible, maxCoinsAllowed]);
+
+  // Dynamic Referral Discount calculation from referral_settings table
+  const referralDiscountAmount = useMemo(() => {
+    if (!appliedReferral || !referralSettings.is_active) return 0;
+    const baseReward = calculateReferralReward(subtotal, referralSettings);
+    if (baseReward <= 0) return 0;
+    const maxCap = Math.floor((subtotal * (referralSettings.max_redemption_percent || 20)) / 100);
+    return Math.min(baseReward, maxCap);
+  }, [appliedReferral, subtotal, referralSettings]);
 
   const giftWrapCharge = isGift ? DEFAULT_GIFT_WRAP_CHARGE : 0;
-  const grandTotal = Math.max(0, subtotal - couponDiscountAmount + shippingFee + giftWrapCharge);
-
-
+  const grandTotal = Math.max(0, subtotal - referralDiscountAmount - coinsDiscountAmount + shippingFee + giftWrapCharge);
 
   // Track GA4 begin_checkout
   const hasTrackedCheckout = React.useRef(false);
@@ -528,41 +583,18 @@ function CheckoutContent() {
     if (currentStep >= 2 && cart.length > 0 && grandTotal > 0 && !hasTrackedShippingInfo.current) {
       hasTrackedShippingInfo.current = true;
       const tierName = activeDeliveryOption?.title || 'Standard Delivery';
-      trackAddShippingInfo(cart, grandTotal, tierName, appliedCoupon?.code);
+      trackAddShippingInfo(cart, grandTotal, tierName, appliedReferral?.code);
     }
-  }, [currentStep, cart, grandTotal, activeDeliveryOption, appliedCoupon]);
+  }, [currentStep, cart, grandTotal, activeDeliveryOption, appliedReferral]);
 
   // Track GA4 add_payment_info when user reaches Step 3 (Review & Pay)
   const hasTrackedPaymentInfo = React.useRef(false);
   useEffect(() => {
     if (currentStep === 3 && cart.length > 0 && grandTotal > 0 && !hasTrackedPaymentInfo.current) {
       hasTrackedPaymentInfo.current = true;
-      trackAddPaymentInfo(cart, grandTotal, paymentMethod, appliedCoupon?.code);
+      trackAddPaymentInfo(cart, grandTotal, paymentMethod, appliedReferral?.code);
     }
-  }, [currentStep, cart, grandTotal, paymentMethod, appliedCoupon]);
-
-  // Re-validate coupon when subtotal changes
-  useEffect(() => {
-    if (appliedCoupon) {
-      const couponRule = VALID_COUPONS[appliedCoupon.code];
-      if (couponRule && subtotal < couponRule.minOrder) {
-        setAppliedCoupon(null);
-        setCouponError(`Coupon ${appliedCoupon.code} requires min order of ₹${couponRule.minOrder.toLocaleString('en-IN')}`);
-      } else if (couponRule) {
-        let disc = 0;
-        if (couponRule.discountPercent) {
-          disc = Math.round((subtotal * couponRule.discountPercent) / 100);
-        } else if (couponRule.fixedDiscount) {
-          disc = couponRule.fixedDiscount;
-        }
-        setAppliedCoupon({
-          code: appliedCoupon.code,
-          discountAmount: disc,
-          description: couponRule.description
-        });
-      }
-    }
-  }, [subtotal]);
+  }, [currentStep, cart, grandTotal, paymentMethod, appliedReferral]);
 
   // Handle PIN Code Validation via calculate-delivery Edge Function
   const handleCheckPincode = async (targetPincode: string) => {
@@ -693,46 +725,199 @@ function CheckoutContent() {
     }
   };
 
-  // Apply Coupon
-  const handleApplyCoupon = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanCode = couponInput.trim().toUpperCase();
-    setCouponError(null);
+  // Apply Referral Code
+  const handleApplyReferral = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanCode = referralInput.trim().toUpperCase();
+    setReferralError(null);
+    setReferralSuccess(null);
 
     if (!cleanCode) {
-      setCouponError('Please enter a coupon code.');
+      setReferralError('Please enter a referral code.');
       return;
     }
 
-    const couponRule = VALID_COUPONS[cleanCode];
-    if (!couponRule) {
-      setCouponError("This coupon code is not valid.");
-      return;
-    }
+    setIsValidatingReferral(true);
+    try {
+      const referrer = await lookupReferrerByCode(cleanCode);
+      if (!referrer) {
+        setReferralError('Invalid referral code. Please check and try again.');
+        return;
+      }
 
-    if (subtotal < couponRule.minOrder) {
-      setCouponError(`Requires min order of ₹${couponRule.minOrder.toLocaleString('en-IN')}.`);
-      return;
-    }
+      if (user) {
+        if (referrer.id === user.id) {
+          setReferralError('You cannot use your own referral code.');
+          return;
+        }
 
-    let discountAmt = 0;
-    if (couponRule.discountPercent) {
-      discountAmt = Math.round((subtotal * couponRule.discountPercent) / 100);
-    } else if (couponRule.fixedDiscount) {
-      discountAmt = couponRule.fixedDiscount;
-    }
+        // Verify first-order eligibility
+        try {
+          const { data: priorOrders } = await supabase
+            .from('orders')
+            .select('id')
+            .eq('user_id', user.id)
+            .neq('order_status', 'cancelled')
+            .limit(1);
 
-    setAppliedCoupon({
-      code: cleanCode,
-      discountAmount: discountAmt,
-      description: couponRule.description
-    });
-    setCouponInput('');
+          if (priorOrders && priorOrders.length > 0) {
+            setReferralError('Referral codes are only valid on your first order.');
+            return;
+          }
+        } catch (priorErr) {
+          console.warn('Could not verify prior orders:', priorErr);
+        }
+      }
+
+      setAppliedReferral({
+        code: cleanCode,
+        referrerId: referrer.id,
+        referrerName: referrer.full_name
+      });
+      storeReferralCode(cleanCode);
+      setReferralSuccess(`Referred by ${referrer.full_name || cleanCode}`);
+      setReferralInput('');
+      showToast(`Referral code ${cleanCode} applied!`, 'info');
+    } catch (err) {
+      console.error('Error applying referral code:', err);
+      setReferralError('Failed to verify referral code. Please try again.');
+    } finally {
+      setIsValidatingReferral(false);
+    }
   };
 
-  const handleRemoveCoupon = () => {
-    setAppliedCoupon(null);
-    setCouponError(null);
+  const handleRemoveReferral = () => {
+    setAppliedReferral(null);
+    setReferralError(null);
+    setReferralSuccess(null);
+    clearStoredReferralCode();
+    showToast('Referral code removed.', 'info');
+  };
+
+  // Reusable Referral Code input component
+  const renderReferralInput = (isMobile = false) => {
+    return (
+      <div className={`space-y-2 ${isMobile ? '' : 'pt-2 border-t border-[#F3ECE0]'}`}>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="REFERRAL CODE"
+            value={referralInput}
+            onChange={(e) => setReferralInput(e.target.value.toUpperCase())}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleApplyReferral();
+              }
+            }}
+            disabled={isValidatingReferral || !!appliedReferral}
+            className={`flex-1 bg-[#FAF7F0] border border-dashed border-[#B08A3C]/60 rounded-xl px-3 ${
+              isMobile ? 'py-2.5 min-h-[44px] text-[16px] sm:text-sm' : 'py-2 text-xs'
+            } uppercase font-sans font-semibold tracking-wide text-[#292524] placeholder:text-[#A89F91] outline-none focus:border-[#6B1725] disabled:opacity-60`}
+          />
+          <button
+            type="button"
+            onClick={() => handleApplyReferral()}
+            disabled={isValidatingReferral || !!appliedReferral}
+            className={`px-4 ${
+              isMobile ? 'py-2.5 min-h-[44px] text-xs sm:text-sm' : 'py-2 text-xs'
+            } bg-[#FAF7F0] hover:bg-[#6B1725] hover:text-white text-[#6B1725] border border-[#6B1725]/30 rounded-xl font-sans font-bold transition-colors cursor-pointer shrink-0 disabled:opacity-50 flex items-center gap-1`}
+          >
+            {isValidatingReferral ? <Loader2 size={13} className="animate-spin" /> : 'Apply'}
+          </button>
+        </div>
+
+        {referralError && <p className="text-[11px] text-red-600 font-medium">{referralError}</p>}
+
+        {appliedReferral && (
+          <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center justify-between animate-fadeIn">
+            <span className="flex items-center gap-1.5 font-medium">
+              <Gift size={13} className="text-emerald-700 shrink-0" />
+              <span>
+                Referred by <strong>{appliedReferral.referrerName || appliedReferral.code}</strong>
+                {referralDiscountAmount > 0 ? (
+                  <span className="text-emerald-700 font-bold ml-1">(-₹{referralDiscountAmount.toLocaleString('en-IN')})</span>
+                ) : (
+                  <span className="text-amber-800 text-[11px] block mt-0.5">
+                    Add ₹{Math.max(0, (referralSettings.tier1_min_order || 1500) - subtotal).toLocaleString('en-IN')} more to get discount (min. ₹{(referralSettings.tier1_min_order || 1500).toLocaleString('en-IN')})
+                  </span>
+                )}
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={handleRemoveReferral}
+              className="text-xs text-red-600 hover:underline font-semibold cursor-pointer shrink-0 ml-2"
+            >
+              Remove
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Reusable Banarasi Coins redemption card
+  const renderBanarasiCoinsCard = () => {
+    if (!referralSettings.is_active) return null;
+    const minOrder = referralSettings.min_order_for_redemption || 1999;
+    const maxPercent = referralSettings.max_redemption_percent || 20;
+
+    return (
+      <div className="p-3 bg-gradient-to-r from-[#FAF7F0] to-[#F5EFE6] border border-[#B08A3C]/30 rounded-xl space-y-2 mt-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🪙</span>
+            <div>
+              <p className="text-xs font-bold text-[#6B1725]">Banarasi Coins</p>
+              <p className="text-[11px] text-[#6B625D]">
+                {user ? (
+                  <>Available: <strong className="text-[#292524]">🪙 {availableCoins}</strong> (₹{availableCoins})</>
+                ) : (
+                  <>Sign in to redeem coins &amp; save up to {maxPercent}%</>
+                )}
+              </p>
+            </div>
+          </div>
+          {user && isCoinEligible && maxCoinsAllowed > 0 && (
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                checked={useCoins}
+                onChange={(e) => setUseCoins(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#6B1725]"></div>
+            </label>
+          )}
+        </div>
+
+        {user ? (
+          subtotal < minOrder ? (
+            <p className="text-[10.5px] text-stone-500 italic">
+              Min. cart order of ₹{minOrder.toLocaleString('en-IN')} required to use coins.
+            </p>
+          ) : availableCoins === 0 ? (
+            <p className="text-[10.5px] text-stone-500">
+              Refer friends to earn Banarasi Coins and save on your orders!
+            </p>
+          ) : useCoins ? (
+            <div className="p-2 bg-emerald-50/80 border border-emerald-200/80 rounded-lg flex items-center justify-between text-[11px] text-emerald-800">
+              <span>Applied <strong>🪙 {coinsDiscountAmount}</strong> Coins</span>
+              <span className="font-bold text-emerald-700">-₹{coinsDiscountAmount.toLocaleString('en-IN')}</span>
+            </div>
+          ) : (
+            <p className="text-[10.5px] text-[#6B625D]">
+              Toggle switch to redeem up to <strong>🪙 {maxCoinsAllowed}</strong> (max {maxPercent}% of cart).
+            </p>
+          )
+        ) : (
+          <p className="text-[10.5px] text-[#6B625D] italic">
+            Sign in at checkout to redeem Banarasi Coins.
+          </p>
+        )}
+      </div>
+    );
   };
 
   // Main Submit Handler
@@ -807,14 +992,15 @@ function CheckoutContent() {
       customer_phone: mobileNumber,
       shipping_address: customerDetails,
       notes: orderNotes,
-      coupon_code: appliedCoupon?.code || undefined,
+      referral_code: appliedReferral?.code || undefined,
       delivery_option: selectedDeliveryOption,
       delivery_method: chosenMethodTitle,
       shipping_charge: shippingFee,
       estimated_delivery_date: estimatedDeliveryDate,
       items: cart,
       subtotal,
-      discount: couponDiscountAmount,
+      discount: referralDiscountAmount + coinsDiscountAmount,
+      coins_redeemed: coinsDiscountAmount,
       shipping: shippingFee,
       total: grandTotal,
       paymentMethod: 'Cash on Delivery',
@@ -863,6 +1049,7 @@ function CheckoutContent() {
         }
       }
       clearCart();
+      clearStoredReferralCode();
     }).catch((err) => {
       console.error('Order creation error:', err);
       setErrorMsg(err?.message || 'Failed to place order. Please check your connection and try again.');
@@ -2297,40 +2484,11 @@ function CheckoutContent() {
 
                   {/* Mobile Price Breakdown & Coupon Drawer */}
                   <div className="lg:hidden bg-white rounded-2xl border border-[#E5DEC9] p-4 shadow-2xs space-y-3">
-                    {/* Coupon */}
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="COUPON CODE"
-                        value={couponInput}
-                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                        className="flex-1 bg-[#FAF7F0] border border-dashed border-[#B08A3C]/60 rounded-xl px-3 py-2.5 min-h-[44px] text-[16px] sm:text-sm uppercase font-sans font-semibold tracking-wide text-[#292524] placeholder:text-[#A89F91] outline-none focus:border-[#6B1725]"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleApplyCoupon}
-                        className="px-4 py-2.5 min-h-[44px] bg-[#FAF7F0] hover:bg-[#6B1725] hover:text-white text-[#6B1725] border border-[#6B1725]/30 rounded-xl font-sans font-bold text-xs sm:text-sm transition-colors cursor-pointer shrink-0"
-                      >
-                        Apply
-                      </button>
-                    </div>
+                    {/* Referral Code Section */}
+                    {renderReferralInput(true)}
 
-                    {couponError && <p className="text-[11px] text-red-600 font-medium">{couponError}</p>}
-                    {appliedCoupon && (
-                      <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 font-medium">
-                          <Tag size={13} className="text-emerald-700" />
-                          <span><strong>{appliedCoupon.code}</strong> applied (-₹{appliedCoupon.discountAmount.toLocaleString('en-IN')})</span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={handleRemoveCoupon}
-                          className="text-xs text-red-600 hover:underline font-semibold cursor-pointer"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    )}
+                    {/* Banarasi Coins Redemption Card */}
+                    {renderBanarasiCoinsCard()}
 
                     <div className="space-y-2 pt-2 border-t border-[#F3ECE0] text-xs font-sans">
                       <div className="flex justify-between text-[#7A6E65]">
@@ -2349,10 +2507,31 @@ function CheckoutContent() {
                           <span className="text-[#0F766E] font-medium">-₹{totalProductDiscount.toLocaleString('en-IN')}</span>
                         </div>
                       )}
-                      {appliedCoupon && couponDiscountAmount > 0 && (
+                      {referralDiscountAmount > 0 && (
                         <div className="flex justify-between text-[#7A6E65]">
-                          <span>Coupon ({appliedCoupon.code})</span>
-                          <span className="text-[#0F766E] font-medium">-₹{couponDiscountAmount.toLocaleString('en-IN')}</span>
+                          <span className="flex items-center gap-1.5">
+                            <Gift size={13} className="text-[#B08A3C]" />
+                            <span>Referral Discount ({appliedReferral?.code})</span>
+                          </span>
+                          <span className="text-[#0F766E] font-medium">-₹{referralDiscountAmount.toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+                      {appliedReferral && referralDiscountAmount === 0 && (
+                        <div className="flex justify-between text-xs text-amber-800 font-medium">
+                          <span className="flex items-center gap-1.5">
+                            <Gift size={13} className="text-amber-700 shrink-0" />
+                            <span>Referral ({appliedReferral.code})</span>
+                          </span>
+                          <span className="text-[11px] text-amber-700">Min. ₹{referralSettings.tier1_min_order} for discount</span>
+                        </div>
+                      )}
+                      {coinsDiscountAmount > 0 && (
+                        <div className="flex justify-between text-[#7A6E65]">
+                          <span className="flex items-center gap-1.5">
+                            <span>🪙</span>
+                            <span>Banarasi Coins</span>
+                          </span>
+                          <span className="text-[#0F766E] font-medium">-₹{coinsDiscountAmount.toLocaleString('en-IN')}</span>
                         </div>
                       )}
                       <div className="flex justify-between text-[#7A6E65]">
@@ -2378,9 +2557,9 @@ function CheckoutContent() {
                           ₹{grandTotal.toLocaleString('en-IN')}
                         </span>
                       </div>
-                      {(totalProductDiscount + couponDiscountAmount) > 0 && (
+                      {(totalProductDiscount + referralDiscountAmount + coinsDiscountAmount) > 0 && (
                         <p className="text-xs font-semibold text-[#0F766E]">
-                          🎉 You saved ₹{(totalProductDiscount + couponDiscountAmount).toLocaleString('en-IN')}
+                          🎉 You saved ₹{(totalProductDiscount + referralDiscountAmount + coinsDiscountAmount).toLocaleString('en-IN')}
                         </p>
                       )}
                       <p className="text-[11px] text-[#7A6E65]">Prices include applicable GST</p>
@@ -2567,37 +2746,11 @@ function CheckoutContent() {
                     })}
                   </div>
 
-                  {/* Coupon Code Section */}
-                  <div className="pt-2 border-t border-[#F3ECE0] space-y-2">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="COUPON CODE"
-                        value={couponInput}
-                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                        className="flex-1 bg-[#FAF7F0] border border-dashed border-[#B08A3C]/60 rounded-xl px-3 py-2 text-xs uppercase font-medium text-[#292524] placeholder:text-[#A89F91] outline-none focus:border-[#6B1725]"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleApplyCoupon}
-                        className="px-4 py-2 bg-[#FAF7F0] hover:bg-[#6B1725] hover:text-white text-[#6B1725] border border-[#6B1725]/30 rounded-xl font-sans font-bold text-xs transition-colors cursor-pointer shrink-0"
-                      >
-                        Apply
-                      </button>
-                    </div>
-                    {couponError && <p className="text-[11px] text-red-600 font-medium">{couponError}</p>}
-                    {appliedCoupon && (
-                      <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 font-medium">
-                          <Tag size={13} className="text-emerald-700" />
-                          <strong>{appliedCoupon.code}</strong> (-₹{appliedCoupon.discountAmount.toLocaleString('en-IN')})
-                        </span>
-                        <button type="button" onClick={handleRemoveCoupon} className="text-xs text-red-600 hover:underline font-semibold cursor-pointer">
-                          Remove
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  {/* Referral Code Section */}
+                  {renderReferralInput(false)}
+
+                  {/* Banarasi Coins Redemption Card */}
+                  {renderBanarasiCoinsCard()}
 
                   {/* Price Details */}
                   <div className="space-y-2 pt-3 border-t border-[#F3ECE0] text-xs font-sans">
@@ -2617,10 +2770,31 @@ function CheckoutContent() {
                         <span className="text-[#0F766E] font-medium">-₹{totalProductDiscount.toLocaleString('en-IN')}</span>
                       </div>
                     )}
-                    {appliedCoupon && couponDiscountAmount > 0 && (
+                    {referralDiscountAmount > 0 && (
                       <div className="flex justify-between text-[#7A6E65]">
-                        <span>Coupon ({appliedCoupon.code})</span>
-                        <span className="text-[#0F766E] font-medium">-₹{couponDiscountAmount.toLocaleString('en-IN')}</span>
+                        <span className="flex items-center gap-1.5">
+                          <Gift size={13} className="text-[#B08A3C]" />
+                          <span>Referral Discount ({appliedReferral?.code})</span>
+                        </span>
+                        <span className="text-[#0F766E] font-medium">-₹{referralDiscountAmount.toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
+                    {appliedReferral && referralDiscountAmount === 0 && (
+                      <div className="flex justify-between text-xs text-amber-800 font-medium">
+                        <span className="flex items-center gap-1.5">
+                          <Gift size={13} className="text-amber-700 shrink-0" />
+                          <span>Referral ({appliedReferral.code})</span>
+                        </span>
+                        <span className="text-[11px] text-amber-700">Min. ₹{referralSettings.tier1_min_order} for discount</span>
+                      </div>
+                    )}
+                    {coinsDiscountAmount > 0 && (
+                      <div className="flex justify-between text-[#7A6E65]">
+                        <span className="flex items-center gap-1.5">
+                          <span>🪙</span>
+                          <span>Banarasi Coins</span>
+                        </span>
+                        <span className="text-[#0F766E] font-medium">-₹{coinsDiscountAmount.toLocaleString('en-IN')}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-[#7A6E65]">
@@ -2646,9 +2820,9 @@ function CheckoutContent() {
                         ₹{grandTotal.toLocaleString('en-IN')}
                       </span>
                     </div>
-                    {(totalProductDiscount + couponDiscountAmount) > 0 && (
+                    {(totalProductDiscount + referralDiscountAmount + coinsDiscountAmount) > 0 && (
                       <p className="text-xs font-semibold text-[#0F766E] pt-0.5">
-                        🎉 You saved ₹{(totalProductDiscount + couponDiscountAmount).toLocaleString('en-IN')}
+                        🎉 You saved ₹{(totalProductDiscount + referralDiscountAmount + coinsDiscountAmount).toLocaleString('en-IN')}
                       </p>
                     )}
                     <p className="text-[11px] text-[#7A6E65] pt-0.5">Prices include applicable GST</p>
