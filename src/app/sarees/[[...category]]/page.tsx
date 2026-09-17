@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
 import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { SareesClient } from '../../../components/SareesClient';
 import { fetchCategories, fetchProducts } from '../../../data/supabase';
 import SareesLoading from './loading';
@@ -110,6 +111,16 @@ function getSeoKey(categoryPath?: string[]): string | null {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const resolvedParams = await params;
   const categoryPath = resolvedParams.category;
+
+  // 1. Reject multi-segment subcategories (e.g. /sarees/banarasi/random)
+  if (categoryPath && categoryPath.length > 1) {
+    return {
+      title: "Category Not Found | Shree Banarasi Sarees",
+      description: "The requested saree collection could not be found.",
+      robots: { index: false, follow: false },
+    };
+  }
+
   const seoKey = getSeoKey(categoryPath);
   
   // Try to find the category in the database by slug or name
@@ -118,6 +129,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const rawSlug = categoryPath[0].toLowerCase();
     const categories = await fetchCategories();
     dbCategory = categories.find(c => c.slug.toLowerCase() === rawSlug || c.name.toLowerCase() === rawSlug);
+  }
+
+  // 2. Reject unrecognized category slugs
+  if (categoryPath && categoryPath.length > 0 && !seoKey && !dbCategory) {
+    return {
+      title: "Category Not Found | Shree Banarasi Sarees",
+      description: "The requested saree collection could not be found.",
+      robots: { index: false, follow: false },
+    };
   }
 
   let data;
@@ -130,18 +150,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       h1: `${dbCategory.name} Sarees`,
       intro: dbCategory.description || `Discover our exclusive collection of handpicked ${dbCategory.name} sarees. Each piece represents India's rich weaving heritage, crafted with premium fabrics and exquisite work.`,
       category: dbCategory.name,
-      occasion: "All",
-    };
-  } else if (categoryPath && categoryPath.length > 0) {
-    const categoryName = decodeURIComponent(categoryPath[0])
-      .replace(/-/g, ' ')
-      .replace(/\b\w/g, l => l.toUpperCase());
-    data = {
-      title: `${categoryName} Sarees | Traditional & Designer Collections`,
-      description: `Explore elegant ${categoryName} sarees at Shree Banarasi Sarees. Discover beautiful wedding, festive and party styles.`,
-      h1: `${categoryName} Sarees`,
-      intro: `Discover our exclusive collection of handpicked ${categoryName} sarees. Each piece represents India's rich weaving heritage, crafted with premium fabrics and exquisite work.`,
-      category: categoryName,
       occasion: "All",
     };
   } else {
@@ -182,6 +190,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function Page({ params }: PageProps) {
   const resolvedParams = await params;
   const categoryPath = resolvedParams.category;
+
+  // 1. Reject multi-segment subcategories
+  if (categoryPath && categoryPath.length > 1) {
+    notFound();
+  }
+
   const seoKey = getSeoKey(categoryPath);
   
   const [categories, dbProducts] = await Promise.all([
@@ -195,6 +209,11 @@ export default async function Page({ params }: PageProps) {
     dbCategory = categories.find(c => c.slug.toLowerCase() === rawSlug || c.name.toLowerCase() === rawSlug);
   }
 
+  // 2. Reject unrecognized category slugs
+  if (categoryPath && categoryPath.length > 0 && !seoKey && !dbCategory) {
+    notFound();
+  }
+
   let data;
   if (seoKey && SEO_MAP[seoKey]) {
     data = SEO_MAP[seoKey];
@@ -205,18 +224,6 @@ export default async function Page({ params }: PageProps) {
       h1: `${dbCategory.name} Sarees`,
       intro: dbCategory.description || `Discover our exclusive collection of handpicked ${dbCategory.name} sarees. Each piece represents India's rich weaving heritage, crafted with premium fabrics and exquisite work.`,
       category: dbCategory.name,
-      occasion: "All",
-    };
-  } else if (categoryPath && categoryPath.length > 0) {
-    const categoryName = decodeURIComponent(categoryPath[0])
-      .replace(/-/g, ' ')
-      .replace(/\b\w/g, l => l.toUpperCase());
-    data = {
-      title: `${categoryName} Sarees | Traditional & Designer Collections`,
-      description: `Explore elegant ${categoryName} sarees at Shree Banarasi Sarees. Discover beautiful wedding, festive and party styles.`,
-      h1: `${categoryName} Sarees`,
-      intro: `Discover our exclusive collection of handpicked ${categoryName} sarees. Each piece represents India's rich weaving heritage, crafted with premium fabrics and exquisite work.`,
-      category: categoryName,
       occasion: "All",
     };
   } else {

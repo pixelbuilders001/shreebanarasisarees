@@ -107,7 +107,7 @@ export const SareesClient: React.FC<SareesClientProps> = ({
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   // ── Advanced search params from URL ──
-  const urlSearch   = searchParams.get('search')   || '';
+  const urlSearch   = searchParams.get('search')   || searchParams.get('q') || '';
   const urlColor    = searchParams.get('color')    || '';
   const urlFabric   = searchParams.get('fabric')   || '';
   const urlOccasion = searchParams.get('occasion') || '';

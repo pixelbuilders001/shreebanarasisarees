@@ -74,6 +74,40 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/contact",
+        destination: "/contact-us",
+        permanent: true,
+      },
+      {
+        source: "/faqs",
+        destination: "/faq",
+        permanent: true,
+      },
+      {
+        source: "/shipping",
+        destination: "/shipping-policy",
+        permanent: true,
+      },
+      {
+        source: "/returns",
+        destination: "/returns-refunds",
+        permanent: true,
+      },
+      {
+        source: "/refund-policy",
+        destination: "/returns-refunds",
+        permanent: true,
+      },
+      {
+        source: "/store-location",
+        destination: "/our-store",
+        permanent: true,
+      },
+    ];
+  },
   experimental: {
     serverActions: {
       allowedOrigins,

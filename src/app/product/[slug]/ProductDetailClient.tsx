@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Header } from '../../../components/Header';
 import { Footer } from '../../../components/Footer';
@@ -49,9 +50,10 @@ import { getSameDayCountdownInfo, SameDayCountdownInfo, getExpressDeliveryInfo, 
 
 interface ProductDetailClientProps {
   product: Product;
+  relatedProducts?: Product[];
 }
 
-export default function ProductDetailClient({ product }: ProductDetailClientProps) {
+export default function ProductDetailClient({ product, relatedProducts }: ProductDetailClientProps) {
   const router = useRouter();
   const {
     addToCart,
@@ -657,8 +659,10 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
     : (product.rating || 0);
   const avgRating = avgRatingNum > 0 ? avgRatingNum.toFixed(1) : null;
 
-  // Similar products logic for "Similar weaves" section
-  const similarProducts = PRODUCTS.filter(p => p.id !== product.id && (p.category === product.category || p.fabric === product.fabric)).slice(0, 6);
+  // Similar products logic for "Similar weaves" section (uses real SSR-fetched products if available)
+  const similarProducts = (relatedProducts && relatedProducts.length > 0)
+    ? relatedProducts
+    : PRODUCTS.filter(p => p.id !== product.id && (p.category === product.category || p.fabric === product.fabric)).slice(0, 6);
 
   return (
     <>
@@ -671,7 +675,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
           <span>/</span>
           <Link href="/sarees" className="hover:text-[#6B1725] transition-colors">Sarees</Link>
           <span>/</span>
-          <span className="font-semibold text-[#292524]">{product.category}</span>
+          <Link href={`/sarees/${(product.category || 'all').toLowerCase()}`} className="font-semibold text-[#292524] hover:text-[#6B1725] transition-colors">{product.category}</Link>
         </div>
 
         {/* ── RESPONSIVE PDP LAYOUT: 1-COLUMN MOBILE / 12-COLUMN DESKTOP GRID ── */}
@@ -693,11 +697,13 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                     className="w-full h-full flex-shrink-0 snap-center cursor-zoom-in relative"
                     onClick={() => setIsLightboxOpen(true)}
                   >
-                    <img
+                    <Image
                       src={img}
                       alt={`${product.name} - View ${idx + 1}`}
-                      className="w-full h-full object-cover object-center"
-                      loading={idx === 0 ? "eager" : "lazy"}
+                      fill
+                      priority={idx === 0}
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      className="object-cover object-center"
                     />
                   </div>
                 ))}
@@ -768,10 +774,13 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
             {/* DESKTOP HIGH-RES STAGE GALLERY (Visible on >= lg screens) */}
             <div className="hidden lg:block relative aspect-[3/4] w-full rounded-3xl overflow-hidden bg-[#FAF7F0] border border-[#E5DEC9] shadow-sm group cursor-zoom-in">
-              <img
+              <Image
                 src={activeImage}
                 alt={product.name}
-                className={`w-full h-full object-cover object-center transition-transform duration-700 ease-out ${product.stock === 0 ? 'grayscale opacity-60 group-hover:scale-105' : 'group-hover:scale-105'}`}
+                fill
+                priority
+                sizes="(min-width: 1024px) 58vw, 100vw"
+                className={`object-cover object-center transition-transform duration-700 ease-out ${product.stock === 0 ? 'grayscale opacity-60 group-hover:scale-105' : 'group-hover:scale-105'}`}
                 onClick={() => setIsLightboxOpen(true)}
               />
               {product.stock === 0 && (
@@ -809,7 +818,13 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                           : 'border-[#E5DEC9] opacity-75 hover:opacity-100 hover:border-[#6B1725]/60'
                       }`}
                     >
-                      <img src={img} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" />
+                      <Image
+                        src={img}
+                        alt={`${product.name} thumbnail ${idx + 1}`}
+                        fill
+                        sizes="120px"
+                        className="object-cover"
+                      />
                     </button>
                   );
                 })}
@@ -979,10 +994,12 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                         title={`${variant.name} (${variant.color})`}
                       >
                         {thumbImage ? (
-                          <img
+                          <Image
                             src={thumbImage}
                             alt={variant.color}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            fill
+                            sizes="80px"
+                            className="object-cover group-hover:scale-110 transition-transform duration-500"
                           />
                         ) : (
                           <div
@@ -1009,7 +1026,13 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
               ) : (
                 <div className="flex items-center gap-3 pt-1">
                   <div className="relative w-14 h-14 rounded-2xl overflow-hidden border-2 border-[#6B1725] ring-2 ring-[#B08A3C]/30 shadow-xs shrink-0">
-                    <img src={product.images[0]} alt={product.color} className="w-full h-full object-cover" />
+                    <Image
+                      src={product.images[0]}
+                      alt={product.color}
+                      fill
+                      sizes="56px"
+                      className="object-cover"
+                    />
                     <div className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-[#6B1725] text-white flex items-center justify-center">
                       <Check size={9} strokeWidth={3} />
                     </div>
@@ -1237,9 +1260,9 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
             {/* WHATSAPP DAYLIGHT VIDEO CALLOUT CARD */}
             <div className="bg-[#FAF6EE] border border-[#E5DEC9] rounded-2xl p-4 flex items-center justify-between shadow-2xs">
               <div>
-                <h4 className="font-sans font-bold text-xs sm:text-sm text-[#292524]">
+                <p className="font-sans font-bold text-xs sm:text-sm text-[#292524]">
                   Want a video of this saree in daylight?
-                </h4>
+                </p>
                 <p className="text-xs text-[#7A6E65] mt-0.5">
                   We&apos;ll send one on WhatsApp in a few minutes.
                 </p>
@@ -1261,9 +1284,9 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
             {/* ABOUT THIS WEAVE */}
             <div className="pt-2">
-              <h3 className="font-serif text-lg font-bold text-[#292524] mb-1.5">
+              <h2 className="font-serif text-lg font-bold text-[#292524] mb-1.5">
                 About this weave
-              </h3>
+              </h2>
               <p className="text-sm font-sans text-[#7A6E65] leading-relaxed">
                 {product.description || `Sheer ${product.fabric.toLowerCase()} in ${product.color.toLowerCase()} with gold zari buta — light enough for a full day of wear.`}
               </p>
@@ -1271,9 +1294,9 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
             {/* DETAILS SPECIFICATIONS TABLE */}
             <div className="pt-2">
-              <h3 className="font-serif text-lg font-bold text-[#292524] mb-3">
+              <h2 className="font-serif text-lg font-bold text-[#292524] mb-3">
                 Details
-              </h3>
+              </h2>
               <div className="divide-y divide-[#F3ECE0] border-y border-[#F3ECE0] text-sm">
                 <div className="py-2.5 flex justify-between">
                   <span className="text-[#7A6E65]">Fabric</span>
@@ -1368,12 +1391,12 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                         {rev.user_name?.[0]?.toUpperCase() || 'SBS'}
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-[#292524] flex items-center gap-1.5">
+                        <h3 className="text-xs font-bold text-[#292524] flex items-center gap-1.5">
                           {rev.user_name || 'Verified Customer'}
                           <span className="text-[10px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-normal">
                             ✓ Verified Buyer
                           </span>
-                        </h4>
+                        </h3>
                         <div className="flex items-center gap-1 text-[#B08A3C] mt-0.5">
                           {Array.from({ length: 5 }).map((_, i) => (
                             <Star

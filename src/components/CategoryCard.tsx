@@ -156,7 +156,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ initialCategories })
           {weaves.slice(0, 7).map((weave) => (
             <Link
               key={weave.id}
-              href={`/sarees?category=${encodeURIComponent(weave.query)}`}
+              href={`/sarees/${encodeURIComponent(weave.query.toLowerCase().trim().replace(/\s+/g, '-'))}`}
               className="flex flex-col items-center gap-1.5 group"
             >
               <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border border-[#D5CBB3] p-0.5 group-hover:border-[#6B1725] transition-colors shadow-2xs bg-[#FAF6EE]">
@@ -230,7 +230,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ initialCategories })
             {weaves.slice(0, 7).map((weave) => (
               <Link
                 key={weave.id}
-                href={`/sarees?category=${encodeURIComponent(weave.query)}`}
+                href={`/sarees/${encodeURIComponent(weave.query.toLowerCase().trim().replace(/\s+/g, '-'))}`}
                 className="flex flex-col items-center gap-3 group text-center cursor-pointer"
               >
                 <div className="relative w-24 h-24 lg:w-28 lg:h-28 rounded-full overflow-hidden border-2 border-[#D4B870] p-1 group-hover:border-[#6B1725] group-hover:scale-108 transition-all duration-500 shadow-md group-hover:shadow-xl bg-[#FAF6EE]">

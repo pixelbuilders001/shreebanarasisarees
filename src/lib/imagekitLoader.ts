@@ -20,13 +20,24 @@ export default function imageKitLoader({
     return src;
   }
 
-  // If it's an ImageKit URL, apply ImageKit transformation parameters
+  const q = quality || 80;
+  const separator = src.includes('?') ? '&' : '?';
+
+  // 1. If it's an ImageKit URL, apply ImageKit transformation parameters
   if (src.includes('ik.imagekit.io')) {
-    const q = quality || 80;
-    const separator = src.includes('?') ? '&' : '?';
     return `${src}${separator}tr=w-${width},q-${q},f-auto`;
   }
 
-  // External images (e.g. Unsplash stock) return untouched
+  // 2. If it's an Unsplash URL, apply auto format, crop, responsive width, and quality
+  if (src.includes('images.unsplash.com')) {
+    return `${src}${separator}auto=format&fit=crop&w=${width}&q=${q}`;
+  }
+
+  // 3. If it's a Supabase storage URL, apply width and quality parameters
+  if (src.includes('supabase.co/storage/v1/')) {
+    return `${src}${separator}width=${width}&quality=${q}`;
+  }
+
+  // Fallback for local assets or other external domains
   return src;
 }

@@ -105,12 +105,12 @@ export const Footer: React.FC = () => {
             </h4>
             <ul className="space-y-2.5 text-xs text-[#FAF7F0]/80 font-medium">
               <li><Link href="/sarees" className="hover:text-[#B08A3C] transition-colors">All Sarees</Link></li>
-              <li><Link href="/sarees?category=Banarasi" className="hover:text-[#B08A3C] transition-colors">Banarasi Sarees</Link></li>
-              <li><Link href="/sarees?category=Silk" className="hover:text-[#B08A3C] transition-colors">Silk Sarees</Link></li>
-              <li><Link href="/sarees?category=Chanderi" className="hover:text-[#B08A3C] transition-colors">Chanderi</Link></li>
-              <li><Link href="/sarees?category=Bandhani" className="hover:text-[#B08A3C] transition-colors">Bandhani</Link></li>
-              <li><Link href="/sarees?category=Organza" className="hover:text-[#B08A3C] transition-colors">Organza</Link></li>
-              <li><Link href="/sarees?category=Bridal" className="hover:text-[#B08A3C] transition-colors">Bridal Collection</Link></li>
+              <li><Link href="/sarees/banarasi" className="hover:text-[#B08A3C] transition-colors">Banarasi Sarees</Link></li>
+              <li><Link href="/sarees/chikankari" className="hover:text-[#B08A3C] transition-colors">Chikankari</Link></li>
+              <li><Link href="/sarees/chanderi" className="hover:text-[#B08A3C] transition-colors">Chanderi</Link></li>
+              <li><Link href="/sarees/bandhani" className="hover:text-[#B08A3C] transition-colors">Bandhani</Link></li>
+              <li><Link href="/sarees/organza" className="hover:text-[#B08A3C] transition-colors">Organza</Link></li>
+              <li><Link href="/sarees/bridal" className="hover:text-[#B08A3C] transition-colors">Bridal Collection</Link></li>
             </ul>
           </div>
 
@@ -158,6 +158,7 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2.5 text-xs text-[#FAF7F0]/80 font-medium">
               <li><Link href="/about-us" className="hover:text-[#B08A3C] transition-colors">About Us</Link></li>
               <li><Link href="/our-store" className="hover:text-[#B08A3C] transition-colors">Our Showroom</Link></li>
+              <li><Link href="/blog" className="hover:text-[#B08A3C] transition-colors">Blog &amp; Guides</Link></li>
             </ul>
           </div>
 
@@ -230,12 +231,12 @@ export const Footer: React.FC = () => {
             {openSection === 'shop' && (
               <ul className="space-y-2.5 pb-4 pt-1 text-xs text-[#FAF7F0]/80 font-medium animate-fadeIn">
                 <li><Link href="/sarees" className="block py-1">All Sarees</Link></li>
-                <li><Link href="/sarees?category=Banarasi" className="block py-1">Banarasi Sarees</Link></li>
-                <li><Link href="/sarees?category=Silk" className="block py-1">Silk Sarees</Link></li>
-                <li><Link href="/sarees?category=Chanderi" className="block py-1">Chanderi</Link></li>
-                <li><Link href="/sarees?category=Bandhani" className="block py-1">Bandhani</Link></li>
-                <li><Link href="/sarees?category=Organza" className="block py-1">Organza</Link></li>
-                <li><Link href="/sarees?category=Bridal" className="block py-1">Bridal Collection</Link></li>
+                <li><Link href="/sarees/banarasi" className="block py-1">Banarasi Sarees</Link></li>
+                <li><Link href="/sarees/chikankari" className="block py-1">Chikankari</Link></li>
+                <li><Link href="/sarees/chanderi" className="block py-1">Chanderi</Link></li>
+                <li><Link href="/sarees/bandhani" className="block py-1">Bandhani</Link></li>
+                <li><Link href="/sarees/organza" className="block py-1">Organza</Link></li>
+                <li><Link href="/sarees/bridal" className="block py-1">Bridal Collection</Link></li>
               </ul>
             )}
           </div>
@@ -304,6 +305,7 @@ export const Footer: React.FC = () => {
               <ul className="space-y-2.5 pb-4 pt-1 text-xs text-[#FAF7F0]/80 font-medium animate-fadeIn">
                 <li><Link href="/about-us" className="block py-1">About Us</Link></li>
                 <li><Link href="/our-store" className="block py-1">Our Showroom</Link></li>
+                <li><Link href="/blog" className="block py-1">Blog &amp; Guides</Link></li>
               </ul>
             )}
           </div>

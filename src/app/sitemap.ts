@@ -1,18 +1,21 @@
 import { MetadataRoute } from 'next';
-import { supabase, fetchCategories, fetchProducts, fetchActiveCampaigns } from '../data/supabase';
+import { supabase, fetchCategories, fetchActiveCampaigns, getProductSlug } from '../data/supabase';
 import { BLOG_POSTS } from '../data/blog';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = 'https://shreebanarasisarees.in';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://shreebanarasisarees.in';
 
-  const [products, categories, campaigns, collectionsRes] = await Promise.all([
-    fetchProducts(),
+  const [productsRes, categories, campaigns, collectionsRes] = await Promise.all([
+    supabase
+      .from('storefront_products')
+      .select('id, saree_name, updated_at, created_at')
+      .eq('status', 'active'),
     fetchCategories(),
     fetchActiveCampaigns(),
     supabase.from('collections').select('id, name, slug, updated_at').eq('is_active', true)
   ]);
 
-  // 1. Static Pages
+  // 1. Static Canonical Pages (removed all duplicate aliases)
   const staticPages = [
     {
       url: baseUrl,
@@ -45,12 +48,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.75,
     },
     {
-      url: `${baseUrl}/contact`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
-      priority: 0.6,
-    },
-    {
       url: `${baseUrl}/contact-us`,
       lastModified: new Date(),
       changeFrequency: 'monthly' as const,
@@ -63,40 +60,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     },
     {
-      url: `${baseUrl}/faqs`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
-      priority: 0.6,
-    },
-    {
       url: `${baseUrl}/shipping-policy`,
       lastModified: new Date(),
       changeFrequency: 'monthly' as const,
       priority: 0.6,
     },
     {
-      url: `${baseUrl}/shipping`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
-      priority: 0.5,
-    },
-    {
       url: `${baseUrl}/returns-refunds`,
       lastModified: new Date(),
       changeFrequency: 'monthly' as const,
       priority: 0.6,
-    },
-    {
-      url: `${baseUrl}/returns`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/refund-policy`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
-      priority: 0.5,
     },
     {
       url: `${baseUrl}/cancellation-policy`,
@@ -191,13 +164,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }));
 
-  // 4. Product Pages
-  const productPages = products.map((prod) => ({
-    url: `${baseUrl}/product/${prod.slug}`,
-    lastModified: new Date(),
-    changeFrequency: 'weekly' as const,
-    priority: 0.8,
-  }));
+  // 4. Product Pages with accurate timestamps from Supabase
+  const rawProducts = (productsRes?.data as any[]) || [];
+  const productPages = rawProducts
+    .filter((prod) => prod.id && prod.saree_name)
+    .map((prod) => {
+      const slug = getProductSlug(prod.saree_name, prod.id);
+      const lastModified = prod.updated_at
+        ? new Date(prod.updated_at)
+        : prod.created_at
+          ? new Date(prod.created_at)
+          : new Date();
+
+      return {
+        url: `${baseUrl}/product/${slug}`,
+        lastModified,
+        changeFrequency: 'weekly' as const,
+        priority: 0.8,
+      };
+    });
 
   // 5. Blog Post Pages
   const blogPages = BLOG_POSTS.map((post) => ({

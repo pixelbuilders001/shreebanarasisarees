@@ -473,6 +473,42 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
     return null;
   }
 }
+
+/**
+ * Fetches related active sarees by category or fabric, excluding the current product.
+ */
+export async function fetchRelatedProducts(category: string, currentProductId: string, limit = 4): Promise<Product[]> {
+  try {
+    const [{ data, error }, ratingMap] = await Promise.all([
+      supabase
+        .from('storefront_products')
+        .select(PUBLIC_INVENTORY_SELECT)
+        .eq('status', 'active')
+        .ilike('category', `%${category || ''}%`)
+        .neq('id', currentProductId)
+        .limit(limit),
+      fetchProductRatingsMap()
+    ]);
+
+    if (!error && data && data.length > 0) {
+      return (data as DbInventory[]).map(item => mapDbProductToProduct(item, ratingMap));
+    }
+
+    // Fallback if category match has fewer items: grab general active products
+    const { data: fallbackData } = await supabase
+      .from('storefront_products')
+      .select(PUBLIC_INVENTORY_SELECT)
+      .eq('status', 'active')
+      .neq('id', currentProductId)
+      .limit(limit);
+
+    return ((fallbackData || []) as DbInventory[]).map(item => mapDbProductToProduct(item, ratingMap));
+  } catch (err) {
+    console.error('Exception in fetchRelatedProducts:', err);
+    return [];
+  }
+}
+
 export async function fetchDbWishlist(userId: string): Promise<string[]> {
   try {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);

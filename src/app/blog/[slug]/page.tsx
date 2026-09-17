@@ -1,6 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { Header } from '../../../components/Header';
 import { Footer } from '../../../components/Footer';
 import { BLOG_POSTS } from '../../../data/blog';
@@ -18,6 +19,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {
       title: "Article Not Found | Shree Banarasi Sarees Blog",
       description: "The article you are looking for does not exist or has been moved.",
+      robots: {
+        index: false,
+        follow: false,
+      },
     };
   }
 
@@ -72,19 +77,7 @@ export default async function BlogPostPage({ params }: PageProps) {
   const post = BLOG_POSTS.find(p => p.slug === resolvedParams.slug);
 
   if (!post) {
-    return (
-      <>
-        <Header />
-        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-4">
-          <h2 className="font-serif text-2xl font-bold text-dark-brown mb-2">Article Not Found</h2>
-          <p className="text-sm text-dark-brown/65 mb-6">The article you are looking for has been removed or does not exist.</p>
-          <Link href="/blog" className="px-6 py-2.5 bg-maroon text-ivory rounded font-serif font-bold text-xs tracking-wider uppercase">
-            BACK TO BLOG
-          </Link>
-        </div>
-        <Footer />
-      </>
-    );
+    notFound();
   }
 
   // BlogPosting Schema

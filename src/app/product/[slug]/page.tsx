@@ -1,15 +1,14 @@
 import React from 'react';
 import { Metadata } from 'next';
-import Link from 'next/link';
-import { headers } from 'next/headers';
-import { fetchProductBySlug } from '../../../data/supabase';
+import { notFound } from 'next/navigation';
+import { fetchProductBySlug, fetchRelatedProducts } from '../../../data/supabase';
 import ProductDetailClient from './ProductDetailClient';
-import { Header } from '../../../components/Header';
-import { Footer } from '../../../components/Footer';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://shreebanarasisarees.in';
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const resolvedParams = await params;
@@ -19,24 +18,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {
       title: "Product Not Found | Shree Banarasi Sarees",
       description: "The saree you are looking for is not found or has been moved.",
+      robots: {
+        index: false,
+        follow: false,
+      },
     };
   }
 
   const finalPrice = product.salePrice ?? product.price;
-
-  // Resolve dynamic host for absolute URLs
-  let siteUrl = 'https://shreebanarasisarees.in';
-  try {
-    const headersList = await headers();
-    const hostHeader = headersList.get('host');
-    if (hostHeader) {
-      const cleanHost = hostHeader.replace(/^https?:\/\//i, '');
-      const protocol = cleanHost.includes('localhost') || cleanHost.includes('127.0.0.1') ? 'http' : 'https';
-      siteUrl = `${protocol}://${cleanHost}`;
-    }
-  } catch (e) {
-    console.error('Error getting headers:', e);
-  }
 
   let ogImageUrl = product.images[0] || '';
   if (ogImageUrl.includes('unsplash.com')) {
@@ -81,36 +70,11 @@ export default async function Page({ params }: PageProps) {
   const product = await fetchProductBySlug(resolvedParams.slug);
 
   if (!product) {
-    return (
-      <>
-        <Header />
-        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-4">
-          <h2 className="font-serif text-2xl font-bold text-dark-brown mb-2">Product Not Found</h2>
-          <p className="text-sm text-dark-brown/60 mb-6">The saree collection you are looking for does not exist or has been moved.</p>
-          <Link href="/sarees" className="px-6 py-2.5 bg-maroon text-ivory rounded font-serif font-bold text-xs tracking-wider uppercase">
-            BACK TO CATALOG
-          </Link>
-        </div>
-        <Footer />
-      </>
-    );
+    notFound();
   }
 
+  const relatedProducts = await fetchRelatedProducts(product.category, product.id, 6);
   const finalPrice = product.salePrice ?? product.price;
-
-  // Resolve dynamic host for absolute URLs
-  let siteUrl = 'https://shreebanarasisarees.in';
-  try {
-    const headersList = await headers();
-    const hostHeader = headersList.get('host');
-    if (hostHeader) {
-      const cleanHost = hostHeader.replace(/^https?:\/\//i, '');
-      const protocol = cleanHost.includes('localhost') || cleanHost.includes('127.0.0.1') ? 'http' : 'https';
-      siteUrl = `${protocol}://${cleanHost}`;
-    }
-  } catch (e) {
-    console.error('Error getting headers:', e);
-  }
 
   // Build JSON-LD structured data for the product
   const productJsonLd = {
@@ -228,7 +192,7 @@ export default async function Page({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <ProductDetailClient key={product.id} product={product} />
+      <ProductDetailClient key={product.id} product={product} relatedProducts={relatedProducts} />
     </>
   );
 }

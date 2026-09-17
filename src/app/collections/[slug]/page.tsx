@@ -184,12 +184,12 @@ export default async function CollectionPage({ params }: PageProps) {
           <div className="border-b border-cream pb-3 sm:pb-4 mb-6 sm:mb-8">
             <div className="flex items-baseline justify-between">
               {/* On mobile, show collection title directly since hero banner is hidden */}
-              <h1 className="sm:hidden font-serif text-xl font-extrabold text-dark-brown">
+              <h2 className="sm:hidden font-serif text-xl font-extrabold text-dark-brown">
                 {collection.title || collection.name}
                 <span className="text-xs font-semibold text-dark-brown/40 font-sans ml-2">
                   ({products.length} {products.length === 1 ? 'Saree' : 'Sarees'})
                 </span>
-              </h1>
+              </h2>
 
               {/* On desktop, banner already has the H1 collection title */}
               <h2 className="hidden sm:block font-serif text-2xl font-extrabold text-dark-brown">

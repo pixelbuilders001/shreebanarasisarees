@@ -79,9 +79,6 @@ export const metadata: Metadata = {
       'max-video-preview': -1,
     },
   },
-  alternates: {
-    canonical: "https://shreebanarasisarees.in",
-  },
   openGraph: {
     title: "Shree Banarasi Sarees | श्री बनारसी साड़ीज़ - Handloom Sarees",
     description: "Discover authentic Banarasi silk, Lucknowi Chikankari, Gujarati Bandhani, Organza, and Chanderi sarees at Shree Banarasi Sarees. Premium Indian ethnic wear showroom in Samastipur, Bihar.",
