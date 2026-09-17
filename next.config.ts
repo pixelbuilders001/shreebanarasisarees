@@ -9,10 +9,10 @@ const cspHeader = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://*.googletagmanager.com https://*.clarity.ms https://www.gstatic.com https://*.cashfree.com;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  img-src 'self' data: blob: https://ik.imagekit.io https://*.supabase.co https://images.unsplash.com https://www.googletagmanager.com https://*.google-analytics.com https://*.clarity.ms https://c.bing.com;
+  img-src 'self' data: blob: https://ik.imagekit.io https://*.supabase.co https://images.unsplash.com https://www.googletagmanager.com https://*.google-analytics.com https://*.clarity.ms https://c.bing.com https://maps.gstatic.com https://*.googleapis.com;
   font-src 'self' data: https://fonts.gstatic.com;
   connect-src 'self' https://vzqlsawxvvyvsstyzzff.supabase.co https://*.supabase.co wss://vzqlsawxvvyvsstyzzff.supabase.co wss://*.supabase.co https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://stats.g.doubleclick.net https://*.clarity.ms https://c.bing.com https://fcm.googleapis.com https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://api.postalpincode.in https://api.zippopotam.us https://api.cashfree.com https://sandbox.cashfree.com https://*.cashfree.com;
-  frame-src 'self' https://*.cashfree.com https://api.cashfree.com;
+  frame-src 'self' https://*.cashfree.com https://api.cashfree.com https://maps.google.com https://www.google.com https://*.google.com;
   worker-src 'self' blob:;
   manifest-src 'self';
   object-src 'none';
