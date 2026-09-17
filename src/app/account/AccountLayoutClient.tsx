@@ -32,6 +32,7 @@ export default function AccountLayoutClient({ children }: { children: React.Reac
   } = useStore();
 
   const [authError, setAuthError] = useState('');
+  const [avatarError, setAvatarError] = useState(false);
 
   const handleBack = () => {
     if (pathname !== '/account') {
@@ -157,8 +158,13 @@ export default function AccountLayoutClient({ children }: { children: React.Reac
     { name: 'Logout', path: '#logout', icon: LogOut }
   ];
 
-  const userDisplayName = userProfile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Patron';
-  const userAvatar = user?.user_metadata?.avatar_url || userProfile?.avatar_url;
+  const userDisplayName = userProfile?.full_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Patron';
+  const userAvatar = 
+    user?.user_metadata?.avatar_url || 
+    user?.user_metadata?.picture || 
+    user?.identities?.[0]?.identity_data?.avatar_url ||
+    user?.identities?.[0]?.identity_data?.picture ||
+    userProfile?.avatar_url;
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#FAF7F0] w-full max-w-full overflow-x-clip">
@@ -185,16 +191,17 @@ export default function AccountLayoutClient({ children }: { children: React.Reac
             className="flex items-center gap-2 py-1 px-1.5 sm:px-2.5 rounded-full hover:bg-[#FAF7F0] transition-colors group cursor-pointer"
             title="My Profile"
           >
-            {userAvatar ? (
+            {userAvatar && !avatarError ? (
               <img
                 src={userAvatar}
                 alt={userDisplayName}
+                onError={() => setAvatarError(true)}
                 className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-[#D4C39D] group-hover:border-[#6B1725] transition-colors flex-shrink-0"
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#FFF9F0] border border-[#D4C39D] flex items-center justify-center text-[#6B1725] flex-shrink-0">
-                <User size={15} />
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#FAF7F0] border border-[#D4C39D] flex items-center justify-center text-[#6B1725] font-serif font-bold text-xs flex-shrink-0">
+                {userDisplayName?.charAt(0).toUpperCase() || <User size={15} />}
               </div>
             )}
             <span className="font-sans font-medium text-xs sm:text-sm text-[#292524] group-hover:text-[#6B1725] transition-colors max-w-[100px] sm:max-w-[140px] truncate">

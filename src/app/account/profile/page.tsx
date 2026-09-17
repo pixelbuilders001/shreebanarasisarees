@@ -33,6 +33,7 @@ export default function ProfilePage() {
   const [profileSaveError, setProfileSaveError] = useState('');
   const [profileSaveSuccess, setProfileSaveSuccess] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
 
   useEffect(() => {
     if (userProfile) {
@@ -104,8 +105,13 @@ export default function ProfilePage() {
     );
   }
 
-  const displayName = userProfile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Patron';
-  const userAvatar = user?.user_metadata?.avatar_url || userProfile?.avatar_url;
+  const displayName = userProfile?.full_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Patron';
+  const userAvatar = 
+    user?.user_metadata?.avatar_url || 
+    user?.user_metadata?.picture || 
+    user?.identities?.[0]?.identity_data?.avatar_url ||
+    user?.identities?.[0]?.identity_data?.picture ||
+    userProfile?.avatar_url;
 
   return (
     <div className="w-full space-y-4 animate-fadeIn min-w-0">
@@ -235,16 +241,17 @@ export default function ProfilePage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3.5 min-w-0">
                 <div className="relative shrink-0">
-                  {userAvatar ? (
+                  {userAvatar && !avatarError ? (
                     <img
                       src={userAvatar}
                       alt={displayName}
+                      onError={() => setAvatarError(true)}
                       className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-[#D4C39D] shadow-xs"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#FAF8F5] border-2 border-[#D4C39D] flex items-center justify-center text-[#6B1725] shadow-inner">
-                      <User size={28} />
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#FAF8F5] border-2 border-[#D4C39D] flex items-center justify-center text-[#6B1725] shadow-inner font-serif font-bold text-xl sm:text-2xl">
+                      {displayName ? displayName.charAt(0).toUpperCase() : <User size={28} />}
                     </div>
                   )}
                 </div>

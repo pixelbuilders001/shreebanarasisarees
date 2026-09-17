@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect, useTransition, useMemo } from 'react';
 import { useStore } from '../../../context/StoreContext';
 import {
   Coins,
@@ -10,12 +10,13 @@ import {
   Clock,
   ArrowUpRight,
   ArrowDownLeft,
-  Users,
-  ShoppingBag,
   Sparkles,
   Info,
   RefreshCw,
-  Gift
+  Gift,
+  ChevronDown,
+  ChevronUp,
+  ShieldCheck
 } from 'lucide-react';
 import {
   fetchCoinTransactions,
@@ -49,6 +50,8 @@ export default function CoinsPage() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [showTiers, setShowTiers] = useState(false);
+  const [txFilter, setTxFilter] = useState<'all' | 'credited' | 'spent'>('all');
   const [isRefreshing, startTransition] = useTransition();
 
   const referralCode = userProfile?.referral_code || '';
@@ -111,7 +114,7 @@ export default function CoinsPage() {
 
   const handleWhatsAppShare = () => {
     if (!referralCode) return;
-    const message = `✨ Namaste! Discover exquisite handcrafted pure silk sarees from *Shree Banarasi Sarees*.\n\nUse my referral code *${referralCode}* to explore the collection:\n${shareUrl}`;
+    const message = `✨ Namaste! Discover authentic handwoven Banarasi pure silk sarees from *Shree Banarasi Sarees*.\n\nUse my code *${referralCode}* to get ₹150 off your first purchase:\n${shareUrl}`;
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
@@ -120,353 +123,284 @@ export default function CoinsPage() {
   const pendingCoins = Math.floor(userWallet?.pending_balance || 0);
   const totalEarned = Math.floor(userWallet?.total_earned || 0);
 
+  const filteredTransactions = useMemo(() => {
+    if (txFilter === 'credited') {
+      return transactions.filter(t => t.amount > 0);
+    }
+    if (txFilter === 'spent') {
+      return transactions.filter(t => t.amount < 0);
+    }
+    return transactions;
+  }, [transactions, txFilter]);
+
   return (
-    <div className="space-y-6 w-full max-w-full">
+    <div className="max-w-2xl mx-auto space-y-4 animate-fadeIn">
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 1. HERO WALLET BALANCE CARD                                  */}
+      {/* 0. REFERRAL FLOW EXPLAINER STRIP BANNER                      */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#6B1725] via-[#52111C] to-[#2B060D] text-[#FAF7F0] p-6 sm:p-8 shadow-xl border border-[#B08A3C]/40">
-        {/* Subtle decorative gold blur orbs */}
-        <div className="absolute -top-16 -right-16 w-56 h-56 bg-[#B08A3C]/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-[#B08A3C]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="w-full rounded-2xl overflow-hidden border border-[#E7DFC9] shadow-2xs bg-white">
+        <img
+          src="/referal_flow.webp"
+          alt="How Referral and Banarasi Coins Work"
+          className="w-full h-auto object-contain block"
+          loading="eager"
+        />
+      </div>
 
-        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FAF7F0]/10 backdrop-blur-md border border-[#FAF7F0]/15 text-[#E5D7BF] text-[11px] font-semibold uppercase tracking-wider">
-              <Sparkles size={13} className="text-[#D4AF37]" />
-              Shree Banarasi Rewards
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* 1. LUXURY DIGITAL WALLET PASS CARD                           */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#801B2E] via-[#6B1725] to-[#4E0E1A] text-[#FAF7F0] p-6 sm:p-7 shadow-xl border border-[#D4AF37]/40">
+        {/* Subtle gold metallic shimmer corner accents */}
+        <div className="absolute -top-12 -right-12 w-44 h-44 bg-[#D4AF37]/20 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-12 -left-12 w-44 h-44 bg-[#D4AF37]/15 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="relative z-10 space-y-5">
+          {/* Top Pass Header: Brand & Refresh */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#E5D7BF] animate-pulse" />
+              <span className="font-sans text-xs sm:text-sm font-bold tracking-wider text-[#FAF7F0]/90 uppercase">
+                Banarasi Coins Wallet
+              </span>
             </div>
 
-            <div className="flex items-baseline gap-2 pt-1">
-              <span className="font-serif text-4xl sm:text-5xl font-bold tracking-tight text-[#FAF7F0]">
-                🪙 {availableCoins}
-              </span>
-              <span className="text-sm sm:text-base font-sans font-medium text-[#E5D7BF]">
-                Banarasi Coins
-              </span>
-            </div>
-
-            <p className="text-xs sm:text-sm text-[#FAF7F0]/75 flex items-center gap-1.5 font-light">
-              <span className="font-semibold text-[#D4AF37]">1 Banarasi Coin = ₹1</span> • Spend directly at checkout
-            </p>
-          </div>
-
-          {/* Quick Refresh & Secondary Balances */}
-          <div className="flex flex-col sm:items-end gap-3 w-full sm:w-auto">
             <button
               onClick={handleManualRefresh}
               disabled={isRefreshing || userWalletLoading}
-              className="inline-flex items-center gap-2 self-start sm:self-end px-3.5 py-1.5 rounded-full bg-[#FAF7F0]/10 hover:bg-[#FAF7F0]/20 text-[#FAF7F0] text-xs font-medium border border-[#FAF7F0]/15 transition-all cursor-pointer disabled:opacity-50"
+              className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-[#FAF7F0] transition-all cursor-pointer disabled:opacity-40"
               title="Refresh wallet balance"
+              aria-label="Refresh wallet balance"
             >
-              <RefreshCw size={13} className={isRefreshing || userWalletLoading ? 'animate-spin' : ''} />
-              <span>Refresh Balance</span>
+              <RefreshCw size={14} className={isRefreshing || userWalletLoading ? 'animate-spin text-[#FAF7F0]' : ''} />
             </button>
+          </div>
 
-            <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
-              <div className="bg-black/25 backdrop-blur-sm rounded-2xl px-4 py-2.5 border border-white/10 text-left sm:text-right">
-                <span className="text-[10px] text-[#FAF7F0]/60 uppercase tracking-wider block font-semibold">
-                  Pending
-                </span>
-                <span className="text-sm font-bold text-[#D4AF37]">
-                  ₹{pendingCoins}
-                </span>
+          {/* Main Balance Display */}
+          <div>
+            <span className="text-[11px] uppercase tracking-widest text-[#E5D7BF] block font-semibold">
+              Available Balance
+            </span>
+            <div className="flex items-baseline gap-2 pt-1">
+              <span className="font-sans text-4xl sm:text-5xl font-extrabold tracking-tight text-white">
+                ₹{availableCoins.toLocaleString('en-IN')}
+              </span>
+              <span className="text-sm font-sans font-semibold text-[#E5D7BF]">
+                Coins
+              </span>
+            </div>
+            <p className="text-xs text-[#FAF7F0]/80 mt-1 flex items-center gap-1.5 font-sans">
+              <Sparkles size={12} className="text-[#D4AF37]" />
+              <span>1 Coin = ₹1 instant cash discount at checkout</span>
+            </p>
+          </div>
+
+          {/* Bottom Card Strip: Sub-balances & Patron Code */}
+          <div className="pt-3 border-t border-white/15 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-4">
+              <div>
+                <span className="text-[10px] text-[#E5D7BF]/75 uppercase block font-medium">Pending</span>
+                <span className="font-sans font-bold text-amber-300">₹{pendingCoins.toLocaleString('en-IN')}</span>
               </div>
-              <div className="bg-black/25 backdrop-blur-sm rounded-2xl px-4 py-2.5 border border-white/10 text-left sm:text-right">
-                <span className="text-[10px] text-[#FAF7F0]/60 uppercase tracking-wider block font-semibold">
-                  Lifetime Earned
-                </span>
-                <span className="text-sm font-bold text-[#FAF7F0]">
-                  ₹{totalEarned}
-                </span>
+              <div className="h-6 w-px bg-white/15" />
+              <div>
+                <span className="text-[10px] text-[#E5D7BF]/75 uppercase block font-medium">Lifetime Won</span>
+                <span className="font-sans font-bold text-white">₹{totalEarned.toLocaleString('en-IN')}</span>
               </div>
             </div>
+
+            {/* In-Card Referral Code Pill */}
+            {referralCode && (
+              <button
+                onClick={handleCopyCode}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/20 hover:bg-black/30 border border-white/20 text-xs font-sans font-bold text-white transition-all cursor-pointer"
+                title="Click to copy your code"
+              >
+                <span>CODE: {referralCode}</span>
+                {copiedCode ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} className="text-[#E5D7BF]" />}
+              </button>
+            )}
           </div>
         </div>
 
+        {/* Small pending alert if any */}
         {pendingCoins > 0 && (
-          <div className="mt-5 pt-4 border-t border-white/10 flex items-center gap-2 text-[11px] text-[#FAF7F0]/80">
-            <Info size={14} className="text-[#D4AF37] flex-shrink-0" />
-            <span>
-              Pending coins become available 7 days after the referred order is marked Delivered.
-            </span>
+          <div className="relative z-10 mt-3 pt-2.5 border-t border-white/10 flex items-center gap-1.5 text-[11px] text-[#FAF7F0]/85">
+            <Info size={13} className="text-amber-300 shrink-0" />
+            <span>Pending coins unlock 7 days after the referred order is delivered.</span>
           </div>
         )}
       </div>
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 2. REFER & EARN SHARE BOX                                    */}
+      {/* 2. DIRECT ACTION BUTTONS (Clean, Unified)                     */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#F3ECE0] shadow-[0_2px_16px_rgba(41,37,36,0.03)] space-y-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-serif text-lg sm:text-xl font-bold text-[#292524] flex items-center gap-2">
-              <Gift size={20} className="text-[#6B1725]" />
-              Refer & Earn Banarasi Coins
-            </h2>
-            <p className="text-xs sm:text-sm text-[#6B625D] mt-1">
-              Invite friends & family. When they buy their first saree, you earn Banarasi Coins!
-            </p>
-          </div>
-        </div>
-
-        {/* Share Inputs Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Referral Code Box */}
-          <div className="bg-[#FAF7F0] border border-[#E5DEC9] p-4 rounded-2xl flex items-center justify-between gap-3">
-            <div>
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#6B625D] block">
-                Your Referral Code
-              </span>
-              <span className="font-mono text-base sm:text-lg font-bold text-[#6B1725] tracking-wide">
-                {referralCode || 'Generating...'}
-              </span>
-            </div>
-
-            <button
-              onClick={handleCopyCode}
-              disabled={!referralCode}
-              className="px-3 py-2 rounded-xl bg-white border border-[#D4C39D] hover:border-[#6B1725] hover:bg-[#FAF7F0] text-xs font-semibold text-[#292524] flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-            >
-              {copiedCode ? (
-                <>
-                  <Check size={14} className="text-emerald-600" />
-                  <span className="text-emerald-700">Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Copy size={14} className="text-[#6B625D]" />
-                  <span>Copy Code</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Referral Link Box */}
-          <div className="bg-[#FAF7F0] border border-[#E5DEC9] p-4 rounded-2xl flex items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#6B625D] block">
-                Your Referral Link
-              </span>
-              <span className="text-xs text-[#292524] truncate block font-sans">
-                {shareUrl}
-              </span>
-            </div>
-
-            <button
-              onClick={handleCopyLink}
-              disabled={!referralCode}
-              className="px-3 py-2 rounded-xl bg-white border border-[#D4C39D] hover:border-[#6B1725] hover:bg-[#FAF7F0] text-xs font-semibold text-[#292524] flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs flex-shrink-0"
-            >
-              {copiedLink ? (
-                <>
-                  <Check size={14} className="text-emerald-600" />
-                  <span className="text-emerald-700">Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Copy size={14} className="text-[#6B625D]" />
-                  <span>Copy Link</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* WhatsApp Share Action Button */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         <button
           onClick={handleWhatsAppShare}
           disabled={!referralCode}
-          className="w-full py-3.5 px-4 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-2xl font-sans font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all shadow-sm hover:shadow-md cursor-pointer disabled:opacity-50"
+          className="w-full py-3 px-4 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-2xl font-sans font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-98 disabled:opacity-50"
         >
           <Share2 size={16} />
-          Share Referral Link on WhatsApp
+          <span>Invite on WhatsApp (+₹150 off)</span>
+        </button>
+
+        <button
+          onClick={handleCopyLink}
+          disabled={!referralCode}
+          className="w-full py-3 px-4 bg-white hover:bg-[#FAF8F5] border border-[#D4C39D] text-[#292524] rounded-2xl font-sans font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-2xs cursor-pointer active:scale-98 disabled:opacity-50"
+        >
+          {copiedLink ? (
+            <>
+              <Check size={15} className="text-emerald-600" />
+              <span className="text-emerald-700">Link Copied!</span>
+            </>
+          ) : (
+            <>
+              <Copy size={15} className="text-[#6B1725]" />
+              <span>Copy Invite Link</span>
+            </>
+          )}
         </button>
       </div>
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 3. REFERRAL STATS CARDS                                      */}
+      {/* 3. COLLAPSIBLE TIERS & HOW IT WORKS                          */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-[#F3ECE0] shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#FAF7F0] border border-[#B08A3C]/30 flex items-center justify-center text-[#6B1725] flex-shrink-0">
-            <Users size={22} />
+      <div className="bg-white rounded-2xl border border-[#E7DFC9] shadow-2xs overflow-hidden">
+        <button
+          onClick={() => setShowTiers(!showTiers)}
+          className="w-full py-3 px-4 sm:px-5 flex items-center justify-between text-left hover:bg-[#FAF8F5]/60 transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#1C1917]">
+            <Gift size={16} className="text-[#6B1725]" />
+            <span>How to Earn &amp; Reward Slabs</span>
           </div>
-          <div>
-            <span className="text-xs text-[#6B625D] font-medium block">
-              Friends Joined
-            </span>
-            <span className="text-2xl font-bold font-serif text-[#292524]">
-              {stats.totalInvited}
-            </span>
+          <div className="flex items-center gap-1.5 text-xs text-[#78716C]">
+            <span>{showTiers ? 'Hide' : 'View Tiers'}</span>
+            {showTiers ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </div>
-        </div>
+        </button>
 
-        <div className="bg-white p-5 rounded-2xl border border-[#F3ECE0] shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#FAF7F0] border border-[#B08A3C]/30 flex items-center justify-center text-[#6B1725] flex-shrink-0">
-            <ShoppingBag size={22} />
-          </div>
-          <div>
-            <span className="text-xs text-[#6B625D] font-medium block">
-              Orders Placed
-            </span>
-            <span className="text-2xl font-bold font-serif text-[#292524]">
-              {stats.successfulPurchases}
-            </span>
-          </div>
-        </div>
+        {showTiers && (
+          <div className="p-4 sm:p-5 pt-1 border-t border-[#F0EBE1] space-y-3.5 bg-[#FAF8F5]/30 animate-fadeIn">
+            {/* 3 Steps */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+              <div className="p-2.5 rounded-xl bg-white border border-[#E7DFC9] space-y-0.5">
+                <span className="font-bold text-[#6B1725]">1. Share Code</span>
+                <p className="text-[11px] text-[#78716C]">Send your invite link to friends &amp; family.</p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-white border border-[#E7DFC9] space-y-0.5">
+                <span className="font-bold text-[#6B1725]">2. Friend Shops</span>
+                <p className="text-[11px] text-[#78716C]">They get ₹150 off on their first saree purchase.</p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-white border border-[#E7DFC9] space-y-0.5">
+                <span className="font-bold text-[#6B1725]">3. You Get Coins</span>
+                <p className="text-[11px] text-[#78716C]">You receive up to ₹500 in coins based on order tier.</p>
+              </div>
+            </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-[#F3ECE0] shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#FAF7F0] border border-[#B08A3C]/30 flex items-center justify-center text-[#6B1725] flex-shrink-0">
-            <Coins size={22} />
+            {/* Slabs */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-xs">
+              <div className="p-2.5 rounded-xl bg-white border border-[#E7DFC9] flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-[#78716C] uppercase block font-medium">First Order</span>
+                  <span className="font-sans font-semibold text-[#1C1917]">₹{settings.tier1_min_order.toLocaleString('en-IN')}+</span>
+                </div>
+                <span className="font-sans font-bold text-xs sm:text-sm text-[#6B1725]">+₹{settings.tier1_reward_coins} Coins</span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-white border border-[#E7DFC9] flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-[#78716C] uppercase block font-medium">Festive Order</span>
+                  <span className="font-sans font-semibold text-[#1C1917]">₹{settings.tier2_min_order.toLocaleString('en-IN')}+</span>
+                </div>
+                <span className="font-sans font-bold text-xs sm:text-sm text-[#6B1725]">+₹{settings.tier2_reward_coins} Coins</span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-gradient-to-r from-white to-[#FAF7F0] border border-[#B08A3C]/40 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-[#B08A3C] uppercase font-bold block">Bridal Order</span>
+                  <span className="font-sans font-semibold text-[#6B1725]">₹{settings.tier3_min_order.toLocaleString('en-IN')}+</span>
+                </div>
+                <span className="font-sans font-bold text-xs sm:text-sm text-[#6B1725]">+₹{settings.tier3_reward_coins} Coins</span>
+              </div>
+            </div>
+
+            {/* Stats summary */}
+            <div className="pt-2 flex items-center justify-between text-[11px] text-[#78716C] border-t border-[#EFEBE4] font-sans">
+              <span>Friends Invited: <strong className="text-[#1C1917] font-sans font-semibold">{stats.totalInvited}</strong></span>
+              <span>Orders Placed: <strong className="text-[#1C1917] font-sans font-semibold">{stats.successfulPurchases}</strong></span>
+              <span>Max Discount: <strong className="text-[#1C1917] font-sans font-semibold">{settings.max_redemption_percent}% off</strong></span>
+            </div>
           </div>
-          <div>
-            <span className="text-xs text-[#6B625D] font-medium block">
-              Total Coins Won
-            </span>
-            <span className="text-2xl font-bold font-serif text-[#6B1725]">
-              🪙 {totalEarned}
-            </span>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 4. HOW IT WORKS (3 SIMPLE STEPS)                             */}
+      {/* 4. COIN PASSBOOK / TRANSACTIONS LEDGER                        */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#F3ECE0] shadow-xs space-y-4">
-        <h3 className="font-serif text-base sm:text-lg font-bold text-[#292524]">
-          How Does It Work?
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-          <div className="p-4 rounded-2xl bg-[#FAF7F0]/60 border border-[#E5DEC9]/60 space-y-2">
-            <div className="w-8 h-8 rounded-full bg-[#6B1725] text-white flex items-center justify-center text-xs font-bold font-serif">
-              1
-            </div>
-            <h4 className="font-semibold text-xs text-[#292524]">Share Your Link</h4>
-            <p className="text-xs text-[#6B625D] leading-relaxed">
-              Send your exclusive referral link or code to friends & family over WhatsApp.
-            </p>
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-[#E7DFC9] shadow-2xs space-y-3.5">
+        <div className="flex items-center justify-between pb-2 border-b border-[#F0EBE1]">
+          <div className="flex items-center gap-2">
+            <Clock size={16} className="text-[#6B1725]" />
+            <h3 className="font-sans text-sm sm:text-base font-bold text-[#1C1917]">
+              Passbook &amp; Activity
+            </h3>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#FAF7F0]/60 border border-[#E5DEC9]/60 space-y-2">
-            <div className="w-8 h-8 rounded-full bg-[#6B1725] text-white flex items-center justify-center text-xs font-bold font-serif">
-              2
-            </div>
-            <h4 className="font-semibold text-xs text-[#292524]">Friend Places Order</h4>
-            <p className="text-xs text-[#6B625D] leading-relaxed">
-              They log in with Google and complete their first authentic Banarasi saree purchase.
-            </p>
+          {/* Filter Chips */}
+          <div className="flex items-center gap-1">
+            {(['all', 'credited', 'spent'] as const).map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setTxFilter(filter)}
+                className={`px-2.5 py-0.5 rounded-lg text-[11px] capitalize font-medium transition-colors cursor-pointer ${
+                  txFilter === filter
+                    ? 'bg-[#6B1725] text-white font-semibold'
+                    : 'text-[#78716C] hover:text-[#1C1917] hover:bg-[#FAF8F5]'
+                }`}
+              >
+                {filter}
+              </button>
+            ))}
           </div>
-
-          <div className="p-4 rounded-2xl bg-[#FAF7F0]/60 border border-[#E5DEC9]/60 space-y-2">
-            <div className="w-8 h-8 rounded-full bg-[#6B1725] text-white flex items-center justify-center text-xs font-bold font-serif">
-              3
-            </div>
-            <h4 className="font-semibold text-xs text-[#292524]">Earn & Spend Coins</h4>
-            <p className="text-xs text-[#6B625D] leading-relaxed">
-              You receive Banarasi Coins in your wallet, ready to spend as direct cash discount at checkout!
-            </p>
-          </div>
-        </div>
-
-        {/* Dynamic Tier Slabs Visual Card */}
-        <div className="mt-4 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-[#FAF7F0] via-white to-[#FAF7F0] border border-[#B08A3C]/30 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-            <h4 className="font-serif text-xs sm:text-sm font-bold text-[#6B1725] flex items-center gap-1.5">
-              <span>🪙</span>
-              <span>Tiered Referral Rewards</span>
-            </h4>
-            <span className="text-[11px] text-[#6B625D]">
-              Spend limit: Max {settings.max_redemption_percent}% of cart (min order ₹{settings.min_order_for_redemption.toLocaleString('en-IN')})
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-            <div className="p-3 rounded-xl bg-white border border-[#E5DEC9]/80 flex items-center justify-between shadow-2xs">
-              <div>
-                <p className="text-[11px] text-[#6B625D] font-medium">Tier 1 (₹{settings.tier1_min_order.toLocaleString('en-IN')}+)</p>
-                <p className="text-xs font-bold text-[#292524]">First Purchase</p>
-              </div>
-              <span className="px-2 py-1 rounded-lg bg-[#FAF7F0] text-[#6B1725] font-serif font-bold text-xs border border-[#B08A3C]/30">
-                +🪙 {settings.tier1_reward_coins}
-              </span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-white border border-[#E5DEC9]/80 flex items-center justify-between shadow-2xs">
-              <div>
-                <p className="text-[11px] text-[#6B625D] font-medium">Tier 2 (₹{settings.tier2_min_order.toLocaleString('en-IN')}+)</p>
-                <p className="text-xs font-bold text-[#292524]">Festive Order</p>
-              </div>
-              <span className="px-2 py-1 rounded-lg bg-[#FAF7F0] text-[#6B1725] font-serif font-bold text-xs border border-[#B08A3C]/30">
-                +🪙 {settings.tier2_reward_coins}
-              </span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-gradient-to-br from-[#FAF7F0] to-white border border-[#B08A3C]/50 flex items-center justify-between shadow-2xs">
-              <div>
-                <p className="text-[11px] text-[#B08A3C] font-semibold">Tier 3 (₹{settings.tier3_min_order.toLocaleString('en-IN')}+)</p>
-                <p className="text-xs font-bold text-[#6B1725]">Bridal &amp; Royal</p>
-              </div>
-              <span className="px-2.5 py-1 rounded-lg bg-[#6B1725] text-white font-serif font-bold text-xs shadow-xs">
-                +🪙 {settings.tier3_reward_coins}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ───────────────────────────────────────────────────────────── */}
-      {/* 5. COIN PASSBOOK / TRANSACTION LEDGER                         */}
-      {/* ───────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#F3ECE0] shadow-xs space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="font-serif text-base sm:text-lg font-bold text-[#292524] flex items-center gap-2">
-            <Clock size={18} className="text-[#6B1725]" />
-            Coin Passbook & Ledger
-          </h3>
-          <span className="text-xs text-[#6B625D]">
-            {transactions.length} entries
-          </span>
         </div>
 
         {loadingHistory ? (
-          <div className="py-12 flex flex-col items-center justify-center gap-2 text-stone-400">
-            <RefreshCw size={22} className="animate-spin text-[#6B1725]" />
-            <span className="text-xs">Loading transaction history...</span>
+          <div className="py-10 flex flex-col items-center justify-center gap-2 text-[#78716C]">
+            <RefreshCw size={18} className="animate-spin text-[#6B1725]" />
+            <span className="text-xs font-sans">Loading passbook history...</span>
           </div>
-        ) : transactions.length === 0 ? (
-          <div className="py-12 px-4 text-center rounded-2xl border border-dashed border-[#E5DEC9] bg-[#FAF7F0]/40 space-y-2">
-            <div className="w-12 h-12 mx-auto rounded-full bg-cream/50 flex items-center justify-center text-maroon mb-1">
-              <Coins size={24} />
-            </div>
-            <p className="text-sm font-semibold text-[#292524]">No Coin Transactions Yet</p>
-            <p className="text-xs text-[#6B625D] max-w-sm mx-auto">
-              Start sharing your referral code to earn your first Banarasi Coins! Every completed referral adds coins to your wallet.
+        ) : filteredTransactions.length === 0 ? (
+          <div className="py-10 px-4 text-center rounded-2xl border border-dashed border-[#E5DEC9] bg-[#FAF8F5]/50 space-y-1.5">
+            <Coins size={22} className="mx-auto text-[#B08A3C]" />
+            <p className="text-xs sm:text-sm font-semibold text-[#1C1917]">No Transactions Recorded</p>
+            <p className="text-[11px] text-[#78716C] max-w-xs mx-auto font-sans">
+              Share your code with friends to start earning Banarasi Coins!
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-[#F3ECE0]">
-            {transactions.map((tx) => {
+          <div className="divide-y divide-[#F0EBE1]">
+            {filteredTransactions.map((tx) => {
               const isCredit = tx.amount > 0;
               const isPending = tx.status === 'PENDING';
               const isCancelled = tx.status === 'CANCELLED';
 
               return (
-                <div key={tx.id} className="py-3.5 flex items-center justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                      isCredit ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                <div key={tx.id} className="py-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                      isCredit ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-700'
                     }`}>
-                      {isCredit ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+                      {isCredit ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
                     </div>
 
                     <div className="min-w-0">
-                      <p className="text-xs sm:text-sm font-semibold text-[#292524] truncate">
+                      <p className="text-xs font-semibold text-[#1C1917] truncate">
                         {tx.description || tx.type.replace(/_/g, ' ')}
                       </p>
-                      <div className="flex items-center gap-2 text-[11px] text-[#6B625D] mt-0.5">
+                      <div className="flex items-center gap-1.5 text-[10px] text-[#78716C]">
                         <span>{formatTransactionDate(tx.created_at)}</span>
                         <span>•</span>
                         <span className={`capitalize font-medium ${
@@ -484,18 +418,18 @@ export default function CoinsPage() {
                     </div>
                   </div>
 
-                  <div className="text-right flex-shrink-0">
-                    <span className={`text-sm sm:text-base font-bold font-mono ${
+                  <div className="text-right shrink-0">
+                    <span className={`text-xs sm:text-sm font-sans font-bold ${
                       isPending
                         ? 'text-amber-600'
                         : isCredit
                         ? 'text-emerald-700'
                         : 'text-stone-700'
                     }`}>
-                      {isCredit ? `+₹${Math.abs(tx.amount)}` : `-₹${Math.abs(tx.amount)}`}
+                      {isCredit ? `+₹${Math.abs(tx.amount).toLocaleString('en-IN')}` : `-₹${Math.abs(tx.amount).toLocaleString('en-IN')}`}
                     </span>
-                    <span className="text-[10px] block text-[#6B625D]">
-                      {isPending ? 'Pending Return Window' : isCredit ? 'Coins Credited' : 'Coins Spent'}
+                    <span className="text-[10px] block text-[#78716C]">
+                      {isPending ? 'Pending Window' : isCredit ? 'Coins Credited' : 'Coins Spent'}
                     </span>
                   </div>
                 </div>
