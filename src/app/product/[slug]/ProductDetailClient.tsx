@@ -37,6 +37,7 @@ import {
 import { fetchDesignVariants, fetchDeliverySettings, fetchProductAddons, DeliverySettings, supabase } from '../../../data/supabase';
 import { RecentlyViewed } from '../../../components/RecentlyViewed';
 import { ProductCard } from '../../../components/ProductCard';
+import ProductImageZoomModal from '../../../components/ProductImageZoomModal';
 import { SareeCustomizationModal, isCustomizationModalRecentlyClosed } from '../../../components/SareeCustomizationModal';
 import { useRecentlyViewed } from '../../../utils/useRecentlyViewed';
 import { trackViewItem } from '../../../lib/gtag';
@@ -449,29 +450,6 @@ export default function ProductDetailClient({ product, relatedProducts }: Produc
     trackViewItem(product);
   }, [product.id, recordView]);
 
-  // Lightbox keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isLightboxOpen) return;
-      if (e.key === 'Escape') {
-        setIsLightboxOpen(false);
-      } else if (e.key === 'ArrowRight') {
-        setActiveImageIndex((prev) => {
-          const next = (prev + 1) % product.images.length;
-          setActiveImage(product.images[next]);
-          return next;
-        });
-      } else if (e.key === 'ArrowLeft') {
-        setActiveImageIndex((prev) => {
-          const next = (prev - 1 + product.images.length) % product.images.length;
-          setActiveImage(product.images[next]);
-          return next;
-        });
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isLightboxOpen, product.images]);
 
   const handleNotifyMe = () => {
     showToast(`We'll notify you when "${product.name}" is back in stock!`, 'info');
@@ -695,7 +673,11 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                   <div
                     key={idx}
                     className="w-full h-full flex-shrink-0 snap-center cursor-zoom-in relative"
-                    onClick={() => setIsLightboxOpen(true)}
+                    onClick={() => {
+                      setActiveImage(img);
+                      setActiveImageIndex(idx);
+                      setIsLightboxOpen(true);
+                    }}
                   >
                     <Image
                       src={img}
@@ -708,6 +690,17 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                   </div>
                 ))}
               </div>
+
+              {/* Mobile Zoom Prompt Badge */}
+              <button
+                type="button"
+                onClick={() => setIsLightboxOpen(true)}
+                className="absolute bottom-3 right-3 bg-black/50 hover:bg-black/75 backdrop-blur-md text-white text-[11px] font-sans px-2.5 py-1 rounded-full flex items-center gap-1 z-10 border border-white/20 active:scale-95 transition-all cursor-pointer shadow-md"
+                aria-label="Zoom saree image to inspect zari details"
+              >
+                <ZoomIn size={12} />
+                <span>Zoom Zari</span>
+              </button>
 
               {/* Mobile Header Action Overlay */}
               <div
@@ -791,13 +784,14 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                   </div>
                 </div>
               )}
-              <div
+              <button
+                type="button"
                 onClick={() => setIsLightboxOpen(true)}
-                className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md text-[#292524] text-xs font-bold px-3 py-2 rounded-full shadow-md flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute bottom-4 right-4 bg-white/95 hover:bg-white backdrop-blur-md text-[#292524] text-xs font-semibold px-3.5 py-2 rounded-full shadow-lg flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all cursor-pointer border border-[#E5DEC9]"
               >
-                <ZoomIn size={14} />
-                <span>Zoom Photo</span>
-              </div>
+                <ZoomIn size={14} className="text-[#6B1725]" />
+                <span>Zoom Zari Detail</span>
+              </button>
             </div>
 
             {/* DESKTOP THUMBNAIL STRIP */}
@@ -1707,26 +1701,21 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
         </div>
       )}
 
-      {/* LIGHTBOX OVERLAY */}
-      {isLightboxOpen && (
-        <div className="fixed inset-0 z-50 bg-[#292524]/95 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-fadeIn">
-          <button
-            onClick={() => setIsLightboxOpen(false)}
-            className="absolute top-5 right-5 bg-white/15 hover:bg-white/30 text-white p-2.5 rounded-full transition-colors z-50 cursor-pointer"
-            aria-label="Close image zoom"
-          >
-            <X size={22} />
-          </button>
-
-          <div className="relative w-full max-w-4xl max-h-[75vh] flex items-center justify-center">
-            <img
-              src={activeImage}
-              alt={product.name}
-              className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl"
-            />
-          </div>
-        </div>
-      )}
+      {/* HIGH RESOLUTION PRODUCT IMAGE ZOOM & ZARI DETAIL MODAL */}
+      <ProductImageZoomModal
+        isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
+        images={product.images}
+        initialIndex={activeImageIndex}
+        productName={product.name}
+        productSku={product.sku}
+        onIndexChange={(idx) => {
+          setActiveImageIndex(idx);
+          if (product.images[idx]) {
+            setActiveImage(product.images[idx]);
+          }
+        }}
+      />
 
       {/* SAREE CUSTOMIZATION & TAILORING POPUP / BOTTOM SHEET */}
       <SareeCustomizationModal
