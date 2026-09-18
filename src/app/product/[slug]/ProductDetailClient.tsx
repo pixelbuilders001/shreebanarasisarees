@@ -411,13 +411,47 @@ export default function ProductDetailClient({ product, relatedProducts }: Produc
       setLoadingReviews(true);
       const { data, error } = await supabase
         .from('product_reviews')
-        .select('*')
+        .select('*, orders(customer_name)')
         .eq('product_id', product.id)
         .eq('status', 'approved')
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        setReviews(data);
+        // Collect user_ids to look up profile full_names
+        const userIds = Array.from(new Set(data.map((r: any) => r.user_id).filter(Boolean)));
+        let profileMap: Record<string, string> = {};
+        if (userIds.length > 0) {
+          try {
+            const { data: profs } = await supabase
+              .from('profiles')
+              .select('id, full_name')
+              .in('id', userIds);
+            if (profs) {
+              profs.forEach((p: any) => {
+                if (p.full_name) profileMap[p.id] = p.full_name;
+              });
+            }
+          } catch (e) {
+            console.warn("Could not fetch reviewer profiles:", e);
+          }
+        }
+
+        const enriched = data.map((r: any) => {
+          const profileName = (r.user_id && profileMap[r.user_id])?.trim();
+          const orderCustName = r.orders?.customer_name?.trim();
+          const directUserName = r.user_name?.trim();
+
+          const candidate = profileName || orderCustName || directUserName;
+          const isGeneric = !candidate || candidate.toLowerCase() === 'valued customer' || candidate.toLowerCase() === 'customer';
+          const customerName = !isGeneric ? candidate : 'Verified Customer';
+
+          return {
+            ...r,
+            customer_name: customerName,
+          };
+        });
+
+        setReviews(enriched);
       }
     } catch (err) {
       console.error("Error fetching reviews:", err);
@@ -561,21 +595,28 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
     try {
       setSubmitting(true);
       setFormError(null);
-      const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Verified Buyer';
 
-      const { error } = await supabase.from('product_reviews').insert([{
-        product_id: product.id,
-        user_id: user.id,
-        rating: formRating,
-        title: formTitle.trim(),
-        review_text: formText.trim(),
-        user_name: userName,
-        status: 'approved'
-      }]);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
 
-      if (error) {
-        setFormError(error.message || "Failed to submit review.");
-      } else {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzqlsawxvvyvsstyzzff.supabase.co'}/functions/v1/verify-review`, {
+        method: 'POST',
+        headers: {
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_6chwvgIpbfCpeEZrkS9VYg_IO__zSpY',
+          'Authorization': `Bearer ${token || ''}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          product_id: product.id,
+          rating: formRating,
+          title: formTitle.trim(),
+          review_text: formText.trim()
+        })
+      });
+
+      const resData = await response.json().catch(() => ({}));
+
+      if (response.status === 201 || response.ok) {
         setFormSuccess("Thank you! Your review has been submitted.");
         setFormTitle('');
         setFormText('');
@@ -584,6 +625,17 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
           setIsReviewModalOpen(false);
           setFormSuccess(null);
         }, 1800);
+      } else {
+        if (response.status === 401) {
+          setIsAuthModalOpen(true);
+          setFormError("Please log in to submit a review.");
+        } else if (response.status === 403) {
+          setFormError("Only verified purchasers can review this product. You can review your sarees from your Delivered Orders in My Account.");
+        } else if (response.status === 409) {
+          setFormError("You have already reviewed this saree.");
+        } else {
+          setFormError(resData.message || resData.error || "Failed to submit review.");
+        }
       }
     } catch (err: any) {
       setFormError(err.message || "Error submitting review.");
@@ -1382,11 +1434,11 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-full bg-[#FAF6EE] border border-[#E5DEC9] text-[#6B1725] font-serif font-bold text-xs flex items-center justify-center shrink-0">
-                        {rev.user_name?.[0]?.toUpperCase() || 'SBS'}
+                        {rev.customer_name?.[0]?.toUpperCase() || 'V'}
                       </div>
                       <div>
                         <h3 className="text-xs font-bold text-[#292524] flex items-center gap-1.5">
-                          {rev.user_name || 'Verified Customer'}
+                          {rev.customer_name || 'Verified Customer'}
                           <span className="text-[10px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-normal">
                             ✓ Verified Buyer
                           </span>

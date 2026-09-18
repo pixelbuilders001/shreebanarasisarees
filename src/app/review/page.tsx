@@ -91,7 +91,11 @@ function ReviewContent() {
           setTexts(initTexts);
         } else {
           setOrderData(null);
-          setErrorMsg(`No order found matching "${activeOrderId}". Please verify your order number.`);
+          if (!user) {
+            setErrorMsg(`Please log in with the account used for Order "${activeOrderId}" to review your items.`);
+          } else {
+            setErrorMsg(`No order found matching "${activeOrderId}". Please verify your order number.`);
+          }
         }
       })
       .catch((err) => {
@@ -106,7 +110,7 @@ function ReviewContent() {
     return () => {
       isMounted = false;
     };
-  }, [activeOrderId]);
+  }, [activeOrderId, user]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,6 +167,8 @@ function ReviewContent() {
           body: JSON.stringify({
             product_id: prodId,
             order_id: orderData?.id,
+            customer_name: orderData?.customerName || user?.user_metadata?.full_name || 'Valued Customer',
+            user_name: orderData?.customerName || user?.user_metadata?.full_name || 'Valued Customer',
             rating,
             title,
             review_text: reviewText
@@ -237,9 +243,20 @@ function ReviewContent() {
 
         {/* Error Banner */}
         {errorMsg && (
-          <div className="p-4 bg-red-50 text-red-800 text-xs font-semibold rounded-2xl border border-red-200 flex items-center gap-3 animate-fadeIn">
-            <AlertCircle size={18} className="text-red-600 flex-shrink-0" />
-            <span>{errorMsg}</span>
+          <div className="p-4 bg-red-50 text-red-800 text-xs font-semibold rounded-2xl border border-red-200 flex flex-wrap items-center justify-between gap-3 animate-fadeIn">
+            <div className="flex items-center gap-3">
+              <AlertCircle size={18} className="text-red-600 flex-shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+            {!user && (
+              <button
+                type="button"
+                onClick={() => setIsAuthModalOpen(true)}
+                className="px-3.5 py-1.5 bg-maroon text-white font-serif font-bold text-xs rounded-xl hover:bg-maroon-dark transition-all shrink-0 cursor-pointer shadow-2xs"
+              >
+                Log In
+              </button>
+            )}
           </div>
         )}
 
