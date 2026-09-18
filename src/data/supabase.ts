@@ -4,7 +4,7 @@ import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
 import { getStandardDeliveryDateInfo } from '../lib/deliveryDates';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vzqlsawxvvyvsstyzzff.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_6chwvgIpbfCpeEZrkS9VYg_IO__zSpY';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
