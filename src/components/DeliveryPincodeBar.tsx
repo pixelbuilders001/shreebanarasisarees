@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { MapPin, X, Loader2, AlertCircle, Plus, Check, Home, Building, ChevronRight, Zap, Clock, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { MapPin, X, Loader2, AlertCircle, Plus, Check, Home, Building, ChevronRight, Zap, Clock, ArrowRight, CheckCircle2, Plane, RotateCcw, ShieldCheck, Banknote, Sparkles } from 'lucide-react';
 import { useCustomerLocation } from '../hooks/useCustomerLocation';
 import { useStore } from '../context/StoreContext';
 import { AddNewAddressModal } from './delivery/AddNewAddressModal';
@@ -14,11 +14,9 @@ import { getQuickCity, fetchPincodeDetails } from '../lib/pincodeLookup';
 import { getSameDayCountdownInfo, getExpressDeliveryInfo } from '../utils/deliveryCountdown';
 
 const SUGGESTED_PINCODES = [
-  { pin: '848101', city: 'Samastipur', label: 'Samastipur (20-Min Express)' },
-  { pin: '848134', city: 'Samastipur', label: 'Samastipur (Same-Day Delivery)' },
+  { pin: '848101', city: 'Samastipur', label: 'Samastipur' },
   { pin: '800001', city: 'Patna', label: 'Patna' },
-  { pin: '110001', city: 'New Delhi', label: 'New Delhi' },
-  { pin: '560001', city: 'Bengaluru', label: 'Bengaluru' }
+  { pin: '110001', city: 'Delhi', label: 'Delhi' }
 ];
 
 export const markPincodeSheetClosed = () => {
@@ -314,6 +312,243 @@ export const DeliveryPincodeBar: React.FC<DeliveryPincodeBarProps> = ({ hideBar 
   );
 };
 
+const EXPRESS_SHOWCASE_STEPS = [
+  {
+    step: '01',
+    label: 'Order',
+    title: 'Instant Order Confirmation',
+    image: '/quick-delivery/quick_delivery_01.webp',
+    fallback: '/quick%20deivery/quick_delivery_01.webp'
+  },
+  {
+    step: '02',
+    label: '20m Ride',
+    title: 'Express Rider Dispatched',
+    image: '/quick-delivery/quick_delivery_02.webp',
+    fallback: '/quick%20deivery/quick_delivery_02.webp'
+  },
+  {
+    step: '03',
+    label: 'Doorstep',
+    title: 'Luxury Box Handover',
+    image: '/quick-delivery/quick_delivery_03.webp',
+    fallback: '/quick%20deivery/quick_delivery_03.webp'
+  },
+  {
+    step: '04',
+    label: 'Unbox',
+    title: 'Unbox in Just 20 Minutes',
+    image: '/quick-delivery/quick_delivery_04.webp',
+    fallback: '/quick%20deivery/quick_delivery_04.webp'
+  }
+];
+
+export const PincodeExpressShowcase: React.FC<{ isExpress: boolean }> = ({ isExpress }) => {
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [isExpanded, setIsExpanded] = useState(isExpress);
+
+  // Auto-expand when pincode qualifies for express
+  useEffect(() => {
+    setIsExpanded(isExpress);
+  }, [isExpress]);
+
+  // Auto-advance showcase steps smoothly every 3.4 seconds
+  useEffect(() => {
+    if (!isExpanded) return;
+    const timer = setInterval(() => {
+      setActiveIdx((prev) => (prev + 1) % EXPRESS_SHOWCASE_STEPS.length);
+    }, 3400);
+    return () => clearInterval(timer);
+  }, [isExpanded]);
+
+  const current = EXPRESS_SHOWCASE_STEPS[activeIdx];
+
+  return (
+    <div className="bg-gradient-to-b from-[#FFFDF9] to-[#FAF7F0] border border-[#E7DFC9] rounded-2xl p-2.5 sm:p-3 shadow-2xs space-y-2 select-none overflow-hidden transition-all">
+      {/* Header / Toggle */}
+      <div
+        className="flex items-center justify-between cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-1.5">
+          <span className="w-5 h-5 rounded-full bg-[#6B1725]/10 flex items-center justify-center text-[#6B1725] shrink-0">
+            <Zap size={11} className="fill-[#6B1725]" />
+          </span>
+          <span className="font-bold text-xs text-[#292524]">
+            {isExpress ? 'How 20-Min Delivery Works' : 'Samastipur 20-Min Hand Delivery'}
+          </span>
+          {isExpress && (
+            <span className="text-[9.5px] font-bold text-emerald-800 bg-emerald-100/80 border border-emerald-300/60 px-1.5 py-0.2 rounded-full">
+              Eligible
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1 text-[11px] font-semibold text-[#6B1725]">
+          <span className="text-[10px] text-[#8C7A6B]">
+            {isExpanded ? 'Hide' : 'See Steps'}
+          </span>
+          <ChevronRight size={12} className={`transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`} />
+        </div>
+      </div>
+
+      {isExpanded && (
+        <div className="space-y-2 pt-0.5 animate-fadeIn">
+          {/* Connected Waypoint Track */}
+          <div className="flex items-center justify-between px-1">
+            {EXPRESS_SHOWCASE_STEPS.map((s, idx) => {
+              const isActive = idx === activeIdx;
+              const isPassed = idx < activeIdx;
+
+              return (
+                <React.Fragment key={s.step}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveIdx(idx);
+                    }}
+                    className="flex flex-col items-center group cursor-pointer focus:outline-hidden"
+                  >
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold transition-all duration-300 ${
+                        isActive
+                          ? 'bg-[#6B1725] text-[#FAF7F0] shadow-xs scale-105 ring-2 ring-[#6B1725]/20'
+                          : isPassed
+                          ? 'bg-[#8C2234] text-[#FAF7F0]'
+                          : 'bg-[#EFE8D6] text-[#8C7A6B]'
+                      }`}
+                    >
+                      {isPassed ? '✓' : s.step}
+                    </div>
+                    <span
+                      className={`text-[9.5px] mt-0.5 font-medium transition-colors ${
+                        isActive ? 'text-[#6B1725] font-bold' : 'text-[#8C7A6B]'
+                      }`}
+                    >
+                      {s.label}
+                    </span>
+                  </button>
+
+                  {idx < EXPRESS_SHOWCASE_STEPS.length - 1 && (
+                    <div className="flex-1 h-[2px] mx-1 -mt-3.5 bg-[#E8DEC7] relative rounded-full overflow-hidden">
+                      <div
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#8C2234] to-[#6B1725] transition-all duration-400 ease-out"
+                        style={{
+                          width: idx < activeIdx ? '100%' : '0%'
+                        }}
+                      />
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+
+          {/* Pure Transparent Graphic Stage */}
+          <div className="relative w-full aspect-[700/440] max-h-[118px] flex items-center justify-center bg-transparent">
+            <div
+              className="absolute inset-0 pointer-events-none opacity-30 blur-lg"
+              style={{
+                background: 'radial-gradient(ellipse at 50% 60%, rgba(212,175,55,0.2), transparent 70%)'
+              }}
+            />
+            <img
+              key={current.step}
+              src={current.image}
+              alt={current.title}
+              className="w-full h-full object-contain block drop-shadow-sm animate-fadeIn"
+              loading="eager"
+              onError={(e) => {
+                if (current.fallback && e.currentTarget.src !== current.fallback) {
+                  e.currentTarget.src = current.fallback;
+                }
+              }}
+            />
+          </div>
+
+          {/* Active Step Caption */}
+          <div className="text-center">
+            <span className="text-[11px] font-bold text-[#6B1725]">
+              Step {current.step}: {current.title}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const PanIndiaDeliveryTrustCard: React.FC = () => {
+  return (
+    <div className="bg-gradient-to-b from-[#FFFDF9] to-[#FAF7F0] border border-[#E7DFC9] rounded-2xl p-3 sm:p-3.5 shadow-2xs select-none animate-fadeIn">
+      {/* Header */}
+      <div className="flex items-center gap-1.5 mb-2.5">
+        <span className="w-5 h-5 rounded-full bg-[#6B1725]/10 flex items-center justify-center text-[#6B1725] shrink-0">
+          <ShieldCheck size={12} className="text-[#6B1725]" />
+        </span>
+        <span className="font-bold text-xs text-[#292524]">
+          Pan-India Safe Delivery Promise
+        </span>
+        <span className="text-[9.5px] font-bold text-[#8C2234] bg-[#FCE8ED] border border-[#F2C2CB] px-1.5 py-0.2 rounded-full ml-auto">
+          100% Insured
+        </span>
+      </div>
+
+      {/* 2x2 Trust Grid */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-white/90 border border-[#EFE8D6] rounded-xl p-2.5 flex flex-col justify-between shadow-2xs">
+          <div className="w-6 h-6 rounded-lg bg-[#FAF6EE] text-[#6B1725] flex items-center justify-center mb-1.5 shrink-0">
+            <Plane size={13} strokeWidth={2.2} />
+          </div>
+          <div>
+            <div className="text-[11px] font-bold text-gray-900 leading-tight">Express Air Transit</div>
+            <div className="text-[10px] text-gray-500 leading-snug mt-0.5">Priority dispatch via BlueDart / Delhivery Air.</div>
+          </div>
+        </div>
+
+        <div className="bg-white/90 border border-[#EFE8D6] rounded-xl p-2.5 flex flex-col justify-between shadow-2xs">
+          <div className="w-6 h-6 rounded-lg bg-[#FAF6EE] text-[#6B1725] flex items-center justify-center mb-1.5 shrink-0">
+            <RotateCcw size={13} strokeWidth={2.2} />
+          </div>
+          <div>
+            <div className="text-[11px] font-bold text-gray-900 leading-tight">3-Day Easy Returns</div>
+            <div className="text-[10px] text-gray-500 leading-snug mt-0.5">Hassle-free doorstep pickup & exchange across India.</div>
+          </div>
+        </div>
+
+        <div className="bg-white/90 border border-[#EFE8D6] rounded-xl p-2.5 flex flex-col justify-between shadow-2xs">
+          <div className="w-6 h-6 rounded-lg bg-[#FAF6EE] text-[#6B1725] flex items-center justify-center mb-1.5 shrink-0">
+            <ShieldCheck size={13} strokeWidth={2.2} />
+          </div>
+          <div>
+            <div className="text-[11px] font-bold text-gray-900 leading-tight">Transit Protected</div>
+            <div className="text-[10px] text-gray-500 leading-snug mt-0.5">Full replacement guarantee if damaged in transit.</div>
+          </div>
+        </div>
+
+        <div className="bg-white/90 border border-[#EFE8D6] rounded-xl p-2.5 flex flex-col justify-between shadow-2xs">
+          <div className="w-6 h-6 rounded-lg bg-[#FAF6EE] text-[#6B1725] flex items-center justify-center mb-1.5 shrink-0">
+            <Banknote size={13} strokeWidth={2.2} />
+          </div>
+          <div>
+            <div className="text-[11px] font-bold text-gray-900 leading-tight">Cash on Delivery</div>
+            <div className="text-[10px] text-gray-500 leading-snug mt-0.5">Pay easily at doorstep via Cash or QR/UPI.</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer reassurance */}
+      <div className="mt-2.5 pt-2 border-t border-[#EFE8D6]/80 flex items-center justify-between text-[10px] text-[#8C7A6B]">
+        <span className="flex items-center gap-1">
+          <Sparkles size={11} className="text-[#D4AF37]" />
+          <span>Direct from Samastipur Flagship Showroom</span>
+        </span>
+        <span className="font-semibold text-emerald-700">Zero Risk</span>
+      </div>
+    </div>
+  );
+};
+
 /**
  * Singleton Bottom Sheet Drawer for checking & selecting delivery pincode.
  * Mount once globally in RootLayout to prevent duplicate overlapping sheets.
@@ -520,13 +755,12 @@ export const DeliveryPincodeSheet: React.FC = () => {
         }}
       />
 
-      {/* Modern Clean Drawer Card */}
-      <div className="relative z-10 w-full max-w-[440px] bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-5 shadow-2xl space-y-3.5 animate-slide-in-from-bottom border border-gray-100 max-h-[85vh] overflow-y-auto">
+      {/* Modern Clean Drawer Card with Fixed Header, Scroll Body, and Sticky Bottom Action */}
+      <div className="relative z-10 w-full max-w-[440px] bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl animate-slide-in-from-bottom border border-gray-100 h-[88vh] sm:h-auto sm:max-h-[85vh] flex flex-col overflow-hidden">
 
-        {/* Top Content Area */}
-        <div className="space-y-3.5">
-          {/* Drawer Grab Handle */}
-          <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto -mt-1 mb-1 sm:hidden" />
+        {/* Drawer Header (Fixed at Top) */}
+        <div className="px-4 sm:px-5 pt-3 pb-2.5 border-b border-gray-100 shrink-0 relative bg-white">
+          <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-2.5 sm:hidden" />
 
           {/* Close Button */}
           <button
@@ -540,35 +774,34 @@ export const DeliveryPincodeSheet: React.FC = () => {
                 window.dispatchEvent(new CustomEvent('close-pincode-sheet'));
               }
             }}
-            className="absolute right-4 top-4 p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+            className="absolute right-3.5 top-3.5 p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
             aria-label="Close"
           >
             <X size={18} />
           </button>
 
-          {/* Header with Location Beacon Badge + Title + Subtitle */}
-          <div className="flex items-center gap-3 pr-7">
-            <div className="w-10 h-10 rounded-full bg-[#FDF1F3] border border-[#FADCE2] flex items-center justify-center shrink-0 shadow-2xs">
-              <div className="flex items-center gap-0.5">
-                <span className="w-0.5 h-0.5 rounded-full bg-[#6B1725]/40" />
-                <MapPin size={18} className="text-[#6B1725] fill-[#6B1725]" />
-                <span className="w-0.5 h-0.5 rounded-full bg-[#6B1725]/40" />
-              </div>
+          <div className="flex items-center gap-2.5 pr-8">
+            <div className="w-8 h-8 rounded-full bg-[#FDF1F3] border border-[#FADCE2] flex items-center justify-center shrink-0 shadow-2xs">
+              <MapPin size={15} className="text-[#6B1725] fill-[#6B1725]" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight leading-tight">
+              <h2 className="text-base font-bold text-gray-900 tracking-tight leading-tight">
                 Check Delivery Availability
               </h2>
-              <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5 leading-normal">
-                Enter your pincode to see if we deliver to your area
+              <p className="text-[11px] text-gray-500 mt-0.5 leading-tight">
+                Check 20-min express speed & Pan-India courier
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Scrollable Body Content */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-3.5 space-y-3.5">
 
           {/* 1. PINCODE INPUT WITH INLINE VERIFY BUTTON */}
           <div className="flex items-stretch gap-2 sm:gap-2.5">
             <div className="relative flex-1 border border-gray-200 rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 bg-white focus-within:border-[#6B1725] focus-within:ring-1 focus-within:ring-[#6B1725]/20 transition-all shadow-2xs">
-              <MapPin size={18} className="text-gray-600 shrink-0" />
+              <MapPin size={18} className="text-gray-500 shrink-0" />
               <input
                 type="text"
                 inputMode="numeric"
@@ -621,23 +854,17 @@ export const DeliveryPincodeSheet: React.FC = () => {
             </button>
           </div>
 
-          {/* Quick Select Section */}
+          {/* Quick Select Section (Compact 1-row grid) */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
-                <Zap size={13} className="text-[#8C2234] fill-[#8C2234]" />
-                <span className="text-xs sm:text-[13px] font-bold text-gray-900">Quick Select</span>
+                <Zap size={11} className="text-[#8C2234] fill-[#8C2234]" />
+                <span className="text-[11.5px] font-bold text-gray-800">Quick Select</span>
               </div>
-              <button
-                type="button"
-                className="text-[11px] font-semibold text-[#6B1725] hover:text-[#52111C] flex items-center gap-0.5 cursor-pointer"
-              >
-                <span>Popular Cities</span>
-                <ChevronRight size={12} />
-              </button>
+              <span className="text-[10px] text-gray-400">Tap to check</span>
             </div>
 
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
               {SUGGESTED_PINCODES.map((sug) => {
                 const isSelected = inputPincode === sug.pin;
                 return (
@@ -649,21 +876,21 @@ export const DeliveryPincodeSheet: React.FC = () => {
                       setCity(sug.city);
                       checkPincode(sug.pin);
                     }}
-                    className={`inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 rounded-full border text-[11px] font-medium transition-all cursor-pointer ${
+                    className={`flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg border text-[11px] font-medium transition-all cursor-pointer truncate ${
                       isSelected
                         ? 'bg-[#6B1725] text-white border-[#6B1725] shadow-xs'
                         : 'bg-[#FAF9F9] border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                     }`}
                   >
-                    <MapPin size={11} className={isSelected ? 'text-white fill-white' : 'text-gray-400'} />
-                    <span>{sug.city} ({sug.pin})</span>
+                    <MapPin size={10} className={isSelected ? 'text-white fill-white' : 'text-gray-400 shrink-0'} />
+                    <span className="truncate">{sug.city}</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* 2. DELIVERY SERVICEABILITY RESULT CARD */}
+          {/* 2. DELIVERY SERVICEABILITY RESULT CARD (ORIGINAL ICONS INTACT) */}
           {errorMsg ? (
             <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2 text-red-800 text-xs">
               <AlertCircle size={16} className="text-red-600 shrink-0 mt-0.5" />
@@ -673,105 +900,114 @@ export const DeliveryPincodeSheet: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="bg-[#FFF9F9] border border-[#F5E6E8] rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 sm:gap-3 shadow-2xs">
-              <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                {/* Delivery Illustration */}
-                <div className="w-12 h-12 sm:w-13 sm:h-13 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-[#FFF0F3]">
-                  <img
-                    src={
-                      inputTier === 'express'
-                        ? '/expressdel.webp'
+            <div className="space-y-2.5">
+              <div className="bg-[#FFF9F9] border border-[#F5E6E8] rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 sm:gap-3 shadow-2xs">
+                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                  {/* Delivery Illustration (ORIGINAL ICONS) */}
+                  <div className="w-12 h-12 sm:w-13 sm:h-13 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-[#FFF0F3]">
+                    <img
+                      src={
+                        inputTier === 'express'
+                          ? '/expressdel.webp'
+                          : inputTier === 'same_day'
+                          ? '/sameday.webp'
+                          : '/standarddel.webp'
+                      }
+                      alt={
+                        inputTier === 'express'
+                          ? 'Express Delivery'
+                          : inputTier === 'same_day'
+                          ? 'Same Day Delivery'
+                          : 'Standard Delivery'
+                      }
+                      className={`w-full h-full object-contain ${
+                        inputTier === 'express' ? 'animate-rider-pulse' : ''
+                      }`}
+                    />
+                  </div>
+
+                  {/* Thin vertical separator */}
+                  <div className="h-10 w-[1px] bg-gray-200/80 shrink-0 hidden sm:block" />
+
+                  {/* Text Info */}
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <div className="font-bold text-xs sm:text-sm text-gray-900 leading-tight">
+                      {inputTier === 'express'
+                        ? 'Samastipur Express Delivery'
                         : inputTier === 'same_day'
-                        ? '/sameday.webp'
-                        : '/standarddel.webp'
-                    }
-                    alt={
-                      inputTier === 'express'
-                        ? 'Express Delivery'
+                        ? 'Samastipur Same Day Delivery'
+                        : 'Standard India Delivery'}
+                    </div>
+                    <div>
+                      {inputTier === 'express' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-semibold">
+                          <CheckCircle2 size={11} className="text-emerald-600 shrink-0" />
+                          <span>{timingStatus.badgeText.replace('✓', '').trim()} · 20-Min</span>
+                        </span>
+                      )}
+                      {inputTier === 'same_day' && (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-200 text-[10px] font-semibold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                          <span>Same-Day Guaranteed</span>
+                        </span>
+                      )}
+                      {inputTier === 'standard' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-semibold">
+                          <CheckCircle2 size={11} className="text-blue-600 shrink-0" />
+                          <span>Standard Delivery</span>
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10.5px] text-gray-500 leading-snug line-clamp-2">
+                      {inputTier === 'express'
+                        ? (timingStatus.isNormalHours
+                            ? `Order now to get by ${sheetExpressInfo.timeStr} (~20 mins). Direct from showroom.`
+                            : timingStatus.descText)
                         : inputTier === 'same_day'
-                        ? 'Same Day Delivery'
-                        : 'Standard Delivery'
-                    }
-                    className={`w-full h-full object-contain ${
-                      inputTier === 'express' ? 'animate-rider-pulse' : ''
-                    }`}
-                  />
+                        ? (sheetSameDayCountdown.isBeforeCutoff
+                            ? `Order in next ${sheetSameDayCountdown.countdownText} to get this by 6:30 PM today.`
+                            : `Order now for delivery tomorrow evening by 6:30 PM.`)
+                        : `${deliveryDateInfo.deliveryByText} to ${getQuickCity(inputPincode) ? `${getQuickCity(inputPincode)}, ${inputPincode}` : inputPincode}. Standard courier & COD available.`}
+                    </p>
+                  </div>
                 </div>
 
-                {/* Thin vertical separator */}
-                <div className="h-10 w-[1px] bg-gray-200/80 shrink-0 hidden sm:block" />
-
-                {/* Text Info */}
-                <div className="space-y-0.5 min-w-0 flex-1">
-                  <div className="font-bold text-xs sm:text-sm text-gray-900 leading-tight">
-                    {inputTier === 'express'
-                      ? 'Samastipur Express Delivery'
-                      : inputTier === 'same_day'
-                      ? 'Samastipur Same Day Delivery'
-                      : 'Standard India Delivery'}
+                {/* Estimated / Timing Box */}
+                <div className="bg-[#FBF4F5] border border-[#F2E2E5] rounded-lg p-2 text-center shrink-0 min-w-[85px] sm:min-w-[95px]">
+                  <div className="flex items-center justify-center gap-1 text-[10px] font-medium text-gray-700">
+                    <Clock size={11} className="text-gray-700 shrink-0" />
+                    <span>
+                      {inputTier === 'express'
+                        ? (timingStatus.isNormalHours
+                            ? 'Get by'
+                            : (timingStatus.badgeText.includes('Today') ? 'Today' : 'Tomorrow'))
+                        : inputTier === 'same_day'
+                        ? (sheetSameDayCountdown.isBeforeCutoff ? 'Today' : 'Tomorrow')
+                        : 'Estimated'}
+                    </span>
                   </div>
-                  <div>
-                    {inputTier === 'express' && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-semibold">
-                        <CheckCircle2 size={11} className="text-emerald-600 shrink-0" />
-                        <span>{timingStatus.badgeText.replace('✓', '').trim()} · 20-Min</span>
-                      </span>
-                    )}
-                    {inputTier === 'same_day' && (
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-200 text-[10px] font-semibold">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                        <span>Same-Day Guaranteed</span>
-                      </span>
-                    )}
-                    {inputTier === 'standard' && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-semibold">
-                        <CheckCircle2 size={11} className="text-blue-600 shrink-0" />
-                        <span>Standard Delivery</span>
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[10.5px] text-gray-500 leading-snug line-clamp-2">
+                  <div className="text-[11px] sm:text-xs font-bold text-[#6B1725] mt-0.5 tracking-tight">
                     {inputTier === 'express'
-                      ? (timingStatus.isNormalHours
-                          ? `Order now to get by ${sheetExpressInfo.timeStr} (~20 mins). Direct from showroom.`
-                          : timingStatus.descText)
+                      ? (timingStatus.isNormalHours ? sheetExpressInfo.timeStr : '10:00 AM')
                       : inputTier === 'same_day'
-                      ? (sheetSameDayCountdown.isBeforeCutoff
-                          ? `Order in next ${sheetSameDayCountdown.countdownText} to get this by 6:30 PM today.`
-                          : `Order now for delivery tomorrow evening by 6:30 PM.`)
-                      : `${deliveryDateInfo.deliveryByText} to ${getQuickCity(inputPincode) ? `${getQuickCity(inputPincode)}, ${inputPincode}` : inputPincode}. Standard courier & COD available.`}
-                  </p>
+                      ? '6:30 PM'
+                      : (deliveryDateInfo.flipkartFormat || '3-5 Days')}
+                  </div>
                 </div>
               </div>
 
-              {/* Estimated / Timing Box */}
-              <div className="bg-[#FBF4F5] border border-[#F2E2E5] rounded-lg p-2 text-center shrink-0 min-w-[85px] sm:min-w-[95px]">
-                <div className="flex items-center justify-center gap-1 text-[10px] font-medium text-gray-700">
-                  <Clock size={11} className="text-gray-700 shrink-0" />
-                  <span>
-                    {inputTier === 'express'
-                      ? (timingStatus.isNormalHours
-                          ? 'Get by'
-                          : (timingStatus.badgeText.includes('Today') ? 'Today' : 'Tomorrow'))
-                      : inputTier === 'same_day'
-                      ? (sheetSameDayCountdown.isBeforeCutoff ? 'Today' : 'Tomorrow')
-                      : 'Estimated'}
-                  </span>
-                </div>
-                <div className="text-[11px] sm:text-xs font-bold text-[#6B1725] mt-0.5 tracking-tight">
-                  {inputTier === 'express'
-                    ? (timingStatus.isNormalHours ? sheetExpressInfo.timeStr : '10:00 AM')
-                    : inputTier === 'same_day'
-                    ? '6:30 PM'
-                    : (deliveryDateInfo.flipkartFormat || '3-5 Days')}
-                </div>
-              </div>
+              {/* Either 20-Min Delivery Showcase (ONLY for Express) OR Pan-India Safe Delivery Promise (Standard) */}
+              {isInput20Min ? (
+                <PincodeExpressShowcase isExpress={true} />
+              ) : (
+                <PanIndiaDeliveryTrustCard />
+              )}
             </div>
           )}
 
           {/* 3. SAVED ADDRESSES (IF ANY) */}
           {shippingAddresses && shippingAddresses.length > 0 && (
-            <div className="space-y-1 pt-0.5">
+            <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between text-[11px]">
                 <span className="font-bold text-gray-800">Saved Locations</span>
               </div>
@@ -810,20 +1046,17 @@ export const DeliveryPincodeSheet: React.FC = () => {
             </div>
           )}
 
-          {/* Add a new address divider button */}
-          <div className="relative flex items-center justify-center pt-0.5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200/80" />
-            </div>
+          {/* Add a new address button */}
+          <div className="pt-0.5 pb-1 text-center">
             <button
               type="button"
               onClick={() => {
                 if (!user) setIsAuthModalOpen(true);
                 else setIsAddressModalOpen(true);
               }}
-              className="relative bg-white px-2.5 py-0.5 flex items-center gap-1.5 text-[11px] font-semibold text-[#6B1725] hover:text-[#52111C] cursor-pointer transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#6B1725] hover:underline cursor-pointer"
             >
-              <span className="w-4 h-4 rounded-full bg-[#FCE8ED] text-[#6B1725] flex items-center justify-center text-[10px] font-bold leading-none">
+              <span className="w-4 h-4 rounded-full bg-[#FCE8ED] text-[#6B1725] flex items-center justify-center text-[10px] font-bold">
                 +
               </span>
               <span>Add a new address to your account</span>
@@ -831,8 +1064,8 @@ export const DeliveryPincodeSheet: React.FC = () => {
           </div>
         </div>
 
-        {/* 4. DELIVER TO THIS PINCODE BUTTON (BOTTOM) */}
-        <div className="pt-1">
+        {/* Sticky Pinned Bottom Button (ALWAYS VISIBLE!) */}
+        <div className="shrink-0 px-4 sm:px-5 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-3.5 bg-white border-t border-gray-100 shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
           <button
             type="button"
             onClick={(e) => {
