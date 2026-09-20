@@ -16,7 +16,9 @@ import {
   Gift,
   ChevronDown,
   ChevronUp,
-  ShieldCheck
+  ShieldCheck,
+  X,
+  ArrowRight
 } from 'lucide-react';
 import {
   fetchCoinTransactions,
@@ -41,6 +43,35 @@ function formatTransactionDate(dateString: string): string {
   });
 }
 
+const REFERRAL_BANNER_STORAGE_KEY = 'sbs_referral_banner_seen';
+
+const REFERRAL_STEPS = [
+  {
+    step: '01',
+    image: '/step01.webp',
+    fallbackImage: '/step01.webp',
+    title: 'Invite Friends',
+    highlight: 'Share Link',
+    tag: 'Step 1'
+  },
+  {
+    step: '02',
+    image: '/step02.webp',
+    fallbackImage: '/step02.webp',
+    title: 'Friend Saves',
+    highlight: '₹150 Off',
+    tag: 'Step 2'
+  },
+  {
+    step: '03',
+    image: '/step03.webp',
+    fallbackImage: '/step3.webp',
+    title: 'Earn Coins',
+    highlight: '+₹500 Coins',
+    tag: 'Step 3'
+  }
+];
+
 export default function CoinsPage() {
   const { user, userProfile, userWallet, userWalletLoading, refreshWallet } = useStore();
 
@@ -51,6 +82,8 @@ export default function CoinsPage() {
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [showTiers, setShowTiers] = useState(false);
+  const [showBannerModal, setShowBannerModal] = useState(false);
+  const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [txFilter, setTxFilter] = useState<'all' | 'credited' | 'spent'>('all');
   const [isRefreshing, startTransition] = useTransition();
 
@@ -58,6 +91,54 @@ export default function CoinsPage() {
   const shareUrl = typeof window !== 'undefined' && referralCode 
     ? `${window.location.origin}/?ref=${referralCode}`
     : `https://shreebanarsisarees.com/?ref=${referralCode}`;
+
+  // Cycle animated active state sequentially one-by-one (Step 1 -> Step 2 -> Step 3)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveStepIndex((prev) => (prev + 1) % 3);
+    }, 2200);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Check if user has seen referral ad banner before (first time only)
+  useEffect(() => {
+    try {
+      const hasSeen = localStorage.getItem(REFERRAL_BANNER_STORAGE_KEY);
+      if (!hasSeen) {
+        setShowBannerModal(true);
+      }
+    } catch {
+      // In case localStorage is disabled or restricted
+    }
+  }, []);
+
+  const handleCloseBanner = () => {
+    setShowBannerModal(false);
+    try {
+      localStorage.setItem(REFERRAL_BANNER_STORAGE_KEY, 'true');
+    } catch (err) {
+      console.error('Error saving referral banner state:', err);
+    }
+  };
+
+  // Lock body scroll and listen for Escape key while banner modal is open
+  useEffect(() => {
+    if (!showBannerModal) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleCloseBanner();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showBannerModal]);
 
   const loadData = async () => {
     if (!user?.id) return;
@@ -134,18 +215,135 @@ export default function CoinsPage() {
   }, [transactions, txFilter]);
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 animate-fadeIn">
+    <>
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 0. REFERRAL FLOW EXPLAINER STRIP BANNER                      */}
+      {/* REFERRAL AD BANNER MODAL (First-time auto-pop & blurred bg)   */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="w-full rounded-2xl overflow-hidden border border-[#E7DFC9] shadow-2xs bg-white">
-        <img
-          src="/referal_flow.webp"
-          alt="How Referral and Banarasi Coins Work"
-          className="w-full h-auto object-contain block"
-          loading="eager"
-        />
-      </div>
+      {showBannerModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/65 backdrop-blur-md animate-fadeIn transition-opacity duration-300"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCloseBanner();
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Referral Program Guide"
+        >
+          <div className="relative w-full max-w-sm sm:max-w-md md:max-w-lg max-h-[90vh] bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden border border-[#E7DFC9] flex flex-col animate-scaleIn pointer-events-auto">
+            {/* Floating Close Button at Top-Right */}
+            <button
+              onClick={handleCloseBanner}
+              className="absolute top-3 right-3 z-30 p-2 rounded-full bg-black/65 hover:bg-black/85 text-white backdrop-blur-md border border-white/30 shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+              aria-label="Close referral program banner"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Scrollable Infographic Image Container */}
+            <div className="overflow-y-auto overscroll-contain flex-1 bg-[#FAF7F0] scrollbar-thin">
+              <img
+                src="/refer.webp"
+                alt="How the Referral Program Works"
+                className="w-full h-auto object-contain block select-none"
+                loading="eager"
+              />
+            </div>
+
+            {/* Bottom Action Footer */}
+            <div className="p-3 sm:p-3.5 bg-white border-t border-[#E7DFC9] flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Sparkles size={15} className="text-[#B08A3C] shrink-0" />
+                <span className="text-xs text-[#292524] font-medium truncate font-sans">
+                  Refer friends &amp; earn Banarasi Coins
+                </span>
+              </div>
+              <button
+                onClick={handleCloseBanner}
+                className="px-4 py-1.5 rounded-full bg-[#6B1725] hover:bg-[#52111C] text-white text-xs font-semibold shadow-xs transition-colors shrink-0 cursor-pointer active:scale-95"
+              >
+                Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-2xl mx-auto space-y-4 animate-fadeIn">
+        {/* ───────────────────────────────────────────────────────────── */}
+        {/* 0. THREE-STEP REFERRAL EXPLAINER (ALL IN ONE VIEW)           */}
+        {/* ───────────────────────────────────────────────────────────── */}
+        <div className="w-full bg-white rounded-2xl sm:rounded-3xl p-2 sm:p-3.5 border border-[#E7DFC9] shadow-2xs">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
+            {REFERRAL_STEPS.map((s, idx) => {
+              const isActive = activeStepIndex === idx;
+
+              return (
+                <div
+                  key={s.step}
+                  onClick={() => setShowBannerModal(true)}
+                  onMouseEnter={() => setActiveStepIndex(idx)}
+                  className={`group relative flex flex-col rounded-xl sm:rounded-2xl transition-all duration-500 overflow-hidden cursor-pointer ${
+                    isActive
+                      ? 'border border-[#B08A3C] ring-2 ring-[#B08A3C]/35 shadow-md -translate-y-1 bg-gradient-to-b from-[#FFFDF9] via-white to-[#F7F2E6]'
+                      : 'border border-[#EAE2D2] shadow-2xs hover:border-[#B08A3C]/80 hover:shadow-md hover:-translate-y-0.5 bg-gradient-to-b from-[#FCFAF6] via-white to-[#FAF7F0]'
+                  }`}
+                >
+                  {/* Step Pill Header */}
+                  <div className="px-1.5 sm:px-2.5 pt-1.5 sm:pt-2 pb-0.5 flex items-center justify-between gap-1">
+                    <span className={`inline-flex items-center gap-1 px-1 sm:px-1.5 py-0.5 rounded-full font-sans font-bold text-[8px] xs:text-[9px] sm:text-[10px] tracking-tight transition-colors duration-300 ${
+                      isActive
+                        ? 'bg-[#FAF0E1] border border-[#B08A3C] text-[#6B1725] shadow-2xs'
+                        : 'bg-[#FAF0E1]/80 border border-[#B08A3C]/30 text-[#8C6A23]'
+                    }`}>
+                      <span className="relative flex h-1 w-1 sm:h-1.5 sm:w-1.5">
+                        <span className={`absolute inline-flex h-full w-full rounded-full bg-[#B08A3C] ${
+                          isActive ? 'animate-ping opacity-90' : 'opacity-20'
+                        }`}></span>
+                        <span className="relative inline-flex rounded-full h-1 w-1 sm:h-1.5 sm:w-1.5 bg-[#B08A3C]"></span>
+                      </span>
+                      Step {s.step}
+                    </span>
+
+                    <span className={`text-[8px] xs:text-[9px] sm:text-[10px] font-bold font-sans truncate transition-transform duration-300 ${
+                      isActive ? 'text-[#6B1725] scale-105' : 'text-[#6B1725]/85'
+                    }`}>
+                      {s.highlight}
+                    </span>
+                  </div>
+
+                  {/* Illustrated Card Image: Sequential Scale Animation */}
+                  <div className="relative w-full aspect-[540/650] max-h-[90px] xs:max-h-[105px] sm:max-h-[155px] md:max-h-[175px] flex items-center justify-center p-1 sm:p-1.5 overflow-hidden">
+                    <img
+                      src={s.image}
+                      alt={s.title}
+                      className={`w-full h-full object-contain transition-all duration-500 ease-out ${
+                        isActive ? 'scale-[1.05] drop-shadow-md' : 'group-hover:scale-[1.04] drop-shadow-2xs'
+                      }`}
+                      loading="eager"
+                      onError={(e) => {
+                        if (s.fallbackImage && e.currentTarget.src !== s.fallbackImage) {
+                          e.currentTarget.src = s.fallbackImage;
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Bottom Step Title Strip */}
+                  <div className="mt-auto px-1.5 sm:px-2.5 py-1 sm:py-1.5 bg-[#FAF7F0]/80 border-t border-[#F0EBE1] flex items-center justify-between text-[9px] xs:text-[10px] sm:text-[11px] text-[#78716C] font-sans">
+                    <span className={`transition-colors duration-300 truncate ${
+                      isActive ? 'font-bold text-[#6B1725]' : 'font-semibold text-[#1C1917] group-hover:text-[#6B1725]'
+                    }`}>
+                      {s.title}
+                    </span>
+                    <ArrowRight size={11} className={`transform transition-all duration-300 shrink-0 hidden sm:block ${
+                      isActive ? 'text-[#6B1725] translate-x-1' : 'text-[#B08A3C] group-hover:translate-x-0.5'
+                    }`} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
       {/* ───────────────────────────────────────────────────────────── */}
       {/* 1. LUXURY DIGITAL WALLET PASS CARD                           */}
@@ -439,5 +637,6 @@ export default function CoinsPage() {
         )}
       </div>
     </div>
+  </>
   );
 }

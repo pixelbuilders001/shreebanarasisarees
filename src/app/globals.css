@@ -423,3 +423,71 @@ html {
   }
 }
 
+/* SBS Luxury Carousel Smooth Glide Animations */
+@keyframes sbsSlideInRight {
+  0% {
+    transform: translateX(40%) scale(0.93);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes sbsSlideOutLeft {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-40%) scale(0.93);
+    opacity: 0;
+  }
+}
+
+@keyframes sbsSlideInLeft {
+  0% {
+    transform: translateX(-40%) scale(0.93);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes sbsSlideOutRight {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(40%) scale(0.93);
+    opacity: 0;
+  }
+}
+
+.sbs-slide-in-right {
+  animation: sbsSlideInRight 620ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  z-index: 10;
+}
+
+.sbs-slide-out-left {
+  animation: sbsSlideOutLeft 620ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.sbs-slide-in-left {
+  animation: sbsSlideInLeft 620ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  z-index: 10;
+}
+
+.sbs-slide-out-right {
+  animation: sbsSlideOutRight 620ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  z-index: 5;
+  pointer-events: none;
+}
+
+

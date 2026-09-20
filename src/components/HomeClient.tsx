@@ -6,8 +6,7 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { Header } from './Header';
 import { HeroSection } from './HeroSection';
-import { DeliveryMarquee } from './DeliveryMarquee';
-import { DeliveryAnimationSection } from './DeliveryAnimationSection';
+import { QuickDeliverySection } from './QuickDeliverySection';
 import { CategoryCard } from './CategoryCard';
 import { CampaignSection } from './CampaignSection';
 import { ProductCard } from './ProductCard';
@@ -65,8 +64,8 @@ export default function HomeClient({
         {/* 1. Hero Section (Dual-styled Mobile Carousel & Luxury Desktop Banner) */}
         <HeroSection initialBanners={heroBanners} />
 
-        {/* Delivery & Trust Information Infinite Marquee */}
-        <DeliveryMarquee />
+        {/* 2. 4-Step Quick Delivery Section with One-by-One Animation */}
+        <QuickDeliverySection />
 
         {/* 3. Shop by Category (Preserved 4-col Mobile / Expanded 8-col Desktop) */}
         <CategoryCard initialCategories={categories} />
@@ -305,9 +304,6 @@ export default function HomeClient({
 
         {/* 13. Customer Reviews */}
         <TestimonialSection />
-
-        {/* Delivery Animation Visual Section */}
-        <DeliveryAnimationSection />
 
         {/* 14. WhatsApp Personal Assistance Section */}
         <section className="my-10 sm:my-16 max-w-7xl mx-auto px-4 md:px-8">
