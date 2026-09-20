@@ -2,7 +2,7 @@
 
 import React, { useState, Suspense, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useStore, CartItem } from '../../context/StoreContext';
 import {
   CheckCircle,
@@ -200,11 +200,50 @@ function CheckoutContent() {
   }, [isHydrated, user, setIsAuthModalOpen]);
 
   // Order submission states
+  const searchParams = useSearchParams();
+  const isPreviewMode = searchParams ? (searchParams.get('preview_success') === 'true' || searchParams.get('test_order') === 'true') : false;
+  const [animationKey, setAnimationKey] = useState(0);
+
   const [isOrdered, setIsOrdered] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveToProfile, setSaveToProfile] = useState(false);
   const [hasPrefilled, setHasPrefilled] = useState(false);
+
+  // Testing & preview mode without placing real orders
+  useEffect(() => {
+    if (isPreviewMode && !isOrdered) {
+      setIsOrdered(true);
+      setCreatedOrder({
+        orderId: 'SBS-TEST-8849',
+        invoice_number: 'INV-2026-TEST',
+        total: 12499,
+        paymentMethod: 'Cash on Delivery',
+        taxable_amount: 11903.81,
+        gst_amount: 595.19,
+        cgst_amount: 297.60,
+        sgst_amount: 297.60,
+        customer: {
+          fullName: 'Priya Sharma',
+          phone: '9876543210',
+          city: 'Samastipur',
+          pinCode: '848101',
+          addressLine1: 'Station Road, Near Golamber'
+        },
+        items: cart.length > 0 ? cart : [
+          {
+            product: {
+              id: 'mock-test-1',
+              name: 'Katan Pure Silk Handloom Banarasi Saree',
+              price: 12499,
+              images: ['/quick-delivery/quick_delivery_01.webp']
+            },
+            quantity: 1
+          }
+        ]
+      });
+    }
+  }, [isPreviewMode, isOrdered, cart]);
 
   // Invoice direct download states
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
@@ -1158,13 +1197,23 @@ function CheckoutContent() {
     return (
       <div className="min-h-screen bg-[#FAF7F0] text-[#292524] flex flex-col justify-center items-center font-sans py-10 sm:py-16 px-4">
         <main className="max-w-md w-full mx-auto">
-          {/* Status Check Icon */}
-          <div className="w-16 h-16 rounded-full bg-[#6B1725] text-white flex items-center justify-center mx-auto mb-4 shadow-sm">
-            <Check size={32} strokeWidth={2.5} className="text-white" />
+          {/* Celebrating Mascot - Emerges from bottom with spring animation */}
+          <div key={animationKey} className="flex flex-col items-center justify-center -mb-2 overflow-hidden pt-2">
+            <div className="relative animate-mascot-entrance">
+              <img
+                src="/order-success.webp"
+                alt="Order Placed Successfully"
+                className="w-48 sm:w-56 h-auto object-contain drop-shadow-lg select-none pointer-events-none mx-auto"
+              />
+              {/* Maroon checkmark badge overlapping base */}
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-11 h-11 rounded-full bg-[#6B1725] text-white flex items-center justify-center shadow-lg border-2 border-[#FAF7F0]">
+                <Check size={22} strokeWidth={3} className="text-white" />
+              </div>
+            </div>
           </div>
 
           {/* Title */}
-          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#292524] text-center mb-2">
+          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#292524] text-center mb-2 mt-4">
             Order placed
           </h1>
 
@@ -1457,6 +1506,30 @@ function CheckoutContent() {
           <p className="text-center text-xs text-[#7A6E65] max-w-xs mx-auto mt-6 leading-relaxed font-sans">
             Authentic handloom guarantee. If the weave isn&apos;t what you expected, enjoy 7-day hassle-free doorstep returns.
           </p>
+
+          {/* Floating Test / Preview Toolbar (Only visible in preview mode) */}
+          {isPreviewMode && (
+            <div className="fixed bottom-5 right-5 z-50 bg-[#292524] text-white rounded-full px-4 py-2.5 shadow-2xl flex items-center gap-3 border border-white/20 animate-slideUp">
+              <span className="text-xs font-semibold text-[#E5DEC9] flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Preview Mode
+              </span>
+              <button
+                type="button"
+                onClick={() => setAnimationKey((prev) => prev + 1)}
+                className="bg-[#6B1725] hover:bg-[#8C2234] text-white text-xs font-bold px-3 py-1.5 rounded-full transition-all flex items-center gap-1 cursor-pointer shadow-sm"
+              >
+                <span>🔄 Replay Entrance</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push('/checkout')}
+                className="text-white/70 hover:text-white text-xs underline cursor-pointer"
+              >
+                Exit Preview
+              </button>
+            </div>
+          )}
         </main>
       </div>
     );
