@@ -36,7 +36,9 @@ interface LoyaltyCustomerInfo {
 
 export default function StorefrontRewardsPage() {
     const params = useParams();
-    const rawMemberCode = params?.memberCode as string;
+    const rawMemberCode = typeof params?.memberCode === 'string'
+        ? params.memberCode
+        : (Array.isArray(params?.memberCode) ? params.memberCode[0] : '');
     const cleanMemberCode = (rawMemberCode || '').trim().toUpperCase();
 
     const [pinDigits, setPinDigits] = useState<string[]>(['', '', '', '', '', '']);
@@ -186,7 +188,9 @@ export default function StorefrontRewardsPage() {
                                     {pinDigits.map((digit, idx) => (
                                         <input
                                             key={idx}
-                                            ref={el => (inputRefs.current[idx] = el)}
+                                            ref={el => {
+                                                inputRefs.current[idx] = el;
+                                            }}
                                             type="password"
                                             inputMode="numeric"
                                             pattern="[0-9]*"
