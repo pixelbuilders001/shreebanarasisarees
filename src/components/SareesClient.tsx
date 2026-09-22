@@ -65,9 +65,9 @@ const COLOR_PILLS = [
 ];
 
 const SORT_OPTIONS = [
-  { label: 'Newest first', value: 'Newest' },
   { label: 'Price: low to high', value: 'Price Low to High' },
   { label: 'Price: high to low', value: 'Price High to Low' },
+  { label: 'Newest first', value: 'Newest' },
   { label: 'Bestselling', value: 'Best Selling' },
 ];
 
@@ -101,7 +101,7 @@ export const SareesClient: React.FC<SareesClientProps> = ({
   const [is20MinOnly, setIs20MinOnly] = useState<boolean>(false);
 
   // Sort State
-  const [sortBy, setSortBy] = useState<string>('Newest');
+  const [sortBy, setSortBy] = useState<string>('Price Low to High');
 
   // Modal / Bottom Sheet States (Mobile)
   const [isSortModalOpen, setIsSortModalOpen] = useState(false);
@@ -224,7 +224,7 @@ export const SareesClient: React.FC<SareesClientProps> = ({
     setSelectedOccasions([]);
     setSelectedFabrics([]);
     setIs20MinOnly(false);
-    setSortBy('Newest');
+    setSortBy('Price Low to High');
     router.push('/sarees');
   };
 

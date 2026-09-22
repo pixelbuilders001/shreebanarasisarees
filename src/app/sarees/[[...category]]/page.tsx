@@ -267,11 +267,18 @@ export default async function Page({ params }: PageProps) {
     "itemListElement": breadcrumbList
   };
 
-  const filteredProductsForSchema = dbProducts.filter(p => {
-    if (data.category === 'All' || !data.category) return true;
-    if (data.category === 'Offers') return p.salePrice !== undefined && p.salePrice !== null && p.salePrice < p.price;
-    return p.category.toLowerCase() === data.category.toLowerCase();
-  }).slice(0, 15);
+  const filteredProductsForSchema = dbProducts
+    .filter(p => {
+      if (data.category === 'All' || !data.category) return true;
+      if (data.category === 'Offers') return p.salePrice !== undefined && p.salePrice !== null && p.salePrice < p.price;
+      return p.category.toLowerCase() === data.category.toLowerCase();
+    })
+    .sort((a, b) => {
+      const aPrice = a.salePrice ?? a.price;
+      const bPrice = b.salePrice ?? b.price;
+      return aPrice - bPrice;
+    })
+    .slice(0, 15);
 
   const itemListJsonLd = {
     "@context": "https://schema.org",

@@ -58,7 +58,11 @@ export default async function CollectionPage({ params }: PageProps) {
     notFound();
   }
 
-  const products = collection.products || [];
+  const products = (collection.products || []).slice().sort((a, b) => {
+    const aPrice = a.salePrice ?? a.price;
+    const bPrice = b.salePrice ?? b.price;
+    return aPrice - bPrice;
+  });
 
   // Schema for Breadcrumbs
   const breadcrumbJsonLd = {
