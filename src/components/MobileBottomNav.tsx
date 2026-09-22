@@ -35,7 +35,8 @@ export const MobileBottomNav: React.FC = () => {
     pathname.startsWith('/cart') ||
     pathname.startsWith('/checkout') ||
     pathname.startsWith('/payment') ||
-    pathname.startsWith('/receipt')
+    pathname.startsWith('/receipt') ||
+    pathname.startsWith('/rewards')
   ) {
     return null;
   }
