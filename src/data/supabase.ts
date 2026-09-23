@@ -3281,3 +3281,305 @@ export function calculateReferralReward(orderTotal: number, settings?: StoreRefe
   if (orderTotal >= s.tier1_min_order) return s.tier1_reward_coins;
   return 0;
 }
+
+// ============================================================================
+// Family Shopping ("Ask Family") Functions & Types
+// ============================================================================
+
+export interface FamilyPollItem {
+  id: string;
+  poll_id: string;
+  product_id: string;
+  votes_count: number;
+  created_at?: string;
+  product?: Product;
+}
+
+export interface FamilyPollVote {
+  id: string;
+  poll_id: string;
+  item_id: string;
+  voter_token: string;
+  voter_name: string;
+  comment?: string | null;
+  reaction?: string;
+  created_at: string;
+}
+
+export interface FamilyPoll {
+  id: string;
+  slug: string;
+  creator_name: string;
+  occasion: string;
+  creator_token: string;
+  creator_user_id?: string | null;
+  show_price: boolean;
+  status: 'active' | 'decided' | 'closed';
+  winning_product_id?: string | null;
+  created_at: string;
+  expires_at: string;
+  items: FamilyPollItem[];
+  votes: FamilyPollVote[];
+}
+
+/**
+ * Get or initialize persistent client voter token from localStorage
+ */
+export function getOrCreateVoterToken(): string {
+  if (typeof window === 'undefined') return '';
+  const KEY = 'sbs_family_voter_token';
+  let token = localStorage.getItem(KEY);
+  if (!token) {
+    token = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'voter_' + Math.random().toString(36).substring(2, 15);
+    localStorage.setItem(KEY, token);
+  }
+  return token;
+}
+
+/**
+ * Check if the current browser session created this poll
+ */
+export function isPollCreator(slug: string, serverCreatorToken?: string): boolean {
+  if (typeof window === 'undefined') return false;
+  const storedToken = localStorage.getItem(`sbs_poll_creator_${slug}`);
+  if (!storedToken) return false;
+  if (serverCreatorToken) return storedToken === serverCreatorToken;
+  return true;
+}
+
+/**
+ * Create a new Family Poll directly from client
+ */
+export async function createFamilyPoll({
+  creatorName,
+  occasion,
+  productIds,
+  showPrice = true,
+}: {
+  creatorName: string;
+  occasion?: string;
+  productIds: string[];
+  showPrice?: boolean;
+}): Promise<{ slug: string; pollId: string; creatorToken: string }> {
+  if (!productIds || productIds.length < 2) {
+    throw new Error('Please select at least 2 sarees to compare');
+  }
+
+  const cleanName = (creatorName || 'Family').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const randomSuffix = Math.random().toString(36).substring(2, 6);
+  const slug = `${cleanName || 'saree'}-${randomSuffix}`;
+  const creatorToken = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'creator_' + Math.random().toString(36).substring(2, 15);
+
+  // 1. Insert poll
+  const { data: poll, error: pollError } = await supabase
+    .from('family_polls')
+    .insert({
+      slug,
+      creator_name: (creatorName || 'Customer').trim(),
+      occasion: occasion ? occasion.trim() : 'Choosing a Saree',
+      creator_token: creatorToken,
+      show_price: Boolean(showPrice),
+      status: 'active',
+    })
+    .select('id, slug')
+    .single();
+
+  if (pollError) {
+    console.error('Error creating family poll:', pollError);
+    throw new Error(pollError.message || 'Failed to create poll');
+  }
+
+  // 2. Insert candidate items
+  const itemsToInsert = productIds.map((pid) => ({
+    poll_id: poll.id,
+    product_id: pid,
+    votes_count: 0,
+  }));
+
+  const { error: itemsError } = await supabase
+    .from('family_poll_items')
+    .insert(itemsToInsert);
+
+  if (itemsError) {
+    console.error('Error inserting poll items:', itemsError);
+    throw new Error(itemsError.message || 'Failed to add items to poll');
+  }
+
+  // 3. Save creator token to client storage
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`sbs_poll_creator_${slug}`, creatorToken);
+  }
+
+  return { slug: poll.slug, pollId: poll.id, creatorToken };
+}
+
+/**
+ * Fetch a family poll with full product details, candidate items, and votes
+ */
+export async function fetchFamilyPoll(slug: string): Promise<FamilyPoll | null> {
+  try {
+    const { data: pollData, error: pollError } = await supabase
+      .from('family_polls')
+      .select(`
+        id,
+        slug,
+        creator_name,
+        occasion,
+        creator_token,
+        creator_user_id,
+        show_price,
+        status,
+        winning_product_id,
+        created_at,
+        expires_at,
+        items:family_poll_items(
+          id,
+          poll_id,
+          product_id,
+          votes_count,
+          created_at
+        ),
+        votes:family_poll_votes(
+          id,
+          poll_id,
+          item_id,
+          voter_token,
+          voter_name,
+          comment,
+          reaction,
+          created_at
+        )
+      `)
+      .eq('slug', slug)
+      .single();
+
+    if (pollError || !pollData) {
+      console.warn('Family poll not found or error:', pollError);
+      return null;
+    }
+
+    const items = (pollData.items as FamilyPollItem[]) || [];
+    const productIds = items.map(item => item.product_id);
+
+    // Fetch full product objects to render pictures, colors, fabrics, prices
+    let products: Product[] = [];
+    if (productIds.length > 0) {
+      try {
+        products = await fetchProductsByIds(productIds);
+      } catch (prodErr) {
+        console.warn('Could not fetch products for poll items:', prodErr);
+      }
+    }
+
+    const productMap = new Map<string, Product>();
+    products.forEach(p => productMap.set(p.id, p));
+
+    const enrichedItems = items.map(item => ({
+      ...item,
+      product: productMap.get(item.product_id),
+    }));
+
+    return {
+      ...pollData,
+      items: enrichedItems,
+      votes: (pollData.votes as FamilyPollVote[]) || [],
+    } as FamilyPoll;
+  } catch (err) {
+    console.error('Exception in fetchFamilyPoll:', err);
+    return null;
+  }
+}
+
+/**
+ * Cast a vote for a saree in a poll (calls atomic RPC with direct fallback)
+ */
+export async function castFamilyVote({
+  pollId,
+  itemId,
+  voterName,
+  comment,
+  reaction = 'heart',
+}: {
+  pollId: string;
+  itemId: string;
+  voterName: string;
+  comment?: string;
+  reaction?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const voterToken = getOrCreateVoterToken();
+  const cleanName = (voterName || 'Family Member').trim();
+
+  try {
+    // Try atomic RPC function first
+    const { data, error } = await supabase.rpc('cast_family_vote', {
+      p_poll_id: pollId,
+      p_item_id: itemId,
+      p_voter_token: voterToken,
+      p_voter_name: cleanName,
+      p_comment: comment && comment.trim() ? comment.trim() : null,
+      p_reaction: reaction,
+    });
+
+    if (!error && data && data.success) {
+      return { success: true };
+    }
+
+    if (error) {
+      console.warn('RPC cast_family_vote error, attempting direct upsert fallback:', error);
+    }
+  } catch (rpcErr) {
+    console.warn('RPC call failed, trying direct upsert:', rpcErr);
+  }
+
+  // Fallback: direct upsert into family_poll_votes
+  try {
+    const { error: upsertErr } = await supabase
+      .from('family_poll_votes')
+      .upsert(
+        {
+          poll_id: pollId,
+          item_id: itemId,
+          voter_token: voterToken,
+          voter_name: cleanName,
+          comment: comment && comment.trim() ? comment.trim() : null,
+          reaction,
+        },
+        { onConflict: 'poll_id, voter_token' }
+      );
+
+    if (upsertErr) throw upsertErr;
+    return { success: true };
+  } catch (fallbackErr: any) {
+    console.error('Failed to cast vote via fallback:', fallbackErr);
+    return { success: false, error: fallbackErr?.message || 'Failed to submit vote' };
+  }
+}
+
+/**
+ * Close or decide a poll
+ */
+export async function closeFamilyPoll(pollId: string, winningProductId?: string): Promise<boolean> {
+  try {
+    const updatePayload: Record<string, any> = {
+      status: winningProductId ? 'decided' : 'closed',
+    };
+    if (winningProductId) {
+      updatePayload.winning_product_id = winningProductId;
+    }
+
+    const { error } = await supabase
+      .from('family_polls')
+      .update(updatePayload)
+      .eq('id', pollId);
+
+    if (error) {
+      console.error('Error closing family poll:', error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Exception closing family poll:', err);
+    return false;
+  }
+}
+
