@@ -79,7 +79,20 @@ function WishlistContent() {
               }}
               title="Click to ask family to vote on your sarees"
             >
-              <div className="relative w-full aspect-[2121/261]">
+              {/* Mobile Banner (2111x649 aspect ratio) */}
+              <div className="block md:hidden relative w-full aspect-[2111/649]">
+                <Image
+                  src="/mobile_my_wishlist.webp"
+                  alt="Ask Family to Vote"
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, 768px"
+                  className="object-cover object-center group-hover:scale-[1.004] transition-transform duration-300"
+                />
+              </div>
+
+              {/* Desktop Banner (2121x261 aspect ratio) */}
+              <div className="hidden md:block relative w-full aspect-[2121/261]">
                 <Image
                   src="/my_wishlist.webp"
                   alt="Ask Family to Vote"

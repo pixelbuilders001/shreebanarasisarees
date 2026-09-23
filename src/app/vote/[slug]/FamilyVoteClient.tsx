@@ -7,14 +7,10 @@ import { useRouter } from 'next/navigation';
 import { 
   Heart, 
   Users, 
-  Share2, 
   Check, 
-  Copy, 
   ShoppingBag, 
-  MessageCircle, 
   AlertCircle, 
   ArrowLeft,
-  Crown,
   Trophy,
   Smile
 } from 'lucide-react';
@@ -60,9 +56,6 @@ export default function FamilyVoteClient({ slug, initialPoll }: FamilyVoteClient
   // Voting Dialog State
   const [pendingVoteItem, setPendingVoteItem] = useState<FamilyPollItem | null>(null);
   const [showVoteModal, setShowVoteModal] = useState(false);
-
-  // Copy state
-  const [copied, setCopied] = useState(false);
 
   // Celebration state
   const [celebratingItemId, setCelebratingItemId] = useState<string | null>(null);
@@ -215,22 +208,6 @@ export default function FamilyVoteClient({ slug, initialPoll }: FamilyVoteClient
     executeVote(pendingVoteItem, name, commentText.trim(), selectedReaction);
   };
 
-  // WhatsApp share message
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const currentUrl = `${origin}/vote/${slug}`;
-  const whatsappShareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(
-    `🌸 ${poll?.creator_name || 'I am'} choosing a saree for ${poll?.occasion || 'an event'}! ❤️\n\nWhich one looks best? Vote here:\n${currentUrl}`
-  )}`;
-
-  const handleCopyLink = () => {
-    if (typeof window !== 'undefined') {
-      navigator.clipboard.writeText(currentUrl);
-      setCopied(true);
-      showToast('Link copied to clipboard!', 'info');
-      setTimeout(() => setCopied(false), 2500);
-    }
-  };
-
   const handleAddWinnerToCart = (product: Product) => {
     addToCart(product, 1);
     showToast(`Added ${product.name} to cart!`, 'info');
@@ -295,62 +272,27 @@ export default function FamilyVoteClient({ slug, initialPoll }: FamilyVoteClient
 
         {/* Hero Banner */}
         <div className="relative overflow-hidden bg-gradient-to-br from-maroon via-maroon to-maroon-dark text-ivory rounded-2xl p-6 sm:p-8 shadow-lg border border-gold/30 mb-8 text-center sm:text-left">
-          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-semibold text-gold border border-gold/30">
-                <Users size={13} className="text-gold" />
-                <span>Family Shopping Poll</span>
-                <span>•</span>
-                <span>{poll.occasion}</span>
-              </div>
-
-              <h1 className="font-serif text-2xl sm:text-4xl font-extrabold tracking-wide text-ivory">
-                {poll.creator_name} is choosing a saree ❤️
-              </h1>
-
-              <p className="text-xs sm:text-sm text-ivory/85 max-w-xl leading-relaxed">
-                Help her decide the most stunning look! Tap the heart on the saree you love most.
-                {totalVotesCount > 0 && ` (${totalVotesCount} ${totalVotesCount === 1 ? 'vote' : 'votes'} cast so far)`}
-              </p>
+          <div className="relative z-10 space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-semibold text-gold border border-gold/30">
+              <Users size={13} className="text-gold" />
+              <span>Family Shopping Poll</span>
+              <span>•</span>
+              <span>{poll.occasion}</span>
             </div>
 
-            {/* Quick Share Actions */}
-            <div className="flex flex-col sm:flex-row items-center gap-2.5 shrink-0 w-full sm:w-auto">
-              <a
-                href={whatsappShareUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md hover:scale-105 active:scale-95 transition-all"
-              >
-                <MessageCircle size={16} className="fill-white" />
-                <span>Share on WhatsApp</span>
-              </a>
+            <h1 className="font-serif text-2xl sm:text-4xl font-extrabold tracking-wide text-ivory">
+              {poll.creator_name} is choosing a saree ❤️
+            </h1>
 
-              <button
-                onClick={handleCopyLink}
-                className="w-full sm:w-auto px-3.5 py-2.5 bg-white/15 hover:bg-white/25 text-ivory border border-white/20 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
-              >
-                {copied ? <Check size={14} className="text-gold" /> : <Copy size={14} />}
-                <span>{copied ? 'Copied' : 'Copy Link'}</span>
-              </button>
-            </div>
+            <p className="text-xs sm:text-sm text-ivory/85 max-w-xl leading-relaxed">
+              Help her decide the most stunning look! Tap the heart on the saree you love most.
+              {totalVotesCount > 0 && ` (${totalVotesCount} ${totalVotesCount === 1 ? 'vote' : 'votes'} cast so far)`}
+            </p>
           </div>
 
           {/* Subtle Decorative Background Motif */}
           <div className="absolute -right-10 -bottom-10 w-44 h-44 rounded-full bg-gold/10 blur-2xl pointer-events-none" />
         </div>
-
-        {/* Creator Notification Pill (If Creator) */}
-        {userIsCreator && (
-          <div className="mb-6 p-3.5 bg-gold/15 border border-gold/40 rounded-xl flex items-center justify-between gap-3 text-xs text-dark-brown">
-            <div className="flex items-center gap-2">
-              <Crown className="w-4 h-4 text-maroon shrink-0" />
-              <span>
-                <strong>Creator View:</strong> Share this page with your family on WhatsApp to watch votes update live!
-              </span>
-            </div>
-          </div>
-        )}
 
         {/* Saree Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 mb-10">
@@ -559,22 +501,6 @@ export default function FamilyVoteClient({ slug, initialPoll }: FamilyVoteClient
               })}
             </div>
           )}
-        </div>
-
-        {/* Viral Brand Discovery Banner for Family Guests */}
-        <div className="bg-gradient-to-r from-cream/40 via-gold/15 to-cream/40 border border-gold/30 rounded-2xl p-6 text-center space-y-3">
-          <h3 className="font-serif text-lg font-bold text-dark-brown">
-            Attending {poll.creator_name}&apos;s {poll.occasion}?
-          </h3>
-          <p className="text-xs text-dark-brown/70 max-w-md mx-auto">
-            Explore authentic handwoven Banarasi silk sarees, dupattas, and bridal lehengas directly from the looms of Varanasi.
-          </p>
-          <Link
-            href="/sarees"
-            className="inline-block px-5 py-2.5 bg-maroon text-ivory rounded-xl font-serif text-xs font-bold tracking-wider uppercase shadow-md hover:bg-maroon-dark transition-all hover:scale-105 active:scale-95"
-          >
-            Explore Sarees Collection
-          </Link>
         </div>
 
       </main>
