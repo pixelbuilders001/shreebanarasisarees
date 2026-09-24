@@ -510,4 +510,30 @@ html {
   pointer-events: none;
 }
 
+@keyframes swipeNudge {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+}
+
+.animate-swipe-nudge {
+  animation: swipeNudge 1.3s ease-in-out infinite;
+}
+
+@keyframes swipeGlow {
+  0%, 100% {
+    box-shadow: 0 4px 14px rgba(107, 23, 37, 0.35);
+  }
+  50% {
+    box-shadow: 0 6px 20px rgba(176, 138, 60, 0.6);
+  }
+}
+
+.animate-swipe-glow {
+  animation: swipeGlow 2s ease-in-out infinite;
+}
+
 

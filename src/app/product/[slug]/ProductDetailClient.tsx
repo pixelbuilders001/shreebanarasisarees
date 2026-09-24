@@ -32,7 +32,9 @@ import {
   Loader2,
   Truck,
   Clock,
-  PackageCheck
+  PackageCheck,
+  ChevronsRight,
+  Camera
 } from 'lucide-react';
 import { fetchDesignVariants, fetchDeliverySettings, fetchProductAddons, DeliverySettings, supabase } from '../../../data/supabase';
 import { RecentlyViewed } from '../../../components/RecentlyViewed';
@@ -76,10 +78,13 @@ export default function ProductDetailClient({ product, relatedProducts }: Produc
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   // Sync active image when product or variant changes
+  const [hasInteractedWithGallery, setHasInteractedWithGallery] = useState(false);
+
   useEffect(() => {
     if (product.images && product.images.length > 0) {
       setActiveImage(product.images[0]);
       setActiveImageIndex(0);
+      setHasInteractedWithGallery(false);
     }
   }, [product.id, product.images]);
   const [quantity, setQuantity] = useState(1);
@@ -653,7 +658,33 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
       if (product.images[index]) {
         setActiveImage(product.images[index]);
       }
+      if (index > 0) {
+        setHasInteractedWithGallery(true);
+      }
     }
+  };
+
+  const scrollToSlide = (index: number) => {
+    if (carouselRef.current) {
+      const width = carouselRef.current.clientWidth;
+      carouselRef.current.scrollTo({
+        left: width * index,
+        behavior: 'smooth'
+      });
+      setHasInteractedWithGallery(true);
+    }
+  };
+
+  const handleNextSlide = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const nextIdx = (activeImageIndex + 1) % product.images.length;
+    scrollToSlide(nextIdx);
+  };
+
+  const handlePrevSlide = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const prevIdx = activeImageIndex === 0 ? product.images.length - 1 : activeImageIndex - 1;
+    scrollToSlide(prevIdx);
   };
 
   const handleBack = () => {
@@ -743,6 +774,61 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                 ))}
               </div>
 
+              {/* Mobile Swipe Navigation Arrows (Only when > 1 image) */}
+              {product.images.length > 1 && (
+                <>
+                  {activeImageIndex > 0 && (
+                    <button
+                      type="button"
+                      onClick={handlePrevSlide}
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 z-15 w-8 h-8 rounded-full bg-black/45 hover:bg-black/65 text-white backdrop-blur-md border border-white/20 flex items-center justify-center shadow-md active:scale-90 transition-all cursor-pointer"
+                      aria-label="Previous saree photo"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                  )}
+                  {activeImageIndex < product.images.length - 1 && (
+                    <button
+                      type="button"
+                      onClick={handleNextSlide}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 z-15 w-8 h-8 rounded-full bg-black/45 hover:bg-black/65 text-white backdrop-blur-md border border-white/20 flex items-center justify-center shadow-md active:scale-90 transition-all cursor-pointer animate-swipe-nudge"
+                      aria-label="Next saree photo"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  )}
+                </>
+              )}
+
+              {/* Mobile Swipe Prompt & Photo Counter (Bottom-Left Corner, matching Zoom Zari) */}
+              {product.images.length > 1 && (
+                activeImageIndex === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => scrollToSlide(1)}
+                    className="absolute bottom-3 left-3 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white text-[11px] font-sans px-2.5 py-1 rounded-full flex items-center gap-1.5 z-10 border border-[#D4B870]/40 active:scale-95 transition-all cursor-pointer shadow-md animate-swipe-glow"
+                    aria-label={`Swipe to view all ${product.images.length} saree photos`}
+                  >
+                    <Camera size={12} className="text-[#D4B870]" />
+                    <span>1/{product.images.length} • Swipe</span>
+                    <ChevronsRight size={13} className="text-[#D4B870] animate-swipe-nudge" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleNextSlide}
+                    className="absolute bottom-3 left-3 bg-black/55 hover:bg-black/75 backdrop-blur-md text-white text-[11px] font-sans px-2.5 py-1 rounded-full flex items-center gap-1.5 z-10 border border-white/20 active:scale-95 transition-all cursor-pointer shadow-md"
+                    aria-label="Current photo count, tap for next"
+                  >
+                    <Camera size={12} className="text-[#D4B870]" />
+                    <span>{activeImageIndex + 1} / {product.images.length}</span>
+                    {activeImageIndex < product.images.length - 1 && (
+                      <ChevronsRight size={13} className="text-[#D4B870]" />
+                    )}
+                  </button>
+                )
+              )}
+
               {/* Mobile Zoom Prompt Badge */}
               <button
                 type="button"
@@ -804,11 +890,14 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
               {/* Mobile Dots */}
               {product.images.length > 1 && (
-                <div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-1.5 z-10">
+                <div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-1.5 z-10 pointer-events-auto">
                   {product.images.map((_, idx) => (
-                    <div
+                    <button
                       key={idx}
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                      type="button"
+                      onClick={() => scrollToSlide(idx)}
+                      aria-label={`Go to photo ${idx + 1}`}
+                      className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
                         activeImageIndex === idx ? 'w-5 bg-white shadow-sm' : 'w-1.5 bg-white/70'
                       }`}
                     />
