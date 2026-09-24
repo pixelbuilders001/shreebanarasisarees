@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Header } from '../../components/Header';
 import { Footer } from '../../components/Footer';
 import { ProductCard } from '../../components/ProductCard';
+import { ProductCardSkeleton } from '../../components/ProductCardSkeleton';
 import { useStore } from '../../context/StoreContext';
 import { Heart, ShoppingBag } from 'lucide-react';
 import WishlistLoading from './loading';
@@ -13,7 +14,7 @@ import ContextualNotificationBanner from '../../components/notifications/Context
 import AskFamilyModal from '../../components/family-shopping/AskFamilyModal';
 
 function WishlistContent() {
-  const { wishlist, showToast } = useStore();
+  const { wishlist, showToast, isHydrated } = useStore();
   const [isFamilyModalOpen, setIsFamilyModalOpen] = useState(false);
 
   const handleBannerClick = () => {
@@ -36,9 +37,13 @@ function WishlistContent() {
             <h1 className="font-serif text-xl sm:text-2xl font-extrabold text-dark-brown">
               Your Wishlist
             </h1>
-            <span className="text-xs font-semibold text-dark-brown/40 font-sans">
-              ({wishlist.length} {wishlist.length === 1 ? 'Saree' : 'Sarees'} saved)
-            </span>
+            {!isHydrated ? (
+              <span className="inline-block h-3 w-16 bg-cream animate-pulse rounded align-middle" />
+            ) : (
+              <span className="text-xs font-semibold text-dark-brown/40 font-sans">
+                ({wishlist.length} {wishlist.length === 1 ? 'Saree' : 'Sarees'} saved)
+              </span>
+            )}
           </div>
           <nav className="text-xs text-dark-brown/50 font-medium flex items-center gap-1">
             <Link href="/" className="hover:text-maroon">Home</Link>
@@ -47,7 +52,16 @@ function WishlistContent() {
           </nav>
         </div>
 
-        {wishlist.length === 0 ? (
+        {!isHydrated ? (
+          <>
+            {/* Banner Skeleton */}
+            <div className="mb-4 w-full aspect-[2111/649] md:aspect-[2121/261] rounded-xl sm:rounded-2xl bg-cream/70 animate-pulse border border-cream/80" />
+            {/* Product Skeleton Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+              <ProductCardSkeleton count={8} />
+            </div>
+          </>
+        ) : wishlist.length === 0 ? (
           <div className="py-16 text-center flex flex-col items-center justify-center bg-white border border-cream rounded-lg shadow-sm px-4">
             <Heart size={44} className="text-maroon/20 mb-3 animate-pulse" />
             <h3 className="font-serif text-lg sm:text-xl font-bold text-dark-brown mb-2">
