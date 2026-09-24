@@ -8,6 +8,7 @@ import { Header } from './Header';
 import { HeroSection } from './HeroSection';
 import { QuickDeliverySection } from './QuickDeliverySection';
 import { CategoryCard } from './CategoryCard';
+import { ShopByBudget } from './ShopByBudget';
 import { CampaignSection } from './CampaignSection';
 import { ProductCard } from './ProductCard';
 import { Footer } from './Footer';
@@ -69,6 +70,9 @@ export default function HomeClient({
 
         {/* 3. Shop by Category (Preserved 4-col Mobile / Expanded 8-col Desktop) */}
         <CategoryCard initialCategories={categories} />
+
+        {/* 3.5 Shop by Budget (Dynamic Price Tiers) */}
+        <ShopByBudget initialProducts={allProducts || bestsellers} />
 
         {/* Dynamic Homepage Sections configured via Supabase */}
         {dynamicSections && dynamicSections.length > 0 && (
