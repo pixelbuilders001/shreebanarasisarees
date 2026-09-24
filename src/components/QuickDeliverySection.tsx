@@ -39,19 +39,28 @@ const DELIVERY_STEPS = [
   }
 ];
 
-const AUTO_PLAY_INTERVAL = 3400;
+const EXTENDED_STEPS = [
+  { ...DELIVERY_STEPS[2], origIdx: 2 }, // 0: Step 3 (clone)
+  { ...DELIVERY_STEPS[3], origIdx: 3 }, // 1: Step 4 (clone)
+  { ...DELIVERY_STEPS[0], origIdx: 0 }, // 2: Step 1 (real)
+  { ...DELIVERY_STEPS[1], origIdx: 1 }, // 3: Step 2 (real)
+  { ...DELIVERY_STEPS[2], origIdx: 2 }, // 4: Step 3 (real)
+  { ...DELIVERY_STEPS[3], origIdx: 3 }, // 5: Step 4 (real)
+  { ...DELIVERY_STEPS[0], origIdx: 0 }, // 6: Step 1 (clone)
+  { ...DELIVERY_STEPS[1], origIdx: 1 }, // 7: Step 2 (clone)
+];
+
+const AUTO_PLAY_INTERVAL = 3600;
 
 export const QuickDeliverySection: React.FC = () => {
-  const [activeStepIndex, setActiveStepIndex] = useState(0);
-  const [prevStepIndex, setPrevStepIndex] = useState<number | null>(null);
-  const [direction, setDirection] = useState<'next' | 'prev'>('next');
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [extendedIndex, setExtendedIndex] = useState(2);
+  const [enableTransition, setEnableTransition] = useState(true);
   const [isInteracting, setIsInteracting] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchDelta, setTouchDelta] = useState(0);
 
   const interactionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const transitionTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const activeStepIndex = EXTENDED_STEPS[extendedIndex]?.origIdx ?? 0;
 
   const resetInteractionTimer = useCallback(() => {
     setIsInteracting(true);
@@ -61,29 +70,35 @@ export const QuickDeliverySection: React.FC = () => {
     }, 4500);
   }, []);
 
-  const triggerStepChange = useCallback((nextIdx: number, dir: 'next' | 'prev') => {
-    if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
-
-    setPrevStepIndex(activeStepIndex);
-    setActiveStepIndex(nextIdx);
-    setDirection(dir);
-    setIsTransitioning(true);
-
-    transitionTimerRef.current = setTimeout(() => {
-      setPrevStepIndex(null);
-      setIsTransitioning(false);
-    }, 620);
-  }, [activeStepIndex]);
-
   const goToNext = useCallback(() => {
-    const nextIdx = (activeStepIndex + 1) % DELIVERY_STEPS.length;
-    triggerStepChange(nextIdx, 'next');
-  }, [activeStepIndex, triggerStepChange]);
+    setEnableTransition(true);
+    setExtendedIndex(prev => prev + 1);
+  }, []);
 
   const goToPrev = useCallback(() => {
-    const nextIdx = activeStepIndex === 0 ? DELIVERY_STEPS.length - 1 : activeStepIndex - 1;
-    triggerStepChange(nextIdx, 'prev');
-  }, [activeStepIndex, triggerStepChange]);
+    setEnableTransition(true);
+    setExtendedIndex(prev => prev - 1);
+  }, []);
+
+  const handleTransitionEnd = () => {
+    if (extendedIndex >= 6) {
+      setEnableTransition(false);
+      setExtendedIndex(extendedIndex - 4);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setEnableTransition(true);
+        });
+      });
+    } else if (extendedIndex <= 1) {
+      setEnableTransition(false);
+      setExtendedIndex(extendedIndex + 4);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setEnableTransition(true);
+        });
+      });
+    }
+  };
 
   // Smooth auto-advance every 3.6s
   useEffect(() => {
@@ -91,7 +106,7 @@ export const QuickDeliverySection: React.FC = () => {
 
     const timer = setInterval(() => {
       goToNext();
-    }, 3600);
+    }, AUTO_PLAY_INTERVAL);
 
     return () => clearInterval(timer);
   }, [isInteracting, goToNext]);
@@ -121,19 +136,35 @@ export const QuickDeliverySection: React.FC = () => {
     resetInteractionTimer();
   };
 
-  const handleStepClick = (idx: number) => {
-    if (idx === activeStepIndex) return;
-    const dir = idx > activeStepIndex ? 'next' : 'prev';
-    triggerStepChange(idx, dir);
+  const handleStepClick = (targetOrigIdx: number) => {
+    if (targetOrigIdx === activeStepIndex) return;
+    setEnableTransition(true);
+
+    const currentOrig = EXTENDED_STEPS[extendedIndex]?.origIdx ?? 0;
+    if (currentOrig === 3 && targetOrigIdx === 0) {
+      setExtendedIndex(6);
+    } else if (currentOrig === 0 && targetOrigIdx === 3) {
+      setExtendedIndex(1);
+    } else {
+      setExtendedIndex(targetOrigIdx + 2);
+    }
     resetInteractionTimer();
   };
+
+  // 58% width for center slide, leaves 21% (~82px) prominent preview on each side
+  const ITEM_RATIO = 0.58;
+  const TOTAL_ITEMS = EXTENDED_STEPS.length;
+  const TRACK_RATIO = TOTAL_ITEMS * ITEM_RATIO;
+  const slideTrackPercent = (1 / TOTAL_ITEMS) * 100;
+  const centerOffsetTrackPercent = (0.5 / TRACK_RATIO) * 100;
+  const targetTrackX = centerOffsetTrackPercent - (extendedIndex + 0.5) * slideTrackPercent;
 
   return (
     <section className="py-2.5 sm:py-5 px-3 sm:px-6 lg:px-8 bg-[#FAF7F0] border-b border-[#E7DFC9]/60 select-none">
       <div className="max-w-7xl mx-auto space-y-2">
 
         {/* ───────────────────────────────────────────────────────────── */}
-        {/* 1. MOBILE VIEW: PRECISE CONNECTED TIMELINE & SMOOTH STAGE     */}
+        {/* 1. MOBILE VIEW: PRECISE CONNECTED TIMELINE & 3-SLIDE STAGE    */}
         {/* ───────────────────────────────────────────────────────────── */}
         <div className="block md:hidden overflow-hidden">
           
@@ -194,17 +225,10 @@ export const QuickDeliverySection: React.FC = () => {
             </div>
           </div>
 
-          {/* B. Live Step Indicator Pill */}
-          <div className="flex items-center justify-center gap-1.5 py-0.5">
-            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#6B1725]/6 border border-[#6B1725]/15 text-[11px] font-medium text-[#6B1725]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#8C2234] animate-ping" />
-              <span>{DELIVERY_STEPS[activeStepIndex].badge}</span>
-            </div>
-          </div>
 
-          {/* C. Silky Smooth Cross-Glide Stage (Zero Sudden Snap) */}
+          {/* C. 3-Slide Coverflow Stage (Center Sharp + Left/Right Blurred Peeks) */}
           <div
-            className="relative w-full h-[160px] pt-1 pb-1 overflow-hidden touch-pan-y"
+            className="relative h-[165px] pt-1 pb-1 overflow-hidden touch-pan-y -mx-3 w-[calc(100%+1.5rem)]"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
@@ -224,7 +248,7 @@ export const QuickDeliverySection: React.FC = () => {
                 goToPrev();
                 resetInteractionTimer();
               }}
-              className="absolute left-0.5 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-white/75 backdrop-blur-xs border border-[#E7DFC9] flex items-center justify-center text-[#6B1725] shadow-xs active:scale-90 transition-transform cursor-pointer"
+              className="absolute left-1.5 top-1/2 -translate-y-1/2 z-30 w-7 h-7 rounded-full bg-white/90 backdrop-blur-xs border border-[#E7DFC9] flex items-center justify-center text-[#6B1725] shadow-md active:scale-90 transition-transform cursor-pointer"
               aria-label="Previous step"
             >
               <ChevronLeft size={16} />
@@ -235,56 +259,72 @@ export const QuickDeliverySection: React.FC = () => {
                 goToNext();
                 resetInteractionTimer();
               }}
-              className="absolute right-0.5 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-white/75 backdrop-blur-xs border border-[#E7DFC9] flex items-center justify-center text-[#6B1725] shadow-xs active:scale-90 transition-transform cursor-pointer"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 z-30 w-7 h-7 rounded-full bg-white/90 backdrop-blur-xs border border-[#E7DFC9] flex items-center justify-center text-[#6B1725] shadow-md active:scale-90 transition-transform cursor-pointer"
               aria-label="Next step"
             >
               <ChevronRight size={16} />
             </button>
 
-            {/* Slide Layers */}
-            {DELIVERY_STEPS.map((s, idx) => {
-              const isActive = idx === activeStepIndex;
-              const isExiting = idx === prevStepIndex;
+            {/* Multi-Slide Carousel Track */}
+            <div
+              className="flex items-center h-full will-change-transform"
+              style={{
+                width: `${TRACK_RATIO * 100}%`,
+                transform: touchDelta !== 0
+                  ? `translateX(calc(${targetTrackX}% + ${touchDelta}px))`
+                  : `translateX(${targetTrackX}%)`,
+                transition: touchStart !== null || !enableTransition
+                  ? 'none'
+                  : 'transform 500ms cubic-bezier(0.25, 1, 0.5, 1)',
+              }}
+              onTransitionEnd={handleTransitionEnd}
+            >
+              {EXTENDED_STEPS.map((s, idx) => {
+                const isCenter = idx === extendedIndex;
 
-              if (!isActive && !isExiting) return null;
-
-              let animStyle = '';
-              if (isTransitioning) {
-                if (isActive) {
-                  animStyle = direction === 'next' ? 'sbs-slide-in-right' : 'sbs-slide-in-left';
-                } else if (isExiting) {
-                  animStyle = direction === 'next' ? 'sbs-slide-out-left' : 'sbs-slide-out-right';
-                }
-              }
-
-              return (
-                <div
-                  key={`${s.step}-${isActive ? 'active' : 'exit'}-${activeStepIndex}`}
-                  onClick={() => openPincodeSheet()}
-                  className={`absolute inset-0 flex items-center justify-center px-6 cursor-pointer will-change-transform ${animStyle}`}
-                  style={{
-                    transform: isActive && !isTransitioning && touchDelta !== 0
-                      ? `translateX(${touchDelta}px)`
-                      : undefined
-                  }}
-                  title="Click to check delivery pincode"
-                >
-                  <div className="relative w-full max-w-[310px] aspect-[700/480] max-h-[155px] flex items-center justify-center p-1">
-                    <img
-                      src={s.image}
-                      alt={s.alt}
-                      className="w-full h-full object-contain block drop-shadow-md"
-                      loading="eager"
-                      onError={(e) => {
-                        if (s.fallbackImage && e.currentTarget.src !== s.fallbackImage) {
-                          e.currentTarget.src = s.fallbackImage;
-                        }
-                      }}
-                    />
+                return (
+                  <div
+                    key={`${s.step}-${idx}`}
+                    onClick={() => {
+                      if (isCenter) {
+                        openPincodeSheet();
+                      } else if (idx < extendedIndex) {
+                        goToPrev();
+                        resetInteractionTimer();
+                      } else {
+                        goToNext();
+                        resetInteractionTimer();
+                      }
+                    }}
+                    style={{
+                      width: `${slideTrackPercent}%`,
+                      filter: isCenter ? 'none' : 'blur(1.5px)',
+                      opacity: isCenter ? 1 : 0.65,
+                      transform: isCenter ? 'scale(1)' : 'scale(0.85)',
+                      transition: 'transform 500ms ease-out, opacity 500ms ease-out, filter 500ms ease-out',
+                    }}
+                    className={`shrink-0 flex items-center justify-center py-1 select-none cursor-pointer ${
+                      isCenter ? 'z-10' : 'z-0'
+                    }`}
+                    title={isCenter ? "Click to check delivery pincode" : `Go to Step ${s.step}: ${s.label}`}
+                  >
+                    <div className="relative w-full aspect-[700/480] max-h-[150px] flex items-center justify-center px-1">
+                      <img
+                        src={s.image}
+                        alt={s.alt}
+                        className="w-full h-full object-contain block drop-shadow-md"
+                        loading="eager"
+                        onError={(e) => {
+                          if (s.fallbackImage && e.currentTarget.src !== s.fallbackImage) {
+                            e.currentTarget.src = s.fallbackImage;
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
         </div>
@@ -300,7 +340,7 @@ export const QuickDeliverySection: React.FC = () => {
               <div
                 key={s.step}
                 onClick={() => openPincodeSheet()}
-                onMouseEnter={() => setActiveStepIndex(idx)}
+                onMouseEnter={() => handleStepClick(idx)}
                 className={`group relative transition-all duration-500 cursor-pointer ${
                   isActive ? '-translate-y-1' : 'hover:-translate-y-0.5'
                 }`}
