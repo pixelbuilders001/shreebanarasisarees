@@ -7,11 +7,29 @@ import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 import { useStore } from '../context/StoreContext';
 
 export const Footer: React.FC = () => {
-  const { user, setIsAuthModalOpen } = useStore();
+  const { user, setIsAuthModalOpen, categories: dbCategories } = useStore();
   const currentYear = new Date().getFullYear();
   const [openSection, setOpenSection] = useState<string | null>(null);
 
   const isStandalone = useIsPwaInstalled();
+
+  // Active categories only (filtered strictly by status === 'active')
+  const activeCategories = React.useMemo(() => {
+    if (!dbCategories || dbCategories.length === 0) return [];
+    return dbCategories
+      .filter((c) => !c.status || c.status === 'active')
+      .map((c) => {
+        const slug = (c.slug || c.name || '')
+          .toLowerCase()
+          .trim()
+          .replace(/\s+/g, '-');
+        return {
+          id: c.id || c.category_id || slug,
+          name: c.name,
+          href: `/sarees/${encodeURIComponent(slug)}`,
+        };
+      });
+  }, [dbCategories]);
 
   const handlePwaInstall = async () => {
     const promptEvent = typeof window !== 'undefined' ? (window as any).deferredPwaPrompt : null;
@@ -105,12 +123,13 @@ export const Footer: React.FC = () => {
             </h4>
             <ul className="space-y-2.5 text-xs text-[#FAF7F0]/80 font-medium">
               <li><Link href="/sarees" className="hover:text-[#B08A3C] transition-colors">All Sarees</Link></li>
-              <li><Link href="/sarees/banarasi" className="hover:text-[#B08A3C] transition-colors">Banarasi Sarees</Link></li>
-              <li><Link href="/sarees/chikankari" className="hover:text-[#B08A3C] transition-colors">Chikankari</Link></li>
-              <li><Link href="/sarees/chanderi" className="hover:text-[#B08A3C] transition-colors">Chanderi</Link></li>
-              <li><Link href="/sarees/bandhani" className="hover:text-[#B08A3C] transition-colors">Bandhani</Link></li>
-              <li><Link href="/sarees/organza" className="hover:text-[#B08A3C] transition-colors">Organza</Link></li>
-              <li><Link href="/sarees/bridal" className="hover:text-[#B08A3C] transition-colors">Bridal Collection</Link></li>
+              {activeCategories.map((cat) => (
+                <li key={cat.id}>
+                  <Link href={cat.href} className="hover:text-[#B08A3C] transition-colors">
+                    {cat.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -231,12 +250,13 @@ export const Footer: React.FC = () => {
             {openSection === 'shop' && (
               <ul className="space-y-2.5 pb-4 pt-1 text-xs text-[#FAF7F0]/80 font-medium animate-fadeIn">
                 <li><Link href="/sarees" className="block py-1">All Sarees</Link></li>
-                <li><Link href="/sarees/banarasi" className="block py-1">Banarasi Sarees</Link></li>
-                <li><Link href="/sarees/chikankari" className="block py-1">Chikankari</Link></li>
-                <li><Link href="/sarees/chanderi" className="block py-1">Chanderi</Link></li>
-                <li><Link href="/sarees/bandhani" className="block py-1">Bandhani</Link></li>
-                <li><Link href="/sarees/organza" className="block py-1">Organza</Link></li>
-                <li><Link href="/sarees/bridal" className="block py-1">Bridal Collection</Link></li>
+                {activeCategories.map((cat) => (
+                  <li key={cat.id}>
+                    <Link href={cat.href} className="block py-1">
+                      {cat.name}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             )}
           </div>

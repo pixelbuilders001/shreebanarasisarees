@@ -559,6 +559,7 @@ const HeaderInner: React.FC<HeaderProps> = ({ hideOnMobile = false }) => {
       <MobileMenuDrawer
         isOpen={isMobileMenuOpen}
         onClose={closeMobileMenu}
+        categories={dbCategories}
       />
     </>
   );

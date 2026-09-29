@@ -22,21 +22,24 @@ import { useStore } from '../context/StoreContext';
 import { triggerHaptic } from '../utils/haptics';
 import { useIsPwaInstalled, markPwaAsInstalled } from '@/lib/pwaUtils';
 import { event as trackGAEvent } from '@/lib/gtag';
-import { recordPwaInstall } from '@/data/supabase';
+import { recordPwaInstall, DbCategory } from '@/data/supabase';
 
 interface MobileMenuDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  categories?: DbCategory[];
 }
 
-export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onClose }) => {
+export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onClose, categories }) => {
   const {
     user,
     userProfile,
     userWallet,
     wishlist,
     logoutUser,
-    setIsAuthModalOpen
+    setIsAuthModalOpen,
+    categories: dbCategories,
+    isCategoriesLoading
   } = useStore();
 
   const [isRendered, setIsRendered] = useState(false);
@@ -225,17 +228,26 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
     setTouchStartX(null);
   };
 
-  if (!isRendered) return null;
+  // Only display active categories from Supabase / StoreContext
+  const navCategories = React.useMemo(() => {
+    const list = (categories && categories.length > 0) ? categories : dbCategories;
+    if (!list || list.length === 0) return [];
+    return list
+      .filter((c) => !c.status || c.status === 'active')
+      .map((c) => {
+        const slug = (c.slug || c.name || '')
+          .toLowerCase()
+          .trim()
+          .replace(/\s+/g, '-');
+        return {
+          id: c.id || c.category_id || slug,
+          name: c.name,
+          href: `/sarees/${encodeURIComponent(slug)}`,
+        };
+      });
+  }, [categories, dbCategories]);
 
-  // Curated weave list (essential core navigation)
-  const navCategories = [
-    { name: 'Banarasi Silk Sarees', href: '/sarees/banarasi' },
-    { name: 'Lucknowi Chikankari', href: '/sarees/chikankari' },
-    { name: 'Bandhani & Patola', href: '/sarees/bandhani' },
-    { name: 'Glass Organza', href: '/sarees/organza' },
-    { name: 'Chanderi Silk', href: '/sarees/chanderi' },
-    { name: 'Bridal & Wedding Sarees', href: '/sarees?occasion=Wedding' },
-  ];
+  if (!isRendered) return null;
 
   // Drawer transform & transition styles
   const drawerTransform = isDragging
@@ -511,41 +523,52 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({ isOpen, onCl
             </Link>
           </div>
 
-          {/* Saree Weaves Navigation */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between px-1 pb-1">
-              <span className="text-[11px] font-bold text-[#B08A3C] uppercase tracking-wider font-serif">
-                Shop by Weave
-              </span>
-              <Link
-                href="/sarees"
-                onClick={() => {
-                  triggerHaptic('selection');
-                  onClose();
-                }}
-                className="text-xs font-semibold text-[#6B1725] hover:underline"
-              >
-                All Sarees &rarr;
-              </Link>
-            </div>
-
-            <div className="bg-white rounded-xl border border-[#E5DEC9] divide-y divide-[#F3ECE0] overflow-hidden">
-              {navCategories.map((cat) => (
+          {/* Saree Categories Navigation */}
+          {(navCategories.length > 0 || isCategoriesLoading) && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between px-1 pb-1">
+                <span className="text-[11px] font-bold text-[#B08A3C] uppercase tracking-wider font-serif">
+                  Shop by Category
+                </span>
                 <Link
-                  key={cat.name}
-                  href={cat.href}
+                  href="/sarees"
                   onClick={() => {
                     triggerHaptic('selection');
                     onClose();
                   }}
-                  className="flex items-center justify-between px-4 py-3 min-h-[46px] hover:bg-[#FAF7F0] text-sm font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
+                  className="text-xs font-semibold text-[#6B1725] hover:underline"
                 >
-                  <span>{cat.name}</span>
-                  <ChevronRight size={15} className="text-[#7A6E65]/60" />
+                  All Sarees &rarr;
                 </Link>
-              ))}
+              </div>
+
+              <div className="bg-white rounded-xl border border-[#E5DEC9] divide-y divide-[#F3ECE0] overflow-hidden">
+                {navCategories.length > 0 ? (
+                  navCategories.map((cat) => (
+                    <Link
+                      key={cat.id || cat.name}
+                      href={cat.href}
+                      onClick={() => {
+                        triggerHaptic('selection');
+                        onClose();
+                      }}
+                      className="flex items-center justify-between px-4 py-3 min-h-[46px] hover:bg-[#FAF7F0] text-sm font-medium text-[#292524] transition-colors active:bg-[#F3ECE0]"
+                    >
+                      <span>{cat.name}</span>
+                      <ChevronRight size={15} className="text-[#7A6E65]/60" />
+                    </Link>
+                  ))
+                ) : (
+                  [1, 2, 3, 4].map((i) => (
+                    <div key={i} className="px-4 py-3 min-h-[46px] flex items-center justify-between">
+                      <div className="h-4 w-32 bg-[#EBE4D2] rounded animate-pulse" />
+                      <div className="h-4 w-4 bg-[#EBE4D2] rounded animate-pulse" />
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Quick Links */}
           <div className="space-y-1.5">
