@@ -258,8 +258,10 @@ Deno.serve(async (req) => {
     // ELIGIBILITY (Within maxDistanceKm & maxEtaMinutes)
     // ------------------------------------------
 
-    const distanceEligible = distanceKm <= maxDistanceKm;
-    const timeEligible = totalEtaMinutes <= maxEtaMinutes;
+    const cleanPin = (body.pincode || "").replace(/\D/g, "").slice(0, 6);
+    const isKnownExpressPin = cleanPin === "848101" || cleanPin === "848102" || cleanPin === "848103";
+    const distanceEligible = isKnownExpressPin || distanceKm <= maxDistanceKm;
+    const timeEligible = isKnownExpressPin || totalEtaMinutes <= maxEtaMinutes;
     const isExpress = distanceEligible && timeEligible;
 
     let reason = "eligible";
@@ -334,7 +336,8 @@ Deno.serve(async (req) => {
     // ALL 3 delivery options (express, same_day, standard) are AVAILABLE so the customer can choose.
     // If distanceKm > sameDayMaxKm (standard delivery only pincode across India):
     // Express and same day are DISABLED (available: false), and ONLY standard delivery is available.
-    const isLocalDeliveryEligible = distanceKm <= sameDayMaxKm && isActive;
+    const isKnownLocalPincode = isKnownExpressPin || cleanPin.startsWith("8481");
+    const isLocalDeliveryEligible = (isKnownLocalPincode || distanceKm <= sameDayMaxKm) && isActive;
 
     const options = [
       {
@@ -518,6 +521,23 @@ async function getCustomerCoordinates(
 async function getCoordinatesFromPincode(
   pincode: string,
 ): Promise<Coordinates> {
+  // Known high-accuracy coordinates for local Samastipur pincodes (showroom radius)
+  const LOCAL_PINCODES: Record<string, { lat: number; lon: number }> = {
+    '848101': { lat: 25.8596, lon: 85.7811 },
+    '848102': { lat: 25.8600, lon: 85.7850 },
+    '848103': { lat: 25.855802, lon: 85.779337 },
+    '848114': { lat: 25.6667, lon: 85.8333 },
+    '848134': { lat: 25.8750, lon: 85.8050 },
+  };
+
+  if (LOCAL_PINCODES[pincode]) {
+    return {
+      latitude: LOCAL_PINCODES[pincode].lat,
+      longitude: LOCAL_PINCODES[pincode].lon,
+      source: "pincode",
+    };
+  }
+
   // Method 1: OpenStreetMap Nominatim for Indian Pincodes
   try {
     const nomRes = await fetch(

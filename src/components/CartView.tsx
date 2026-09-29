@@ -204,7 +204,8 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
   }, [isHydrated]);
 
   // Pincode synchronized with centralized location system
-  const pincode = currentPincode || defaultDeliveryPincode || '';
+  const sessionPin = typeof window !== 'undefined' ? (sessionStorage.getItem('active_delivery_pincode') || localStorage.getItem('selected_pincode') || '') : '';
+  const pincode = currentPincode || defaultDeliveryPincode || sessionPin;
 
   // Location serviceability check hook
   const { result, checkPincode } = useCustomerLocation();
@@ -216,6 +217,10 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
   }, [pincode, checkPincode]);
 
   const is20Min = useMemo(() => {
+    const cleanPin = (pincode || '').trim();
+    if (cleanPin === '848101' || cleanPin === '848102' || cleanPin === '848103' || cleanPin === (defaultDeliveryPincode || '848101')) {
+      return true;
+    }
     if (result) {
       return !!(
         result.is20MinDelivery ||
@@ -224,8 +229,7 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
         result.eligible
       );
     }
-    const cleanPin = (pincode || '').trim();
-    return cleanPin.startsWith('8481') || cleanPin === (defaultDeliveryPincode || '848101');
+    return cleanPin.startsWith('8481');
   }, [result, pincode, defaultDeliveryPincode]);
 
   const timingStatus = useMemo(() => {
@@ -244,6 +248,14 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
     return 'express';
   });
   const hasUserSelectedDeliveryRef = useRef(false);
+  const prevPincodeRef = useRef<string>(pincode);
+
+  useEffect(() => {
+    if (prevPincodeRef.current !== pincode) {
+      prevPincodeRef.current = pincode;
+      hasUserSelectedDeliveryRef.current = false;
+    }
+  }, [pincode]);
 
   useEffect(() => {
     fetchDeliverySettings().then(setDeliverySettings).catch(console.error);
@@ -285,12 +297,22 @@ export const CartView: React.FC<CartViewProps> = ({ onBack, isDrawer = false }) 
   // Keep fastest available delivery option selected
   useEffect(() => {
     const currentOpt = deliveryOptions.find(o => o.id === selectedDeliveryMethod);
-    if (!currentOpt || !currentOpt.available) {
-      const best = deliveryOptions.find(o => o.available);
-      const nextMethod = best ? best.id : 'standard';
-      setSelectedDeliveryMethod(nextMethod);
+    const best = deliveryOptions.find(o => o.available);
+    const bestMethod = best ? best.id : 'standard';
+
+    // If customer has not explicitly clicked an option in this session, default to fastest available (e.g. 20-min express)
+    if (!hasUserSelectedDeliveryRef.current) {
+      if (selectedDeliveryMethod !== bestMethod) {
+        setSelectedDeliveryMethod(bestMethod);
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('selected_delivery_option', bestMethod);
+        }
+      }
+    } else if (!currentOpt || !currentOpt.available) {
+      // If customer's manual choice is not available, fallback to best available
+      setSelectedDeliveryMethod(bestMethod);
       if (typeof window !== 'undefined') {
-        sessionStorage.setItem('selected_delivery_option', nextMethod);
+        sessionStorage.setItem('selected_delivery_option', bestMethod);
       }
     }
   }, [deliveryOptions, selectedDeliveryMethod]);

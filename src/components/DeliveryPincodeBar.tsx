@@ -685,6 +685,9 @@ export const DeliveryPincodeSheet: React.FC = () => {
     }
     setCurrentPincode(cleanPin);
     checkPincode(cleanPin);
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('selected_delivery_option');
+    }
   };
 
   const handleSavePincode = (pinToSave: string) => {
@@ -709,6 +712,9 @@ export const DeliveryPincodeSheet: React.FC = () => {
     // 2. Persist and check in background without blocking UI dismissal
     setCurrentPincode(clean);
     checkPincode(clean);
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('selected_delivery_option');
+    }
 
     // 3. Keep sheet in DOM for 150ms to absorb touch/click release and prevent ghost clicks
     setTimeout(() => {

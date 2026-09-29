@@ -2874,16 +2874,24 @@ export function calculateDeliveryOptions(
   const hasDistance = distanceKm != null && distanceKm > 0;
   const cleanPin = (pincode || '').replace(/\D/g, '').slice(0, 6);
 
+  // Check if pincode is a known local Samastipur delivery zone (showroom area, 848101, 848102, 848103, 8481xx):
+  const isKnownLocalPincode =
+    cleanPin === '848101' ||
+    cleanPin === '848102' ||
+    cleanPin === '848103' ||
+    cleanPin === (settings.default_pincode || '848101') ||
+    cleanPin.startsWith('8481');
+
   // Check if pincode or distance is within local same-day / express delivery zone:
-  // - If road / GPS distance is known (> 0): within same_day_max_km (e.g. 10 km)
-  // - If distance is not yet known: local Samastipur district pincodes (starts with 8481, or default_pincode, or 848101)
-  // - If no pincode or distance is given: defaults to local showroom area
+  // 1. Explicit Samastipur local pincode is ALWAYS local delivery eligible (guards against external geocoder inaccuracies)
+  // 2. If road / GPS distance is known (> 0): within same_day_max_km (e.g. 10 km)
+  // 3. If no pincode or distance is given: defaults to local showroom area
   let isLocalDeliveryEligible = false;
-  if (hasDistance) {
+  if (isKnownLocalPincode) {
+    isLocalDeliveryEligible = true;
+  } else if (hasDistance) {
     isLocalDeliveryEligible = dist <= settings.same_day_max_km;
-  } else if (cleanPin) {
-    isLocalDeliveryEligible = cleanPin.startsWith('8481') || cleanPin === (settings.default_pincode || '848101');
-  } else {
+  } else if (!cleanPin) {
     isLocalDeliveryEligible = true;
   }
 
@@ -2919,7 +2927,8 @@ export function calculateDeliveryOptions(
 
   if (settings.is_express_20min_enabled) {
     if (isShopOpen) {
-      const etaMins = customerEtaMinutes || 20;
+      // If customerEtaMinutes is missing or distorted by inaccurate geocoding (> 30 mins) for a local pincode, default to 20 mins
+      const etaMins = (customerEtaMinutes && customerEtaMinutes <= 30) ? customerEtaMinutes : 20;
       expressTitle = '20-Min Express Delivery';
       expressEta = `~${etaMins} mins`;
       expressBadge = '⚡ 20-Min Express';
