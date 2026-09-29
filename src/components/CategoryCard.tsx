@@ -125,13 +125,6 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ initialCategories })
     return (
       <section className="py-6 md:py-10 px-4 md:px-8 bg-[#FAF7F0] border-b border-[#B08A3C]/15">
         <div className="max-w-7xl mx-auto">
-          {/* Pills Skeleton */}
-          <div className="flex gap-2 overflow-hidden mb-4">
-            <div className="h-8 w-24 bg-[#EBE4D2] rounded-full animate-pulse shrink-0" />
-            <div className="h-8 w-28 bg-[#EBE4D2] rounded-full animate-pulse shrink-0" />
-            <div className="h-8 w-24 bg-[#EBE4D2] rounded-full animate-pulse shrink-0" />
-            <div className="h-8 w-32 bg-[#EBE4D2] rounded-full animate-pulse shrink-0" />
-          </div>
 
           {/* Unified Bento Skeleton */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
@@ -152,23 +145,6 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ initialCategories })
   return (
     <section className="py-6 sm:py-10 px-4 md:px-8 bg-[#FAF7F0] border-b border-[#B08A3C]/15 overflow-hidden">
       <div className="max-w-7xl mx-auto">
-        {/* ── QUICK FILTER PILLS ── */}
-        {weaves.length > 0 && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-4 scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
-            {weaves.map((w) => (
-              <Link
-                key={w.id}
-                href={`/sarees/${encodeURIComponent(w.query.toLowerCase().trim().replace(/\s+/g, '-'))}`}
-                className="shrink-0 text-xs font-sans font-medium px-3.5 py-1.5 rounded-full border border-[#D5CBB3] bg-[#FAF6EE]/90 text-[#292524] hover:bg-[#6B1725] hover:text-white hover:border-[#6B1725] transition-all shadow-2xs"
-              >
-                {w.name}
-                {w.count > 0 && (
-                  <span className="ml-1.5 text-[10px] opacity-70">({w.count})</span>
-                )}
-              </Link>
-            ))}
-          </div>
-        )}
 
         {/* ── UNIFIED BENTO GRID (Same look & feel on Mobile & Desktop) ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
