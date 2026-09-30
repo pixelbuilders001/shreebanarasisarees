@@ -282,6 +282,13 @@ export const SareesClient: React.FC<SareesClientProps> = ({
       // 2. Price Filter
       const finalPrice = product.salePrice ?? product.price;
       if (selectedPriceRange !== 'All') {
+        const isArrivingSoon = Boolean(
+          product.isArrivingSoon || 
+          product.category?.toLowerCase() === 'arriving soon' || 
+          (product.price === 0 && (!product.salePrice || product.salePrice === 0))
+        );
+        if (isArrivingSoon || finalPrice <= 0) return false;
+
         if (selectedPriceRange === 'under_3000' && finalPrice > 3000) return false;
         if (selectedPriceRange === '3000_5000' && (finalPrice < 3000 || finalPrice > 5000)) return false;
         if (selectedPriceRange === '5000_8000' && (finalPrice < 5000 || finalPrice > 8000)) return false;

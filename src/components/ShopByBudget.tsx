@@ -22,9 +22,9 @@ export const BUDGET_TIERS: BudgetTier[] = [
     id: 'under-2k',
     label: 'Under ₹1,999',
     badge: 'Pocket Friendly',
-    minPrice: 0,
+    minPrice: 1,
     maxPrice: 1999,
-    href: '/sarees?minPrice=0&maxPrice=1999',
+    href: '/sarees?minPrice=1&maxPrice=1999',
   },
   {
     id: '2k-4k',
@@ -69,9 +69,20 @@ export const ShopByBudget: React.FC<ShopByBudgetProps> = ({ initialProducts = []
 
   // Dynamic helper: check if product belongs to tier based strictly on effective selling price
   const isProductInTier = (product: Product, tier: BudgetTier): boolean => {
+    // Exclude "Arriving Soon" or unpriced sarees (price is 0 or category is Arriving Soon)
+    const isArrivingSoon = Boolean(
+      product.isArrivingSoon || 
+      product.category?.toLowerCase() === 'arriving soon' || 
+      (product.price === 0 && (!product.salePrice || product.salePrice === 0))
+    );
+    if (isArrivingSoon) return false;
+
     const finalPrice = product.salePrice != null && product.salePrice > 0 
       ? product.salePrice 
       : product.price;
+
+    // Sarees with 0 or non-positive price should never appear in budget tiers
+    if (!finalPrice || finalPrice <= 0) return false;
 
     if (tier.minPrice !== undefined && finalPrice < tier.minPrice) return false;
     if (tier.maxPrice !== undefined && finalPrice > tier.maxPrice) return false;
@@ -109,8 +120,8 @@ export const ShopByBudget: React.FC<ShopByBudgetProps> = ({ initialProducts = []
       <div className="absolute bottom-0 left-0 w-80 h-80 bg-[#6B1725]/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto relative z-10">
-        {/* Budget Tiers: Compact Single-Row Horizontal Scroll on Mobile, 4-Col Grid on Desktop */}
-        <div className="flex md:grid md:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-6 overflow-x-auto no-scrollbar pb-1 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 scroll-smooth snap-x snap-mandatory mb-3 sm:mb-4">
+        {/* Budget Tiers: Compact 2x2 Grid on Mobile, 4-Col Grid on Desktop */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 mb-3 sm:mb-4">
           {BUDGET_TIERS.map((tier) => {
             const isSelected = tier.id === selectedTierId;
 
@@ -119,85 +130,154 @@ export const ShopByBudget: React.FC<ShopByBudgetProps> = ({ initialProducts = []
                 key={tier.id}
                 type="button"
                 onClick={() => setSelectedTierId(tier.id)}
-                className={`relative shrink-0 snap-start w-[142px] xs:w-[155px] md:w-auto text-left p-3 md:p-5 rounded-xl md:rounded-2xl transition-all duration-300 flex flex-col justify-between overflow-hidden group cursor-pointer shadow-xs md:shadow-none ${
+                className={`relative w-full text-left p-2.5 sm:p-3.5 md:p-5 rounded-xl md:rounded-2xl transition-all duration-200 flex flex-col justify-between overflow-hidden group cursor-pointer shadow-xs active:scale-[0.98] ${
                   isSelected
-                    ? 'bg-[#6B1725] text-white shadow-lg shadow-[#6B1725]/20 ring-1.5 md:ring-2 ring-[#B08A3C] transform -translate-y-0.5 md:-translate-y-1'
-                    : 'bg-[#FFFFFF] text-[#292524] border border-[#B08A3C]/20 hover:border-[#B08A3C]/60 hover:shadow-md'
+                    ? 'bg-[#6B1725] text-white shadow-md shadow-[#6B1725]/20 ring-1.5 md:ring-2 ring-[#B08A3C]'
+                    : 'bg-[#FFFFFF] text-[#292524] border border-[#B08A3C]/20 hover:border-[#B08A3C]/60 hover:shadow-sm'
                 }`}
               >
-                {/* Decorative background watermark */}
-                <div
-                  className={`absolute -right-3 -bottom-3 md:-right-4 md:-bottom-4 opacity-5 transition-opacity group-hover:opacity-10 pointer-events-none ${
-                    isSelected ? 'text-white' : 'text-[#6B1725]'
-                  }`}
-                >
-                  <Tag className="w-12 h-12 md:w-20 md:h-20" />
-                </div>
-
-                {/* Card Top: Badge */}
-                <div className="flex items-center justify-between gap-1 mb-1.5 md:mb-2">
-                  <span
-                    className={`text-[8.5px] md:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full font-serif ${
+                {/* Mobile View: Ultra-compact, elegant layout */}
+                <div className="md:hidden flex items-center justify-between gap-1.5 w-full">
+                  <div className="min-w-0 flex-1">
+                    <span
+                      className={`block text-[9px] font-bold uppercase tracking-wider font-sans truncate mb-0.5 ${
+                        isSelected ? 'text-[#D4B870]' : 'text-[#8C6D23]'
+                      }`}
+                    >
+                      {tier.badge}
+                    </span>
+                    <h3
+                      className={`font-serif text-[13px] font-bold tracking-tight truncate leading-tight ${
+                        isSelected ? 'text-[#FAF7F0]' : 'text-[#292524]'
+                      }`}
+                    >
+                      {tier.label}
+                    </h3>
+                  </div>
+                  {/* Subtle active radio indicator */}
+                  <div
+                    className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors ${
                       isSelected
-                        ? 'bg-[#B08A3C] text-[#292524]'
-                        : 'bg-[#FAF7F0] text-[#B08A3C] border border-[#B08A3C]/20'
+                        ? 'bg-[#D4B870] text-[#6B1725]'
+                        : 'border border-[#B08A3C]/35 bg-[#FAF7F0]'
                     }`}
                   >
-                    {tier.badge}
-                  </span>
+                    {isSelected ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#6B1725]" />
+                    ) : null}
+                  </div>
                 </div>
 
-                {/* Card Middle: Price */}
-                <div className="my-0.5 md:my-2">
-                  <h3
-                    className={`font-serif text-sm md:text-2xl font-bold tracking-tight ${
-                      isSelected ? 'text-[#FAF7F0]' : 'text-[#292524] group-hover:text-[#6B1725]'
+                {/* Desktop View: Full luxury card layout */}
+                <div className="hidden md:flex md:flex-col md:justify-between w-full h-full">
+                  {/* Decorative background watermark */}
+                  <div
+                    className={`absolute -right-3 -bottom-3 md:-right-4 md:-bottom-4 opacity-5 transition-opacity group-hover:opacity-10 pointer-events-none ${
+                      isSelected ? 'text-white' : 'text-[#6B1725]'
                     }`}
                   >
-                    {tier.label}
-                  </h3>
-                </div>
+                    <Tag className="w-16 h-16 md:w-20 md:h-20" />
+                  </div>
 
-                {/* Card Bottom: Interactive indicator */}
-                <div className="mt-1.5 md:mt-3 pt-1.5 md:pt-2.5 border-t border-current/10 flex items-center justify-between text-[10px] md:text-xs font-medium">
-                  <span className={isSelected ? 'text-[#D4B870] font-bold' : 'text-[#B08A3C]'}>
-                    Shop
-                  </span>
-                  <ChevronRight
-                    size={13}
-                    className={`transform transition-transform ${
-                      isSelected
-                        ? 'translate-x-0.5 text-[#D4B870]'
-                        : 'text-[#B08A3C] group-hover:translate-x-1'
-                    }`}
-                  />
+                  {/* Card Top: Badge */}
+                  <div className="flex items-center justify-between gap-1 mb-2">
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full font-serif ${
+                        isSelected
+                          ? 'bg-[#B08A3C] text-[#292524]'
+                          : 'bg-[#FAF7F0] text-[#B08A3C] border border-[#B08A3C]/20'
+                      }`}
+                    >
+                      {tier.badge}
+                    </span>
+                  </div>
+
+                  {/* Card Middle: Price */}
+                  <div className="my-1.5">
+                    <h3
+                      className={`font-serif text-lg md:text-2xl font-bold tracking-tight ${
+                        isSelected ? 'text-[#FAF7F0]' : 'text-[#292524] group-hover:text-[#6B1725]'
+                      }`}
+                    >
+                      {tier.label}
+                    </h3>
+                  </div>
+
+                  {/* Card Bottom: Interactive indicator */}
+                  <div className="mt-2 pt-2 border-t border-current/10 flex items-center justify-between text-xs font-medium">
+                    <span className={isSelected ? 'text-[#D4B870] font-bold' : 'text-[#B08A3C]'}>
+                      Shop Collection
+                    </span>
+                    <ChevronRight
+                      size={13}
+                      className={`transform transition-transform ${
+                        isSelected
+                          ? 'translate-x-0.5 text-[#D4B870]'
+                          : 'text-[#B08A3C] group-hover:translate-x-1'
+                      }`}
+                    />
+                  </div>
                 </div>
               </button>
             );
           })}
         </div>
 
+        {/* Active Tier Count Strip */}
+        <div className="flex items-center justify-between mb-2.5 px-0.5">
+          <span className="text-[11px] sm:text-xs text-[#6B625D]">
+            Showing sarees in <span className="font-semibold text-[#292524]">{activeTier.label}</span>
+            {activeProducts.length > 0 && (
+              <span className="ml-1 text-[10px] sm:text-[11px] font-medium text-[#B08A3C] bg-[#B08A3C]/10 px-1.5 py-0.5 rounded">
+                {activeProducts.length} curated
+              </span>
+            )}
+          </span>
+
+          {/* Desktop Next & Prev Arrow Navigation */}
+          {activeProducts.length > 4 && (
+            <div className="hidden md:flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={scrollLeft}
+                className="p-1.5 rounded-full border border-[#B08A3C]/30 hover:border-[#6B1725] text-[#292524] hover:text-[#6B1725] bg-white transition-colors cursor-pointer shadow-xs"
+                aria-label="Previous products"
+              >
+                <ArrowLeft size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={scrollRight}
+                className="p-1.5 rounded-full border border-[#B08A3C]/30 hover:border-[#6B1725] text-[#292524] hover:text-[#6B1725] bg-white transition-colors cursor-pointer shadow-xs"
+                aria-label="Next products"
+              >
+                <ArrowRight size={13} />
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Product Carousel / Loading state */}
         {productsPool.length === 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-6">
             <ProductCardSkeleton count={4} />
           </div>
         ) : activeProducts.length > 0 ? (
           <div
             ref={scrollRef}
-            className="flex gap-3 sm:gap-6 overflow-x-auto no-scrollbar pb-1.5 sm:pb-2 scroll-smooth snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0"
+            className="flex gap-2.5 sm:gap-4 lg:gap-6 overflow-x-auto no-scrollbar pb-2 scroll-smooth snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0"
           >
             {activeProducts.map((prod) => (
               <div
                 key={prod.id}
-                className="w-[165px] sm:w-[260px] lg:w-[280px] shrink-0 snap-start relative"
+                className="w-[148px] xs:w-[160px] sm:w-[240px] md:w-[260px] lg:w-[280px] shrink-0 snap-start relative"
               >
                 <ProductCard product={prod} />
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-10 px-4 bg-white rounded-2xl border border-dashed border-[#B08A3C]/30">
+          <div className="text-center py-8 px-4 bg-white rounded-2xl border border-dashed border-[#B08A3C]/30">
             <p className="font-serif text-sm sm:text-base text-[#6B625D]">
               No sarees found in this specific budget range right now.
             </p>
@@ -211,37 +291,15 @@ export const ShopByBudget: React.FC<ShopByBudgetProps> = ({ initialProducts = []
           </div>
         )}
 
-        {/* Bottom Banner CTA & Carousel Navigation */}
-        <div className="mt-3 sm:mt-4 flex items-center justify-center relative">
+        {/* Bottom Banner CTA */}
+        <div className="mt-3 sm:mt-4 flex items-center justify-center">
           <Link
             href={activeTier.href}
-            className="inline-flex items-center gap-2 px-5 py-2 sm:px-6 sm:py-2.5 rounded-full bg-white border border-[#B08A3C]/40 text-[#6B1725] hover:bg-[#6B1725] hover:text-white text-xs font-serif font-bold uppercase tracking-wider transition-all duration-300 shadow-xs"
+            className="inline-flex items-center gap-2 px-5 py-2 sm:px-6 sm:py-2.5 rounded-full bg-white border border-[#B08A3C]/40 text-[#6B1725] hover:bg-[#6B1725] hover:text-white text-xs font-serif font-bold uppercase tracking-wider transition-all duration-300 shadow-xs active:scale-95"
           >
             <span>Explore All {activeTier.label}</span>
             <ArrowRight size={13} />
           </Link>
-
-          {/* Desktop Next & Prev Arrow Navigation situated below cards */}
-          {activeProducts.length > 4 && (
-            <div className="hidden md:flex items-center gap-1.5 absolute right-0">
-              <button
-                type="button"
-                onClick={scrollLeft}
-                className="p-2 rounded-full border border-[#B08A3C]/30 hover:border-[#6B1725] text-[#292524] hover:text-[#6B1725] bg-white transition-colors cursor-pointer shadow-xs"
-                aria-label="Previous products"
-              >
-                <ArrowLeft size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={scrollRight}
-                className="p-2 rounded-full border border-[#B08A3C]/30 hover:border-[#6B1725] text-[#292524] hover:text-[#6B1725] bg-white transition-colors cursor-pointer shadow-xs"
-                aria-label="Next products"
-              >
-                <ArrowRight size={14} />
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </section>

@@ -388,7 +388,15 @@ export function scoreProducts(
 
     // Price filter — compare against the actual selling price
     if (filters.price) {
+      const isArrivingSoon = Boolean(
+        product.isArrivingSoon ||
+        product.category?.toLowerCase() === 'arriving soon' ||
+        (product.price === 0 && (!product.salePrice || product.salePrice === 0))
+      );
+      if (isArrivingSoon) continue;
+
       const effectivePrice = product.salePrice ?? product.price;
+      if (!effectivePrice || effectivePrice <= 0) continue;
       if (filters.price.min !== undefined && effectivePrice < filters.price.min) continue;
       if (filters.price.max !== undefined && effectivePrice > filters.price.max) continue;
     }
