@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Heart, ShoppingBag, Eye, X, Star, Scissors, Bell, Loader2 } from 'lucide-react';
+import { Heart, ShoppingBag, Eye, X, Star, Scissors, Bell, Loader2, MessageCircle } from 'lucide-react';
 import { Product } from '../data/products';
 import { useStore } from '../context/StoreContext';
 import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
@@ -23,6 +23,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const activeWishlist = isInWishlist(product.id);
   const cartItem = cart.find(item => item.product.id === product.id);
   const quantityInCart = cartItem ? cartItem.quantity : 0;
+
+  const isArrivingSoon = Boolean(
+    product.isArrivingSoon || 
+    product.category?.toLowerCase() === 'arriving soon' || 
+    (product.price === 0 && (!product.salePrice || product.salePrice === 0))
+  );
+
+  const whatsappInquiryUrl = `https://wa.me/+916203909946?text=${encodeURIComponent(
+    `Hello Shree Banarasi Sarees, I would like to inquire about the arriving soon saree: "${product.name}" (Design: ${product.designCode || product.sku || product.id}). Could you please share the expected arrival date and pricing?`
+  )}`;
 
   // Calculate discount percentage
   const discountPercent = product.salePrice 
@@ -64,7 +74,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             alt={product.name}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 300px"
-            className={`w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out ${product.stock === 0 ? 'grayscale opacity-60' : ''}`}
+            className={`w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out ${product.stock === 0 && !isArrivingSoon ? 'grayscale opacity-60' : ''}`}
             loading="lazy"
             onLoad={() => setImageLoaded(true)}
             onError={() => {
@@ -79,6 +89,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         
         {/* Rich Overlay */}
         <div className="absolute inset-0 bg-maroon/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+        {/* Arriving Soon Badge (Top Left Corner) */}
+        {isArrivingSoon && (
+          <div className="absolute top-2.5 left-2.5 z-10 px-2.5 py-1 rounded-full bg-[#FAF4E6]/95 backdrop-blur-md border border-[#E6D5B8] text-[#8C6D23] font-bold text-[10px] uppercase tracking-wider shadow-sm flex items-center gap-1.5 select-none pointer-events-none">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#8C6D23] animate-pulse" />
+            Arriving Soon
+          </div>
+        )}
 
         {/* Quick View Button — slides up on desktop hover only */}
         <button
@@ -158,22 +176,33 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </div>
 
           {/* Price and Discount Row matching Design Screenshot */}
-          <div className="flex items-center justify-between pt-0.5">
-            <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span className="font-sans text-base sm:text-lg font-bold text-[#292524]">
-                ₹{(product.salePrice ?? product.price).toLocaleString('en-IN')}
-              </span>
-              {product.salePrice && (
-                <>
-                  <span className="text-xs text-[#7A6E65] line-through">
-                    ₹{product.price.toLocaleString('en-IN')}
-                  </span>
-                  <span className="text-xs font-bold text-[#6B1725]">
-                    {discountPercent}% off
-                  </span>
-                </>
-              )}
-            </div>
+          <div className="flex items-center justify-between pt-0.5 min-h-[28px]">
+            {isArrivingSoon ? (
+              <div className="flex items-center gap-2">
+                <span className="font-sans text-base sm:text-lg font-bold text-[#6B1725] tracking-wider">
+                  ₹XXXX
+                </span>
+                <span className="text-[10px] font-bold text-[#8C6D23] bg-[#FAF4E6] border border-[#E6D5B8] px-1.5 py-0.5 rounded uppercase tracking-wide">
+                  Arriving Soon
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-baseline gap-1.5 flex-wrap">
+                <span className="font-sans text-base sm:text-lg font-bold text-[#292524]">
+                  ₹{(product.salePrice ?? product.price).toLocaleString('en-IN')}
+                </span>
+                {product.salePrice && (
+                  <>
+                    <span className="text-xs text-[#7A6E65] line-through">
+                      ₹{product.price.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-xs font-bold text-[#6B1725]">
+                      {discountPercent}% off
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Blouse Piece Signal */}
@@ -183,9 +212,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </div>
         </div>
 
-        {/* Add to Cart Button / Quantity Selector */}
+        {/* Add to Cart Button / Quantity Selector / WhatsApp Enquiry */}
         <div className="mt-2.5">
-          {quantityInCart > 0 ? (
+          {isArrivingSoon ? (
+            <a
+              href={whatsappInquiryUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerHaptic('medium');
+              }}
+              className="native-press w-full min-h-10 py-2 sm:py-2.5 rounded-xl border border-[#25D366]/40 bg-[#25D366]/10 hover:bg-[#25D366] text-[#128C7E] hover:text-white font-bold text-xs sm:text-[13px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-95 transition-all duration-200"
+              aria-label={`Enquire about ${product.name} on WhatsApp`}
+            >
+              <MessageCircle size={15} className="fill-current" />
+              <span className="font-serif">WhatsApp Enquiry</span>
+            </a>
+          ) : quantityInCart > 0 ? (
             <div className="flex items-center justify-between border border-maroon/30 rounded-xl bg-white overflow-hidden shadow-sm h-9 sm:h-9.5 animate-scaleIn">
               <button
                 onClick={(e) => {
@@ -274,6 +318,16 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
       document.body.style.overflow = '';
     };
   }, []);
+
+  const isArrivingSoon = Boolean(
+    product.isArrivingSoon || 
+    product.category?.toLowerCase() === 'arriving soon' || 
+    (product.price === 0 && (!product.salePrice || product.salePrice === 0))
+  );
+
+  const whatsappInquiryUrl = `https://wa.me/+916203909946?text=${encodeURIComponent(
+    `Hello Shree Banarasi Sarees, I would like to inquire about the arriving soon saree: "${product.name}" (Design: ${product.designCode || product.sku || product.id}). Could you please share the expected arrival date and pricing?`
+  )}`;
 
   const discountPercent = product.salePrice
     ? Math.round(((product.price - product.salePrice) / product.price) * 100)
@@ -376,24 +430,39 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
 
               {/* Price */}
               <div className="flex items-baseline gap-2 mt-3">
-                <span className="font-serif text-xl sm:text-2xl font-extrabold text-maroon">
-                  ₹{currentPrice.toLocaleString('en-IN')}
-                </span>
-                {product.salePrice && (
-                  <span className="text-sm text-dark-brown/40 line-through">
-                    ₹{product.price.toLocaleString('en-IN')}
-                  </span>
-                )}
-                {discountPercent > 0 && (
-                  <span className="text-[11px] font-bold text-green-700">
-                    {discountPercent}% OFF
-                  </span>
+                {isArrivingSoon ? (
+                  <div className="flex items-center gap-2">
+                    <span className="font-serif text-xl sm:text-2xl font-extrabold text-maroon tracking-wider">
+                      ₹XXXX
+                    </span>
+                    <span className="text-[10px] font-bold text-[#8C6D23] bg-[#FAF4E6] border border-[#E6D5B8] px-2 py-0.5 rounded uppercase tracking-wide">
+                      Arriving Soon
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <span className="font-serif text-xl sm:text-2xl font-extrabold text-maroon">
+                      ₹{currentPrice.toLocaleString('en-IN')}
+                    </span>
+                    {product.salePrice && (
+                      <span className="text-sm text-dark-brown/40 line-through">
+                        ₹{product.price.toLocaleString('en-IN')}
+                      </span>
+                    )}
+                    {discountPercent > 0 && (
+                      <span className="text-[11px] font-bold text-green-700">
+                        {discountPercent}% OFF
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
 
               {/* Stock */}
               <div className="flex items-center gap-2 mt-2 text-[11px] font-semibold">
-                {product.stock === 0 ? (
+                {isArrivingSoon ? (
+                  <span className="text-[#8C6D23] font-medium">Arriving soon • Inquire for early access</span>
+                ) : product.stock === 0 ? (
                   <span className="text-red-600">Out of Stock</span>
                 ) : product.stock <= 3 ? (
                   <span className="text-amber-700 animate-pulse">Only {product.stock} left!</span>
@@ -418,47 +487,62 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
                 <p><span className="font-bold text-dark-brown">Care:</span> {product.care}</p>
               </div>
 
-              {/* Quantity + Add to Cart */}
+              {/* Quantity + Add to Cart / WhatsApp Enquiry */}
               <div className="mt-5 flex items-center gap-2">
-                <div className="flex items-center border border-maroon/30 rounded-lg overflow-hidden bg-white h-10 flex-shrink-0">
-                  <button
-                    onClick={() => setQty(q => Math.max(1, q - 1))}
-                    disabled={qty <= 1}
-                    className="px-3 h-full text-maroon font-bold hover:bg-maroon/5 disabled:opacity-40 transition-colors"
-                    aria-label="Decrease quantity"
+                {isArrivingSoon ? (
+                  <a
+                    href={whatsappInquiryUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => triggerHaptic('medium')}
+                    className="flex-1 py-3 bg-[#25D366] hover:bg-[#20BD5A] text-white rounded-lg font-serif font-bold text-xs uppercase tracking-wider active:scale-95 transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    -
-                  </button>
-                  <span className="w-8 text-center text-sm font-bold text-dark-brown select-none">
-                    {qty}
-                  </span>
-                  <button
-                    onClick={() => setQty(q => Math.min(product.stock, q + 1))}
-                    disabled={product.stock > 0 && qty >= product.stock}
-                    className="px-3 h-full text-maroon font-bold hover:bg-maroon/5 disabled:opacity-40 transition-colors"
-                    aria-label="Increase quantity"
-                  >
-                    +
-                  </button>
-                </div>
+                    <MessageCircle size={16} className="fill-current" />
+                    <span>WhatsApp Enquiry</span>
+                  </a>
+                ) : (
+                  <>
+                    <div className="flex items-center border border-maroon/30 rounded-lg overflow-hidden bg-white h-10 flex-shrink-0">
+                      <button
+                        onClick={() => setQty(q => Math.max(1, q - 1))}
+                        disabled={qty <= 1}
+                        className="px-3 h-full text-maroon font-bold hover:bg-maroon/5 disabled:opacity-40 transition-colors"
+                        aria-label="Decrease quantity"
+                      >
+                        -
+                      </button>
+                      <span className="w-8 text-center text-sm font-bold text-dark-brown select-none">
+                        {qty}
+                      </span>
+                      <button
+                        onClick={() => setQty(q => Math.min(product.stock, q + 1))}
+                        disabled={product.stock > 0 && qty >= product.stock}
+                        className="px-3 h-full text-maroon font-bold hover:bg-maroon/5 disabled:opacity-40 transition-colors"
+                        aria-label="Increase quantity"
+                      >
+                        +
+                      </button>
+                    </div>
 
-                <button
-                  onClick={handleAddToCart}
-                  disabled={product.stock === 0 || isAdding}
-                  className="flex-1 py-2.5 bg-maroon disabled:opacity-85 text-ivory rounded-lg font-serif font-bold text-[11px] uppercase tracking-wider hover:bg-maroon-dark active:scale-95 transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  {isAdding ? (
-                    <>
-                      <Loader2 size={14} className="animate-spin text-ivory" />
-                      <span>Adding...</span>
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingBag size={14} className="group-hover:animate-bag-pop" />
-                      <span>Add to Cart</span>
-                    </>
-                  )}
-                </button>
+                    <button
+                      onClick={handleAddToCart}
+                      disabled={product.stock === 0 || isAdding}
+                      className="flex-1 py-2.5 bg-maroon disabled:opacity-85 text-ivory rounded-lg font-serif font-bold text-[11px] uppercase tracking-wider hover:bg-maroon-dark active:scale-95 transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {isAdding ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin text-ivory" />
+                          <span>Adding...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingBag size={14} className="group-hover:animate-bag-pop" />
+                          <span>Add to Cart</span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
 
                 <button
                   onClick={() => {

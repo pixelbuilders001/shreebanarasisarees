@@ -1124,6 +1124,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Cart operations
   const addToCart = (product: Product, quantity = 1, selectedAddons?: SelectedAddon[]) => {
+    if (product.isArrivingSoon || product.category?.toLowerCase() === 'arriving soon' || (product.price === 0 && (!product.salePrice || product.salePrice === 0))) {
+      showToast('This saree is arriving soon and available for WhatsApp inquiry only.', 'info');
+      return;
+    }
+
     const isCartEmpty = cart.length === 0;
 
     setCart((prevCart) => {

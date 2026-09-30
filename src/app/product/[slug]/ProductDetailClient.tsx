@@ -388,6 +388,11 @@ export default function ProductDetailClient({ product, relatedProducts }: Produc
 
   const carouselRef = useRef<HTMLDivElement>(null);
   const isWishlisted = isInWishlist(product.id);
+  const isArrivingSoon = Boolean(
+    product.isArrivingSoon ||
+    product.category?.toLowerCase() === 'arriving soon' ||
+    (product.price === 0 && (!product.salePrice || product.salePrice === 0))
+  );
   const finalPrice = product.salePrice ?? product.price;
   const finalPriceWithAddons = finalPrice + addonsTotal;
   const discountPercent = product.salePrice
@@ -496,7 +501,15 @@ export default function ProductDetailClient({ product, relatedProducts }: Produc
 
   const handleWhatsAppInquiry = () => {
     const whatsappNumber = "+916203909946";
-    const textMessage = `Namaste Shree Banarasi Sarees! 🌸
+    const textMessage = isArrivingSoon
+      ? `Namaste Shree Banarasi Sarees! 🌸
+I would like to inquire about the arriving soon saree:
+Saree: ${product.name}
+SKU / Code: ${product.designCode || product.sku}
+Link: https://shreebanarasisarees.in/product/${product.slug}
+
+Could you please share the expected arrival date and pricing?`
+      : `Namaste Shree Banarasi Sarees! 🌸
 I would like a live daylight video of this saree:
 Saree: ${product.name}
 SKU: ${product.sku}
@@ -511,6 +524,10 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
   const handleAddToCart = async () => {
     if (isGhostClickBlocked() || isOverlayActive || isCustomizationModalOpen || isCustomizationCooldown) return;
+    if (isArrivingSoon) {
+      handleWhatsAppInquiry();
+      return;
+    }
     if (product.stock > 0) {
       triggerHaptic('medium');
       if (isProductInCart) {
@@ -529,6 +546,10 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
   const handleBuyNow = async () => {
     if (isGhostClickBlocked() || isOverlayActive || isCustomizationModalOpen || isCustomizationCooldown) return;
+    if (isArrivingSoon) {
+      handleWhatsAppInquiry();
+      return;
+    }
     if (product.stock > 0) {
       triggerHaptic('medium');
       if (isProductInCart) {
@@ -1023,25 +1044,41 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
             {/* PRICE ROW */}
             <div className="flex items-baseline gap-2.5 flex-wrap border-b border-[#F3ECE0] pb-4">
-              <span className="text-2xl sm:text-3xl font-bold font-sans text-[#292524]">
-                ₹{finalPriceWithAddons.toLocaleString('en-IN')}
-              </span>
-              {addonsTotal > 0 ? (
-                <span className="text-xs text-[#6B1725] font-semibold bg-[#FAF6EE] px-2 py-0.5 rounded border border-[#E5DEC9]">
-                  ₹{finalPrice.toLocaleString('en-IN')} saree + ₹{addonsTotal.toLocaleString('en-IN')} add-ons
-                </span>
-              ) : product.salePrice && (
-                <span className="text-base text-[#7A6E65] line-through">
-                  ₹{product.price.toLocaleString('en-IN')}
-                </span>
-              )}
-              {discountPercent > 0 && addonsTotal === 0 && (
-                <span className="bg-[#FAF6EE] text-[#C25E00] border border-[#E5DEC9] px-2.5 py-0.5 rounded text-xs font-bold">
-                  {discountPercent}% off
-                </span>
+              {isArrivingSoon ? (
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl sm:text-3xl font-bold font-sans text-[#6B1725] tracking-wider">
+                    ₹XXXX
+                  </span>
+                  <span className="bg-[#FAF4E6] text-[#8C6D23] border border-[#E6D5B8] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-xs">
+                    <span className="w-2 h-2 rounded-full bg-[#8C6D23] animate-pulse" />
+                    Arriving Soon
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <span className="text-2xl sm:text-3xl font-bold font-sans text-[#292524]">
+                    ₹{finalPriceWithAddons.toLocaleString('en-IN')}
+                  </span>
+                  {addonsTotal > 0 ? (
+                    <span className="text-xs text-[#6B1725] font-semibold bg-[#FAF6EE] px-2 py-0.5 rounded border border-[#E5DEC9]">
+                      ₹{finalPrice.toLocaleString('en-IN')} saree + ₹{addonsTotal.toLocaleString('en-IN')} add-ons
+                    </span>
+                  ) : product.salePrice && (
+                    <span className="text-base text-[#7A6E65] line-through">
+                      ₹{product.price.toLocaleString('en-IN')}
+                    </span>
+                  )}
+                  {discountPercent > 0 && addonsTotal === 0 && (
+                    <span className="bg-[#FAF6EE] text-[#C25E00] border border-[#E5DEC9] px-2.5 py-0.5 rounded text-xs font-bold">
+                      {discountPercent}% off
+                    </span>
+                  )}
+                </>
               )}
               <span className="text-xs text-[#7A6E65] w-full mt-1">
-                Inclusive of all taxes · Express shipping across India
+                {isArrivingSoon 
+                  ? 'Price to be announced upon arrival · Enquire on WhatsApp for early booking & updates' 
+                  : 'Inclusive of all taxes · Express shipping across India'}
               </span>
             </div>
 
@@ -1321,7 +1358,33 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
             {/* DESKTOP INLINE PRIMARY ACTION BUTTONS (Visible on >= lg screens) */}
             <div className="hidden lg:flex flex-col gap-3 py-2">
-              {product.stock === 0 ? (
+              {isArrivingSoon ? (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleWhatsAppInquiry}
+                    className="flex-1 bg-[#25D366] hover:bg-[#20BD5A] text-white py-4 px-6 rounded-full font-serif font-bold text-sm shadow-md cursor-pointer transition-all flex items-center justify-center gap-2 group active:scale-95"
+                  >
+                    <MessageCircle size={18} className="fill-current" />
+                    <span>Enquire on WhatsApp</span>
+                  </button>
+
+                  <button
+                    onClick={handleWishlistToggle}
+                    className="relative p-3.5 rounded-full border border-[#E5DEC9] text-[#292524] hover:bg-[#FAF6EE] active:scale-90 transition-all cursor-pointer"
+                    title="Save to wishlist"
+                  >
+                    {isWishlistAnimating && (
+                      <span className="absolute inset-0 rounded-full border-2 border-[#6B1725]/40 animate-heart-ring" />
+                    )}
+                    <Heart
+                      size={20}
+                      className={`transition-all duration-200 ${
+                        isWishlisted ? 'fill-[#6B1725] text-[#6B1725]' : ''
+                      } ${isWishlistAnimating ? 'animate-heart-pop' : ''}`}
+                    />
+                  </button>
+                </div>
+              ) : product.stock === 0 ? (
                 <div className="space-y-3">
                   <button
                     onClick={handleNotifyMe}
@@ -1396,26 +1459,30 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
             <div className="bg-[#FAF6EE] border border-[#E5DEC9] rounded-2xl p-4 flex items-center justify-between shadow-2xs">
               <div>
                 <p className="font-sans font-bold text-xs sm:text-sm text-[#292524]">
-                  Want a video of this saree in daylight?
+                  {isArrivingSoon ? 'Questions about this upcoming saree?' : 'Want a video of this saree in daylight?'}
                 </p>
                 <p className="text-xs text-[#7A6E65] mt-0.5">
-                  We&apos;ll send one on WhatsApp in a few minutes.
+                  {isArrivingSoon 
+                    ? 'Chat with our saree experts on WhatsApp for arrival updates & early access.'
+                    : 'We\'ll send one on WhatsApp in a few minutes.'}
                 </p>
               </div>
               <button
                 onClick={handleWhatsAppInquiry}
-                className="bg-[#6B1725] hover:bg-[#52111C] text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors shrink-0"
+                className="bg-[#25D366] hover:bg-[#20BD5A] text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors shrink-0"
               >
-                <MessageCircle size={14} />
-                Ask
+                <MessageCircle size={14} className="fill-current" />
+                {isArrivingSoon ? 'Chat' : 'Ask'}
               </button>
             </div>
 
             {/* IN-STORE LOCATION NOTE */}
-            <div className="text-xs text-[#7A6E65] flex items-center gap-2">
-              <MapPin size={14} className="text-[#B08A3C] shrink-0" />
-              <span>In stock at our Samastipur shop — see it in person</span>
-            </div>
+            {!isArrivingSoon && (
+              <div className="text-xs text-[#7A6E65] flex items-center gap-2">
+                <MapPin size={14} className="text-[#B08A3C] shrink-0" />
+                <span>In stock at our Samastipur shop — see it in person</span>
+              </div>
+            )}
 
             {/* ABOUT THIS WEAVE */}
             <div className="pt-2">
@@ -1655,9 +1722,13 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
           </button>
           <div>
             <div className="font-sans text-base font-bold text-[#292524] leading-tight">
-              ₹{finalPriceWithAddons.toLocaleString('en-IN')}
+              {isArrivingSoon ? '₹XXXX' : `₹${finalPriceWithAddons.toLocaleString('en-IN')}`}
             </div>
-            {addonsTotal > 0 ? (
+            {isArrivingSoon ? (
+              <span className="text-[10px] font-bold text-[#8C6D23] bg-[#FAF4E6] px-1.5 py-0.5 rounded border border-[#E6D5B8] block">
+                Arriving Soon
+              </span>
+            ) : addonsTotal > 0 ? (
               <span className="text-[10px] font-semibold text-[#6B1725] block">
                 Incl. add-ons
               </span>
@@ -1675,7 +1746,15 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
         {/* Right: Primary Action Buttons */}
         <div className="flex items-center gap-2 flex-1 justify-end">
-          {product.stock === 0 ? (
+          {isArrivingSoon ? (
+            <button
+              onClick={handleWhatsAppInquiry}
+              className="native-press flex-1 bg-[#25D366] hover:bg-[#20BD5A] active:scale-95 text-white min-h-12 py-3 px-4 rounded-2xl text-sm font-bold shadow-md cursor-pointer flex items-center justify-center gap-2 transition-transform"
+            >
+              <MessageCircle size={18} className="fill-current" />
+              <span>Enquire on WhatsApp</span>
+            </button>
+          ) : product.stock === 0 ? (
             <button
               onClick={handleNotifyMe}
               className="native-press flex-1 bg-[#292524] hover:bg-black active:scale-95 text-white min-h-12 py-3 px-5 rounded-2xl text-sm font-bold shadow-md cursor-pointer flex items-center justify-center gap-1.5 transition-transform"

@@ -30,6 +30,7 @@ export interface Product {
   gst_rate?: number | null;
   price_includes_gst?: boolean | null;
   has_blouse?: boolean;
+  isArrivingSoon?: boolean;
 }
 
 export interface ProductAddon {

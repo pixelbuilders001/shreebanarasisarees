@@ -208,9 +208,16 @@ export function mapDbProductToProduct(
   const rating = dbRating ? dbRating.rating : 0;
   const reviewsCount = dbRating ? dbRating.reviewsCount : 0;
 
+  const rawCategory = (item.category || '').trim();
+  const isArrivingSoon = 
+    rawCategory.toLowerCase() === 'arriving soon' ||
+    (mrpVal === 0 && sellingPrice === 0);
+
   // Category mapping normalization
-  let categoryNormalized = (item.category || 'Banarasi').trim();
-  if (categoryNormalized) {
+  let categoryNormalized = rawCategory || 'Banarasi';
+  if (rawCategory.toLowerCase() === 'arriving soon') {
+    categoryNormalized = 'Arriving Soon';
+  } else if (categoryNormalized) {
     categoryNormalized = categoryNormalized.charAt(0).toUpperCase() + categoryNormalized.slice(1).toLowerCase();
   }
 
@@ -247,7 +254,8 @@ export function mapDbProductToProduct(
     designCode: item.design_code || undefined,
     hsn_code: item.hsn_code || '5208',
     gst_rate: item.gst_rate != null ? Number(item.gst_rate) : 5.0,
-    price_includes_gst: item.price_includes_gst ?? true
+    price_includes_gst: item.price_includes_gst ?? true,
+    isArrivingSoon
   };
 }
 
