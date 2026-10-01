@@ -350,6 +350,10 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
     `Hello Shree Banarasi Sarees, I would like to inquire about the arriving soon saree: "${product.name}" (Design: ${product.designCode || product.sku || product.id}). Could you please share the expected arrival date and pricing?`
   )}`;
 
+  const whatsappSoldOutUrl = `https://wa.me/+916203909946?text=${encodeURIComponent(
+    `Hello Shree Banarasi Sarees, I would like to enquire about the saree: "${product.name}" (Design: ${product.designCode || product.sku || product.id}), which is currently sold out. Could you please let me know if it can be restocked or custom ordered?`
+  )}`;
+
   const discountPercent = product.salePrice
     ? Math.round(((product.price - product.salePrice) / product.price) * 100)
     : 0;
