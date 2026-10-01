@@ -70,10 +70,6 @@ export const CategoryCardsSection: React.FC<CategoryCardsSectionProps> = ({ sect
 
               <div className="absolute inset-0 bg-gradient-to-t from-[#292524]/90 via-[#292524]/30 to-transparent" />
 
-              <span className="absolute top-3 right-3 bg-[#B08A3C] text-[#292524] text-[9px] sm:text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider font-serif shadow-xs z-10">
-                {card.count} Designs
-              </span>
-
               <div className="relative z-10">
                 <h3 className="font-serif text-lg sm:text-2xl font-bold text-[#FAF7F0] group-hover:text-[#D4B870] transition-colors leading-tight">
                   {card.title}

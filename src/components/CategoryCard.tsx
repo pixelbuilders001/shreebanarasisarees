@@ -152,7 +152,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ initialCategories })
           {heroWeave && (
             <Link
               href={`/sarees/${encodeURIComponent(heroWeave.query.toLowerCase().trim().replace(/\s+/g, '-'))}`}
-              className="group relative col-span-2 md:col-span-2 md:row-span-2 min-h-[260px] sm:min-h-[320px] md:min-h-[480px] rounded-2xl overflow-hidden border border-[#B08A3C]/30 hover:border-[#B08A3C] shadow-md hover:shadow-2xl transition-all duration-500 bg-[#1F1917] flex flex-col justify-between p-5 sm:p-6 lg:p-7"
+              className="group relative col-span-2 md:col-span-2 md:row-span-2 min-h-[260px] sm:min-h-[320px] md:min-h-[480px] rounded-2xl overflow-hidden border border-[#B08A3C]/30 hover:border-[#B08A3C] shadow-md hover:shadow-2xl transition-all duration-500 bg-[#1F1917] flex flex-col justify-end p-5 sm:p-6 lg:p-7"
             >
               {heroWeave.image && (
                 <Image
@@ -170,15 +170,6 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ initialCategories })
 
               {/* Gradient Vignette */}
               <div className="absolute inset-0 bg-gradient-to-t from-[#1A1412] via-[#1A1412]/40 to-transparent pointer-events-none" />
-
-              {/* Top Row */}
-              <div className="relative z-10 flex items-center justify-end">
-                {heroWeave.count > 0 && (
-                  <span className="text-[10px] sm:text-[11px] font-sans font-semibold text-[#FAF7F0] bg-[#6B1725]/90 backdrop-blur-sm px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full border border-[#D4B870]/30 shadow-xs">
-                    {heroWeave.count} Sarees
-                  </span>
-                )}
-              </div>
 
               {/* Bottom Row */}
               <div className="relative z-10 space-y-1.5 sm:space-y-2">
@@ -199,7 +190,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ initialCategories })
             <Link
               key={weave.id}
               href={`/sarees/${encodeURIComponent(weave.query.toLowerCase().trim().replace(/\s+/g, '-'))}`}
-              className="group relative col-span-1 min-h-[190px] sm:min-h-[220px] md:min-h-[230px] rounded-2xl overflow-hidden border border-[#B08A3C]/25 hover:border-[#B08A3C]/70 shadow-sm hover:shadow-xl transition-all duration-500 bg-[#1F1917] flex flex-col justify-between p-3.5 sm:p-4 lg:p-5"
+              className="group relative col-span-1 min-h-[190px] sm:min-h-[220px] md:min-h-[230px] rounded-2xl overflow-hidden border border-[#B08A3C]/25 hover:border-[#B08A3C]/70 shadow-sm hover:shadow-xl transition-all duration-500 bg-[#1F1917] flex flex-col justify-end p-3.5 sm:p-4 lg:p-5"
             >
               {weave.image && (
                 <Image
@@ -216,15 +207,6 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ initialCategories })
 
               {/* Gradient overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-[#1A1412]/95 via-[#1A1412]/40 to-transparent pointer-events-none" />
-
-              {/* Top Row */}
-              <div className="relative z-10 flex items-center justify-end">
-                {weave.count > 0 && (
-                  <span className="text-[9px] sm:text-[10px] font-sans font-medium text-[#FAF7F0]/90 bg-[#292524]/80 backdrop-blur-sm px-2 py-0.5 rounded-md border border-[#D4B870]/25">
-                    {weave.count} Sarees
-                  </span>
-                )}
-              </div>
 
               {/* Bottom Row */}
               <div className="relative z-10">
