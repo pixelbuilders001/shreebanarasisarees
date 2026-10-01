@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Heart, ShoppingBag, Eye, X, Star, Scissors, Bell, Loader2, MessageCircle } from 'lucide-react';
+import { Heart, ShoppingBag, Eye, X, Star, Scissors, Loader2, MessageCircle } from 'lucide-react';
 import { Product } from '../data/products';
 import { useStore } from '../context/StoreContext';
 import { NO_IMAGE_PLACEHOLDER } from '../lib/placeholder';
@@ -32,6 +32,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   const whatsappInquiryUrl = `https://wa.me/+916203909946?text=${encodeURIComponent(
     `Hello Shree Banarasi Sarees, I would like to inquire about the arriving soon saree: "${product.name}" (Design: ${product.designCode || product.sku || product.id}). Could you please share the expected arrival date and pricing?`
+  )}`;
+
+  const whatsappSoldOutUrl = `https://wa.me/+916203909946?text=${encodeURIComponent(
+    `Hello Shree Banarasi Sarees, I would like to enquire about the saree: "${product.name}" (Design: ${product.designCode || product.sku || product.id}), which is currently sold out. Could you please let me know if it can be restocked or custom ordered?`
   )}`;
 
   // Calculate discount percentage
@@ -74,7 +78,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             alt={product.name}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 300px"
-            className={`w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out ${product.stock === 0 && !isArrivingSoon ? 'grayscale opacity-60' : ''}`}
+            className={`w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out ${product.stock === 0 && !isArrivingSoon ? 'grayscale opacity-60 blur-[0.5px]' : ''}`}
             loading="lazy"
             onLoad={() => setImageLoaded(true)}
             onError={() => {
@@ -90,6 +94,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {/* Rich Overlay */}
         <div className="absolute inset-0 bg-maroon/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
+        {/* Sold Out Center Badge */}
+        {product.stock === 0 && !isArrivingSoon && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <span className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-[#1A1412]/85 backdrop-blur-md border border-[#D4B870]/40 text-[#FAF7F0] font-serif font-bold text-[11px] sm:text-xs tracking-widest uppercase shadow-md select-none">
+              Sold Out
+            </span>
+          </div>
+        )}
+
         {/* Arriving Soon Badge (Top Left Corner) */}
         {isArrivingSoon && (
           <div className="absolute top-2.5 left-2.5 z-10 px-2.5 py-1 rounded-full bg-[#FAF4E6]/95 backdrop-blur-md border border-[#E6D5B8] text-[#8C6D23] font-bold text-[10px] uppercase tracking-wider shadow-sm flex items-center gap-1.5 select-none pointer-events-none">
@@ -99,19 +112,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         )}
 
         {/* Quick View Button — slides up on desktop hover only */}
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            triggerHaptic('light');
-            setIsQuickViewOpen(true);
-          }}
-          className="hidden md:flex absolute bottom-0 inset-x-0 z-10 py-2 bg-dark-brown/85 backdrop-blur-sm text-ivory text-[10px] font-serif font-bold uppercase tracking-widest items-center justify-center gap-1.5 md:translate-y-full md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 transition-all duration-300 cursor-pointer select-none"
-          aria-label={`Quick view ${product.name}`}
-        >
-          <Eye size={12} />
-          Quick View
-        </button>
+        {product.stock > 0 && !isArrivingSoon && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              triggerHaptic('light');
+              setIsQuickViewOpen(true);
+            }}
+            className="hidden md:flex absolute bottom-0 inset-x-0 z-10 py-2 bg-dark-brown/85 backdrop-blur-sm text-ivory text-[10px] font-serif font-bold uppercase tracking-widest items-center justify-center gap-1.5 md:translate-y-full md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 transition-all duration-300 cursor-pointer select-none"
+            aria-label={`Quick view ${product.name}`}
+          >
+            <Eye size={12} />
+            Quick View
+          </button>
+        )}
 
 
 
@@ -261,14 +276,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               </button>
             </div>
           ) : product.stock === 0 ? (
-            <button
-              onClick={handleNotifyMe}
-              className="native-press w-full min-h-10 py-2 sm:py-2.5 rounded-xl border border-maroon/30 bg-[#FFF9F0]/40 text-maroon font-bold text-xs sm:text-[13px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-95 transition-transform"
-              aria-label={`Notify me when ${product.name} is back in stock`}
+            <a
+              href={whatsappSoldOutUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerHaptic('medium');
+              }}
+              className="native-press w-full min-h-10 py-2 sm:py-2.5 rounded-xl border border-[#25D366]/40 bg-[#25D366]/10 hover:bg-[#25D366] text-[#128C7E] hover:text-white font-bold text-xs sm:text-[13px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-95 transition-all duration-200"
+              aria-label={`Enquire about sold out ${product.name} on WhatsApp`}
             >
-              <Bell size={13} />
-              <span className="font-serif">Notify Me</span>
-            </button>
+              <MessageCircle size={15} className="fill-current" />
+              <span className="font-serif">Enquire on WhatsApp</span>
+            </a>
           ) : (
             <button
               onClick={handleAddToCart}
@@ -374,13 +395,21 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
               <img
                 src={imageError || !product.images?.[imgIndex] ? NO_IMAGE_PLACEHOLDER : (product.images[imgIndex] || product.images[0])}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className={`w-full h-full object-cover ${product.stock === 0 && !isArrivingSoon ? 'grayscale opacity-60 blur-[0.5px]' : ''}`}
                 onLoad={() => setImageLoaded(true)}
                 onError={() => {
                   setImageError(true);
                   setImageLoaded(true);
                 }}
               />
+              {/* Sold Out Center Badge */}
+              {product.stock === 0 && !isArrivingSoon && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                  <span className="px-4 py-2 rounded-full bg-[#1A1412]/85 backdrop-blur-md border border-[#D4B870]/40 text-[#FAF7F0] font-serif font-bold text-xs sm:text-sm tracking-widest uppercase shadow-lg select-none">
+                    Sold Out
+                  </span>
+                </div>
+              )}
               {product.images.length > 1 && (
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10">
                   {product.images.map((_, i) => (
@@ -499,6 +528,17 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => 
                   >
                     <MessageCircle size={16} className="fill-current" />
                     <span>WhatsApp Enquiry</span>
+                  </a>
+                ) : product.stock === 0 ? (
+                  <a
+                    href={whatsappSoldOutUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => triggerHaptic('medium')}
+                    className="flex-1 py-3 bg-[#25D366] hover:bg-[#20BD5A] text-white rounded-lg font-serif font-bold text-xs uppercase tracking-wider active:scale-95 transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <MessageCircle size={16} className="fill-current" />
+                    <span>Enquire on WhatsApp</span>
                   </a>
                 ) : (
                   <>

@@ -789,7 +789,7 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                       fill
                       priority={idx === 0}
                       sizes="(max-width: 1024px) 100vw, 50vw"
-                      className="object-cover object-center"
+                      className={`object-cover object-center ${product.stock === 0 ? 'grayscale opacity-60 blur-[0.5px]' : ''}`}
                     />
                   </div>
                 ))}
@@ -901,10 +901,9 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
 
               {/* Mobile Out of Stock Badge */}
               {product.stock === 0 && (
-                <div className="absolute top-20 inset-x-0 flex items-center justify-center z-10 pointer-events-none">
-                  <div className="bg-[#292524]/85 backdrop-blur-md text-white text-xs font-bold font-serif px-4 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 animate-fadeIn">
-                    <Bell size={13} />
-                    Out of Stock
+                <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                  <div className="bg-[#1A1412]/85 backdrop-blur-md text-[#FAF7F0] text-xs sm:text-sm font-bold font-serif px-4 py-2 rounded-full border border-[#D4B870]/40 shadow-lg tracking-widest uppercase animate-fadeIn">
+                    Sold Out
                   </div>
                 </div>
               )}
@@ -935,14 +934,13 @@ Link: https://shreebanarasisarees.in/product/${product.slug}`;
                 fill
                 priority
                 sizes="(min-width: 1024px) 58vw, 100vw"
-                className={`object-cover object-center transition-transform duration-700 ease-out ${product.stock === 0 ? 'grayscale opacity-60 group-hover:scale-105' : 'group-hover:scale-105'}`}
+                className={`object-cover object-center transition-transform duration-700 ease-out ${product.stock === 0 ? 'grayscale opacity-60 blur-[0.5px] group-hover:scale-105' : 'group-hover:scale-105'}`}
                 onClick={() => setIsLightboxOpen(true)}
               />
               {product.stock === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="bg-[#292524]/85 backdrop-blur-sm text-white text-sm sm:text-base font-serif font-bold px-5 py-2.5 rounded-full shadow-lg flex items-center gap-2 animate-fadeIn">
-                    <Bell size={16} />
-                    Out of Stock
+                  <div className="bg-[#1A1412]/85 backdrop-blur-md text-[#FAF7F0] text-sm sm:text-base font-serif font-bold px-5 py-2.5 rounded-full border border-[#D4B870]/40 shadow-lg tracking-widest uppercase animate-fadeIn">
+                    Sold Out
                   </div>
                 </div>
               )}
